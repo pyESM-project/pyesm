@@ -1,0 +1,20 @@
+{
+    "python.linting.pylintEnabled": true,
+    "python.linting.enabled": false,
+    "python.linting.lintOnSave": true,
+    
+    "debug.showBreakpointsInOverviewRuler": true,
+    "python.terminal.activateEnvInCurrentTerminal": true,
+    
+    "jupyter.notebookFileRoot": "${workspaceFolder}",
+    "jupyter.interactiveWindowMode": "single",
+
+    "python.testing.pytestArgs": [
+        "."
+    ],
+    "python.testing.unittestEnabled": false,
+    "python.testing.pytestEnabled": true,
+    "python.testing.promptToConfigure": true,
+    "python.testing.autoTestDiscoverOnSaveEnabled": true,
+    "python.testing.pytestPath": "{$workspaceFolder}",
+}
