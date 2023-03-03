@@ -17,4 +17,5 @@
     "python.testing.promptToConfigure": true,
     "python.testing.autoTestDiscoverOnSaveEnabled": true,
     "python.testing.pytestPath": "{$workspaceFolder}",
+    "python.analysis.typeCheckingMode": "off",
 }

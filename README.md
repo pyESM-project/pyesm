@@ -1,2 +1,2 @@
-# psmod
-Python based Input-output general purpose system modelling framework
+# pySM
+Python based Systems Modelling framework based on Supply and Use structure
