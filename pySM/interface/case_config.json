@@ -1,0 +1,12 @@
+{
+    "paths": {
+        "model_data": "D:/OneDrive - Politecnico di Milano/Doc_Lavoro/Models/pySM_docs/case_studies"
+    },
+    "options": {
+        "debug": true,
+        "execution_mode": [
+            "simulation",
+            "optimization"
+        ]
+    }
+}

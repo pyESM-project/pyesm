@@ -2,13 +2,10 @@
     "python.linting.pylintEnabled": true,
     "python.linting.enabled": false,
     "python.linting.lintOnSave": true,
-    
+    "editor.formatOnSave": true,
     "debug.showBreakpointsInOverviewRuler": true,
     "python.terminal.activateEnvInCurrentTerminal": true,
-    
     "jupyter.notebookFileRoot": "${workspaceFolder}",
-    "jupyter.interactiveWindowMode": "single",
-
     "python.testing.pytestArgs": [
         "."
     ],
@@ -18,4 +15,5 @@
     "python.testing.autoTestDiscoverOnSaveEnabled": true,
     "python.testing.pytestPath": "{$workspaceFolder}",
     "python.analysis.typeCheckingMode": "off",
+    "jupyter.interactiveWindow.creationMode": "single",
 }
