@@ -175,4 +175,5 @@ dependencies:
     - xlsxwriter==3.0.2
     - yapf==0.31.0
     - zipp==3.6.0
+    - pyyaml==6.0
 prefix: C:\ProgramData\Anaconda3\envs\esm_dev\
