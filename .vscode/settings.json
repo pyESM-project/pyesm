@@ -1,4 +1,5 @@
 {
+    "python.defaultInterpreterPath": "C:/ProgramData/Anaconda3/envs/esm_dev/bin/python",
     "python.linting.pylintEnabled": true,
     "python.linting.enabled": false,
     "python.linting.lintOnSave": true,
