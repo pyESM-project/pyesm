@@ -10,6 +10,7 @@
             "request": "launch",
             "program": "${file}",
             "console": "integratedTerminal",
+            "justMyCode": false,
             // "cwd": "${workspaceFolder}/pySM",
             "cwd": "${fileDirname}",
             "env": {
@@ -22,6 +23,7 @@
             "request": "launch",
             "program": "${file}",
             "console": "externalTerminal",
+            "justMyCode": false,
             // "cwd": "${workspaceFolder}/pySM",
             "cwd": "${fileDirname}",
             "env": {

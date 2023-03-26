@@ -9,43 +9,54 @@ from pathlib import Path
 
 class FileManager:
 
-    package_folder_path = Path(__file__).resolve().parent.parent / 'interface'
+    def __init__(
+            self,
+            folder_path: str = Path(
+                __file__).resolve().parent.parent / 'interface'):
+        """Initialize an instance of FileManager object with a path to
+           interface folder.
+
+        Args:
+            folder_path (str, optional): default model interface folder.
+        """
+        self.folder_path = folder_path
 
     def load_file(
+            self,
             file_name: str,
             file_type: str = 'json',
-            folder_path: str = package_folder_path
-            ) -> dict:
-        """Load file in json format and returns a dictionary
+            folder_path: str = None) -> dict:
+        """Load file and returns a dictionary with its content.
 
         Args:
             file_name (str): file name to be loaded.
             file_type (str): file type (only .json or .yaml allowed)
-            folder_path (str, optional): package folder set as default.
+            folder_path (str, optional): interface folder. If "None", it is set
+                as the default path of the FileManager instance.
 
         Returns:
             dict: a dictionary containing the data from the file.
         """
+        if folder_path is None:
+            folder_path = self.folder_path
 
         if file_type == 'json':
             loader = json.load
         elif file_type == 'yaml':
             loader = yaml.safe_load
         else:
-            raise ValueError('Invalid file type. Only .json and .yaml are allowed.')
+            raise ValueError(
+                'Invalid file type. Only JSON and YAML are allowed.')
 
-        path_file = folder_path / file_name
+        file_path = Path(folder_path) / file_name
 
-        with path_file.open() as file:
+        with file_path.open() as file:
             try:
                 return loader(file)
             except ValueError as error:
                 raise ValueError(
                     f'Error loading {file_type} file: wrong file format'
-                    ) from error
-
-
-            
+                ) from error
 
     def generate_excel_empty_sets(
             self,
@@ -83,7 +94,10 @@ class FileManager:
 
 if __name__ == '__main__':
 
-    from pySM.src.file_manager import FileManager as fm
+    from pySM.src.file_manager import FileManager
+    from util import *
 
-    fm.load_file('case_config.json')
-    
+    fm = FileManager()
+    file_content = fm.load_file(
+        file_name='case_config.json', file_type='json')
+    prettify(file_content)
