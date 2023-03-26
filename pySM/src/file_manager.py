@@ -5,6 +5,7 @@ import warnings
 import pandas as pd
 
 from pathlib import Path
+from pySM.src import util
 
 
 class FileManager:
@@ -17,7 +18,7 @@ class FileManager:
            interface folder.
 
         Args:
-            folder_path (str, optional): default model interface folder.
+            folder_path (str, optional): default interface folder.
         """
         self.folder_path = folder_path
 
@@ -26,13 +27,18 @@ class FileManager:
             file_name: str,
             file_type: str = 'json',
             folder_path: str = None) -> dict:
-        """Load file and returns a dictionary with its content.
+        """Loads JSON or YAML file and returns a dictionary with its content.
 
         Args:
             file_name (str): file name to be loaded.
             file_type (str): file type (only .json or .yaml allowed)
-            folder_path (str, optional): interface folder. If "None", it is set
-                as the default path of the FileManager instance.
+            folder_path (str, optional): The path to the folder where the file 
+                is located. If None, the default path of the FileManager 
+                instance is used.
+
+        Raises:
+            ValueError: If the file_type argument is not 'json' or 'yaml'.
+            ValueError: If the file format is incorrect or the file cannot be loaded.
 
         Returns:
             dict: a dictionary containing the data from the file.
@@ -58,12 +64,41 @@ class FileManager:
                     f'Error loading {file_type} file: wrong file format'
                 ) from error
 
-    def generate_excel_empty_sets(
+    def load_excel(
             self,
             sets_dict,
             sets_dir_path,
             sets_file_name):
-        """Generate input data file with sets structure."""
+        """Load EXCEL files and returns a dictionary with their content.
+
+        Args:
+            sets_dict (_type_): _description_
+            sets_dir_path (_type_): _description_
+            sets_file_name (_type_): _description_
+
+        Raises:
+            FileNotFoundError: _description_
+
+        Returns:
+            _type_: _description_
+        """
+        file_path = os.path.join(sets_dir_path, sets_file_name)
+
+        if not os.path.exists(file_path):
+            raise FileNotFoundError(f"{sets_file_name} does not exist.")
+
+        sets_dict_data = sets_dict.copy()
+        for sheet_name in sets_dict.keys():
+            sets_dict_data[sheet_name] = pd.read_excel(file_path, sheet_name)
+        return sets_dict_data
+
+    def dict_to_excel(
+            self,
+            sets_dict,
+            sets_dir_path,
+            sets_file_name):
+        """Generates excel files from a dictionary"""
+
         file_path = os.path.join(sets_dir_path, sets_file_name)
 
         if os.path.exists(file_path):
@@ -75,29 +110,13 @@ class FileManager:
                 pd.DataFrame(columns=value['Headers']).to_excel(
                     writer, sheet_name=sheet_name, index=False)
 
-    def read_excel_sets_data(
-            self,
-            sets_dict,
-            sets_dir_path,
-            sets_file_name):
-        """Read input data from an Excel file."""
-        file_path = os.path.join(sets_dir_path, sets_file_name)
-
-        if not os.path.exists(file_path):
-            raise FileNotFoundError(f"{sets_file_name} does not exist.")
-
-        sets_dict_data = sets_dict.copy()
-        for sheet_name in sets_dict.keys():
-            sets_dict_data[sheet_name] = pd.read_excel(file_path, sheet_name)
-        return sets_dict_data
-
 
 if __name__ == '__main__':
 
     from pySM.src.file_manager import FileManager
-    from util import *
 
     fm = FileManager()
     file_content = fm.load_file(
         file_name='case_config.json', file_type='json')
-    prettify(file_content)
+
+    util.find_dict_depth
