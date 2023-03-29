@@ -1,7 +1,6 @@
 import os
 import warnings
 import shutil
-
 import pandas as pd
 
 from pathlib import Path
@@ -15,6 +14,14 @@ class Database:
             sets: dict,
             clean_database: bool,
             generate_sets_file: bool) -> None:
+        """Initializes the Database of the model.
+
+        Args:
+            model_folder_path (str): path of the model database folder.
+            sets (dict): dictionary of the model sets.
+            clean_database (bool): True for erasing the existing database.
+            generate_sets_file (bool): True for generating a new database
+        """
 
         self.model_folder_path = model_folder_path
         self.sets = sets
@@ -29,9 +36,7 @@ class Database:
             )
 
     def erase_database(self):
-        """
-        Erases the database in the model folder.
-
+        """Erases the database in the model folder.
         """
         response = input(f"Do you really want to erase the directory \
                         '{self.model_folder_path}' and all its contents? (y/[n]): ")
@@ -50,11 +55,21 @@ class Database:
             self,
             dict_to_export: dict,
             excel_file_name: str,
-            excel_data_validation: bool = False,
-            dict_headers_name: str = 'Headers') -> None:
+            excel_data_validation: bool = True,
+            dict_headers_name: str = 'Headers',
+            writer_engine: str = 'openpyxl') -> None:
         """Generates excel file with headers defined by a dictionary.
         Excel columns can be implemented with data validation.
 
+        Args:
+            dict_to_export (dict): dictionary to be exported.
+            excel_file_name (str): file name of the sets Excel file.
+            excel_data_validation (bool, optional): add data validation to 
+                Excel file. Defaults to True.
+            dict_headers_name (str, optional): name of headers in the dictionary. 
+                Defaults to 'Headers'.
+            writer_engine (str, optional): defines writer engines for Pandas. 
+                Defaults to 'openpyxl'.
         """
 
         file_path = Path(self.model_folder_path) / excel_file_name
@@ -65,7 +80,7 @@ class Database:
 
         os.makedirs(self.model_folder_path, exist_ok=True)
 
-        with pd.ExcelWriter(file_path, engine='openpyxl') as writer:
+        with pd.ExcelWriter(file_path, engine=writer_engine) as writer:
             for sheet_name, value in dict_to_export.items():
                 pd.DataFrame(columns=value[dict_headers_name]).to_excel(
                     writer, sheet_name=sheet_name, index=False)

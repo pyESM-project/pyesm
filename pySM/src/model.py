@@ -1,5 +1,4 @@
 from pathlib import Path
-
 from pySM.src import constants
 from pySM.src import util
 from pySM.src.database import Database
@@ -36,7 +35,7 @@ class Model:
 
         self.problem = Problem()
 
-    def load_sets_data(self):
+    def load_sets(self):
         pass
 
 
