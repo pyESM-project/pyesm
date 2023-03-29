@@ -1,33 +1,29 @@
 import os
-import warnings
-import shutil
 import pandas as pd
 
 from pathlib import Path
+from pySM.src import file_manager as fm
 
 
 class Database:
+    """Generation and handling of the model database."""
 
     def __init__(
             self,
-            model_folder_path: str,
             sets: dict,
-            clean_database: bool,
-            generate_sets_file: bool) -> None:
+            model_folder_path: str,
+            generate_sets_file: bool = True) -> None:
         """Initializes the Database of the model.
 
         Args:
-            model_folder_path (str): path of the model database folder.
-            sets (dict): dictionary of the model sets.
-            clean_database (bool): True for erasing the existing database.
-            generate_sets_file (bool): True for generating a new database
+            sets (dict): sets dictionary (constant)
+            model_folder_path (str): path of the model database folder
+            generate_sets_file (bool, optional): if the sets.xlsx file must
+                be generated. Defaults to True.
         """
 
         self.model_folder_path = model_folder_path
         self.sets = sets
-
-        if clean_database:
-            self.erase_database()
 
         if generate_sets_file:
             self.generate_blank_sets(
@@ -35,71 +31,26 @@ class Database:
                 excel_file_name='sets.xlsx'
             )
 
-    def erase_database(self):
-        """Erases the database in the model folder.
-        """
-        response = input(f"Do you really want to erase the directory \
-                        '{self.model_folder_path}' and all its contents? (y/[n]): ")
-        if response.lower() != 'y':
-            print("Operation cancelled.")
-            return
-        try:
-            shutil.rmtree(self.model_folder_path)
-        except OSError as e:
-            print(f"Error: {self.model_folder_path} : {e.strerror}")
-        else:
-            print(f"All files and folders in {self.model_folder_path} \
-                have been erased successfully.")
-
     def generate_blank_sets(
             self,
             dict_to_export: dict,
-            excel_file_name: str,
-            excel_data_validation: bool = True,
-            dict_headers_name: str = 'Headers',
-            writer_engine: str = 'openpyxl') -> None:
+            excel_file_name: str) -> None:
         """Generates excel file with headers defined by a dictionary.
-        Excel columns can be implemented with data validation.
 
         Args:
-            dict_to_export (dict): dictionary to be exported.
-            excel_file_name (str): file name of the sets Excel file.
-            excel_data_validation (bool, optional): add data validation to 
-                Excel file. Defaults to True.
-            dict_headers_name (str, optional): name of headers in the dictionary. 
-                Defaults to 'Headers'.
-            writer_engine (str, optional): defines writer engines for Pandas. 
-                Defaults to 'openpyxl'.
+            dict_to_export (dict): dictionary with sets headers to be exported.
+            excel_file_name (str): file name for the set file.
         """
 
-        file_path = Path(self.model_folder_path) / excel_file_name
-        if os.path.exists(file_path):
-            warning_msg = f'File {excel_file_name} already exists and not overwritten.'
-            warnings.warn(warning_msg, UserWarning)
-            return
-
+        fm.erase_folder(self.model_folder_path)
         os.makedirs(self.model_folder_path, exist_ok=True)
+        fm.generate_excel_headers(
+            dict_name=dict_to_export,
+            excel_file_path=Path(self.model_folder_path) / excel_file_name
+        )
 
-        with pd.ExcelWriter(file_path, engine=writer_engine) as writer:
-            for sheet_name, value in dict_to_export.items():
-                pd.DataFrame(columns=value[dict_headers_name]).to_excel(
-                    writer, sheet_name=sheet_name, index=False)
-
-    # def load_excel(
-    #         self,
-    #         sets_dict,
-    #         sets_dir_path,
-    #         sets_file_name):
-
-    #     file_path = os.path.join(sets_dir_path, sets_file_name)
-
-    #     if not os.path.exists(file_path):
-    #         raise FileNotFoundError(f"{sets_file_name} does not exist.")
-
-    #     sets_dict_data = sets_dict.copy()
-    #     for sheet_name in sets_dict.keys():
-    #         sets_dict_data[sheet_name] = pd.read_excel(file_path, sheet_name)
-    #     return sets_dict_data
+    def load_sets(self) -> dict:
+        pass
 
 
 if __name__ == '__main__':

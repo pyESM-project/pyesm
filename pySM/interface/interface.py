@@ -9,12 +9,11 @@ from pySM.src.model import Model
 
 test = Model(
     file_settings_name='model_settings.json',
-    clean_database=False,
     generate_sets_file=True
 )
 
 # after filling blank sets.xlsx, importing it in the model
-test.load_sets_data()
+# test.load_sets_data()
 
 
 # ancillary checks

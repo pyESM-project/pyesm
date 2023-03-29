@@ -3,9 +3,11 @@ from pySM.src import constants
 from pySM.src import util
 from pySM.src.database import Database
 from pySM.src.problem import Problem
+from pySM.src.util import prettify
 
 
 class Model:
+    """Initialization and management of the model."""
 
     file_settings_dir_path = \
         Path(__file__).resolve().parent.parent / 'interface'
@@ -13,9 +15,8 @@ class Model:
     def __init__(
             self,
             file_settings_name: str,
-            file_settings_dir_path: str = file_settings_dir_path,
-            clean_database: bool = False,
-            generate_sets_file: bool = False) -> None:
+            generate_sets_file: bool,
+            file_settings_dir_path: str = file_settings_dir_path) -> None:
 
         self.model_settings = util.load_file(
             file_name=file_settings_name,
@@ -29,14 +30,10 @@ class Model:
         self.database = Database(
             model_folder_path=self.model_dir_path,
             sets=constants._SETS,
-            clean_database=clean_database,
             generate_sets_file=generate_sets_file
         )
 
         self.problem = Problem()
-
-    def load_sets(self):
-        pass
 
 
 if __name__ == '__main__':
