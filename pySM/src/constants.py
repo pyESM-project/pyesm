@@ -4,33 +4,66 @@
 _INFO = {
     'Package name': 'pySM',
     'Description': 'Python-based general purpose Systems Modeller',
+    'Version': 'v.0.1',
     'Author': 'Matteo V. Rocco'
 }
 
 # structure of the sets of the model
 _SETS = {
-
-    'REGIONS': {
-        'Symbol': 'r',
-        'Categories': ['Productive system', 'Other systems', 'Environment'],
-        'Headers': ['ID', 'Category', 'Name', 'Cluster_1']
+    'SCENARIOS': {
+        'Symbol': 'sc',
+        'Headers': [
+            'ID',
+            'Name',
+            'Acronym'
+        ]
     },
-
+    'SYSTEMS': {
+        'Symbol': 'sy',
+        'Headers': [
+            'ID',
+            'Category',
+            'Name',
+            'Acronym',
+            'Cluster_1'
+        ],
+        'Categories': [
+            'Productive system',
+            'Other systems',
+            'Environment'
+        ],
+    },
     'TECHNOLOGIES': {
-        'Symbol': 't',
+        'Symbol': 'tc',
+        'Headers': [
+            'ID',
+            'Category',
+            'Category_spec',
+            'Name',
+            'Acronym',
+            'Cluster_1'
+        ],
         'Categories': {
             'Supply': ['Production', 'Storage', 'Transmission'],
             'Demand': ['Demand']
         },
-        'Headers': ['ID', 'Category', 'Category_spec', 'Name', 'Cluster_1']
     },
-
     'FLOWS': {
-        'Symbol': 'f',
-        'Categories': ['Product flow', 'Production factor', 'Environmental transaction'],
-        'Headers': ['ID', 'Category', 'Unit', 'Name', 'Cluster_1']
+        'Symbol': 'fl',
+        'Headers': [
+            'ID',
+            'Category',
+            'Unit',
+            'Name',
+            'Acronym',
+            'Cluster_1'
+        ],
+        'Categories': [
+            'Product flow',
+            'Production factor',
+            'Environmental transaction'
+        ],
     }
-
 }
 
 # structure of the generic case study folder
