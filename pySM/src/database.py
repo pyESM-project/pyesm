@@ -1,6 +1,6 @@
 import os
 from pathlib import Path
-from pySM.src import file_manager as fm
+from pySM.src.file_manager import FileManager
 from pySM.log_exc.logger import Logger
 
 
@@ -12,16 +12,17 @@ class Database:
             sets: dict,
             model_folder_path: str,
             logger: Logger,
-            generate_sets_file: bool = True) -> None:
+            generate_sets_file: bool = False) -> None:
         """Initializes the Database of the model.
 
         Args:
             sets (dict): sets dictionary (constant)
             model_folder_path (str): path of the model database folder
             generate_sets_file (bool, optional): if the sets.xlsx file must
-                be generated. Defaults to True.
+                be generated. Defaults to False.
         """
-        self.logger = logger
+        self.logger = logger.getChild(__name__)
+        self.files = FileManager(logger=self.logger)
         self.model_folder_path = model_folder_path
         self.sets = sets
 
@@ -31,7 +32,7 @@ class Database:
                 excel_file_name='sets.xlsx'
             )
 
-        self.logger.info('Blank sets file generated.')
+        self.logger.info('Database initialized.')
 
     def generate_blank_sets(
             self,
@@ -44,14 +45,15 @@ class Database:
             excel_file_name (str): file name for the set file.
         """
 
-        fm.erase_folder(self.model_folder_path)
+        self.files.erase_folder(self.model_folder_path)
         os.makedirs(self.model_folder_path, exist_ok=True)
-        fm.generate_excel_headers(
+        self.files.generate_excel_headers(
             dict_name=dict_to_export,
             excel_file_path=Path(self.model_folder_path) / excel_file_name
         )
 
     def load_sets(self) -> dict:
+        self.logger.info('Sets loaded.')
         pass
 
 
