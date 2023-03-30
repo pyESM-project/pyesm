@@ -52,6 +52,8 @@ class Database:
             excel_file_path=Path(self.model_folder_path) / excel_file_name
         )
 
+        self.logger.info(f'Blank Excel {excel_file_name} generated.')
+
     def load_sets(self) -> dict:
         self.logger.info('Sets loaded.')
         pass

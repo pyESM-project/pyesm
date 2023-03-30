@@ -18,13 +18,15 @@ class FileManager:
         """
 
         if os.path.exists(folder_path):
+            folder_name = str(folder_path).split('\\')[-1]
             response = input(
-                'Do you really want to erase the directory'
-                f"'{folder_path}'(y/[n]): "
+                'Do you really want to erase the directory '
+                f"'{folder_name}'(y/[n]): "
             ).lower()
 
             if response != 'y':
-                self.logger.info(f'{folder_path} erased.')
+                self.logger.info(
+                    f'Folder {folder_name} and its content not erased.')
                 return
 
             try:
