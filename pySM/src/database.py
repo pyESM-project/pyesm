@@ -31,6 +31,8 @@ class Database:
                 excel_file_name='sets.xlsx'
             )
 
+        self.logger.info('Blank sets file generated.')
+
     def generate_blank_sets(
             self,
             dict_to_export: dict,
