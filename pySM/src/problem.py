@@ -7,7 +7,8 @@ class Problem:
             self,
             logger: Logger) -> None:
 
-        self.logger = logger
+        self.logger = logger.getChild(__name__)
+        self.logger.info('Numerical problem defined.')
 
 
 if __name__ == '__main__':

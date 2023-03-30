@@ -34,7 +34,8 @@ class Model:
             self.model_settings['logging']['file name']
         )
 
-        self.logger.info('Settings loaded.')
+        self.logger.info('Generation of new Model instance ----------------')
+        self.logger.info('Model settings loaded.')
 
         self.database = Database(
             model_folder_path=self.model_dir_path,
@@ -43,13 +44,9 @@ class Model:
             logger=self.logger
         )
 
-        self.logger.info('Database generated.')
-
         self.problem = Problem(
             logger=self.logger
         )
-
-        self.logger.info('Numerical problem defined.')
 
 
 if __name__ == '__main__':

@@ -1,6 +1,5 @@
 from pySM.src.model import Model
 
-
 # create a model instance
 # model settings automatically loaded
 # eventual cleanup of previus databases in the case study path
@@ -12,8 +11,9 @@ test = Model(
 )
 
 # after filling blank sets.xlsx, importing it in the model
-# test.load_sets_data()
+test.database.load_sets()
 
 
 # ancillary checks
 # test.sets
+
