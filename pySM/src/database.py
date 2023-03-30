@@ -1,8 +1,7 @@
 import os
-import pandas as pd
-
 from pathlib import Path
 from pySM.src import file_manager as fm
+from pySM.log_exc.logger import Logger
 
 
 class Database:
@@ -12,6 +11,7 @@ class Database:
             self,
             sets: dict,
             model_folder_path: str,
+            logger: Logger,
             generate_sets_file: bool = True) -> None:
         """Initializes the Database of the model.
 
@@ -21,7 +21,7 @@ class Database:
             generate_sets_file (bool, optional): if the sets.xlsx file must
                 be generated. Defaults to True.
         """
-
+        self.logger = logger
         self.model_folder_path = model_folder_path
         self.sets = sets
 

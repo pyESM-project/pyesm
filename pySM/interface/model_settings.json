@@ -2,8 +2,12 @@
     "model name": "test_case_1",
     "model description": "dummy case study for testing the model",
     "model data folder path": "D:/OneDrive - Politecnico di Milano/Doc_Lavoro/Models/pySM_docs/case_studies",
-    "options": {
-        "debug": true,
-        "execution_mode": "simulation"
+    "logging": {
+        "file name": "log_model.log",
+        "log level": "debug",
+        "valid levels": "debug, info, warning, error, critical"
+    },
+    "model settings": {
+        "execution mode": "simulation"
     }
 }

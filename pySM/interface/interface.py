@@ -1,4 +1,3 @@
-from pySM.src.util import prettify
 from pySM.src.model import Model
 
 
