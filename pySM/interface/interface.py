@@ -32,8 +32,13 @@ class Interface:
 
     def model_init(
             self,
-    ) -> None:
-        pass
+            generate_sets_file: bool = True) -> None:
+
+        self.model = Model(
+            logger=self.logger,
+            files=self.files,
+            model_settings=self.model_settings,
+            generate_sets_file=generate_sets_file)
 
 
 if __name__ == '__main__':

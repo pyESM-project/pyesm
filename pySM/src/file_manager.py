@@ -2,7 +2,6 @@ import os
 import shutil
 import json
 import yaml
-import warnings
 import pandas as pd
 from pathlib import Path
 from pySM.log_exc.logger import Logger
@@ -20,10 +19,12 @@ class FileManager:
         Args:
             folder_path (str): path of the folder to be generated.
         """
+
         folder_name = str(folder_path).split('\\')[-1]
 
         if os.path.exists(folder_path):
-            return
+            self.logger.info(f'Folder {folder_name} already exists.')
+            return {}
         else:
             os.makedirs(folder_path, exist_ok=True)
             self.logger.info(f'Folder {folder_name} has created.')
@@ -45,17 +46,17 @@ class FileManager:
             if response != 'y':
                 self.logger.info(
                     f'Folder {folder_name} and its content not erased.')
-                return
+                return {}
 
             try:
                 shutil.rmtree(folder_path)
             except OSError as e:
-                self.logger.info(f'Error: {folder_path} : {e.strerror}')
+                self.logger.error(f'Error: {folder_path} : {e.strerror}')
             else:
                 self.logger.info(f'{folder_path} have been erased.')
 
         else:
-            warnings.warn(
+            self.logger.warning(
                 f"{folder_path} does not exist. The folder could not be erased.")
 
     def generate_excel_headers(
@@ -86,6 +87,8 @@ class FileManager:
                     sheet_name=sheet_name,
                     index=False
                 )
+        self.logger.info(
+            f'Excel file with headers generated.')
 
     def load_file(
             self,
@@ -114,22 +117,20 @@ class FileManager:
         elif file_type == 'yaml':
             loader = yaml.safe_load
         else:
-            raise ValueError(
+            self.logger.error(
                 'Invalid file type. Only JSON and YAML are allowed.')
+            return {}
 
         file_path = Path(folder_path) / file_name
 
-        with file_path.open() as file:
-            try:
-                loaded_dict = loader(file)
-
-            except ValueError as error:
-                raise ValueError(
-                    f'Error loading {file_type} file: wrong file format'
-                ) from error
-
-            self.logger.info(f"File '{file_name}' loaded.")
-            return loaded_dict
+        try:
+            with open(file_path, 'r') as file_obj:
+                file_contents = loader(file_obj)
+                self.logger.info(f"File '{file_name}' loaded.")
+                return file_contents
+        except Exception as e:
+            self.logger.error(f"Could not load file '{file_name}': {str(e)}")
+            return {}
 
     # def load_excel(
     #         self,

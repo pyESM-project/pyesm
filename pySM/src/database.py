@@ -1,7 +1,6 @@
-import os
 from pathlib import Path
-from pySM.src.file_manager import FileManager
 from pySM.log_exc.logger import Logger
+from pySM.src.file_manager import FileManager
 
 
 class Database:
@@ -9,9 +8,10 @@ class Database:
 
     def __init__(
             self,
-            sets: dict,
+            logger: 'Logger',
+            files: 'FileManager',
             model_folder_path: str,
-            logger: Logger,
+            sets: dict,
             generate_sets_file: bool = False) -> None:
         """Initializes the Database of the model.
 
@@ -22,7 +22,7 @@ class Database:
                 be generated. Defaults to False.
         """
         self.logger = logger.getChild(__name__)
-        self.files = FileManager(logger=self.logger)
+        self.files = files
         self.model_folder_path = model_folder_path
         self.sets = sets
 
@@ -57,7 +57,3 @@ class Database:
     def load_sets(self) -> dict:
         self.logger.info('Sets loaded.')
         pass
-
-
-if __name__ == '__main__':
-    pass

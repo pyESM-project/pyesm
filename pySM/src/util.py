@@ -1,8 +1,4 @@
-import json
-import yaml
 import pprint as pp
-
-from pathlib import Path
 
 
 def prettify(item: dict) -> None:
