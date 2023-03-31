@@ -46,7 +46,7 @@ class Database:
         """
 
         self.files.erase_folder(self.model_folder_path)
-        os.makedirs(self.model_folder_path, exist_ok=True)
+        # os.makedirs(self.model_folder_path, exist_ok=True)
         self.files.generate_excel_headers(
             dict_name=dict_to_export,
             excel_file_path=Path(self.model_folder_path) / excel_file_name
