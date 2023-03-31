@@ -2,12 +2,23 @@ import logging
 
 
 class Logger:
+    """Class defined for logging Model class and subclasses."""
 
     def __init__(
             self,
             logger_name: str,
             log_level: str,
             log_file_path: str) -> None:
+        """Logger generated in the Model class. Blueprint for child loggers
+        generated in other classes.
+
+        Args:
+            logger_name (str): module __name__ where logger is generated. 
+            log_level (str): level of the log message. Defined by 
+                model_settings.json
+            log_file_path (str): path where log file is generated. Defined by 
+                model_settings.json
+        """
 
         self.logger = logging.getLogger(logger_name)
         self.logger.setLevel(log_level)
@@ -40,7 +51,18 @@ class Logger:
             self.logger.addHandler(stream_handler)
 
     def getChild(self, name: str) -> 'Logger':
-        """Return a child logger with the specified name."""
+        """Return a child Logger class with the specified name, inheriting
+        properties of parent Logger class.
+
+        Args:
+            name (str): module __name__ where logger is generated. Notice that
+                only last part of the module name is taken to display 
+                consistent module path in log messages.
+
+        Returns:
+            Logger: instance of the child Logger class with same log_level, 
+                log_file_path and settings of the parent Logger.
+        """
         child_logger = self.logger.getChild(name.split('.')[-1])
 
         new_logger = Logger(
@@ -51,20 +73,54 @@ class Logger:
         new_logger.logger.propagate = False
         return new_logger
 
-    def log(self, message: str, level=logging.INFO):
+    def log(self,
+            message: str,
+            level: str = logging.INFO):
+        """Basic log message. 
+
+        Args:
+            message (str): message to be displayed.
+            level (str, optional): level of the log message. Defaults 
+                to logging.INFO.
+        """
         self.logger.log(msg=message, level=level)
 
     def info(self, message: str):
+        """INFO log message
+
+        Args:
+            message (str): message to be displayed.
+        """
         self.logger.log(msg=message, level=logging.INFO)
 
     def debug(self, message: str):
+        """DEBUG log message
+
+        Args:
+            message (str): message to be displayed.
+        """
         self.logger.log(msg=message, level=logging.DEBUG)
 
     def warning(self, message: str):
+        """WARNING log message
+
+        Args:
+            message (str): message to be displayed.
+        """
         self.logger.log(msg=message, level=logging.WARNING)
 
     def error(self, message: str):
+        """ERROR log message
+
+        Args:
+            message (str): message to be displayed.
+        """
         self.logger.log(msg=message, level=logging.ERROR)
 
     def critical(self, message: str):
+        """CRITICAL log message
+
+        Args:
+            message (str): message to be displayed.
+        """
         self.logger.log(msg=message, level=logging.CRITICAL)
