@@ -23,15 +23,16 @@ class Interface:
             log_format=log_format
         )
 
-        self.files = FileManager(logger=self.logger)
+        self.logger.info('Initializing new interface... ---------------------')
 
-        self.logger.info('Generation of new interface -----------------------')
-        self.logger.info('File manager and logger active.')
+        self.files = FileManager(logger=self.logger)
 
         self.model_settings = self.files.load_file(
             file_name=file_settings_name,
             folder_path=file_settings_dir_path
         )
+
+        self.logger.info('Interface correctly initialized.')
 
     def model_init(
             self,
@@ -50,4 +51,4 @@ if __name__ == '__main__':
         log_level='info',
         log_format='minimal')
 
-    m1.model_init(generate_sets_file=False)
+    m1.model_init(generate_sets_file=True)

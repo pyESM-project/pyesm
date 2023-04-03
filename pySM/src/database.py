@@ -22,6 +22,7 @@ class Database:
                 be generated. Defaults to False.
         """
         self.logger = logger.getChild(__name__)
+        self.logger.info('Generation of Database object...')
         self.files = files
         self.model_folder_path = model_folder_path
         self.sets = sets
@@ -32,7 +33,7 @@ class Database:
                 excel_file_name='sets.xlsx'
             )
 
-        self.logger.info('Database initialized.')
+        self.logger.info('Database generated.')
 
     def generate_blank_sets(
             self,
@@ -46,13 +47,11 @@ class Database:
         """
 
         self.files.erase_folder(self.model_folder_path)
-        # os.makedirs(self.model_folder_path, exist_ok=True)
+        self.files.create_folder(self.model_folder_path)
         self.files.generate_excel_headers(
             dict_name=dict_to_export,
             excel_file_path=Path(self.model_folder_path) / excel_file_name
         )
-
-        self.logger.info(f'Blank Excel {excel_file_name} generated.')
 
     def load_sets(self) -> dict:
         self.logger.info('Sets loaded.')

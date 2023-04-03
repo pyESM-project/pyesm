@@ -16,6 +16,7 @@ class Model:
             generate_sets_file: bool) -> None:
 
         self.logger = logger.getChild(__name__)
+        self.logger.info('Generation of new Model object...')
         self.files = files
         self.model_settings = model_settings
 
@@ -23,10 +24,7 @@ class Model:
             Path(self.model_settings['model data folder path']) / \
             self.model_settings['model name']
 
-        # solo se non esiste già
         self.files.create_folder(self.model_dir_path)
-
-        self.logger.info('Generation of new Model instance')
 
         self.database = Database(
             logger=self.logger,
@@ -39,3 +37,5 @@ class Model:
         self.problem = Problem(
             logger=self.logger
         )
+
+        self.logger.info('Model object generated.')

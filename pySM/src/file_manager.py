@@ -11,6 +11,7 @@ class FileManager:
 
     def __init__(self, logger: Logger) -> None:
         self.logger = logger.getChild(__name__)
+        self.logger.info('Parent File Manager object generated.')
 
     def create_folder(self, folder_path: str) -> None:
         """This method receives a folder path and generates the folder in case
@@ -88,7 +89,7 @@ class FileManager:
                     index=False
                 )
         self.logger.info(
-            f'Excel file with headers generated.')
+            f"Excel file with headers '{str(excel_file_path).split('\\')[-1]}' generated.")
 
     def load_file(
             self,

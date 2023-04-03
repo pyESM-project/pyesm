@@ -8,9 +8,8 @@ class Logger:
             self,
             logger_name: str,
             log_file_path: str,
-            log_format: str,
-            log_level: str = 'info',
-    ) -> None:
+            log_format: str = 'standard',
+            log_level: str = 'info') -> None:
         """Logger generated in the Model class. Blueprint for child loggers
         generated in other classes.
 
@@ -78,7 +77,6 @@ class Logger:
             log_format=self.log_format)
 
         new_logger.logger.propagate = False
-
         return new_logger
 
     def log(self,
