@@ -7,8 +7,10 @@ class Logger:
     def __init__(
             self,
             logger_name: str,
-            log_level: str,
-            log_file_path: str) -> None:
+            log_file_path: str,
+            log_format: str,
+            log_level: str = 'info',
+    ) -> None:
         """Logger generated in the Model class. Blueprint for child loggers
         generated in other classes.
 
@@ -23,9 +25,13 @@ class Logger:
         self.logger = logging.getLogger(logger_name)
         self.logger.setLevel(log_level)
 
-        formatter = logging.Formatter(
-            '%(asctime)s - %(levelname)s - %(name)s - %(message)s'
-        )
+        msg_formats = {
+            'standard': '%(asctime)s - %(levelname)s - %(name)s - %(message)s',
+            'minimal': '%(levelname)s - %(name)s - %(message)s'
+        }
+
+        self.log_format = log_format
+        formatter = logging.Formatter(msg_formats[self.log_format])
 
         file_handler = None
         stream_handler = None
@@ -68,9 +74,11 @@ class Logger:
         new_logger = Logger(
             logger_name=child_logger.name,
             log_level=child_logger.level,
-            log_file_path=self.logger.handlers[0].baseFilename)
+            log_file_path=self.logger.handlers[0].baseFilename,
+            log_format=self.log_format)
 
         new_logger.logger.propagate = False
+
         return new_logger
 
     def log(self,

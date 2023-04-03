@@ -10,20 +10,23 @@ class Interface:
 
     def __init__(
             self,
+            log_level: str,
+            log_format: str,
             file_settings_name: str = 'model_settings.json',
             file_settings_dir_path: str = file_settings_dir_path,
-            log_file_name='log_model.log',
-            log_level: str = 'info') -> None:
+            log_file_name='log_model.log') -> None:
 
         self.logger = Logger(
-            logger_name=__name__,
+            logger_name='interface',
             log_level=log_level.upper(),
-            log_file_path=Path(file_settings_dir_path) / log_file_name
+            log_file_path=Path(file_settings_dir_path) / log_file_name,
+            log_format=log_format
         )
 
         self.files = FileManager(logger=self.logger)
 
-        self.logger.info('Interface init: file manager and logger active.')
+        self.logger.info('Generation of new interface -----------------------')
+        self.logger.info('File manager and logger active.')
 
         self.model_settings = self.files.load_file(
             file_name=file_settings_name,
@@ -43,5 +46,8 @@ class Interface:
 
 if __name__ == '__main__':
 
-    test_model = Interface()
-    test_model.model_init()
+    m1 = Interface(
+        log_level='info',
+        log_format='minimal')
+
+    m1.model_init(generate_sets_file=False)
