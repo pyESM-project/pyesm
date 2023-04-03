@@ -65,7 +65,8 @@ class FileManager:
             excel_file_path: str,
             dict_headers_category_name: str = 'Headers',
             writer_engine: str = 'openpyxl') -> None:
-        """This method generates an excel file with headers provided by a dictionary.
+        """This method generates an excel file with headers provided by a 
+        dictionary.
 
         Args:
             dict_name (dict): dictionary of dictionaries with headers to be 
