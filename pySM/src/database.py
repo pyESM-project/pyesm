@@ -46,7 +46,6 @@ class Database:
             excel_file_name (str): file name for the set file.
         """
 
-        self.files.erase_folder(self.model_folder_path)
         self.files.create_folder(self.model_folder_path)
         self.files.generate_excel_headers(
             dict_name=dict_to_export,

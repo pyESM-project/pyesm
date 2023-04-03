@@ -44,6 +44,9 @@ class Interface:
             model_settings=self.model_settings,
             generate_sets_file=generate_sets_file)
 
+    def model_cleanup(self):
+        self.model.model_cleanup()
+
 
 if __name__ == '__main__':
 
@@ -52,3 +55,5 @@ if __name__ == '__main__':
         log_format='minimal')
 
     m1.model_init(generate_sets_file=True)
+
+    m1.model_cleanup()

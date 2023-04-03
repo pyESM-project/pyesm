@@ -24,8 +24,6 @@ class Model:
             Path(self.model_settings['model data folder path']) / \
             self.model_settings['model name']
 
-        self.files.create_folder(self.model_dir_path)
-
         self.database = Database(
             logger=self.logger,
             files=self.files,
@@ -39,3 +37,6 @@ class Model:
         )
 
         self.logger.info('Model object generated.')
+
+    def model_cleanup(self):
+        self.files.erase_folder(self.model_dir_path)

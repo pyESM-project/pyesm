@@ -24,11 +24,11 @@ class FileManager:
         folder_name = str(folder_path).split('\\')[-1]
 
         if os.path.exists(folder_path):
-            self.logger.info(f'Folder {folder_name} already exists.')
+            self.logger.info(f"Folder '{folder_name}' already exists.")
             return {}
         else:
             os.makedirs(folder_path, exist_ok=True)
-            self.logger.info(f'Folder {folder_name} has created.')
+            self.logger.info(f"Folder '{folder_name}' has created.")
 
     def erase_folder(self, folder_path: str) -> None:
         """This method erases a folder and its content in a given path.
@@ -36,7 +36,6 @@ class FileManager:
         Args:
             folder_path (str): path of the folder to be deleted.
         """
-
         if os.path.exists(folder_path):
             folder_name = str(folder_path).split('\\')[-1]
             response = input(
@@ -46,19 +45,19 @@ class FileManager:
 
             if response != 'y':
                 self.logger.info(
-                    f'Folder {folder_name} and its content not erased.')
+                    f"Folder '{folder_name}' and its content not erased.")
                 return {}
 
             try:
                 shutil.rmtree(folder_path)
             except OSError as e:
-                self.logger.error(f'Error: {folder_path} : {e.strerror}')
+                self.logger.error(f"Error: '{folder_name}' : {e.strerror}")
             else:
-                self.logger.info(f'{folder_path} have been erased.')
+                self.logger.info(f"Folder '{folder_name}' have been erased.")
 
         else:
             self.logger.warning(
-                f"{folder_path} does not exist. The folder could not be erased.")
+                f"{folder_name} does not exist. The folder cannot be erased.")
 
     def generate_excel_headers(
             self,
@@ -78,18 +77,38 @@ class FileManager:
                 Defaults to 'openpyxl'.
         """
 
-        with pd.ExcelWriter(excel_file_path, engine=writer_engine) as writer:
-            for sheet_name, value in dict_name.items():
-                df = pd.DataFrame(columns=value[dict_headers_category_name])
-                sheet = writer.book.create_sheet(sheet_name)
-                writer.sheets[sheet_name] = sheet
-                df.to_excel(
-                    writer,
-                    sheet_name=sheet_name,
-                    index=False
-                )
-        self.logger.info(
-            f"Excel file with headers '{str(excel_file_path).split('\\')[-1]}' generated.")
+        def write_xls(excel_file_path, dict_name):
+            """Support function to generate excel"""
+            with pd.ExcelWriter(excel_file_path, engine=writer_engine) as writer:
+                for sheet_name, value in dict_name.items():
+                    df = pd.DataFrame(
+                        columns=value[dict_headers_category_name])
+                    sheet = writer.book.create_sheet(sheet_name)
+                    writer.sheets[sheet_name] = sheet
+                    df.to_excel(
+                        writer,
+                        sheet_name=sheet_name,
+                        index=False
+                    )
+
+        file_name = str(excel_file_path).split('\\')[-1]
+        if os.path.exists(excel_file_path):
+            response = input(
+                'Do you really want to overwrite the file '
+                f"'{file_name}'(y/[n]): "
+            ).lower()
+
+            if response == 'y':
+                write_xls(excel_file_path, dict_name)
+                self.logger.info(
+                    f"Excel file with headers '{file_name}' overwritten.")
+            else:
+                self.logger.info(
+                    f"Excel file with headers '{file_name}' not overwritten.")
+        else:
+            write_xls(excel_file_path, dict_name)
+            self.logger.info(
+                f"Excel file with headers '{file_name}' generated.")
 
     def load_file(
             self,
