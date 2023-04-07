@@ -39,6 +39,7 @@ _SETS = {
             'ID',
             'Category',
             'Category_spec',
+            'Stock unit',
             'Name',
             'Acronym',
             'Cluster_1'
@@ -53,7 +54,7 @@ _SETS = {
         'Headers': [
             'ID',
             'Category',
-            'Unit',
+            'Flow unit',
             'Name',
             'Acronym',
             'Cluster_1'
