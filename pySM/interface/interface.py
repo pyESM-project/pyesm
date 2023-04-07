@@ -15,6 +15,8 @@ class Interface:
             file_settings_name: str = 'model_settings.json',
             file_settings_dir_path: str = file_settings_dir_path,
             log_file_name='log_model.log') -> None:
+        """Interface initialization: generating logger and file manager, 
+        loading model settings."""
 
         self.logger = Logger(
             logger_name='interface',
@@ -23,7 +25,8 @@ class Interface:
             log_format=log_format
         )
 
-        self.logger.info('Initializing new interface... ---------------------')
+        self.logger.info(
+            f"Initializing '{str(self)}' object... ------------------")
 
         self.files = FileManager(logger=self.logger)
 
@@ -32,11 +35,16 @@ class Interface:
             folder_path=file_settings_dir_path
         )
 
-        self.logger.info('Interface correctly initialized.')
+        self.logger.info(f"'{str(self)}' object correctly initialized.")
+
+    def __str__(self):
+        class_name = type(self).__name__
+        return f'{class_name}'
 
     def model_init(
             self,
-            generate_sets_file: bool = True) -> None:
+            generate_sets_file: bool) -> None:
+        """Initialization of the model and generation of blank sets file."""
 
         self.model = Model(
             logger=self.logger,
@@ -45,15 +53,14 @@ class Interface:
             generate_sets_file=generate_sets_file)
 
     def model_cleanup(self):
+        """Deleting model data folder."""
         self.model.model_cleanup()
+
+    def generate_rps(self):
+        """Loading sets file and generating blank rps."""
+        self.model.database.load_sets()
+        self.model.database.generate_blank_rps()
 
 
 if __name__ == '__main__':
-
-    m1 = Interface(
-        log_level='info',
-        log_format='minimal')
-
-    m1.model_init(generate_sets_file=True)
-
-    m1.model_cleanup()
+    pass

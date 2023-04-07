@@ -22,23 +22,24 @@ class Database:
                 be generated. Defaults to False.
         """
         self.logger = logger.getChild(__name__)
-        self.logger.info('Generation of Database object...')
+        self.logger.info(f"Generation of '{str(self)}' object...")
         self.files = files
         self.model_folder_path = model_folder_path
         self.sets = sets
+        self.sets_file_name = 'sets.xlsx'
 
         if generate_sets_file:
-            self.generate_blank_sets(
-                dict_to_export=self.sets,
-                excel_file_name='sets.xlsx'
-            )
+            self.generate_blank_sets(dict_to_export=self.sets)
 
-        self.logger.info('Database generated.')
+        self.logger.info(f"'{str(self)}' object generated.")
+
+    def __str__(self):
+        class_name = type(self).__name__
+        return f'{class_name}'
 
     def generate_blank_sets(
             self,
-            dict_to_export: dict,
-            excel_file_name: str) -> None:
+            dict_to_export: dict) -> None:
         """Generates excel file with headers defined by a dictionary.
 
         Args:
@@ -49,9 +50,17 @@ class Database:
         self.files.create_folder(self.model_folder_path)
         self.files.generate_excel_headers(
             dict_name=dict_to_export,
-            excel_file_path=Path(self.model_folder_path) / excel_file_name
+            excel_file_path=Path(self.model_folder_path) / self.sets_file_name
         )
 
     def load_sets(self) -> dict:
-        self.logger.info('Sets loaded.')
-        pass
+        """Loading sets file data previously filled by the user."""
+        self.sets_structure = self.files.excel_to_dataframe_dict(
+            excel_file_name=self.sets_file_name,
+            excel_file_dir_path=self.model_folder_path)
+
+        self.logger.info(f'Sets data properly loaded.')
+
+    def generate_blank_rps(self) -> None:
+        """Generating blank rps files to be filled by the user."""
+        self.files.dataframe_dict_to_excel()
