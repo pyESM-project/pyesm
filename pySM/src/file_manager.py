@@ -11,7 +11,11 @@ class FileManager:
 
     def __init__(self, logger: Logger) -> None:
         self.logger = logger.getChild(__name__)
-        self.logger.info('Parent File Manager object generated.')
+        self.logger.info(f"'{str(self)}' object generated.")
+
+    def __str__(self):
+        class_name = type(self).__name__
+        return f'{class_name}'
 
     def create_folder(self, folder_path: str) -> None:
         """This method receives a folder path and generates the folder in case
@@ -57,7 +61,7 @@ class FileManager:
 
         else:
             self.logger.warning(
-                f"{folder_name} does not exist. The folder cannot be erased.")
+                f"Folde '{folder_name}' does not exist. The folder cannot be erased.")
 
     def generate_excel_headers(
             self,
@@ -65,8 +69,7 @@ class FileManager:
             excel_file_path: str,
             dict_headers_category_name: str = 'Headers',
             writer_engine: str = 'openpyxl') -> None:
-        """This method generates an excel file with headers provided by a 
-        dictionary.
+        """Generates an excel file with headers provided by a dictionary.
 
         Args:
             dict_name (dict): dictionary of dictionaries with headers to be 
@@ -78,7 +81,7 @@ class FileManager:
                 Defaults to 'openpyxl'.
         """
 
-        def write_xls(excel_file_path, dict_name):
+        def write_excel(excel_file_path, dict_name):
             """Support function to generate excel"""
             with pd.ExcelWriter(excel_file_path, engine=writer_engine) as writer:
                 for sheet_name, value in dict_name.items():
@@ -94,20 +97,22 @@ class FileManager:
 
         file_name = str(excel_file_path).split('\\')[-1]
         if os.path.exists(excel_file_path):
+            self.logger.warning(
+                f"Excel file '{file_name}' already exists.")
             response = input(
                 'Do you really want to overwrite the file '
                 f"'{file_name}'(y/[n]): "
             ).lower()
 
             if response == 'y':
-                write_xls(excel_file_path, dict_name)
+                write_excel(excel_file_path, dict_name)
                 self.logger.info(
                     f"Excel file with headers '{file_name}' overwritten.")
             else:
                 self.logger.info(
                     f"Excel file with headers '{file_name}' not overwritten.")
         else:
-            write_xls(excel_file_path, dict_name)
+            write_excel(excel_file_path, dict_name)
             self.logger.info(
                 f"Excel file with headers '{file_name}' generated.")
 
@@ -153,18 +158,28 @@ class FileManager:
             self.logger.error(f"Could not load file '{file_name}': {str(e)}")
             return {}
 
-    # def load_excel(
-    #         self,
-    #         sets_dict,
-    #         sets_dir_path,
-    #         sets_file_name):
+    def excel_to_dataframe_dict(
+            self,
+            excel_file_name: str,
+            excel_file_dir_path: str,
+            empty_data_fill: str = '') -> 'dict':
+        """Reading an excel file composed by multiple tabs and returning
+        a dictionary with tabs as keys and dataframes as tables in each key."""
 
-    #     file_path = os.path.join(sets_dir_path, sets_file_name)
+        file_path = Path(excel_file_dir_path) / excel_file_name
 
-    #     if not os.path.exists(file_path):
-    #         raise FileNotFoundError(f"{sets_file_name} does not exist.")
+        if not os.path.exists(file_path):
+            self.logger.error(f'{excel_file_name} does not exist.')
+            raise FileNotFoundError(f"{excel_file_name} does not exist.")
 
-    #     sets_dict_data = sets_dict.copy()
-    #     for sheet_name in sets_dict.keys():
-    #         sets_dict_data[sheet_name] = pd.read_excel(file_path, sheet_name)
-    #     return sets_dict_data
+        df_dict = pd.read_excel(io=file_path, sheet_name=None)
+        df_dict = {sheet_name: df.fillna(empty_data_fill)
+                   for sheet_name, df in df_dict.items()}
+
+        self.logger.info(f"Excel file '{excel_file_name}' loaded.")
+        return df_dict
+
+    def dataframe_dict_to_excel(
+            self):
+
+        self.logger.info(f"Excel file '{excel_file_name}' loaded.")
