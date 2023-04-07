@@ -11,7 +11,7 @@ class Database:
             logger: 'Logger',
             files: 'FileManager',
             model_folder_path: str,
-            sets: dict,
+            sets_structure: dict,
             generate_sets_file: bool = False) -> None:
         """Initializes the Database of the model.
 
@@ -25,11 +25,12 @@ class Database:
         self.logger.info(f"Generation of '{str(self)}' object...")
         self.files = files
         self.model_folder_path = model_folder_path
-        self.sets = sets
         self.sets_file_name = 'sets.xlsx'
+        self.sets_structure = sets_structure
+        self.sets = None
 
         if generate_sets_file:
-            self.generate_blank_sets(dict_to_export=self.sets)
+            self.generate_blank_sets(dict_to_export=self.sets_structure)
 
         self.logger.info(f"'{str(self)}' object generated.")
 
@@ -55,12 +56,11 @@ class Database:
 
     def load_sets(self) -> dict:
         """Loading sets file data previously filled by the user."""
-        self.sets_structure = self.files.excel_to_dataframe_dict(
-            excel_file_name=self.sets_file_name,
-            excel_file_dir_path=self.model_folder_path)
-
-        self.logger.info(f'Sets data properly loaded.')
+        if self.sets is None:
+            self.sets = self.files.excel_to_dataframes_dict(
+                excel_file_name=self.sets_file_name,
+                excel_file_dir_path=self.model_folder_path)
 
     def generate_blank_rps(self) -> None:
         """Generating blank rps files to be filled by the user."""
-        self.files.dataframe_dict_to_excel()
+        self.files.dataframes_dict_to_excel()

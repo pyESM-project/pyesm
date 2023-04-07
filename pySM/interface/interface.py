@@ -25,11 +25,10 @@ class Interface:
             log_format=log_format
         )
 
-        self.logger.info(
-            f"Initializing '{str(self)}' object... ------------------")
+        self.logger.info(f"Initializing '{str(self)}' object.")
 
         self.files = FileManager(logger=self.logger)
-
+        self.model = None
         self.model_settings = self.files.load_file(
             file_name=file_settings_name,
             folder_path=file_settings_dir_path
@@ -41,16 +40,14 @@ class Interface:
         class_name = type(self).__name__
         return f'{class_name}'
 
-    def model_init(
-            self,
-            generate_sets_file: bool) -> None:
+    def model_init(self, generate_sets_file: bool) -> None:
         """Initialization of the model and generation of blank sets file."""
-
-        self.model = Model(
-            logger=self.logger,
-            files=self.files,
-            model_settings=self.model_settings,
-            generate_sets_file=generate_sets_file)
+        if self.model is None:
+            self.model = Model(
+                logger=self.logger,
+                files=self.files,
+                model_settings=self.model_settings,
+                generate_sets_file=generate_sets_file)
 
     def model_cleanup(self):
         """Deleting model data folder."""
@@ -59,6 +56,8 @@ class Interface:
     def generate_rps(self):
         """Loading sets file and generating blank rps."""
         self.model.database.load_sets()
+        # add validation of Category 
+        # eventually adding method for automatic ID completion in sets.
         self.model.database.generate_blank_rps()
 
 

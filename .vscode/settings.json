@@ -1,9 +1,9 @@
 {
     "python.defaultInterpreterPath": "C:/ProgramData/Anaconda3/envs/esm_dev/bin/python",
-    "python.linting.pylintEnabled": true,
+    "python.linting.pylintEnabled": false,
     "python.linting.enabled": false,
-    "python.linting.lintOnSave": true,
-    "editor.formatOnSave": true,
+    "python.linting.lintOnSave": false,
+    "editor.formatOnSave": false,
     "debug.showBreakpointsInOverviewRuler": true,
     "python.terminal.activateEnvInCurrentTerminal": true,
     "jupyter.notebookFileRoot": "${workspaceFolder}",

@@ -25,7 +25,7 @@ class FileManager:
             folder_path (str): path of the folder to be generated.
         """
 
-        folder_name = str(folder_path).split('\\')[-1]
+        folder_name = str(folder_path).rsplit('\\', maxsplit=1)[-1]
 
         if os.path.exists(folder_path):
             self.logger.info(f"Folder '{folder_name}' already exists.")
@@ -41,7 +41,7 @@ class FileManager:
             folder_path (str): path of the folder to be deleted.
         """
         if os.path.exists(folder_path):
-            folder_name = str(folder_path).split('\\')[-1]
+            folder_name = str(folder_path).rsplit('\\', maxsplit=1)[-1]
             response = input(
                 'Do you really want to erase the directory '
                 f"'{folder_name}'(y/[n]): "
@@ -54,8 +54,8 @@ class FileManager:
 
             try:
                 shutil.rmtree(folder_path)
-            except OSError as e:
-                self.logger.error(f"Error: '{folder_name}' : {e.strerror}")
+            except OSError as error:
+                self.logger.error(f"Error: '{folder_name}' : {error.strerror}")
             else:
                 self.logger.info(f"Folder '{folder_name}' have been erased.")
 
@@ -85,20 +85,20 @@ class FileManager:
             """Support function to generate excel"""
             with pd.ExcelWriter(excel_file_path, engine=writer_engine) as writer:
                 for sheet_name, value in dict_name.items():
-                    df = pd.DataFrame(
+                    dataframe = pd.DataFrame(
                         columns=value[dict_headers_category_name])
                     sheet = writer.book.create_sheet(sheet_name)
                     writer.sheets[sheet_name] = sheet
-                    df.to_excel(
+                    dataframe.to_excel(
                         writer,
                         sheet_name=sheet_name,
                         index=False
                     )
 
-        file_name = str(excel_file_path).split('\\')[-1]
+        file_name = str(excel_file_path).rsplit('\\', maxsplit=1)[-1]
+
         if os.path.exists(excel_file_path):
-            self.logger.warning(
-                f"Excel file '{file_name}' already exists.")
+            self.logger.warning(f"Excel file '{file_name}' already exists.")
             response = input(
                 'Do you really want to overwrite the file '
                 f"'{file_name}'(y/[n]): "
@@ -150,15 +150,15 @@ class FileManager:
         file_path = Path(folder_path) / file_name
 
         try:
-            with open(file_path, 'r') as file_obj:
+            with open(file_path, 'r', encoding='utf-8') as file_obj:
                 file_contents = loader(file_obj)
                 self.logger.info(f"File '{file_name}' loaded.")
                 return file_contents
-        except Exception as e:
-            self.logger.error(f"Could not load file '{file_name}': {str(e)}")
+        except FileNotFoundError as error:
+            self.logger.error(f"Could not load file '{file_name}': {str(error)}")
             return {}
 
-    def excel_to_dataframe_dict(
+    def excel_to_dataframes_dict(
             self,
             excel_file_name: str,
             excel_file_dir_path: str,
@@ -179,7 +179,10 @@ class FileManager:
         self.logger.info(f"Excel file '{excel_file_name}' loaded.")
         return df_dict
 
-    def dataframe_dict_to_excel(
-            self):
+    def dataframes_dict_to_excel(self):
 
-        self.logger.info(f"Excel file '{excel_file_name}' loaded.")
+
+
+
+        # self.logger.info(f"Excel file '{}' loaded.")
+        pass

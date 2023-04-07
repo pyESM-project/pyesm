@@ -29,7 +29,7 @@ class Model:
             logger=self.logger,
             files=self.files,
             model_folder_path=self.model_dir_path,
-            sets=constants._SETS,
+            sets_structure=constants._SETS,
             generate_sets_file=generate_sets_file,
         )
 
