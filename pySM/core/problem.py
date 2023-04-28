@@ -1,5 +1,5 @@
 from pySM.log_exc.logger import Logger
-from pySM.src.file_manager import FileManager
+from pySM.util.file_manager import FileManager
 
 
 class Problem:

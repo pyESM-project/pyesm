@@ -1,8 +1,8 @@
 from pathlib import Path
 from pySM.log_exc.logger import Logger
-from pySM.src.file_manager import FileManager
-from pySM.src.database import Database
-from pySM.src.problem import Problem
+from pySM.util.file_manager import FileManager
+from pySM.core.database import Database
+from pySM.core.problem import Problem
 
 
 class Model:
@@ -36,7 +36,7 @@ class Model:
             logger=self.logger,
             files=self.files,
             database_dir_path=self.model_dir_path,
-            database_name=self.model_settings['model_name'] + '.db',
+            database_name='database.db',
             database_settings=self.model_settings['database_settings'],
         )
 

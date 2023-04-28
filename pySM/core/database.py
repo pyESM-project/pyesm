@@ -1,10 +1,10 @@
 import sqlite3
 import datetime
 
-from pySM.src import constants
+from pySM.util import constants
 from pathlib import Path
 from pySM.log_exc.logger import Logger
-from pySM.src.file_manager import FileManager
+from pySM.util.file_manager import FileManager
 
 
 class Database:

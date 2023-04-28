@@ -6,7 +6,7 @@ import pandas as pd
 
 from pathlib import Path
 from pySM.log_exc.logger import Logger
-from pySM.src.util import write_excel
+from pySM.util.util import write_excel
 
 
 class FileManager:

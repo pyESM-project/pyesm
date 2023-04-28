@@ -1,7 +1,7 @@
 import os
 import tempfile
 import pytest
-from pySM.src.file_manager import FileManager
+from pySM.util.file_manager import FileManager
 
 
 def test_load_file():

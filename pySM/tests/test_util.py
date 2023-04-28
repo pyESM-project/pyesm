@@ -1,4 +1,4 @@
-from pySM.src.util import *
+from pySM.util.util import *
 
 
 def test_find_dict_depth():
