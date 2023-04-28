@@ -8,8 +8,9 @@ class Logger:
             self,
             logger_name: str,
             log_file_path: str,
+            log_level: str = 'info',
             log_format: str = 'standard',
-            log_level: str = 'info') -> None:
+    ) -> None:
         """Logger generated in the Model class. Blueprint for child loggers
         generated in other classes.
 
@@ -25,8 +26,8 @@ class Logger:
         self.logger.setLevel(log_level)
 
         msg_formats = {
-            'standard': '%(asctime)s - %(levelname)s - %(name)s - %(message)s',
-            'minimal': '%(levelname)s - %(name)s - %(message)s'
+            'standard': '%(asctime)s | %(levelname)s | %(name)s | %(message)s',
+            'minimal': '%(levelname)s | %(name)s | %(message)s'
         }
 
         self.log_format = log_format
