@@ -1,66 +1,87 @@
+import sqlite3
+import datetime
+
+from pySM.src import constants
 from pathlib import Path
 from pySM.log_exc.logger import Logger
 from pySM.src.file_manager import FileManager
 
 
 class Database:
-    """Generation and handling of the model database."""
 
     def __init__(
             self,
-            logger: 'Logger',
-            files: 'FileManager',
-            model_folder_path: str,
-            sets_structure: dict,
-            generate_sets_file: bool = False) -> None:
-        """Initializes the Database of the model.
+            logger: Logger,
+            files: FileManager,
+            database_dir_path: str,
+            database_name: str,
+            database_settings: dict,
+    ) -> None:
 
-        Args:
-            sets (dict): sets dictionary (constant)
-            model_folder_path (str): path of the model database folder
-            generate_sets_file (bool, optional): if the sets.xlsx file must
-                be generated. Defaults to False.
-        """
         self.logger = logger.getChild(__name__)
-        self.logger.info(f"Generation of '{str(self)}' object...")
+        self.logger.info(f"Generation of '{str(self)}' object.")
+
         self.files = files
-        self.model_folder_path = model_folder_path
-        self.sets_file_name = 'sets.xlsx'
-        self.sets_structure = sets_structure
-        self.sets = None
 
-        if generate_sets_file:
-            self.generate_blank_sets(dict_to_export=self.sets_structure)
+        database_path = Path(database_dir_path, database_name)
+        self.connection = sqlite3.connect(f'{database_path}')
+        self.cursor = self.connection.cursor()
 
-        self.logger.info(f"'{str(self)}' object generated.")
+        self.sets_structure = constants._SETS
+
+        for table in self.sets_structure:
+            self.create_table(
+                table_name='_set_' + table,
+                table_fields=self.sets_structure[table]['Headers']
+            )
+
+        self.close_connection()
+
+        if database_settings['generate_excel_blank_sets'] == True:
+            self.files.dict_to_excel(
+                dict_name=self.sets_structure,
+                excel_dir_path=database_dir_path,
+                excel_file_name='sets.xlsx',
+                table_key='Headers',
+            )
+
+        self.logger.info(f"'{str(self)}' object initialized.")
 
     def __str__(self):
         class_name = type(self).__name__
         return f'{class_name}'
 
-    def generate_blank_sets(
+    def create_table(
             self,
-            dict_to_export: dict) -> None:
-        """Generates excel file with headers defined by a dictionary.
-
-        Args:
-            dict_to_export (dict): dictionary with sets headers to be exported.
-            excel_file_name (str): file name for the set file.
-        """
-
-        self.files.create_folder(self.model_folder_path)
-        self.files.generate_excel_headers(
-            dict_name=dict_to_export,
-            excel_file_path=Path(self.model_folder_path) / self.sets_file_name
+            table_name: str,
+            table_fields: dict,
+    ):
+        fields_str = ", ".join(
+            [f'{field_name} {field_type}'
+             for field_name, field_type in table_fields.items()]
         )
 
-    def load_sets(self) -> dict:
-        """Loading sets file data previously filled by the user."""
-        if self.sets is None:
-            self.sets = self.files.excel_to_dataframes_dict(
-                excel_file_name=self.sets_file_name,
-                excel_file_dir_path=self.model_folder_path)
+        query = f'CREATE TABLE IF NOT EXISTS {table_name}({fields_str})'
 
-    def generate_blank_rps(self) -> None:
-        """Generating blank rps files to be filled by the user."""
-        self.files.dataframes_dict_to_excel()
+        try:
+            self.cursor.execute(query)
+            self.connection.commit()
+            self.logger.debug(f'Table {table_name} created.')
+        except sqlite3.OperationalError as error_msg:
+            self.logger.error(error_msg)
+            raise sqlite3.OperationalError(error_msg)
+
+    def close_connection(self):
+        self.connection.close()
+        self.logger.debug(f"'{str(self)}' connection closed.")
+
+    # def load_sets(self) -> dict:
+    #     """Loading sets file data previously filled by the user."""
+    #     if self.sets is None:
+    #         self.sets = self.files.excel_to_dataframes_dict(
+    #             excel_file_name=self.sets_file_name,
+    #             excel_file_dir_path=self.model_folder_path)
+
+    # def generate_blank_rps(self) -> None:
+    #     """Generating blank rps files to be filled by the user."""
+    #     self.files.dataframes_dict_to_excel()
