@@ -1,8 +1,11 @@
 {
-    "model name": "test_case_1",
-    "model description": "dummy case study for testing the model",
-    "model data folder path": "D:/OneDrive - Politecnico di Milano/Doc_Lavoro/Models/pySM_docs/case_studies",
-    "model settings": {
-        "execution mode": "simulation"
+    "model_name": "test_case_1",
+    "model_description": "dummy case study for testing the model",
+    "model_data_folder_path": "D:/OneDrive - Politecnico di Milano/Doc_Lavoro/Models/pySM_docs/case_studies",
+    "database_settings": {
+        "generate_excel_blank_sets": true
+    },
+    "problem_settings": {
+        "execution_mode": "simulation"
     }
 }

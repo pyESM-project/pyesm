@@ -1,5 +1,4 @@
 from pathlib import Path
-from pySM.src import constants
 from pySM.log_exc.logger import Logger
 from pySM.src.file_manager import FileManager
 from pySM.src.database import Database
@@ -10,31 +9,41 @@ class Model:
 
     def __init__(
             self,
-            logger: 'Logger',
-            files: 'FileManager',
-            model_settings: dict,
-            generate_sets_file: bool) -> None:
+            logger: Logger,
+            files: FileManager,
+            file_settings_name: str,
+            file_settings_dir_path: str,
+    ) -> None:
 
         self.logger = logger.getChild(__name__)
-        self.logger.info(f"Generation of '{str(self)}' object...")
+        self.logger.info(f"Generation of '{str(self)}' object.")
 
         self.files = files
-        self.model_settings = model_settings
 
-        self.model_dir_path = \
-            Path(self.model_settings['model data folder path']) / \
-            self.model_settings['model name']
+        self.model_settings = self.files.load_file(
+            file_name=file_settings_name,
+            dir_path=file_settings_dir_path
+        )
+
+        self.model_dir_path = Path(
+            self.model_settings['model_data_folder_path'],
+            self.model_settings['model_name']
+        )
+
+        self.files.create_dir(self.model_dir_path)
 
         self.database = Database(
             logger=self.logger,
             files=self.files,
-            model_folder_path=self.model_dir_path,
-            sets_structure=constants._SETS,
-            generate_sets_file=generate_sets_file,
+            database_dir_path=self.model_dir_path,
+            database_name=self.model_settings['model_name'] + '.db',
+            database_settings=self.model_settings['database_settings'],
         )
 
         self.problem = Problem(
-            logger=self.logger
+            logger=self.logger,
+            files=self.files,
+            problem_settings=self.model_settings['problem_settings'],
         )
 
         self.logger.info(f"'{str(self)}' generated.")
@@ -44,4 +53,4 @@ class Model:
         return f'{class_name}'
 
     def model_cleanup(self):
-        self.files.erase_folder(self.model_dir_path)
+        self.files.erase_dir(self.model_dir_path)
