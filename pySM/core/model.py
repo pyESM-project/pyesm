@@ -25,6 +25,8 @@ class Model:
             dir_path=file_settings_dir_path
         )
 
+        self.database_settings = self.model_settings['database_settings']
+
         self.model_dir_path = Path(
             self.model_settings['model_data_folder_path'],
             self.model_settings['model_name']
@@ -37,7 +39,7 @@ class Model:
             files=self.files,
             database_dir_path=self.model_dir_path,
             database_name='database.db',
-            database_settings=self.model_settings['database_settings'],
+            database_settings=self.database_settings,
         )
 
         self.problem = Problem(
@@ -54,3 +56,6 @@ class Model:
 
     def model_cleanup(self):
         self.files.erase_dir(self.model_dir_path)
+
+    def load_sets(self):
+        self.sets = self.database.load_sets()
