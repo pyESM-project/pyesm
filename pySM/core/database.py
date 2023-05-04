@@ -1,6 +1,7 @@
 import sqlite3
-import datetime
+import pandas as pd
 
+from typing import List, Dict
 from pySM.util import constants
 from pathlib import Path
 from pySM.log_exc.logger import Logger
@@ -23,25 +24,26 @@ class Database:
 
         self.files = files
 
-        database_path = Path(database_dir_path, database_name)
-        self.connection = sqlite3.connect(f'{database_path}')
+        self.database_dir_path = database_dir_path
+        self.database_path = Path(database_dir_path, database_name)
+
+        self.database_settings = database_settings
+        self.connection = sqlite3.connect(f'{self.database_path}')
         self.cursor = self.connection.cursor()
 
         self.sets_structure = constants._SETS
 
         for table in self.sets_structure:
             self.create_table(
-                table_name='_set_' + table,
+                table_name=table,
                 table_fields=self.sets_structure[table]['Headers']
             )
 
-        self.close_connection()
-
-        if database_settings['generate_excel_blank_sets'] == True:
+        if self.database_settings['sets_definition_excel'] == True:
             self.files.dict_to_excel(
                 dict_name=self.sets_structure,
                 excel_dir_path=database_dir_path,
-                excel_file_name='sets.xlsx',
+                excel_file_name=self.database_settings['sets_file_name'],
                 table_key='Headers',
             )
 
@@ -55,7 +57,8 @@ class Database:
             self,
             table_name: str,
             table_fields: dict,
-    ):
+    ) -> None:
+
         fields_str = ", ".join(
             [f'{field_name} {field_type}'
              for field_name, field_type in table_fields.items()]
@@ -71,17 +74,86 @@ class Database:
             self.logger.error(error_msg)
             raise sqlite3.OperationalError(error_msg)
 
-    def close_connection(self):
+    def get_table_fields(
+            self,
+            table_name: str
+    ) -> Dict:
+
+        table_fields = {}
+        query = f"PRAGMA table_info('{table_name}')"
+
+        self.cursor.execute(query)
+        result = self.cursor.fetchall()
+        table_fields['labels'] = [row[1] for row in result]
+        table_fields['types'] = [row[2] for row in result]
+
+        return table_fields
+
+    def dataframe_to_table(
+            self,
+            table_name: str,
+            df: pd.DataFrame,
+    ) -> None:
+
+        table_fields = self.get_table_fields(table_name=table_name)
+
+        if not df.columns.tolist() == table_fields['labels']:
+            error = f"Dataframe and table {table_name} headers mismatch."
+            self.logger.error(error)
+            raise ValueError(error)
+
+        data = [tuple(row) for row in df.values.tolist()]
+
+        placeholders = ', '.join(['?'] * len(df.columns))
+        query = f"INSERT INTO {table_name} VALUES ({placeholders})"
+
+        try:
+            self.cursor.executemany(query, data)
+            self.logger.debug(
+                f'{len(data)} rows inserted into table {table_name}'
+            )
+        except sqlite3.IntegrityError as error:
+            if str(error).startswith('UNIQUE'):
+                error = f"Data already exists in database {table_name}."
+            self.logger.error(error)
+
+        self.connection.commit()
+
+    def close_connection(self) -> None:
         self.connection.close()
         self.logger.debug(f"'{str(self)}' connection closed.")
 
-    # def load_sets(self) -> dict:
-    #     """Loading sets file data previously filled by the user."""
-    #     if self.sets is None:
-    #         self.sets = self.files.excel_to_dataframes_dict(
-    #             excel_file_name=self.sets_file_name,
-    #             excel_file_dir_path=self.model_folder_path)
+    def load_sets(self) -> Dict:
+        if self.database_settings['sets_definition_excel'] == True:
+            # parse excel sets file, put its tabs into a dict of dataframes
+            # generate self.sets property
+            # put the dict of dataframes into the database
+            # in case database already exists, do nothing (another method
+            # will be used to update the database)
 
-    # def generate_blank_rps(self) -> None:
-    #     """Generating blank rps files to be filled by the user."""
-    #     self.files.dataframes_dict_to_excel()
+            self.sets = self.files.excel_to_dataframes_dict(
+                excel_file_name=self.database_settings['sets_file_name'],
+                excel_file_dir_path=self.database_dir_path,
+                empty_data_fill='',
+            )
+            for table in self.sets:
+                self.dataframe_to_table(
+                    table_name=table,
+                    df=self.sets[table],
+                )
+            return self.sets
+
+        else:
+            # define the database sql manually
+            # then read the sql database and generate the sets.xlsx file
+            # in case the sets.xlsx file already exists, do nothing
+            pass
+
+    def update_sets(
+            self,
+            excel_to_database: bool = True,
+    ) -> None:
+        # if true, takes the excel sets file and update the database sql
+        # (delete entries not in the excel, add entries in the excel not in)
+        # the other way around is also possible with False
+        pass
