@@ -11,7 +11,7 @@ _INFO = {
 # structure of the sets of the model
 _SETS = {
 
-    'SCENARIOS': {
+    '_set_SCENARIOS': {
         'Symbol': 'sc',
         'Headers': {
             'ID': 'INTEGER PRIMARY KEY',
@@ -20,7 +20,7 @@ _SETS = {
         }
     },
 
-    'SYSTEMS': {
+    '_set_SYSTEMS': {
         'Symbol': 'sy',
         'Headers': {
             'ID': 'INTEGER PRIMARY KEY',
@@ -36,13 +36,13 @@ _SETS = {
         ],
     },
 
-    'TECHNOLOGIES': {
+    '_set_TECHNOLOGIES': {
         'Symbol': 'tc',
         'Headers': {
             'ID': 'INTEGER PRIMARY KEY',
             'Category': 'TEXT',
             'Category_detail': 'TEXT',
-            'Stock unit': 'TEXT',
+            'Stock_unit': 'TEXT',
             'Name': 'TEXT',
             'Acronym': 'TEXT',
             'Cluster_1': 'TEXT'
@@ -53,12 +53,12 @@ _SETS = {
         },
     },
 
-    'FLOWS': {
+    '_set_FLOWS': {
         'Symbol': 'fl',
         'Headers': {
             'ID': 'INTEGER PRIMARY KEY',
             'Category': 'TEXT',
-            'Flow unit': 'TEXT',
+            'Flow_unit': 'TEXT',
             'Name': 'TEXT',
             'Acronym': 'TEXT',
             'Cluster_1': 'TEXT'
