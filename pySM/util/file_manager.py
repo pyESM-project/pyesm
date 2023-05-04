@@ -4,6 +4,7 @@ import json
 import yaml
 import pandas as pd
 
+from typing import List, Dict
 from pathlib import Path
 from pySM.log_exc.logger import Logger
 from pySM.util.util import write_excel
@@ -13,7 +14,7 @@ class FileManager:
 
     def __init__(self, logger: Logger) -> None:
         self.logger = logger.getChild(__name__)
-        self.logger.info(f"'{str(self)}' object generated.")
+        self.logger.debug(f"'{str(self)}' object generated.")
 
     def __str__(self):
         class_name = type(self).__name__
@@ -114,7 +115,8 @@ class FileManager:
             excel_dir_path: str,
             excel_file_name: str = None,
             table_key: str = None,
-            writer_engine: str = 'openpyxl') -> None:
+            writer_engine: str = 'openpyxl',
+    ) -> None:
         """Generates an excel file with information provided by a dictionary.
         """
 
@@ -157,26 +159,29 @@ class FileManager:
             self.logger.debug(
                 f"Excel file '{excel_file_name}' generated.")
 
-    # def excel_to_dataframes_dict(
-    #         self,
-    #         excel_file_name: str,
-    #         excel_file_dir_path: str,
-    #         empty_data_fill: str = '') -> 'dict':
-    #     """Reading an excel file composed by multiple tabs and returning
-    #     a dictionary with tabs as keys and dataframes as tables in each key."""
+    def excel_to_dataframes_dict(
+            self,
+            excel_file_name: str,
+            excel_file_dir_path: str,
+            empty_data_fill: str,
+    ) -> Dict:
+        """Reading an excel file composed by multiple tabs and returning
+        a dictionary with keys as tabs and tables in each tab as Pandas 
+        DataFrames.
+        """
 
-    #     file_path = Path(excel_file_dir_path) / excel_file_name
+        file_path = Path(excel_file_dir_path, excel_file_name)
 
-    #     if not os.path.exists(file_path):
-    #         self.logger.error(f'{excel_file_name} does not exist.')
-    #         raise FileNotFoundError(f"{excel_file_name} does not exist.")
+        if not os.path.exists(file_path):
+            self.logger.error(f'{excel_file_name} does not exist.')
+            raise FileNotFoundError(f"{excel_file_name} does not exist.")
 
-    #     df_dict = pd.read_excel(io=file_path, sheet_name=None)
-    #     df_dict = {sheet_name: df.fillna(empty_data_fill)
-    #                for sheet_name, df in df_dict.items()}
+        df_dict = pd.read_excel(io=file_path, sheet_name=None)
+        df_dict = {sheet_name: df.fillna(empty_data_fill)
+                   for sheet_name, df in df_dict.items()}
 
-    #     self.logger.debug(f"Excel file '{excel_file_name}' loaded.")
-    #     return df_dict
+        self.logger.debug(f"Excel file '{excel_file_name}' loaded.")
+        return df_dict
 
     # def dataframes_dict_to_excel(self):
     #     # self.logger.debug(f"Excel file '{}' loaded.")
