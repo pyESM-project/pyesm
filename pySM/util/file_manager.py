@@ -127,8 +127,11 @@ class FileManager:
             """Support function to generate excel"""
             with pd.ExcelWriter(excel_file_path, engine=writer_engine) as writer:
                 for sheet_name, value in dict_name.items():
-                    dataframe = pd.DataFrame(
-                        columns=value[table_key])
+                    if table_key is None:
+                        dataframe = pd.DataFrame(value)
+                    else:
+                        dataframe = pd.DataFrame(columns=value[table_key])
+
                     sheet = writer.book.create_sheet(sheet_name)
                     writer.sheets[sheet_name] = sheet
                     dataframe.to_excel(
