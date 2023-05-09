@@ -70,7 +70,7 @@ class FileManager:
             self,
             file_name: str,
             dir_path: str,
-            file_type: str = 'json') -> dict:
+            file_type: str = 'json') -> Dict[str, any]:
         """Loads JSON or YAML file and returns a dictionary with its content.
 
         Args:
@@ -111,7 +111,7 @@ class FileManager:
 
     def dict_to_excel(
             self,
-            dict_name: dict,
+            dict_name: Dict[str, any],
             excel_dir_path: str,
             excel_file_name: str = None,
             table_key: str = None,
@@ -138,6 +138,10 @@ class FileManager:
                         writer,
                         sheet_name=sheet_name,
                         index=False
+                    )
+                    self.logger.debug(
+                        f"Excel tab name '{sheet_name}' inserted "
+                        f"into '{os.path.basename(excel_file_path)}'."
                     )
 
         excel_file_path = Path(excel_dir_path, excel_file_name)
@@ -167,7 +171,7 @@ class FileManager:
             excel_file_name: str,
             excel_file_dir_path: str,
             empty_data_fill: str,
-    ) -> Dict:
+    ) -> Dict[str, pd.DataFrame]:
         """Reading an excel file composed by multiple tabs and returning
         a dictionary with keys as tabs and tables in each tab as Pandas 
         DataFrames.

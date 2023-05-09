@@ -68,7 +68,7 @@ class Database:
         try:
             self.cursor.execute(query)
             self.connection.commit()
-            self.logger.debug(f'Table {table_name} created.')
+            self.logger.debug(f"Table '{table_name}' created.")
         except sqlite3.OperationalError as error_msg:
             self.logger.error(error_msg)
             raise sqlite3.OperationalError(error_msg)
@@ -96,7 +96,7 @@ class Database:
         num_entries = self.count_table_data_entries(table_name=table_name)
         self.cursor.execute(f"DELETE FROM {table_name}")
         self.logger.debug(
-            f"{num_entries} rows deleted from table {table_name}")
+            f"{num_entries} rows deleted from table '{table_name}'")
 
     def dataframe_to_table(
             self,
@@ -130,7 +130,7 @@ class Database:
         try:
             self.cursor.executemany(query, data)
             self.logger.debug(
-                f'{len(data)} rows inserted into table {table_name}'
+                f"{len(data)} rows inserted into table '{table_name}'"
             )
         except sqlite3.IntegrityError as error:
             if str(error).startswith('UNIQUE'):

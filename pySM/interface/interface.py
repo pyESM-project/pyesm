@@ -39,20 +39,18 @@ class Interface:
             file_settings_dir_path=self.file_settings_dir_path,
         )
 
-        self.logger.info(f"'{str(self)}' object correctly initialized.")
+        self.logger.info(f"'{str(self)}' object initialized.")
 
     def __str__(self):
         class_name = type(self).__name__
         return f'{class_name}'
 
-    def model_cleanup(self):
-        self.model.model_cleanup()
+
 
     # def generate_rps(self):
     #     self.model.database.load_sets()
         # add validation of Category
         # self.model.database.generate_blank_rps()
-
-
+        
 if __name__ == '__main__':
     pass

@@ -57,5 +57,4 @@ class Model:
     def model_cleanup(self):
         self.files.erase_dir(self.model_dir_path)
 
-    def load_sets(self):
-        self.sets = self.database.load_sets()
+

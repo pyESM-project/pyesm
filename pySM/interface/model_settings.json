@@ -4,7 +4,7 @@
     "model_data_folder_path": "D:/OneDrive - Politecnico di Milano/Doc_Lavoro/Models/pySM_docs/case_studies",
     "database_settings": {
         "sets_file_name": "sets.xlsx",
-        "sets_definition_excel": true
+        "sets_definition_excel": false
     },
     "problem_settings": {
         "execution_mode": "simulation"
