@@ -7,16 +7,15 @@ import pandas as pd
 from typing import List, Dict
 from pathlib import Path
 from pySM.log_exc.logger import Logger
-from pySM.util.util import write_excel
 
 
 class FileManager:
 
     def __init__(self, logger: Logger) -> None:
         self.logger = logger.getChild(__name__)
-        self.logger.debug(f"'{str(self)}' object generated.")
+        self.logger.debug(f"'{self}' object generated.")
 
-    def __str__(self):
+    def __repr__(self):
         class_name = type(self).__name__
         return f'{class_name}'
 
@@ -115,12 +114,13 @@ class FileManager:
             excel_dir_path: str,
             excel_file_name: str = None,
             table_key: str = None,
+            table_key_dict_depth: int = 0,
             writer_engine: str = 'openpyxl',
     ) -> None:
         """Generates an excel file with information provided by a dictionary.
         """
 
-        if not isinstance(dict_name, dict):
+        if not isinstance(dict_name, Dict):
             self.logger.error(f'{dict_name} is not a dictionary.')
 
         def write_excel(excel_file_path, dict_name):
@@ -128,10 +128,20 @@ class FileManager:
             with pd.ExcelWriter(excel_file_path, engine=writer_engine) as writer:
                 for sheet_name, value in dict_name.items():
                     if table_key is None:
-                        dataframe = pd.DataFrame(value)
+                        columns_data = value
                     else:
-                        dataframe = pd.DataFrame(columns=value[table_key])
+                        if isinstance(value[table_key], List):
+                            columns_data = value[table_key]
+                        elif isinstance(value[table_key], Dict[List]):
+                            columns_data = [
+                                value[table_key][key][table_key_dict_depth]
+                                for key in value[table_key]
+                            ]
+                        else:
+                            self.logger.error(
+                                f"Invalid table_key '{table_key}'.")
 
+                    dataframe = pd.DataFrame(columns=columns_data)
                     sheet = writer.book.create_sheet(sheet_name)
                     writer.sheets[sheet_name] = sheet
                     dataframe.to_excel(
