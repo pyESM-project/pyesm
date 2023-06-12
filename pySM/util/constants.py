@@ -1,76 +1,95 @@
 """Basic constants for definition of model structure"""
 
 # basic package information
-_INFO = {
+INFO = {
     'Package name': 'pySM',
     'Description': 'Python-based general purpose Systems Modeller',
     'Version': 'v.0.1',
     'Author': 'Matteo V. Rocco'
 }
 
+# index of constants dictionaries
+_INDEX_HEADERS = {
+    'id': ['ID', 'INTEGER PRIMARY KEY'],
+    'name': ['Name', 'TEXT'],
+    'acronym': ['Acronym', 'TEXT'],
+    'stock_unit': ['Stock_unit', 'TEXT'],
+    'flow_unit': ['Flow_unit', 'TEXT'],
+    'category': ['Category', 'TEXT'],
+    'cluster_1': ['Cluster_1', 'TEXT']
+}
+
+_INDEX_VARS = {
+    0: 'name',
+    1: 'rows',
+    2: 'columns',
+    3: 'type',
+    4: 'description'
+}
+
 # structure of the sets of the model
 _SETS = {
 
-    '_set_SCENARIOS': {
-        'Symbol': 'sc',
-        'Headers': {
-            'ID': 'INTEGER PRIMARY KEY',
-            'Name': 'TEXT',
-            'Acronym': 'TEXT'
+    'scenarios': {
+        'symbol': 'sc',
+        'table_name': '_set_SCENARIOS',
+        'table_headers': {
+            key: _INDEX_HEADERS[key] for key in ['id', 'name', 'acronym']
         }
     },
 
-    '_set_SYSTEMS': {
-        'Symbol': 'sy',
-        'Headers': {
-            'ID': 'INTEGER PRIMARY KEY',
-            'Category': 'TEXT',
-            'Name': 'TEXT',
-            'Acronym': 'TEXT',
-            'Cluster_1': 'TEXT'
+
+    'systems': {
+        'symbol': 's',
+        'table_name': '_set_SYSTEMS',
+        'table_headers': {
+            key: _INDEX_HEADERS[key] for key in [
+                'id', 'name', 'acronym', 'category', 'cluster_1'
+            ]
         },
-        'Categories': [
-            'Productive system',
-            'Other systems',
-            'Environment'
-        ],
+        'categories': {
+            's.p': 'Productive system',
+            's.o': 'Other systems',
+            's.e': 'Environment',
+        }
     },
 
-    '_set_TECHNOLOGIES': {
-        'Symbol': 'tc',
-        'Headers': {
-            'ID': 'INTEGER PRIMARY KEY',
-            'Category': 'TEXT',
-            'Category_detail': 'TEXT',
-            'Stock_unit': 'TEXT',
-            'Name': 'TEXT',
-            'Acronym': 'TEXT',
-            'Cluster_1': 'TEXT'
+    'technologies': {
+        'symbol': 't',
+        'table_name': '_set_TECHNOLOGIES',
+        'table_headers': {
+            key: _INDEX_HEADERS[key] for key in [
+                'id', 'name', 'acronym', 'stock_unit', 'category', 'cluster_1'
+            ]
         },
-        'Categories': {
-            'Supply': ['Production', 'Storage', 'Transmission'],
-            'Demand': ['Demand']
-        },
+        'categories': {
+            't.p': 'Production technology',
+            't.s': 'Storage technology',
+            't.t': 'Transmission technology',
+            't.d': 'Demand technology',
+        }
     },
 
-    '_set_FLOWS': {
-        'Symbol': 'fl',
-        'Headers': {
-            'ID': 'INTEGER PRIMARY KEY',
-            'Category': 'TEXT',
-            'Flow_unit': 'TEXT',
-            'Name': 'TEXT',
-            'Acronym': 'TEXT',
-            'Cluster_1': 'TEXT'
+    'flows': {
+        'symbol': 'f',
+        'table_name': '_set_FLOWS',
+        'table_headers': {
+            key: _INDEX_HEADERS[key] for key in [
+                'id', 'name', 'acronym', 'flow_unit', 'category', 'cluster_1'
+            ]
         },
-        'Categories': [
-            'Product flow',
-            'Production factor',
-            'Environmental transaction'
-        ],
+        'categories': {
+            'f.p': 'Product flow',
+            'f.e': 'Environmental flow',
+        }
     }
-
 }
 
 # structure of the generic case study folder
 _FOLDERS = ['']
+
+
+# definition of model variables
+_VARIABLES = {
+    'I_ft': {}
+}
