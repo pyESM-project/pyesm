@@ -20,7 +20,7 @@ class Database:
     ) -> None:
 
         self.logger = logger.getChild(__name__)
-        self.logger.info(f"Generation of '{str(self)}' object.")
+        self.logger.info(f"Generation of '{self}' object.")
 
         self.files = files
 
@@ -36,50 +36,62 @@ class Database:
         self.sets_structure = constants._SETS
         self.sets = None
 
-        for table in self.sets_structure:
-            self.create_table(
-                table_name=table,
-                table_fields=self.sets_structure[table]['Headers']
+        if self.database_settings['generate_blank_sets']:
+            for table in self.sets_structure:
+                self.create_table(
+                    table_name=self.sets_structure[table]['table_name'],
+                    table_fields=self.sets_structure[table]['table_headers']
+                )
+
+            self.files.dict_to_excel(
+                dict_name=self.sets_structure,
+                excel_dir_path=database_dir_path,
+                excel_file_name=self.database_settings['sets_file_name'],
+                table_key='table_headers',
             )
 
-        self.files.dict_to_excel(
-            dict_name=self.sets_structure,
-            excel_dir_path=database_dir_path,
-            excel_file_name=self.database_settings['sets_file_name'],
-            table_key='Headers',
-        )
+        self.logger.info(f"'{self}' object initialized.")
 
-        self.logger.info(f"'{str(self)}' object initialized.")
-
-    def __str__(self) -> None:
+    def __repr__(self) -> None:
         class_name = type(self).__name__
         return f'{class_name}'
 
     def open_connection(self) -> None:
         self.connection = sqlite3.connect(f'{self.database_path}')
         self.cursor = self.connection.cursor()
-        self.logger.info(f"'{str(self)}' connection opened.")
+        self.logger.info(f"'{self}' connection opened.")
 
     def close_connection(self) -> None:
         self.connection.close()
-        self.logger.info(f"'{str(self)}' connection closed.")
+        self.logger.info(f"'{self}' connection closed.")
+
+    def drop_table(self, table_name: str) -> None:
+        user_input = input(
+            f"Are you sure you want to delete '{table_name}'? (y/[n]): ")
+        if user_input.lower() != 'y':
+            self.logger.debug(f"Table '{table_name}' not deleted.")
+            return
+        query = f"DROP TABLE {table_name}"
+        self.cursor.execute(query)
+        self.connection.commit()
+        self.logger.debug(f"Table '{table_name}' deleted.")
 
     def create_table(
             self,
             table_name: str,
-            table_fields: Dict[str, str],
+            table_fields: Dict[str, List[str]],
     ) -> None:
 
         if table_name in self.get_existing_tables():
-            self.logger.debug(f"Table '{table_name}' already exists.")
-            return
+            self.logger.debug(
+                f"Table '{table_name}' already exists. Overwriting...")
+            self.drop_table(table_name=table_name)
 
         fields_str = ", ".join(
             [f'{field_name} {field_type}'
-             for field_name, field_type in table_fields.items()]
-        )
+             for field_name, field_type in table_fields.values()])
 
-        query = f'CREATE TABLE IF NOT EXISTS {table_name}({fields_str})'
+        query = f'CREATE TABLE {table_name}({fields_str})'
 
         try:
             self.cursor.execute(query)
@@ -124,12 +136,12 @@ class Database:
     def dataframe_to_table(
             self,
             table_name: str,
-            df: pd.DataFrame,
+            dataframe: pd.DataFrame,
     ) -> None:
 
         table_fields = self.get_table_fields(table_name=table_name)
 
-        if not df.columns.tolist() == table_fields['labels']:
+        if not dataframe.columns.tolist() == table_fields['labels']:
             error = f"Dataframe and table {table_name} headers mismatch."
             self.logger.error(error)
             raise ValueError(error)
@@ -145,9 +157,9 @@ class Database:
             else:
                 self.delete_table_entries(table_name=table_name)
 
-        data = [tuple(row) for row in df.values.tolist()]
+        data = [tuple(row) for row in dataframe.values.tolist()]
 
-        placeholders = ', '.join(['?'] * len(df.columns))
+        placeholders = ', '.join(['?'] * len(dataframe.columns))
         query = f"INSERT INTO {table_name} VALUES ({placeholders})"
 
         try:
@@ -185,8 +197,8 @@ class Database:
             )
             for table in self.sets:
                 self.dataframe_to_table(
-                    table_name=table,
-                    df=self.sets[table],
+                    table_name=self.sets_structure[table]['table_name'],
+                    dataframe=self.sets[table],
                 )
             self.logger.info(
                 "New sets loaded from "
