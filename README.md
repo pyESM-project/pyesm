@@ -1,2 +1,2 @@
-# pySM
-Python based Systems Modelling framework based on Supply and Use structure
+# Engineering Systems Modelling (ESM)
+Python based engineering systems modelling framework based on the Supply and Use structure
