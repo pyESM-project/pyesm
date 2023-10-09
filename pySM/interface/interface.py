@@ -25,7 +25,7 @@ class Interface:
             log_format=log_format
         )
 
-        self.logger.info(f"Initializing '{str(self)}' object.")
+        self.logger.info(f"Initializing '{self}' object.")
 
         self.files = FileManager(logger=self.logger)
 
@@ -39,18 +39,16 @@ class Interface:
             file_settings_dir_path=self.file_settings_dir_path,
         )
 
-        self.logger.info(f"'{str(self)}' object initialized.")
+        self.logger.info(f"'{self}' object initialized.")
 
-    def __str__(self):
+    def __repr__(self):
         class_name = type(self).__name__
         return f'{class_name}'
-
 
 
     # def generate_rps(self):
     #     self.model.database.load_sets()
         # add validation of Category
         # self.model.database.generate_blank_rps()
-        
 if __name__ == '__main__':
     pass

@@ -19,14 +19,6 @@ _INDEX_HEADERS = {
     'cluster_1': ['Cluster_1', 'TEXT']
 }
 
-_INDEX_VARS = {
-    0: 'name',
-    1: 'rows',
-    2: 'columns',
-    3: 'type',
-    4: 'description'
-}
-
 # structure of the sets of the model
 _SETS = {
 
@@ -88,6 +80,15 @@ _SETS = {
 # structure of the generic case study folder
 _FOLDERS = ['']
 
+
+#
+_INDEX_VARS = {
+    0: 'name',
+    1: 'rows',
+    2: 'columns',
+    3: 'type',
+    4: 'description'
+}
 
 # definition of model variables
 _VARIABLES = {

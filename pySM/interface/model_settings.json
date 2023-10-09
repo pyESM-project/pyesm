@@ -3,8 +3,9 @@
     "model_description": "dummy case study for testing the model",
     "model_data_folder_path": "D:/OneDrive - Politecnico di Milano/Doc_Lavoro/Models/pySM_docs/case_studies",
     "database_settings": {
+        "generate_blank_sets": false,
         "sets_file_name": "sets.xlsx",
-        "sets_definition_excel": false
+        "sets_definition_excel": true
     },
     "problem_settings": {
         "execution_mode": "simulation"

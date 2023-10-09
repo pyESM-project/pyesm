@@ -16,7 +16,7 @@ class Model:
     ) -> None:
 
         self.logger = logger.getChild(__name__)
-        self.logger.info(f"Generation of '{str(self)}' object.")
+        self.logger.info(f"Generation of '{self}' object.")
 
         self.files = files
 
@@ -26,6 +26,7 @@ class Model:
         )
 
         self.database_settings = self.model_settings['database_settings']
+        self.problem_settings = self.model_settings['problem_settings']
 
         self.model_dir_path = Path(
             self.model_settings['model_data_folder_path'],
@@ -45,16 +46,14 @@ class Model:
         self.problem = Problem(
             logger=self.logger,
             files=self.files,
-            problem_settings=self.model_settings['problem_settings'],
+            problem_settings=self.problem_settings,
         )
 
-        self.logger.info(f"'{str(self)}' generated.")
+        self.logger.info(f"'{self}' generated.")
 
-    def __str__(self):
+    def __repr__(self):
         class_name = type(self).__name__
         return f'{class_name}'
 
     def model_cleanup(self):
         self.files.erase_dir(self.model_dir_path)
-
-
