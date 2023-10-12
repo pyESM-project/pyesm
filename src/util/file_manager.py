@@ -6,7 +6,7 @@ import pandas as pd
 
 from typing import List, Dict
 from pathlib import Path
-from pySM.log_exc.logger import Logger
+from src.log.logger import Logger
 
 
 class FileManager:
@@ -19,7 +19,7 @@ class FileManager:
         class_name = type(self).__name__
         return f'{class_name}'
 
-    def create_dir(self, dir_path: str) -> None:
+    def create_dir(self, dir_path: Path) -> None:
         """This method receives a folder path and generates the folder in case
         it not exists.
 
@@ -36,7 +36,7 @@ class FileManager:
             os.makedirs(dir_path, exist_ok=True)
             self.logger.debug(f"Folder '{dir_name}' has created.")
 
-    def erase_dir(self, dir_path: str) -> None:
+    def erase_dir(self, dir_path: Path) -> None:
         """This method erases a folder and its content in a given path.
 
         Args:
@@ -68,7 +68,7 @@ class FileManager:
     def load_file(
             self,
             file_name: str,
-            dir_path: str,
+            dir_path: Path,
             file_type: str = 'json') -> Dict[str, any]:
         """Loads JSON or YAML file and returns a dictionary with its content.
 
@@ -111,9 +111,9 @@ class FileManager:
     def dict_to_excel(
             self,
             dict_name: Dict[str, any],
-            excel_dir_path: str,
-            excel_file_name: str = None,
-            table_key: str = None,
+            excel_dir_path: Path,
+            excel_file_name: str = "",
+            table_key: str = "",
             table_key_dict_depth: int = 0,
             writer_engine: str = 'openpyxl',
     ) -> None:
@@ -179,7 +179,7 @@ class FileManager:
     def excel_to_dataframes_dict(
             self,
             excel_file_name: str,
-            excel_file_dir_path: str,
+            excel_file_dir_path: Path,
             empty_data_fill: str,
     ) -> Dict[str, pd.DataFrame]:
         """Reading an excel file composed by multiple tabs and returning

@@ -3,9 +3,9 @@ import pandas as pd
 
 from typing import List, Dict
 from pathlib import Path
-from pySM.util import constants
-from pySM.log_exc.logger import Logger
-from pySM.util.file_manager import FileManager
+from src.util import constants
+from src.log.logger import Logger
+from src.util.file_manager import FileManager
 
 
 class Database:
@@ -14,7 +14,7 @@ class Database:
             self,
             logger: Logger,
             files: FileManager,
-            database_dir_path: str,
+            database_dir_path: Path,
             database_name: str,
             database_settings: Dict[str, str],
     ) -> None:
@@ -52,7 +52,7 @@ class Database:
 
         self.logger.info(f"'{self}' object initialized.")
 
-    def __repr__(self) -> None:
+    def __repr__(self):
         class_name = type(self).__name__
         return f'{class_name}'
 

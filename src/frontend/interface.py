@@ -1,7 +1,7 @@
 from pathlib import Path
-from pySM.log_exc.logger import Logger
-from pySM.util.file_manager import FileManager
-from pySM.core.model import Model
+from src.log.logger import Logger
+from src.util.file_manager import FileManager
+from src.backend.model import Model
 
 
 class Interface:
@@ -15,7 +15,7 @@ class Interface:
             log_format: str = 'standard',
             log_file_name: str = 'log_model.log',
             file_settings_name: str = default_file_settings_name,
-            file_settings_dir_path: str = default_file_settings_dir_path,
+            file_settings_dir_path: Path = default_file_settings_dir_path,
     ) -> None:
 
         self.logger = Logger(

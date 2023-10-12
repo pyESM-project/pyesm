@@ -1,8 +1,8 @@
 from pathlib import Path
-from pySM.log_exc.logger import Logger
-from pySM.util.file_manager import FileManager
-from pySM.core.database import Database
-from pySM.core.problem import Problem
+from src.log.logger import Logger
+from src.util.file_manager import FileManager
+from src.backend.database import Database
+from src.backend.problem import Problem
 
 
 class Model:
@@ -12,7 +12,7 @@ class Model:
             logger: Logger,
             files: FileManager,
             file_settings_name: str,
-            file_settings_dir_path: str,
+            file_settings_dir_path: Path,
     ) -> None:
 
         self.logger = logger.getChild(__name__)

@@ -1,5 +1,5 @@
+from pathlib import Path
 import logging
-
 
 class Logger:
     """Class defined for logging Model class and subclasses."""
@@ -7,7 +7,7 @@ class Logger:
     def __init__(
             self,
             logger_name: str,
-            log_file_path: str,
+            log_file_path: Path,
             log_level: str = 'info',
             log_format: str = 'standard',
     ) -> None:
