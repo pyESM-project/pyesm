@@ -39,7 +39,6 @@ class Model:
             logger=self.logger,
             files=self.files,
             database_dir_path=self.model_dir_path,
-            database_name='database.db',
             database_settings=self.database_settings,
         )
 

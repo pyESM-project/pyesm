@@ -132,7 +132,7 @@ class FileManager:
                     else:
                         if isinstance(value[table_key], List):
                             columns_data = value[table_key]
-                        elif isinstance(value[table_key], Dict[List]):
+                        elif isinstance(value[table_key], Dict):
                             columns_data = [
                                 value[table_key][key][table_key_dict_depth]
                                 for key in value[table_key]
