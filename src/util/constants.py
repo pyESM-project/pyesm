@@ -22,42 +22,16 @@ _INDEX_HEADERS = {
 # structure of the sets of the model
 _SETS = {
 
-    'scenarios': {
-        'symbol': 'sc',
-        'table_name': '_set_SCENARIOS',
-        'table_headers': {
-            key: _INDEX_HEADERS[key] for key in ['id', 'name', 'acronym']
-        }
-    },
-
-
-    'systems': {
-        'symbol': 's',
-        'table_name': '_set_SYSTEMS',
-        'table_headers': {
-            key: _INDEX_HEADERS[key] for key in [
-                'id', 'name', 'acronym', 'category', 'cluster_1'
-            ]
-        },
-        'categories': {
-            's.p': 'Productive system',
-            's.o': 'Other systems',
-            's.e': 'Environment',
-        }
-    },
-
     'technologies': {
         'symbol': 't',
         'table_name': '_set_TECHNOLOGIES',
         'table_headers': {
             key: _INDEX_HEADERS[key] for key in [
-                'id', 'name', 'acronym', 'stock_unit', 'category', 'cluster_1'
+                'name', 'acronym', 'category',
             ]
         },
         'categories': {
             't.p': 'Production technology',
-            't.s': 'Storage technology',
-            't.t': 'Transmission technology',
             't.d': 'Demand technology',
         }
     },
@@ -67,7 +41,7 @@ _SETS = {
         'table_name': '_set_FLOWS',
         'table_headers': {
             key: _INDEX_HEADERS[key] for key in [
-                'id', 'name', 'acronym', 'flow_unit', 'category', 'cluster_1'
+                'name', 'acronym', 'category',
             ]
         },
         'categories': {
