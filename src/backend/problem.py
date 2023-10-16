@@ -1,5 +1,5 @@
-from src.log.logger import Logger
-from src.util.file_manager import FileManager
+from log.logger import Logger
+from util.file_manager import FileManager
 
 
 class Problem:

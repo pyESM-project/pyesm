@@ -1,7 +1,7 @@
 import os
 import tempfile
 import pytest
-from src.util.file_manager import FileManager
+from util.file_manager import FileManager
 
 
 def test_load_file():

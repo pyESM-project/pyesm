@@ -6,7 +6,7 @@ import pandas as pd
 
 from typing import List, Dict
 from pathlib import Path
-from src.log.logger import Logger
+from log.logger import Logger
 
 
 class FileManager:
@@ -69,7 +69,7 @@ class FileManager:
             self,
             file_name: str,
             dir_path: Path,
-            file_type: str = 'json') -> Dict[str, any]:
+            file_type: str = 'yaml') -> Dict[str, any]:
         """Loads JSON or YAML file and returns a dictionary with its content.
 
         Args:

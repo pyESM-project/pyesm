@@ -1,8 +1,8 @@
 from pathlib import Path
-from src.log.logger import Logger
-from src.util.file_manager import FileManager
-from src.backend.database import Database
-from src.backend.problem import Problem
+from log.logger import Logger
+from util.file_manager import FileManager
+from backend.database import Database
+from backend.problem import Problem
 
 
 class Model:

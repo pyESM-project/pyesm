@@ -3,9 +3,9 @@ import pandas as pd
 
 from typing import List, Dict
 from pathlib import Path
-from src.util import constants
-from src.log.logger import Logger
-from src.util.file_manager import FileManager
+from util import constants
+from log.logger import Logger
+from util.file_manager import FileManager
 
 
 class Database:

@@ -1,0 +1,9 @@
+model_name: test_case_1
+model_description: dummy case study for testing the model
+model_data_folder_path: D:\Politecnico di Milano\Documentale DENG - PRIN-MIMO\Models\pyESM_docs\case_studies
+database_settings:
+    generate_blank_sets: false
+    sets_file_name: sets.xlsx
+    sets_definition_excel: true
+problem_settings:
+    execution_mode: simulation

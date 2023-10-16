@@ -1,13 +1,13 @@
 from pathlib import Path
-from src.log.logger import Logger
-from src.util.file_manager import FileManager
-from src.backend.model import Model
+from log.logger import Logger
+from util.file_manager import FileManager
+from backend.model import Model
 
 
 class Interface:
 
     default_file_settings_dir_path = Path(__file__).resolve().parent
-    default_file_settings_name = 'model_settings.json'
+    default_file_settings_name = 'model_settings.yaml'
 
     def __init__(
             self,
@@ -46,9 +46,5 @@ class Interface:
         return f'{class_name}'
 
 
-    # def generate_rps(self):
-    #     self.model.database.load_sets()
-        # add validation of Category
-        # self.model.database.generate_blank_rps()
 if __name__ == '__main__':
     pass
