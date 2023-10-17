@@ -57,15 +57,16 @@ class Database:
             if user_input.lower() != 'y':
                 self.logger.debug(f"Original Sets not owerwritten.")
                 return
-        else:
-            self.sets = self.files.excel_to_dataframes_dict(
-                excel_file_name=self.database_settings['sets_file_name'],
-                excel_file_dir_path=self.database_dir_path,
-                empty_data_fill='',
-            )
-            self.logger.info(
-                "New Sets loaded from "
-                f"'{self.database_settings['sets_file_name']}'.")
+
+        self.sets = self.files.excel_to_dataframes_dict(
+            excel_file_name=self.database_settings['sets_file_name'],
+            excel_file_dir_path=self.database_dir_path,
+            empty_data_fill='',
+        )
+        self.logger.info(
+            "New Sets loaded from "
+            f"'{self.database_settings['sets_file_name']}'."
+        )
 
     def generate_database_sql(
             self,
