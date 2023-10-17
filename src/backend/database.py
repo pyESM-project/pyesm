@@ -1,3 +1,5 @@
+import pandas as pd
+
 from typing import Dict
 from pathlib import Path
 from util import constants
@@ -34,7 +36,7 @@ class Database:
                 excel_file_name=self.database_settings['sets_file_name'],
                 table_key='table_headers',
             )
-        
+
         if self.database_settings['generate_database_sql']:
             self.generate_database_sql(
                 database_sql_name=self.database_settings['database_sql_name'],
@@ -46,14 +48,34 @@ class Database:
         class_name = type(self).__name__
         return f'{class_name}'
 
+    def load_sets(self) -> Dict[str, pd.DataFrame]:
+        if self.sets is not None:
+            self.logger.debug(
+                f"Sets are already defined in the '{self}' object.")
+            user_input = input(
+                f"Overwrite Sets? (y/[n]): ")
+            if user_input.lower() != 'y':
+                self.logger.debug(f"Original Sets not owerwritten.")
+                return
+        else:
+            self.sets = self.files.excel_to_dataframes_dict(
+                excel_file_name=self.database_settings['sets_file_name'],
+                excel_file_dir_path=self.database_dir_path,
+                empty_data_fill='',
+            )
+            self.logger.info(
+                "New Sets loaded from "
+                f"'{self.database_settings['sets_file_name']}'.")
+
     def generate_database_sql(
             self,
-            database_sql_name: str ='database.db',
+            database_sql_name: str = 'database.db',
     ) -> None:
 
         self.database_sql_name = database_sql_name
-        self.database_sql_path = Path(self.database_dir_path, database_sql_name)
-        
+        self.database_sql_path = Path(
+            self.database_dir_path, database_sql_name)
+
         self.database_sql = DatabaseSQL(
             logger=self.logger,
             database_sql_path=self.database_sql_path,

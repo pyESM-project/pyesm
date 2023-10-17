@@ -37,11 +37,6 @@ class DatabaseSQL:
         self.logger.info(f"'{self}' connection closed.")
 
     def drop_table(self, table_name: str) -> None:
-        user_input = input(
-            f"Are you sure you want to delete '{table_name}'? (y/[n]): ")
-        if user_input.lower() != 'y':
-            self.logger.debug(f"Table '{table_name}' not deleted.")
-            return
         query = f"DROP TABLE {table_name}"
         self.cursor.execute(query)
         self.connection.commit()
@@ -55,22 +50,28 @@ class DatabaseSQL:
 
         if table_name in self.get_existing_tables():
             self.logger.debug(
-                f"Table '{table_name}' already exists. Overwriting...")
-            self.drop_table(table_name=table_name)
+                f"Table '{table_name}' already exists.")
 
-        fields_str = ", ".join(
-            [f'{field_name} {field_type}'
-             for field_name, field_type in table_fields.values()])
+            user_input = input(
+                f"Delete and overwrite '{table_name}'? (y/[n]): ")
+            if user_input.lower() != 'y':
+                self.logger.debug(f"Table '{table_name}' not owerwritten.")
+                return
+            else:
+                self.drop_table(table_name=table_name)
+                fields_str = ", ".join(
+                    [f'{field_name} {field_type}'
+                     for field_name, field_type in table_fields.values()])
 
-        query = f'CREATE TABLE {table_name}({fields_str})'
+                query = f'CREATE TABLE {table_name}({fields_str})'
 
-        try:
-            self.cursor.execute(query)
-            self.connection.commit()
-            self.logger.debug(f"Table '{table_name}' created.")
-        except sqlite3.OperationalError as error_msg:
-            self.logger.error(error_msg)
-            raise sqlite3.OperationalError(error_msg)
+                try:
+                    self.cursor.execute(query)
+                    self.connection.commit()
+                    self.logger.debug(f"Table '{table_name}' created.")
+                except sqlite3.OperationalError as error_msg:
+                    self.logger.error(error_msg)
+                    raise sqlite3.OperationalError(error_msg)
 
     def get_existing_tables(self) -> List[str]:
         query = "SELECT name FROM sqlite_master WHERE type='table'"
@@ -158,31 +159,3 @@ class DatabaseSQL:
         df = pd.DataFrame(data, columns=table_fields['labels'])
 
         return df
-    
-    # non serve più, ora i dati si inseriscono e basta nel database_sql
-    # def load_sets(self) -> Dict[str, pd.DataFrame]:
-    #     if self.database_settings['sets_definition_excel']:
-    #         self.sets = self.files.excel_to_dataframes_dict(
-    #             excel_file_name=self.database_settings['sets_file_name'],
-    #             excel_file_dir_path=self.database_dir_path,
-    #             empty_data_fill='',
-    #         )
-    #         for table in self.sets:
-    #             self.dataframe_to_table(
-    #                 table_name=self.sets_structure[table]['table_name'],
-    #                 dataframe=self.sets[table],
-    #             )
-    #         self.logger.info(
-    #             "New sets loaded from "
-    #             f"'{self.database_settings['sets_file_name']}'.")
-    #     else:
-    #         self.sets = {table: self.table_to_dataframe(table_name=table)
-    #                      for table in self.sets_structure}
-
-    #         self.files.dict_to_excel(
-    #             dict_name=self.sets,
-    #             excel_dir_path=self.database_dir_path,
-    #             excel_file_name=self.database_settings['sets_file_name'],
-    #         )
-    #         self.logger.info(
-    #             f"New sets loaded from sqlite '{self.database_name}'.")

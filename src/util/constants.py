@@ -16,7 +16,9 @@ _INDEX_HEADERS = {
     'stock_unit': ['Stock_unit', 'TEXT'],
     'flow_unit': ['Flow_unit', 'TEXT'],
     'category': ['Category', 'TEXT'],
-    'cluster_1': ['Cluster_1', 'TEXT']
+    'cluster_1': ['Cluster_1', 'TEXT'],
+    'parent technology': ['Technology', 'TEXT'],
+    'competition': ['Competition', 'TEXT'],
 }
 
 # structure of the sets of the model
@@ -26,13 +28,13 @@ _SETS = {
         'symbol': 't',
         'table_name': '_set_TECHNOLOGIES',
         'table_headers': {
-            key: _INDEX_HEADERS[key] for key in [
-                'name', 'acronym', 'category',
-            ]
+            'id': ['ID', 'INTEGER PRIMARY KEY'],
+            'name': ['Name', 'TEXT'],
+            'category': ['Category', 'TEXT']
         },
         'categories': {
-            't.p': 'Production technology',
-            't.d': 'Demand technology',
+            't.s': 'Supply',
+            't.d': 'Demand',
         }
     },
 
@@ -40,9 +42,12 @@ _SETS = {
         'symbol': 'f',
         'table_name': '_set_FLOWS',
         'table_headers': {
-            key: _INDEX_HEADERS[key] for key in [
-                'name', 'acronym', 'category',
-            ]
+            'id': ['ID', 'INTEGER PRIMARY KEY'],
+            'name': ['Name', 'TEXT'],
+            'category': ['Category', 'TEXT'],
+            'competition': ['Competition', 'TEXT'],
+            'parent': ['Parent technology', 'TEXT'],
+            'unit': ['Unit', 'TEXT'],
         },
         'categories': {
             'f.p': 'Product flow',
