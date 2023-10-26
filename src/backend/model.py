@@ -1,5 +1,5 @@
 from pathlib import Path
-from log.logger import Logger
+from log_exc.logger import Logger
 from util.file_manager import FileManager
 from backend.database import Database
 from backend.problem import Problem
@@ -26,6 +26,7 @@ class Model:
         )
 
         self.database_settings = self.model_settings['database_settings']
+        self.data_dir_settings = self.model_settings['data_dir_settings']
         self.problem_settings = self.model_settings['problem_settings']
 
         self.model_dir_path = Path(
@@ -40,6 +41,7 @@ class Model:
             files=self.files,
             database_dir_path=self.model_dir_path,
             database_settings=self.database_settings,
+            data_dir_settings=self.data_dir_settings,
         )
 
         self.problem = Problem(
