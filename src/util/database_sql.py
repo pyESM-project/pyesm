@@ -3,7 +3,7 @@ import pandas as pd
 
 from typing import List, Dict
 from pathlib import Path
-from log.logger import Logger
+from log_exc.logger import Logger
 
 
 class DatabaseSQL:
