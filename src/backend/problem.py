@@ -1,4 +1,4 @@
-from log.logger import Logger
+from log_exc.logger import Logger
 from util.file_manager import FileManager
 
 

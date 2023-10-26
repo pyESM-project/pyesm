@@ -1,5 +1,6 @@
 from pathlib import Path
-from log.logger import Logger
+
+from log_exc.logger import Logger
 from util.file_manager import FileManager
 from backend.model import Model
 
@@ -7,7 +8,7 @@ from backend.model import Model
 class Interface:
 
     default_file_settings_dir_path = Path(__file__).resolve().parent
-    default_file_settings_name = 'model_settings.yaml'
+    default_file_settings_name = 'model_settings.yml'
 
     def __init__(
             self,
