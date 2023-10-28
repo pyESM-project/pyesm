@@ -2,95 +2,83 @@
 
 # basic package information
 INFO = {
-    'Package name': 'pySM',
-    'Description': 'Python-based general purpose Systems Modeller',
+    'Package name': 'pyESM',
+    'Description': 'Python-based general purpose Engineering Systems Modeller',
     'Version': 'v.0.1',
     'Author': 'Matteo V. Rocco'
 }
 
-# index of constants dictionaries
-_INDEX_HEADERS = {
-    'id': ['ID', 'INTEGER PRIMARY KEY'],
-    'name': ['Name', 'TEXT'],
-    'acronym': ['Acronym', 'TEXT'],
-    'stock_unit': ['Stock_unit', 'TEXT'],
-    'flow_unit': ['Flow_unit', 'TEXT'],
-    'category': ['Category', 'TEXT'],
-    'cluster_1': ['Cluster_1', 'TEXT']
-}
-
 # structure of the sets of the model
 _SETS = {
-
     'scenarios': {
-        'symbol': 'sc',
+        'symbol': 's',
         'table_name': '_set_SCENARIOS',
         'table_headers': {
-            key: _INDEX_HEADERS[key] for key in ['id', 'name', 'acronym']
-        }
-    },
-
-
-    'systems': {
-        'symbol': 's',
-        'table_name': '_set_SYSTEMS',
-        'table_headers': {
-            key: _INDEX_HEADERS[key] for key in [
-                'id', 'name', 'acronym', 'category', 'cluster_1'
-            ]
+            'id': ['s_ID', 'INTEGER PRIMARY KEY'],
+            'name': ['s_Name', 'TEXT'],
         },
-        'categories': {
-            's.p': 'Productive system',
-            's.o': 'Other systems',
-            's.e': 'Environment',
-        }
     },
-
     'technologies': {
         'symbol': 't',
         'table_name': '_set_TECHNOLOGIES',
         'table_headers': {
-            key: _INDEX_HEADERS[key] for key in [
-                'id', 'name', 'acronym', 'stock_unit', 'category', 'cluster_1'
-            ]
+            'id': ['t_ID', 'INTEGER PRIMARY KEY'],
+            'name': ['t_Name', 'TEXT'],
+            'category': ['t_Category', 'TEXT']
         },
-        'categories': {
-            't.p': 'Production technology',
-            't.s': 'Storage technology',
-            't.t': 'Transmission technology',
+        'set_categories': {
+            't.s': 'Supply technology',
             't.d': 'Demand technology',
         }
     },
-
     'flows': {
         'symbol': 'f',
         'table_name': '_set_FLOWS',
         'table_headers': {
-            key: _INDEX_HEADERS[key] for key in [
-                'id', 'name', 'acronym', 'flow_unit', 'category', 'cluster_1'
-            ]
+            'id': ['f_ID', 'INTEGER PRIMARY KEY'],
+            'name': ['f_Name', 'TEXT'],
+            'category': ['f_Category', 'TEXT'],
+            'competition': ['f_Competition', 'TEXT'],
+            'parent': ['f_Parent technology', 'TEXT'],
+            'unit': ['f_Unit', 'TEXT'],
         },
-        'categories': {
+        'set_categories': {
             'f.p': 'Product flow',
             'f.e': 'Environmental flow',
-        }
-    }
-}
-
-# structure of the generic case study folder
-_FOLDERS = ['']
-
-
-#
-_INDEX_VARS = {
-    0: 'name',
-    1: 'rows',
-    2: 'columns',
-    3: 'type',
-    4: 'description'
+        },
+    },
 }
 
 # definition of model variables
 _VARIABLES = {
-    'I_ft': {}
+    'v': {
+        'symbol': 'v',
+        'name': 'make coefficients matrix',
+        'type': 'exogenous',
+        'coords_structure': {
+            'scenarios': {'set': 'scenarios'},
+            'rows': {'set': 'technologies', 'set_category': 't.s'},
+            'cols': {'set': 'flows', 'set_category': 'f.p'},
+        },
+    },
+    'u': {
+        'symbol': 'u',
+        'name': 'use coefficients matrix',
+        'type': 'exogenous',
+        'coords_structure': {
+            'scenarios': {'set': 'scenarios'},
+            'rows': {'set': 'flows', 'set_category': 'f.p'},
+            'cols': {'set': 'technologies', 'set_category': 't.s'},
+        },
+    },
+    'Y': {
+        'symbol': 'Y',
+        'name': 'total final demand matrix',
+        'type': 'exogenous',
+        'coords_structure': {
+            'scenarios': {'set': 'scenarios'},
+            'rows': {'set': 'flows', 'set_category': 'f.p'},
+            'cols': {'set': 'technologies', 'set_category': 't.d'},
+        },
+    },
 }

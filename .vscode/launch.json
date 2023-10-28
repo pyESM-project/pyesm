@@ -11,8 +11,8 @@
             "program": "${file}",
             "console": "integratedTerminal",
             "justMyCode": false,
-            // "cwd": "${workspaceFolder}/pySM",
-            "cwd": "${fileDirname}",
+            "cwd": "${workspaceFolder}",
+            //"cwd": "${fileDirname}",
             "env": {
                 "PYTHONPATH": "${cwd}"
             }
@@ -24,8 +24,8 @@
             "program": "${file}",
             "console": "externalTerminal",
             "justMyCode": false,
-            // "cwd": "${workspaceFolder}/pySM",
-            "cwd": "${fileDirname}",
+            "cwd": "${workspaceFolder}",
+            //"cwd": "${fileDirname}",
             "env": {
                 "PYTHONPATH": "${cwd}"
             }

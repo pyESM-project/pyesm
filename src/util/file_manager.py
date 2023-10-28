@@ -2,11 +2,14 @@ import os
 import shutil
 import json
 import yaml
+import sys
 import pandas as pd
 
-from typing import List, Dict
+from typing import List, Dict, Any
 from pathlib import Path
-from src.log.logger import Logger
+
+from util.util import find_dict_depth
+from log_exc.logger import Logger
 
 
 class FileManager:
@@ -30,11 +33,22 @@ class FileManager:
         dir_name = str(dir_path).rsplit('\\', maxsplit=1)[-1]
 
         if os.path.exists(dir_path):
-            self.logger.warning(f"Folder '{dir_name}' already exists.")
-            return {}
-        else:
-            os.makedirs(dir_path, exist_ok=True)
-            self.logger.debug(f"Folder '{dir_name}' has created.")
+            self.logger.warning(f"Directory '{dir_name}' already exists.")
+            response = input(
+                'Overwrite directory 'f"'{dir_name}'(y/[n]): "
+            ).lower()
+
+            if response != 'y':
+                self.logger.warning(
+                    f"Directory '{dir_name}' not overwritten.")
+                return {}
+            else:
+                os.makedirs(dir_path, exist_ok=True)
+                self.logger.debug(f"Directory '{dir_name}' overwritten.")
+                return {}
+
+        os.makedirs(dir_path, exist_ok=True)
+        self.logger.debug(f"Directory '{dir_name}' created.")
 
     def erase_dir(self, dir_path: Path) -> None:
         """This method erases a folder and its content in a given path.
@@ -51,7 +65,7 @@ class FileManager:
 
             if response != 'y':
                 self.logger.warning(
-                    f"Folder '{dir_name}' and its content not erased.")
+                    f"Directory '{dir_name}' and its content not erased.")
                 return {}
 
             try:
@@ -69,7 +83,7 @@ class FileManager:
             self,
             file_name: str,
             dir_path: Path,
-            file_type: str = 'json') -> Dict[str, any]:
+            file_type: str = 'yaml') -> Dict[str, any]:
         """Loads JSON or YAML file and returns a dictionary with its content.
 
         Args:
@@ -108,38 +122,42 @@ class FileManager:
                 f"Could not load file '{file_name}': {str(error)}")
             return {}
 
-    def dict_to_excel(
+    def dict_to_excel_headers(
             self,
-            dict_name: Dict[str, any],
+            dict_name: Dict[str, Any],
             excel_dir_path: Path,
             excel_file_name: str = "",
-            table_key: str = "",
-            table_key_dict_depth: int = 0,
+            table_headers_key: str = "",
+            table_headers_key_list_item: int = 0,
             writer_engine: str = 'openpyxl',
     ) -> None:
-        """Generates an excel file with information provided by a dictionary.
+        """Generates an excel file with headers provided by a dictionary in a 
+        specified dictionary depth. In case the headers key item is a list, 
+        select the list_item to be used.
         """
 
         if not isinstance(dict_name, Dict):
-            self.logger.error(f'{dict_name} is not a dictionary.')
+            error_msg = f"{dict_name} is not a dictionary."
+            self.logger.error(error_msg)
+            raise TypeError(error_msg)
 
         def write_excel(excel_file_path, dict_name):
             """Support function to generate excel"""
             with pd.ExcelWriter(excel_file_path, engine=writer_engine) as writer:
                 for sheet_name, value in dict_name.items():
-                    if table_key is None:
+                    if table_headers_key is None:
                         columns_data = value
                     else:
-                        if isinstance(value[table_key], List):
-                            columns_data = value[table_key]
-                        elif isinstance(value[table_key], Dict[List]):
+                        if isinstance(value[table_headers_key], List):
+                            columns_data = value[table_headers_key]
+                        elif isinstance(value[table_headers_key], Dict):
                             columns_data = [
-                                value[table_key][key][table_key_dict_depth]
-                                for key in value[table_key]
+                                value[table_headers_key][key][table_headers_key_list_item]
+                                for key in value[table_headers_key]
                             ]
                         else:
                             self.logger.error(
-                                f"Invalid table_key '{table_key}'.")
+                                f"Invalid table_key '{table_headers_key}'.")
 
                     dataframe = pd.DataFrame(columns=columns_data)
                     sheet = writer.book.create_sheet(sheet_name)
@@ -200,6 +218,32 @@ class FileManager:
         self.logger.debug(f"Excel file '{excel_file_name}' loaded.")
         return df_dict
 
-    # def dataframes_dict_to_excel(self):
-    #     # self.logger.debug(f"Excel file '{}' loaded.")
-    #     pass
+    # print just one dataframe to an excel sheet
+    # def dataframe_to_excel(
+    #         self,
+    #         dataframe_dict: Dict[str, pd.DataFrame],
+    #         output_path: Path,
+    #         writer_engine: str = 'openpyxl',
+    # ) -> None:
+
+    #     with pd.ExcelWriter(output_path, writer_engine) as writer:
+    #         for key, dataframe in dataframe_dict.items():
+    #             dataframe.to_excel(writer, sheet_name=key, index=False)
+    #             self.logger.debug(
+    #                 f"Excel tab name '{key}' inserted into '{os.path.basename(output_path)}'.")
+
+    # def dataarrays_dict_to_excel(
+    #     self,
+    #     dataarray_dict: Dict[str, Any],
+    #     dir_path: Path,
+    #     hierarchy: Dict[str, str] = None,
+    # ) -> None:
+
+    #     if not isinstance(dataarray_dict, Dict):
+    #         error_msg = f"{dataarray_dict} is not a dictionary."
+    #         self.logger.error(error_msg)
+    #         raise TypeError(error_msg)
+
+    #     if not os.path.exists(dir_path):
+    #         self.logger.warning(f"Directory '{dir_path}' does not exist.")
+    #         self.create_dir(dir_path)

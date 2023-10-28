@@ -1,4 +1,4 @@
-from src.util.util import *
+from util.util import *
 
 
 def test_find_dict_depth():
