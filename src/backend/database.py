@@ -33,10 +33,11 @@ class Database:
         self.database_settings = database_settings
         self.data_dir_settings = data_dir_settings
 
-        self.sets_structure = constants._SETS
+        self.sets_structure = constants._SETS.copy()
         self.sets = None
 
-        self.variables_info = constants._VARIABLES.copy()
+        self.variables = constants._VARIABLES.copy()
+        self.coordinates = None
         self.data = None
         self.data_sql = None
 
@@ -68,7 +69,7 @@ class Database:
                 f"Overwrite Sets? (y/[n]): ")
             if user_input.lower() != 'y':
                 self.logger.debug(f"Original Sets not owerwritten.")
-                return {}
+                return
 
         self.sets = self.files.excel_to_dataframes_dict(
             excel_file_name=self.database_settings['sets_file_name'],
@@ -82,37 +83,57 @@ class Database:
 
     def load_vars_coordinates(
             self,
-            index_key: str = 'coords',
     ) -> None:
 
         self.logger.info(f"Loading variables coordinates.")
 
-        for var in self.variables_info:
-            self.logger.debug(f"Loading coordinates for variable '{var}'.")
+        if self.coordinates is not None:
+            self.logger.warning(
+                f"Variable coordinates already initialized in '{self}' object.")
+            user_input = input(
+                f"Overwrite variable coordinates? (y/[n]): ")
+            if user_input.lower() != 'y':
+                self.logger.debug(
+                    f"Original variables coordinates not overwritten.")
+                return
 
-            if index_key not in self.variables_info[var]:
-                self.variables_info[var][index_key] = {}
+        self.coordinates = {}
 
-            for coord in self.variables_info[var]['coords_structure']:
-                set_info = self.variables_info[var]['coords_structure'][coord]
+        for variable in self.variables:
+            self.logger.debug(
+                "Loading coordinates for variable "
+                f"'{self.variables[variable]['symbol']}'.")
+
+            self.coordinates[variable] = {}
+
+            for set_key, set_value in self.sets.items():
+                if self.sets_structure[set_key]['variables_shape'] is False:
+                    index = pd.MultiIndex.from_frame(set_value)
+                    self.coordinates[variable][set_key] = index
+
+            for coordinate in self.variables[variable]['shape']:
+                set_info = self.variables[variable]['shape'][coordinate]
                 set_name = set_info['set']
 
                 if 'set_category' in set_info:
                     set_cat = self.sets_structure[set_name]['set_categories'][set_info['set_category']]
                     category_name = self.sets_structure[set_name]['table_headers']['category'][0]
+
                     index = pd.MultiIndex.from_frame(
                         self.sets[set_name].query(
                             f'{category_name} == "{set_cat}"'
                         )
                     )
-                    self.variables_info[var][index_key][coord] = index
+                    self.coordinates[variable][coordinate] = index
 
-                # it must be checked in case of multiple dimensions
                 else:
                     index = pd.MultiIndex.from_frame(self.sets[set_name])
-                    self.variables_info[var][index_key][coord] = index
+                    self.coordinates[variable][coordinate] = index
 
-    def generate_blank_database(self) -> None:
+    def generate_blank_database(
+            self,
+            coordinates_label: str = 'coordinates',
+    ) -> None:
 
         if self.data is not None:
             self.logger.warning(
@@ -125,11 +146,17 @@ class Database:
 
         self.data = {}
 
-        for var_name, var_info in self.variables_info.items():
+        for var_name, var_info in self.variables.items():
+
+            if coordinates_label not in var_info:
+                error_msg = f"Variables coordinates not defined for '{var_name}'."
+                self.logger.error(error_msg)
+                raise exc.MissingDataError(error_msg)
+
             if var_info['type'] == 'exogenous':
                 self.logger.debug(
                     f"Creating DataArray for variable '{var_name}'.")
-                coords = var_info['coords']
+                coords = var_info[coordinates_label]
                 self.data[var_name] = xr.DataArray(
                     data=None,
                     coords=coords,
@@ -158,32 +185,34 @@ class Database:
                 table_fields=self.sets_structure[table]['table_headers']
             )
 
-    # def generate_input_files(
-    #         self,
-    # ) -> None:
+    def generate_input_files(
+            self,
+    ) -> None:
 
-    #     if 'coords' not in self.variables_info:
-    #         error_msg = f"Variables coordinates not defined in the '{self}' object."
-    #         self.logger.error(error_msg)
-    #         raise exc.MissingDataError(error_msg)
+        self.logger.info(
+            f"Generation of input files for '{self}' object.")
 
-    #     self.logger.info(
-    #         f"Generation of input files for '{self}' object.")
+        input_files_dir_path = Path(
+            self.database_dir_path / self.data_dir_settings['data_dir_name'])
 
-    #     input_files_dir_path = Path(
-    #         self.database_dir_path / self.data_dir_settings['data_dir_name'])
+        self.files.create_dir(input_files_dir_path)
 
-    #     self.files.create_dir(input_files_dir_path)
+        data_hierarchy = self.data_dir_settings['hierarchy']
 
-    #     data_hierarchy = self.data_dir_settings['data_hierarchy']
+        if data_hierarchy['directories'] is not None:
+            coord_category = data_hierarchy['directories']
+            coord_column_label = \
+                self.sets_structure[coord_category]['table_headers']['name'][0]
 
-    #     for var_name, var_info in self.variables_info.items():
-    #         coords = var_info['coords']
-    #         if var_info['type'] == 'exogenous':
-    #             self.logger.debug(
-    #                 f"Generating input files for variable '{var_name}'.")
-    #             for coord in coords:
-    #                 pass
+            for coord_name in self.sets[coord_category].get(coord_column_label):
+                self.files.create_dir(input_files_dir_path / coord_name)
 
-    #     self.logger.info(
-    #         f"Input files for '{self}' object generated.")
+        if data_hierarchy['files'] is not None:
+            pass
+
+        # hierarchy: {directories: None, files: scenarios, sheets: variables}
+        # hierarchy: {directories: scenarios, files: variables, sheets: None}
+        # hierarchy: {directories: None, files: variables, sheets: scenarios}
+
+        self.logger.info(
+            f"Input files for '{self}' object generated.")

@@ -11,10 +11,9 @@ database_settings:
 
 data_dir_settings:
     data_dir_name: input_data
-    hierarchy:
-        scenarios: files
-        var_name: sheets
-
+    # hierarchy: {directories: None, files: scenarios, sheets: variables}
+    hierarchy: {directories: scenarios, files: variables, sheets: None}
+    # hierarchy: {directories: None, files: variables, sheets: scenarios}
 
 problem_settings:
     execution_mode: simulation
