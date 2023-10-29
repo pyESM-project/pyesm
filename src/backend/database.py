@@ -38,6 +38,7 @@ class Database:
 
         self.variables = constants._VARIABLES.copy()
         self.coordinates = None
+
         self.data = None
         self.data_sql = None
 
@@ -130,10 +131,18 @@ class Database:
                     index = pd.MultiIndex.from_frame(self.sets[set_name])
                     self.coordinates[variable][coordinate] = index
 
+        self.logger.info(f"Variables coordinates loaded.")
+
     def generate_blank_database(
             self,
-            coordinates_label: str = 'coordinates',
     ) -> None:
+
+        self.logger.info(f"Generation of blank database.")
+
+        if self.coordinates is None:
+            error_msg = f"Variables coordinates not defined for '{self}' object."
+            self.logger.error(error_msg)
+            raise exc.MissingDataError(error_msg)
 
         if self.data is not None:
             self.logger.warning(
@@ -146,24 +155,15 @@ class Database:
 
         self.data = {}
 
-        for var_name, var_info in self.variables.items():
+        for var_name, var_coords in self.coordinates.items():
+            self.logger.debug(f"Creating DataArray for variable '{var_name}'.")
+            self.data[var_name] = xr.DataArray(
+                data=None,
+                coords=var_coords,
+                dims=list(var_coords.keys()),
+            )
 
-            if coordinates_label not in var_info:
-                error_msg = f"Variables coordinates not defined for '{var_name}'."
-                self.logger.error(error_msg)
-                raise exc.MissingDataError(error_msg)
-
-            if var_info['type'] == 'exogenous':
-                self.logger.debug(
-                    f"Creating DataArray for variable '{var_name}'.")
-                coords = var_info[coordinates_label]
-                self.data[var_name] = xr.DataArray(
-                    data=None,
-                    coords=coords,
-                    dims=list(coords.keys()),
-                )
-
-        self.logger.info(f"Blank database initialized.")
+        self.logger.info(f"Blank database generated.")
 
     def generate_blank_database_sql(
             self,
@@ -185,6 +185,9 @@ class Database:
                 table_fields=self.sets_structure[table]['table_headers']
             )
 
+    # non tentare ora di farlo troppo generale. limitarsi a buttar fuori i
+    # fogli excel di input senza possibilità di gestire la gerarchia della
+    # cartella.
     def generate_input_files(
             self,
     ) -> None:
@@ -200,14 +203,24 @@ class Database:
         data_hierarchy = self.data_dir_settings['hierarchy']
 
         if data_hierarchy['directories'] is not None:
-            coord_category = data_hierarchy['directories']
-            coord_column_label = \
-                self.sets_structure[coord_category]['table_headers']['name'][0]
+            coord = data_hierarchy['directories']
+            coord_label = \
+                self.sets_structure[coord]['table_headers']['name'][0]
 
-            for coord_name in self.sets[coord_category].get(coord_column_label):
-                self.files.create_dir(input_files_dir_path / coord_name)
+            for coord_item in self.sets[coord].get(coord_label):
+                self.files.create_dir(input_files_dir_path / coord_item)
 
-        if data_hierarchy['files'] is not None:
+        if data_hierarchy['files'] != 'variables':
+            coord = data_hierarchy['files']
+            coord_label = \
+                self.sets_structure[coord]['table_headers']['name'][0]
+
+            for coord_item in self.sets[coord].get(coord_label):
+                pass
+        else:
+            pass
+
+        if data_hierarchy['sheets']:
             pass
 
         # hierarchy: {directories: None, files: scenarios, sheets: variables}
