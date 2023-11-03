@@ -64,7 +64,7 @@ class FileManager:
             ).lower()
 
             if response != 'y':
-                self.logger.warning(
+                self.logger.info(
                     f"Directory '{dir_name}' and its content not erased.")
                 return {}
 
@@ -73,7 +73,7 @@ class FileManager:
             except OSError as error:
                 self.logger.error(f"Error: '{dir_name}' : {error.strerror}")
             else:
-                self.logger.warning(f"Folder '{dir_name}' have been erased.")
+                self.logger.info(f"Folder '{dir_name}' have been erased.")
 
         else:
             self.logger.warning(
@@ -83,7 +83,7 @@ class FileManager:
             self,
             file_name: str,
             dir_path: Path,
-            file_type: str = 'yaml') -> Dict[str, any]:
+            file_type: str = 'yaml') -> Dict[str, Any]:
         """Loads JSON or YAML file and returns a dictionary with its content.
 
         Args:
