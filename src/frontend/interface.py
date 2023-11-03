@@ -8,7 +8,7 @@ from backend.model import Model
 class Interface:
 
     default_file_settings_dir_path = Path(__file__).resolve().parent
-    default_file_settings_name = 'model_settings.yml'
+    default_file_settings_name = 'settings.yml'
 
     def __init__(
             self,
@@ -33,11 +33,15 @@ class Interface:
         self.file_settings_name = file_settings_name
         self.file_settings_dir_path = file_settings_dir_path
 
+        self.settings = self.files.load_file(
+            file_name=file_settings_name,
+            dir_path=file_settings_dir_path
+        )
+
         self.model = Model(
             logger=self.logger,
             files=self.files,
-            file_settings_name=self.file_settings_name,
-            file_settings_dir_path=self.file_settings_dir_path,
+            settings=self.settings,
         )
 
         self.logger.info(f"'{self}' object initialized.")
@@ -45,7 +49,3 @@ class Interface:
     def __repr__(self):
         class_name = type(self).__name__
         return f'{class_name}'
-
-
-if __name__ == '__main__':
-    pass
