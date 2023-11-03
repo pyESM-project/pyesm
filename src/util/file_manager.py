@@ -43,6 +43,7 @@ class FileManager:
                     f"Directory '{dir_name}' not overwritten.")
                 return {}
             else:
+                shutil.rmtree(dir_path)
                 os.makedirs(dir_path, exist_ok=True)
                 self.logger.debug(f"Directory '{dir_name}' overwritten.")
                 return {}
@@ -64,7 +65,7 @@ class FileManager:
             ).lower()
 
             if response != 'y':
-                self.logger.warning(
+                self.logger.info(
                     f"Directory '{dir_name}' and its content not erased.")
                 return {}
 
@@ -73,7 +74,7 @@ class FileManager:
             except OSError as error:
                 self.logger.error(f"Error: '{dir_name}' : {error.strerror}")
             else:
-                self.logger.warning(f"Folder '{dir_name}' have been erased.")
+                self.logger.info(f"Folder '{dir_name}' have been erased.")
 
         else:
             self.logger.warning(
@@ -83,7 +84,7 @@ class FileManager:
             self,
             file_name: str,
             dir_path: Path,
-            file_type: str = 'yaml') -> Dict[str, any]:
+            file_type: str = 'yaml') -> Dict[str, Any]:
         """Loads JSON or YAML file and returns a dictionary with its content.
 
         Args:
@@ -217,6 +218,25 @@ class FileManager:
 
         self.logger.debug(f"Excel file '{excel_file_name}' loaded.")
         return df_dict
+
+    def dict_map_to_blank_excel(
+            self,
+            dir_path: Path,
+            dict_map: Dict[str, List],
+            writer_engine: str = 'openpyxl',
+    ) -> None:
+
+        for file in dict_map['files']:
+            file_path = Path(dir_path/f"{file}.xlsx")
+            writer = pd.ExcelWriter(file_path, engine=writer_engine)
+
+            if dict_map['sheets']:
+                for sheet in dict_map['sheets']:
+                    pd.DataFrame().to_excel(writer, sheet, index=False)
+            else:
+                pd.DataFrame().to_excel(writer, file, index=False)
+
+        writer.save()
 
     # print just one dataframe to an excel sheet
     # def dataframe_to_excel(

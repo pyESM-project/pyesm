@@ -17,6 +17,7 @@ _SETS = {
             'id': ['s_ID', 'INTEGER PRIMARY KEY'],
             'name': ['s_Name', 'TEXT'],
         },
+        'variables_shape': False
     },
     'technologies': {
         'symbol': 't',
@@ -29,7 +30,8 @@ _SETS = {
         'set_categories': {
             't.s': 'Supply technology',
             't.d': 'Demand technology',
-        }
+        },
+        'variables_shape': True,
     },
     'flows': {
         'symbol': 'f',
@@ -46,6 +48,7 @@ _SETS = {
             'f.p': 'Product flow',
             'f.e': 'Environmental flow',
         },
+        'variables_shape': True,
     },
 }
 
@@ -55,8 +58,7 @@ _VARIABLES = {
         'symbol': 'v',
         'name': 'make coefficients matrix',
         'type': 'exogenous',
-        'coords_structure': {
-            'scenarios': {'set': 'scenarios'},
+        'shape': {
             'rows': {'set': 'technologies', 'set_category': 't.s'},
             'cols': {'set': 'flows', 'set_category': 'f.p'},
         },
@@ -65,8 +67,7 @@ _VARIABLES = {
         'symbol': 'u',
         'name': 'use coefficients matrix',
         'type': 'exogenous',
-        'coords_structure': {
-            'scenarios': {'set': 'scenarios'},
+        'shape': {
             'rows': {'set': 'flows', 'set_category': 'f.p'},
             'cols': {'set': 'technologies', 'set_category': 't.s'},
         },
@@ -75,8 +76,7 @@ _VARIABLES = {
         'symbol': 'Y',
         'name': 'total final demand matrix',
         'type': 'exogenous',
-        'coords_structure': {
-            'scenarios': {'set': 'scenarios'},
+        'shape': {
             'rows': {'set': 'flows', 'set_category': 'f.p'},
             'cols': {'set': 'technologies', 'set_category': 't.d'},
         },

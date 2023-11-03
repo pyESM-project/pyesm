@@ -1,0 +1,21 @@
+
+general:
+    model_name: test_case_1
+    model_description: dummy case study for testing the model
+    model_data_dir_path: D:\Politecnico di Milano\Documentale DENG - PRIN-MIMO\Models\pyESM_docs\case_studies
+
+database:
+    database_dir_path: "{{ general['model_data_dir_path'] }}{{ general['model_name'] }}"
+    generate_blank_sets: true
+    sets_file_name: sets.xlsx
+    input_data_dir_name: input_data
+    input_data_hierarchy_map: {directories: None, files: scenarios, sheets: variables}
+    # hierarchy: {directories: scenarios, files: variables, sheets: None}
+    # hierarchy: {directories: None, files: variables, sheets: scenarios}
+
+databaseSQL:
+    generate_database_sql: false    
+    database_sql_name: database.db
+    
+problem:
+    execution_mode: simulation

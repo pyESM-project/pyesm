@@ -1,8 +1,10 @@
+from typing import Dict
 from pathlib import Path
-from log_exc.logger import Logger
-from util.file_manager import FileManager
+
 from backend.database import Database
 from backend.problem import Problem
+from log_exc.logger import Logger
+from util.file_manager import FileManager
 
 
 class Model:
@@ -11,8 +13,7 @@ class Model:
             self,
             logger: Logger,
             files: FileManager,
-            file_settings_name: str,
-            file_settings_dir_path: Path,
+            settings: Dict[str, str],
     ) -> None:
 
         self.logger = logger.getChild(__name__)
@@ -20,18 +21,11 @@ class Model:
 
         self.files = files
 
-        self.model_settings = self.files.load_file(
-            file_name=file_settings_name,
-            dir_path=file_settings_dir_path
-        )
-
-        self.database_settings = self.model_settings['database_settings']
-        self.data_dir_settings = self.model_settings['data_dir_settings']
-        self.problem_settings = self.model_settings['problem_settings']
+        self.settings = settings
 
         self.model_dir_path = Path(
-            self.model_settings['model_data_folder_path'],
-            self.model_settings['model_name']
+            self.settings['general']['model_data_dir_path'],
+            self.settings['general']['model_name']
         )
 
         self.files.create_dir(self.model_dir_path)
@@ -40,14 +34,13 @@ class Model:
             logger=self.logger,
             files=self.files,
             database_dir_path=self.model_dir_path,
-            database_settings=self.database_settings,
-            data_dir_settings=self.data_dir_settings,
+            database_settings=self.settings['database'],
         )
 
         self.problem = Problem(
             logger=self.logger,
             files=self.files,
-            problem_settings=self.problem_settings,
+            problem_settings=self.settings['problem'],
         )
 
         self.logger.info(f"'{self}' generated.")
