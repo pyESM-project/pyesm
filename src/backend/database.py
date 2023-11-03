@@ -1,16 +1,13 @@
-import numpy as np
 import pandas as pd
 import xarray as xr
 
-
-from typing import Dict, Any
+from typing import Dict, List, Any
 from pathlib import Path
 
 from log_exc.logger import Logger
 from log_exc import exceptions as exc
 from util import constants
 from util.file_manager import FileManager
-from util.database_sql import DatabaseSQL
 
 
 class Database:
@@ -21,7 +18,6 @@ class Database:
             files: FileManager,
             database_dir_path: Path,
             database_settings: Dict[str, str],
-            data_dir_settings: Dict[str, Dict[str, str]],
     ) -> None:
 
         self.logger = logger.getChild(__name__)
@@ -31,28 +27,22 @@ class Database:
 
         self.database_dir_path = database_dir_path
         self.database_settings = database_settings
-        self.data_dir_settings = data_dir_settings
 
         self.sets_structure = constants._SETS.copy()
         self.sets = None
 
         self.variables = constants._VARIABLES.copy()
         self.coordinates = None
+        self.input_data_hierarchy = None
 
         self.data = None
-        self.data_sql = None
 
         if self.database_settings['generate_blank_sets']:
             self.files.dict_to_excel_headers(
                 dict_name=self.sets_structure,
-                excel_dir_path=database_dir_path,
+                excel_dir_path=self.database_dir_path,
                 excel_file_name=self.database_settings['sets_file_name'],
                 table_headers_key='table_headers',
-            )
-
-        if self.database_settings['generate_database_sql']:
-            self.generate_blank_database_sql(
-                database_sql_name=self.database_settings['database_sql_name'],
             )
 
         self.logger.info(f"'{self}' object initialized.")
@@ -82,7 +72,7 @@ class Database:
             f"'{self.database_settings['sets_file_name']}'."
         )
 
-    def load_vars_coordinates(
+    def load_coordinates(
             self,
     ) -> None:
 
@@ -165,29 +155,28 @@ class Database:
 
         self.logger.info(f"Blank database generated.")
 
-    def generate_blank_database_sql(
+    def generate_input_hierarchy(
             self,
-            database_sql_name: str = 'database.db',
-    ) -> None:
+            hierarchy_map: Dict[str, str],
+    ) -> Dict[str, Any]:
 
-        self.database_sql_name = database_sql_name
-        self.database_sql_path = Path(
-            self.database_dir_path, database_sql_name)
+        hierarchy = {key: [] for key in hierarchy_map.keys()}
 
-        self.data_sql = DatabaseSQL(
-            logger=self.logger,
-            database_sql_path=self.database_sql_path,
-        )
+        self.logger.debug(
+            f"Loading input data hierarchy labels from settings")
 
-        for table in self.sets_structure:
-            self.data_sql.create_table(
-                table_name=self.sets_structure[table]['table_name'],
-                table_fields=self.sets_structure[table]['table_headers']
-            )
+        for key, value in hierarchy_map.items():
+            if value in self.sets:
+                value_header_name = \
+                    self.sets_structure[value]['table_headers']['name'][0]
+                hierarchy[key] = list(self.sets[value][value_header_name])
+            elif value == 'variables':
+                hierarchy[key] = list(self.variables.keys())
 
-    # non tentare ora di farlo troppo generale. limitarsi a buttar fuori i
-    # fogli excel di input senza possibilità di gestire la gerarchia della
-    # cartella.
+        self.logger.debug(f"Input data hierarchy labels loaded from settings.")
+
+        return hierarchy
+
     def generate_input_files(
             self,
     ) -> None:
@@ -196,36 +185,19 @@ class Database:
             f"Generation of input files for '{self}' object.")
 
         input_files_dir_path = Path(
-            self.database_dir_path / self.data_dir_settings['data_dir_name'])
+            self.database_dir_path /
+            self.database_settings['input_data_dir_name'])
 
         self.files.create_dir(input_files_dir_path)
 
-        data_hierarchy = self.data_dir_settings['hierarchy']
+        self.input_data_hierarchy = self.generate_input_hierarchy(
+            self.database_settings['input_data_hierarchy_map'])
 
-        if data_hierarchy['directories'] is not None:
-            coord = data_hierarchy['directories']
-            coord_label = \
-                self.sets_structure[coord]['table_headers']['name'][0]
+        if self.input_data_hierarchy['directories']:
 
-            for coord_item in self.sets[coord].get(coord_label):
-                self.files.create_dir(input_files_dir_path / coord_item)
-
-        if data_hierarchy['files'] != 'variables':
-            coord = data_hierarchy['files']
-            coord_label = \
-                self.sets_structure[coord]['table_headers']['name'][0]
-
-            for coord_item in self.sets[coord].get(coord_label):
-                pass
-        else:
-            pass
-
-        if data_hierarchy['sheets']:
-            pass
-
-        # hierarchy: {directories: None, files: scenarios, sheets: variables}
-        # hierarchy: {directories: scenarios, files: variables, sheets: None}
-        # hierarchy: {directories: None, files: variables, sheets: scenarios}
+            for directory in self.input_data_hierarchy['directories']:
+                self.files.create_dir(Path(input_files_dir_path/directory))
+                # qui
 
         self.logger.info(
             f"Input files for '{self}' object generated.")
