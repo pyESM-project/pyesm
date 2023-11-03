@@ -209,5 +209,3 @@ class Database:
 
         self.logger.info(
             f"Input files for '{self}' object generated.")
-
-        print('ciao')
