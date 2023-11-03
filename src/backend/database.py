@@ -72,9 +72,7 @@ class Database:
             f"'{self.database_settings['sets_file_name']}'."
         )
 
-    def load_coordinates(
-            self,
-    ) -> None:
+    def load_coordinates(self) -> None:
 
         self.logger.info(f"Loading variables coordinates.")
 
@@ -123,9 +121,7 @@ class Database:
 
         self.logger.info(f"Variables coordinates loaded.")
 
-    def generate_blank_database(
-            self,
-    ) -> None:
+    def generate_blank_database(self) -> None:
 
         self.logger.info(f"Generation of blank database.")
 
@@ -177,9 +173,7 @@ class Database:
 
         return hierarchy
 
-    def generate_input_files(
-            self,
-    ) -> None:
+    def generate_input_files(self) -> None:
 
         self.logger.info(
             f"Generation of input files for '{self}' object.")
@@ -196,8 +190,18 @@ class Database:
         if self.input_data_hierarchy['directories']:
 
             for directory in self.input_data_hierarchy['directories']:
-                self.files.create_dir(Path(input_files_dir_path/directory))
-                # qui
+                dir_path = Path(input_files_dir_path/directory)
+                self.files.create_dir(dir_path)
+
+                self.files.dict_map_to_blank_excel(
+                    dir_path=dir_path,
+                    dict_map=self.input_data_hierarchy,
+                )
+        else:
+            self.files.dict_map_to_blank_excel(
+                dir_path=input_files_dir_path,
+                dict_map=self.input_data_hierarchy,
+            )
 
         self.logger.info(
             f"Input files for '{self}' object generated.")
