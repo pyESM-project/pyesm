@@ -7,6 +7,7 @@ from pathlib import Path
 from log_exc.logger import Logger
 from log_exc import exceptions as exc
 from util import constants
+from util import util
 from util.file_manager import FileManager
 
 
@@ -153,23 +154,26 @@ class Database:
 
     def generate_input_hierarchy(
             self,
-            hierarchy_map: Dict[str, str],
-    ) -> Dict[str, Any]:
+            hierarchy_map: Dict[str, Dict[str, str]],
+    ) -> Dict[str, Dict[str, Any]]:
 
-        hierarchy = {key: [] for key in hierarchy_map.keys()}
+        hierarchy = util.generate_dict_with_none_values(hierarchy_map)
 
         self.logger.debug(
-            f"Loading input data hierarchy labels from settings")
+            "Loading input data hierarchy labels from settings")
 
-        for key, value in hierarchy_map.items():
-            if value in self.sets:
-                value_header_name = \
-                    self.sets_structure[value]['table_headers']['name'][0]
-                hierarchy[key] = list(self.sets[value][value_header_name])
-            elif value == 'variables':
-                hierarchy[key] = list(self.variables.keys())
+        for item_key, item_value in hierarchy_map.items():
+            for key, value in item_value.items():
 
-        self.logger.debug(f"Input data hierarchy labels loaded from settings.")
+                if value in self.sets:
+                    value_header_name = \
+                        self.sets_structure[value]['table_headers']['name'][0]
+                    hierarchy[item_key][key] = \
+                        list(self.sets[value][value_header_name])
+                elif value == 'variables':
+                    hierarchy[item_key][key] = list(self.variables.keys())
+
+        self.logger.debug("Input data hierarchy labels loaded from settings.")
 
         return hierarchy
 
@@ -187,7 +191,7 @@ class Database:
         self.input_data_hierarchy = self.generate_input_hierarchy(
             self.database_settings['input_data_hierarchy_map'])
 
-        if self.input_data_hierarchy['directories']:
+        for dir_key, dir_value in self.input_data_hierarchy['directories']:
 
             for directory in self.input_data_hierarchy['directories']:
                 dir_path = Path(input_files_dir_path/directory)

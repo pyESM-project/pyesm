@@ -28,3 +28,25 @@ def find_dict_depth(item) -> int:
     if not isinstance(item, dict) or not item:
         return 0
     return 1 + max(find_dict_depth(v) for k, v in item.items())
+
+
+def generate_dict_with_none_values(item: dict) -> dict:
+    """Recursively converts a nested dictionary to a dictionary where each key 
+    has a corresponding value of None.
+
+    Args:
+        item (dict): The input dictionary to be converted.
+
+    Returns:
+        dict: The resulting dictionary with the same keys as the input, and 
+        each key having a value of None.
+    """
+    dict_keys = {}
+
+    for key, value in item.items():
+        if isinstance(value, dict):
+            dict_keys[key] = generate_dict_with_none_values(value)
+        else:
+            dict_keys[key] = None
+
+    return dict_keys

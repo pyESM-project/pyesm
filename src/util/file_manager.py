@@ -237,33 +237,3 @@ class FileManager:
                 pd.DataFrame().to_excel(writer, file, index=False)
 
         writer.save()
-
-    # print just one dataframe to an excel sheet
-    # def dataframe_to_excel(
-    #         self,
-    #         dataframe_dict: Dict[str, pd.DataFrame],
-    #         output_path: Path,
-    #         writer_engine: str = 'openpyxl',
-    # ) -> None:
-
-    #     with pd.ExcelWriter(output_path, writer_engine) as writer:
-    #         for key, dataframe in dataframe_dict.items():
-    #             dataframe.to_excel(writer, sheet_name=key, index=False)
-    #             self.logger.debug(
-    #                 f"Excel tab name '{key}' inserted into '{os.path.basename(output_path)}'.")
-
-    # def dataarrays_dict_to_excel(
-    #     self,
-    #     dataarray_dict: Dict[str, Any],
-    #     dir_path: Path,
-    #     hierarchy: Dict[str, str] = None,
-    # ) -> None:
-
-    #     if not isinstance(dataarray_dict, Dict):
-    #         error_msg = f"{dataarray_dict} is not a dictionary."
-    #         self.logger.error(error_msg)
-    #         raise TypeError(error_msg)
-
-    #     if not os.path.exists(dir_path):
-    #         self.logger.warning(f"Directory '{dir_path}' does not exist.")
-    #         self.create_dir(dir_path)
