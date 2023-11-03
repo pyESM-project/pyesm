@@ -43,6 +43,7 @@ class FileManager:
                     f"Directory '{dir_name}' not overwritten.")
                 return {}
             else:
+                shutil.rmtree(dir_path)
                 os.makedirs(dir_path, exist_ok=True)
                 self.logger.debug(f"Directory '{dir_name}' overwritten.")
                 return {}
