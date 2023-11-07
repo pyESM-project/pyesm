@@ -1,5 +1,10 @@
+import os
+import itertools as it
 import pprint as pp
-import pandas as pd
+
+
+from pathlib import Path
+from typing import Dict, List, Any
 
 
 def prettify(item: dict) -> None:
@@ -50,3 +55,30 @@ def generate_dict_with_none_values(item: dict) -> dict:
             dict_keys[key] = None
 
     return dict_keys
+
+
+def generate_nested_directories_paths(
+        base_path: Path,
+        directories: Dict[int, List[str]],
+) -> List[Path]:
+    """Generate nested directories based on the provided base_path and 
+    directory structure.
+
+    Args:
+        base_path (Path): The base path where the nested directories will be created.
+        directories (Dict[str, List[str]]): A dictionary with the directory structure,
+            where keys are folder levels, and values are lists of folder names.
+
+    Returns:
+        List (Path): List of full paths of the nested directories.
+    """
+    if directories and all(v is not None for v in directories.values()):
+        full_dir_paths = []
+        dir_paths = list(it.product(*directories.values()))
+
+        for dir_path in dir_paths:
+            full_dir_paths.append(Path(base_path, *map(str, dir_path)))
+
+        return full_dir_paths
+    else:
+        return [base_path]

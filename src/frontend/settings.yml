@@ -6,16 +6,15 @@ general:
 
 database:
     database_dir_path: "{{ general['model_data_dir_path'] }}{{ general['model_name'] }}"
-    generate_blank_sets: true
+    generate_blank_sets: false
     sets_file_name: sets.xlsx
     input_data_dir_name: input_data
     input_data_hierarchy_map: 
         directories: 
-            lv_0: scenarios
-            # lv_1: None
+            0: 
         files:
-            files_names: None
-            sheets_names: variables
+            files_name: scenarios
+            sheets_name: variables
 
     # {directories: None, files: scenarios, sheets: variables}
     # hierarchy: {directories: scenarios, files: variables, sheets: None}
