@@ -219,21 +219,32 @@ class FileManager:
         self.logger.debug(f"Excel file '{excel_file_name}' loaded.")
         return df_dict
 
-    def dict_map_to_blank_excel(
+    def dict_map_to_blank_excel_old(
             self,
             dir_path: Path,
             dict_map: Dict[str, List],
             writer_engine: str = 'openpyxl',
     ) -> None:
 
-        for file in dict_map['files']:
+        for file in dict_map['files_name']:
             file_path = Path(dir_path/f"{file}.xlsx")
             writer = pd.ExcelWriter(file_path, engine=writer_engine)
 
-            if dict_map['sheets']:
-                for sheet in dict_map['sheets']:
+            if dict_map['sheets_name']:
+                for sheet in dict_map['sheets_name']:
                     pd.DataFrame().to_excel(writer, sheet, index=False)
             else:
                 pd.DataFrame().to_excel(writer, file, index=False)
 
+            self.logger.debug(f"Excel file '{file}' generated.")
+
         writer.save()
+        writer.close()
+
+    def dict_map_to_blank_excel(
+            self,
+            dir_path: Path,
+            dict_map: Dict[str, List],
+            writer_engine: str = 'openpyxl',
+    ):
+        pass

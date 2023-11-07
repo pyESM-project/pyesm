@@ -186,26 +186,20 @@ class Database:
             self.database_dir_path /
             self.database_settings['input_data_dir_name'])
 
-        self.files.create_dir(input_files_dir_path)
+        # self.input_data_hierarchy = self.generate_input_hierarchy(
+        #     self.database_settings['input_data_hierarchy_map'])
 
-        self.input_data_hierarchy = self.generate_input_hierarchy(
-            self.database_settings['input_data_hierarchy_map'])
+        # self.full_dir_paths = util.generate_nested_directories_paths(
+        #     base_path=input_files_dir_path,
+        #     directories=self.input_data_hierarchy['directories'],
+        # )
 
-        for dir_key, dir_value in self.input_data_hierarchy['directories']:
-
-            for directory in self.input_data_hierarchy['directories']:
-                dir_path = Path(input_files_dir_path/directory)
-                self.files.create_dir(dir_path)
-
-                self.files.dict_map_to_blank_excel(
-                    dir_path=dir_path,
-                    dict_map=self.input_data_hierarchy,
-                )
-        else:
-            self.files.dict_map_to_blank_excel(
-                dir_path=input_files_dir_path,
-                dict_map=self.input_data_hierarchy,
-            )
+        # for dir_path in self.full_dir_paths:
+        #     self.files.create_dir(dir_path)
+        #     self.files.dict_map_to_blank_excel(
+        #         dir_path=dir_path,
+        #         dict_map=self.input_data_hierarchy['files']
+        #     )
 
         self.logger.info(
             f"Input files for '{self}' object generated.")
