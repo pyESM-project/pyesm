@@ -1,5 +1,5 @@
-from log_exc.logger import Logger
-from util.file_manager import FileManager
+from src.log_exc.logger import Logger
+from src.util.file_manager import FileManager
 
 
 class Problem:
@@ -12,13 +12,13 @@ class Problem:
     ) -> None:
 
         self.logger = logger.getChild(__name__)
-        self.logger.info(f"Generation of '{self}' object.")
+        self.logger.info(f"'{self}' object initialization...")
 
         self.files = files
 
         self.problem_settings = problem_settings
 
-        self.logger.info(f"'{self}' object generated.")
+        self.logger.info(f"'{self}' object initialized.")
 
     def __repr__(self):
         class_name = type(self).__name__

@@ -1,15 +1,14 @@
+from typing import List, Dict, Any
+from pathlib import Path
+
 import os
 import shutil
 import json
 import yaml
-import sys
+
 import pandas as pd
 
-from typing import List, Dict, Any
-from pathlib import Path
-
-from util.util import find_dict_depth
-from log_exc.logger import Logger
+from src.log_exc.logger import Logger
 
 
 class FileManager:
@@ -84,7 +83,7 @@ class FileManager:
             self,
             file_name: str,
             dir_path: Path,
-            file_type: str = 'yaml') -> Dict[str, Any]:
+            file_type: str = 'yml') -> Dict[str, Any]:
         """Loads JSON or YAML file and returns a dictionary with its content.
 
         Args:
@@ -104,7 +103,7 @@ class FileManager:
 
         if file_type == 'json':
             loader = json.load
-        elif file_type == 'yaml':
+        elif file_type in {'yml', 'yaml'}:
             loader = yaml.safe_load
         else:
             self.logger.error(

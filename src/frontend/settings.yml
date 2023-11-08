@@ -5,9 +5,9 @@ general:
     model_data_dir_path: D:\Politecnico di Milano\Documentale DENG - PRIN-MIMO\Models\pyESM_docs\case_studies
 
 database:
-    database_dir_path: "{{ general['model_data_dir_path'] }}{{ general['model_name'] }}"
-    generate_blank_sets: false
-    sets_file_name: sets.xlsx
+    database_name: database.db
+    generate_blank_sets: true
+    sets_excel_file_name: sets.xlsx
     input_data_dir_name: input_data
     input_data_hierarchy_map: 
         directories: 

@@ -1,10 +1,10 @@
 from typing import Dict
 from pathlib import Path
 
-from backend.database import Database
-from backend.problem import Problem
-from log_exc.logger import Logger
-from util.file_manager import FileManager
+from src.backend.database import Database
+from src.backend.problem import Problem
+from src.log_exc.logger import Logger
+from src.util.file_manager import FileManager
 
 
 class Model:
@@ -17,7 +17,7 @@ class Model:
     ) -> None:
 
         self.logger = logger.getChild(__name__)
-        self.logger.info(f"Generation of '{self}' object.")
+        self.logger.info(f"'{self}' object initialization...")
 
         self.files = files
 
@@ -33,8 +33,8 @@ class Model:
         self.database = Database(
             logger=self.logger,
             files=self.files,
-            database_dir_path=self.model_dir_path,
             database_settings=self.settings['database'],
+            database_dir_path=self.model_dir_path
         )
 
         self.problem = Problem(
@@ -43,7 +43,7 @@ class Model:
             problem_settings=self.settings['problem'],
         )
 
-        self.logger.info(f"'{self}' generated.")
+        self.logger.info(f"'{self}' initialized.")
 
     def __repr__(self):
         class_name = type(self).__name__
