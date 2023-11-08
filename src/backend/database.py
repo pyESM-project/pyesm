@@ -1,14 +1,15 @@
+from pathlib import Path
+from typing import Dict, Any
+
 import pandas as pd
 import xarray as xr
 
-from typing import Dict, List, Any
-from pathlib import Path
-
-from log_exc.logger import Logger
-from log_exc import exceptions as exc
-from util import constants
-from util import util
-from util.file_manager import FileManager
+from src.log_exc.logger import Logger
+from src.log_exc import exceptions as exc
+from src.util import constants
+from src.util import util
+from src.util.file_manager import FileManager
+from src.util.sql_manager import SQLManager, connection
 
 
 class Database:
@@ -17,34 +18,33 @@ class Database:
             self,
             logger: Logger,
             files: FileManager,
-            database_dir_path: Path,
             database_settings: Dict[str, str],
+            database_dir_path: Path,
     ) -> None:
 
         self.logger = logger.getChild(__name__)
-        self.logger.info(f"Generation of '{self}' object.")
+        self.logger.info(f"'{self}' object initialization...")
 
         self.files = files
 
-        self.database_dir_path = database_dir_path
-        self.database_settings = database_settings
-
         self.sets_structure = constants._SETS.copy()
-        self.sets = None
-
         self.variables = constants._VARIABLES.copy()
-        self.coordinates = None
-        self.input_data_hierarchy = None
 
-        self.data = None
+        self.database_settings = database_settings
+        self.database_dir_path = database_dir_path
+
+        self.sqltools = SQLManager(
+            logger=self.logger,
+            database_dir_path=self.database_dir_path,
+            database_name=database_settings['database_name']
+        )
 
         if self.database_settings['generate_blank_sets']:
-            self.files.dict_to_excel_headers(
-                dict_name=self.sets_structure,
-                excel_dir_path=self.database_dir_path,
-                excel_file_name=self.database_settings['sets_file_name'],
-                table_headers_key='table_headers',
-            )
+            self.create_blank_sets()
+
+        # self.sets = None
+        # self.coordinates = None
+        # self.input_data_hierarchy = None
 
         self.logger.info(f"'{self}' object initialized.")
 
@@ -52,15 +52,28 @@ class Database:
         class_name = type(self).__name__
         return f'{class_name}'
 
+    @connection
+    def create_blank_sets(self) -> None:
+        for value in self.sets_structure.values():
+            self.sqltools.create_table(
+                table_name=value['table_name'],
+                table_fields=value['table_headers']
+            )
+            self.sqltools.table_to_excel(
+                excel_filename=self.database_settings['sets_excel_file_name'],
+                excel_dir_path=self.database_dir_path,
+                table_name=value['table_name'],
+            )
+
     def load_sets(self) -> Dict[str, pd.DataFrame]:
 
         if self.sets is not None:
             self.logger.debug(
                 f"Sets are already defined in the '{self}' object.")
             user_input = input(
-                f"Overwrite Sets? (y/[n]): ")
+                "Overwrite Sets? (y/[n]): ")
             if user_input.lower() != 'y':
-                self.logger.debug(f"Original Sets not owerwritten.")
+                self.logger.debug("Original Sets not owerwritten.")
                 return
 
         self.sets = self.files.excel_to_dataframes_dict(

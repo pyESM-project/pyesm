@@ -1,40 +1,52 @@
+from functools import wraps
+from pathlib import Path
+from typing import List, Dict
 import sqlite3
+
 import pandas as pd
 
-from typing import List, Dict
-from pathlib import Path
-from log_exc.logger import Logger
+from src.log_exc.logger import Logger
 
 
-class DatabaseSQL:
+class SQLManager:
 
     def __init__(
         self,
         logger: Logger,
-        database_sql_path: Path,
+        database_dir_path: Path,
+        database_name: str,
+        xls_engine: str = 'openpyxl',
     ) -> None:
 
         self.logger = logger.getChild(__name__)
-        self.logger.info(f"Generation of '{self}' object.")
 
-        self.database_sql_path = database_sql_path
+        self.database_sql_path = Path(database_dir_path, database_name)
 
         self.connection = None
         self.cursor = None
-        self.open_connection()
+        self.xls_engine = xls_engine
+
+        self.logger.info(f"'{self}' object generated.")
 
     def __repr__(self):
         class_name = type(self).__name__
         return f'{class_name}'
 
     def open_connection(self) -> None:
-        self.connection = sqlite3.connect(f'{self.database_sql_path}')
-        self.cursor = self.connection.cursor()
-        self.logger.info(f"'{self}' connection opened.")
+        if self.connection is None:
+            self.connection = sqlite3.connect(f'{self.database_sql_path}')
+            self.cursor = self.connection.cursor()
+            self.logger.debug(f"'{self}' connection opened.")
+        else:
+            self.logger.debug(f"'{self}' connection is already open.")
 
     def close_connection(self) -> None:
-        self.connection.close()
-        self.logger.info(f"'{self}' connection closed.")
+        if self.connection:
+            self.connection.close()
+            self.logger.debug(f"'{self}' connection closed.")
+        else:
+            self.logger.debug(
+                f"'{self}' connection already closed or does not exist.")
 
     def drop_table(self, table_name: str) -> None:
         query = f"DROP TABLE {table_name}"
@@ -57,21 +69,21 @@ class DatabaseSQL:
             if user_input.lower() != 'y':
                 self.logger.debug(f"Table '{table_name}' not owerwritten.")
                 return
-            else:
-                self.drop_table(table_name=table_name)
-                fields_str = ", ".join(
-                    [f'{field_name} {field_type}'
-                     for field_name, field_type in table_fields.values()])
+            self.drop_table(table_name=table_name)
 
-                query = f'CREATE TABLE {table_name}({fields_str})'
+        fields_str = ", ".join(
+            [f'{field_name} {field_type}'
+                for field_name, field_type in table_fields.values()])
 
-                try:
-                    self.cursor.execute(query)
-                    self.connection.commit()
-                    self.logger.debug(f"Table '{table_name}' created.")
-                except sqlite3.OperationalError as error_msg:
-                    self.logger.error(error_msg)
-                    raise sqlite3.OperationalError(error_msg)
+        query = f'CREATE TABLE {table_name}({fields_str})'
+
+        try:
+            self.cursor.execute(query)
+            self.connection.commit()
+            self.logger.debug(f"Table '{table_name}' created.")
+        except sqlite3.OperationalError as error_msg:
+            self.logger.error(error_msg)
+            raise sqlite3.OperationalError(error_msg)
 
     def get_existing_tables(self) -> List[str]:
         query = "SELECT name FROM sqlite_master WHERE type='table'"
@@ -159,3 +171,36 @@ class DatabaseSQL:
         df = pd.DataFrame(data, columns=table_fields['labels'])
 
         return df
+
+    def table_to_excel(
+            self,
+            excel_filename: str,
+            excel_dir_path: Path,
+            table_name: str,
+    ) -> None:
+        excel_file_path = Path(excel_dir_path, excel_filename)
+
+        mode = 'a' if excel_file_path.exists() else 'w'
+        if_sheet_exists = 'replace' if mode == 'a' else None
+
+        with pd.ExcelWriter(
+            excel_file_path,
+            engine=self.xls_engine,
+            mode=mode,
+            if_sheet_exists=if_sheet_exists,
+        ) as writer:
+            query = f'SELECT * FROM {table_name}'
+            df = pd.read_sql_query(query, self.connection)
+            df.to_excel(writer, sheet_name=table_name, index=False)
+
+
+def connection(method):
+    @wraps(method)
+    def wrapper(self, *args, **kwargs):
+        self.sqltools.open_connection()
+        try:
+            result = method(self, *args, **kwargs)
+        finally:
+            self.sqltools.close_connection()
+        return result
+    return wrapper
