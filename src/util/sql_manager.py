@@ -22,6 +22,7 @@ class SQLManager:
 
         self.database_sql_path = Path(database_dir_path, database_name)
 
+        self.database_name = database_name
         self.connection = None
         self.cursor = None
         self.xls_engine = xls_engine
@@ -36,17 +37,27 @@ class SQLManager:
         if self.connection is None:
             self.connection = sqlite3.connect(f'{self.database_sql_path}')
             self.cursor = self.connection.cursor()
-            self.logger.debug(f"'{self}' connection opened.")
+            self.logger.debug(f"Connection to '{self.database_name}' opened.")
         else:
-            self.logger.debug(f"'{self}' connection is already open.")
+            self.logger.debug(
+                f"Connection to '{self.database_name}' already opened.")
 
     def close_connection(self) -> None:
         if self.connection:
             self.connection.close()
-            self.logger.debug(f"'{self}' connection closed.")
+            self.connection = None
+            self.logger.debug(f"Connection to '{self.database_name}' closed.")
         else:
             self.logger.debug(
-                f"'{self}' connection already closed or does not exist.")
+                f"Connection to '{self.database_name}' "
+                "already closed or does not exist.")
+
+    @property
+    def get_existing_tables(self) -> List[str]:
+        query = "SELECT name FROM sqlite_master WHERE type='table'"
+        self.cursor.execute(query)
+        tables = self.cursor.fetchall()
+        return [table[0] for table in tables]
 
     def drop_table(self, table_name: str) -> None:
         query = f"DROP TABLE {table_name}"
@@ -54,13 +65,27 @@ class SQLManager:
         self.connection.commit()
         self.logger.debug(f"Table '{table_name}' deleted.")
 
+    def get_table_fields(
+            self,
+            table_name: str
+    ) -> Dict[str, str]:
+
+        table_fields = {}
+        query = f"PRAGMA table_info('{table_name}')"
+        self.cursor.execute(query)
+        result = self.cursor.fetchall()
+        table_fields['labels'] = [row[1] for row in result]
+        table_fields['types'] = [row[2] for row in result]
+        return table_fields
+
     def create_table(
             self,
             table_name: str,
             table_fields: Dict[str, List[str]],
+            table_content: pd.DataFrame = None,
     ) -> None:
 
-        if table_name in self.get_existing_tables():
+        if table_name in self.get_existing_tables:
             self.logger.debug(
                 f"Table '{table_name}' already exists.")
 
@@ -85,24 +110,26 @@ class SQLManager:
             self.logger.error(error_msg)
             raise sqlite3.OperationalError(error_msg)
 
-    def get_existing_tables(self) -> List[str]:
-        query = "SELECT name FROM sqlite_master WHERE type='table'"
-        self.cursor.execute(query)
-        tables = self.cursor.fetchall()
-        return [table[0] for table in tables]
+        if table_content is not None:
+            table_headers = set(self.get_table_fields(table_name)['labels'])
+            if set(table_content.columns) != table_headers:
+                self.logger.error(
+                    "Passed DataFrame headers do not match fields for table "
+                    f"{table_name}. Data not inserted.")
+                return
 
-    def get_table_fields(
-            self,
-            table_name: str
-    ) -> Dict[str, str]:
+            try:
+                table_content.to_sql(
+                    table_name,
+                    self.connection,
+                    if_exists='replace',
+                    index=False
+                )
+                self.logger.debug(f"Data inserted into table '{table_name}'.")
 
-        table_fields = {}
-        query = f"PRAGMA table_info('{table_name}')"
-        self.cursor.execute(query)
-        result = self.cursor.fetchall()
-        table_fields['labels'] = [row[1] for row in result]
-        table_fields['types'] = [row[2] for row in result]
-        return table_fields
+            except sqlite3.OperationalError as error_msg:
+                self.logger.error(error_msg)
+                raise sqlite3.OperationalError(error_msg)
 
     def count_table_data_entries(
             self,
@@ -120,12 +147,12 @@ class SQLManager:
     def dataframe_to_table(
             self,
             table_name: str,
-            dataframe: pd.DataFrame,
+            table_df: pd.DataFrame,
     ) -> None:
 
         table_fields = self.get_table_fields(table_name=table_name)
 
-        if not dataframe.columns.tolist() == table_fields['labels']:
+        if not table_df.columns.tolist() == table_fields['labels']:
             error = f"Dataframe and table {table_name} headers mismatch."
             self.logger.error(error)
             raise ValueError(error)
@@ -141,9 +168,9 @@ class SQLManager:
             else:
                 self.delete_table_entries(table_name=table_name)
 
-        data = [tuple(row) for row in dataframe.values.tolist()]
+        data = [tuple(row) for row in table_df.values.tolist()]
 
-        placeholders = ', '.join(['?'] * len(dataframe.columns))
+        placeholders = ', '.join(['?'] * len(table_df.columns))
         query = f"INSERT INTO {table_name} VALUES ({placeholders})"
 
         try:
