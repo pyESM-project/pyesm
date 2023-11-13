@@ -1,5 +1,6 @@
+from itertools import product
 from pathlib import Path
-from typing import Dict, Any
+from typing import Dict, List, Any
 
 import pandas as pd
 import xarray as xr
@@ -29,6 +30,8 @@ class Database:
 
         self.sets_structure = constants._SETS.copy()
         self.variables = constants._VARIABLES.copy()
+        self.sets = None
+        self.coordinates = None
 
         self.database_settings = database_settings
         self.database_dir_path = database_dir_path
@@ -39,11 +42,12 @@ class Database:
             database_name=database_settings['database_name']
         )
 
-        if self.database_settings['generate_blank_sets']:
+        if not Path(
+            self.database_dir_path,
+            self.database_settings['sets_excel_file_name']
+        ).exists():
             self.create_blank_sets()
 
-        # self.sets = None
-        # self.coordinates = None
         # self.input_data_hierarchy = None
 
         self.logger.info(f"'{self}' object initialized.")
@@ -65,8 +69,8 @@ class Database:
                 table_name=value['table_name'],
             )
 
-    def load_sets(self) -> Dict[str, pd.DataFrame]:
-
+    @connection
+    def load_sets(self) -> None:
         if self.sets is not None:
             self.logger.debug(
                 f"Sets are already defined in the '{self}' object.")
@@ -77,18 +81,55 @@ class Database:
                 return
 
         self.sets = self.files.excel_to_dataframes_dict(
-            excel_file_name=self.database_settings['sets_file_name'],
+            excel_file_name=self.database_settings['sets_excel_file_name'],
             excel_file_dir_path=self.database_dir_path,
             empty_data_fill='',
         )
+
+        for table_key, table in self.sets.items():
+            self.sqltools.dataframe_to_table(
+                table_name=table_key,
+                table_df=table
+            )
+
         self.logger.info(
-            "New Sets loaded from "
-            f"'{self.database_settings['sets_file_name']}'."
+            f"New Sets loaded in {self} class and "
+            f"'{self.database_settings['database_name']}' from "
+            f"'{self.database_settings['sets_excel_file_name']}'."
         )
 
-    def load_coordinates(self) -> None:
+    @connection
+    def generate_blank_database(self) -> None:
 
-        self.logger.info(f"Loading variables coordinates.")
+        self.logger.info(f"Generation of empty database...")
+
+        self.load_variables_coordinates()
+
+        for var_key, var_info in self.variables.items():
+            set_field = var_info['set_headers']
+            table_fields = util.generate_dict_with_none_values(
+                var_info['coordinates'])
+
+            for field_key in table_fields.keys():
+                table_fields[field_key] = \
+                    self.sets_structure[field_key]['table_headers'][set_field]
+
+            unpivoted_coordinates = None
+            if self.coordinates[var_key]:
+                unpivoted_coordinates = self.unpivot_coordinates(
+                    self.coordinates[var_key])
+
+            self.sqltools.create_table(
+                table_name=var_key,
+                table_fields=table_fields,
+                table_content=unpivoted_coordinates
+            )
+
+        self.logger.info(f"Empty database generated.")
+
+    def load_variables_coordinates(self) -> None:
+
+        self.logger.info(f"Loading variables coordinates...")
 
         if self.coordinates is not None:
             self.logger.warning(
@@ -102,68 +143,55 @@ class Database:
 
         self.coordinates = {}
 
-        for variable in self.variables:
+        for var_key, var_info in self.variables.items():
             self.logger.debug(
                 "Loading coordinates for variable "
-                f"'{self.variables[variable]['symbol']}'.")
+                f"'{var_info['symbol']}'.")
 
-            self.coordinates[variable] = {}
+            self.coordinates[var_key] = {}
 
-            for set_key, set_value in self.sets.items():
-                if self.sets_structure[set_key]['variables_shape'] is False:
-                    index = pd.MultiIndex.from_frame(set_value)
-                    self.coordinates[variable][set_key] = index
+            for coord_key, coord_info in var_info['coordinates'].items():
+                set_label = self.sets_structure[coord_key]['table_name']
+                header_label_type = var_info['set_headers']
+                header_label = self.sets_structure[coord_key]['table_headers'][header_label_type][0]
 
-            for coordinate in self.variables[variable]['shape']:
-                set_info = self.variables[variable]['shape'][coordinate]
-                set_name = set_info['set']
+                if coord_info == 'all':
+                    set_values = list(self.sets[set_label][header_label])
 
-                if 'set_category' in set_info:
-                    set_cat = self.sets_structure[set_name]['set_categories'][set_info['set_category']]
-                    category_name = self.sets_structure[set_name]['table_headers']['category'][0]
-
-                    index = pd.MultiIndex.from_frame(
-                        self.sets[set_name].query(
-                            f'{category_name} == "{set_cat}"'
-                        )
+                elif isinstance(coord_info, dict) and coord_info['set_categories']:
+                    category_filter_id = coord_info['set_categories']
+                    category_filter = self.sets_structure[coord_key]['set_categories'][category_filter_id]
+                    category_header_name = self.sets_structure[coord_key]['table_headers']['category'][0]
+                    set_filtered = self.sets[set_label].query(
+                        f'{category_header_name} == "{category_filter}"'
                     )
-                    self.coordinates[variable][coordinate] = index
-
+                    set_values = list(set_filtered[header_label])
                 else:
-                    index = pd.MultiIndex.from_frame(self.sets[set_name])
-                    self.coordinates[variable][coordinate] = index
+                    error_msg = f"Missing or wrong data in 'sets_structure' parameter."
+                    self.logger.error(error_msg)
+                    raise exc.MissingDataError(error_msg)
+
+                self.coordinates[var_key][header_label] = set_values
 
         self.logger.info(f"Variables coordinates loaded.")
 
-    def generate_blank_database(self) -> None:
+    def unpivot_coordinates(
+            self,
+            coordinates_dict: Dict[str, List[str]],
+    ) -> pd.DataFrame:
 
-        self.logger.info(f"Generation of blank database.")
+        df = pd.DataFrame()
+        cartesian_product = list(product(*coordinates_dict.values()))
+        df = pd.DataFrame(
+            cartesian_product,
+            columns=coordinates_dict.keys()
+        )
+        return df
 
-        if self.coordinates is None:
-            error_msg = f"Variables coordinates not defined for '{self}' object."
-            self.logger.error(error_msg)
-            raise exc.MissingDataError(error_msg)
-
-        if self.data is not None:
-            self.logger.warning(
-                f"Database already initialized in '{self}' object.")
-            user_input = input(
-                f"Overwrite Database? (y/[n]): ")
-            if user_input.lower() != 'y':
-                self.logger.debug(f"Original Database not overwritten.")
-                return
-
-        self.data = {}
-
-        for var_name, var_coords in self.coordinates.items():
-            self.logger.debug(f"Creating DataArray for variable '{var_name}'.")
-            self.data[var_name] = xr.DataArray(
-                data=None,
-                coords=var_coords,
-                dims=list(var_coords.keys()),
-            )
-
-        self.logger.info(f"Blank database generated.")
+    # design method to read a pivot map in settings,
+    # then pivot blank input data tables
+    # then print to excel
+    # the same pivot map is supposed to be an argument of the load data method
 
     def generate_input_hierarchy(
             self,
@@ -198,21 +226,6 @@ class Database:
         input_files_dir_path = Path(
             self.database_dir_path /
             self.database_settings['input_data_dir_name'])
-
-        # self.input_data_hierarchy = self.generate_input_hierarchy(
-        #     self.database_settings['input_data_hierarchy_map'])
-
-        # self.full_dir_paths = util.generate_nested_directories_paths(
-        #     base_path=input_files_dir_path,
-        #     directories=self.input_data_hierarchy['directories'],
-        # )
-
-        # for dir_path in self.full_dir_paths:
-        #     self.files.create_dir(dir_path)
-        #     self.files.dict_map_to_blank_excel(
-        #         dir_path=dir_path,
-        #         dict_map=self.input_data_hierarchy['files']
-        #     )
 
         self.logger.info(
             f"Input files for '{self}' object generated.")
