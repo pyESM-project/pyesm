@@ -6,7 +6,6 @@ general:
 
 database:
     database_name: database.db
-    generate_blank_sets: true
     sets_excel_file_name: sets.xlsx
     input_data_dir_name: input_data
     input_data_hierarchy_map: 
@@ -20,9 +19,5 @@ database:
     # hierarchy: {directories: scenarios, files: variables, sheets: None}
     # hierarchy: {directories: None, files: variables, sheets: scenarios}
 
-databaseSQL:
-    generate_database_sql: false    
-    database_sql_name: database.db
-    
 problem:
     execution_mode: simulation
