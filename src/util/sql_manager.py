@@ -1,6 +1,6 @@
 from functools import wraps
 from pathlib import Path
-from typing import List, Dict
+from typing import List, Dict, Any
 import sqlite3
 
 import pandas as pd
@@ -54,7 +54,7 @@ class SQLManager:
                 "already closed or does not exist.")
 
     @property
-    def get_existing_tables(self) -> List[str]:
+    def get_existing_tables_names(self) -> List[str]:
         query = "SELECT name FROM sqlite_master WHERE type='table'"
         self.cursor.execute(query)
         tables = self.cursor.fetchall()
@@ -96,7 +96,7 @@ class SQLManager:
             table_content: pd.DataFrame = None,
     ) -> None:
 
-        if table_name in self.get_existing_tables:
+        if table_name in self.get_existing_tables_names:
             self.logger.debug(
                 f"Table '{table_name}' already exists.")
 
@@ -133,6 +133,31 @@ class SQLManager:
             except sqlite3.OperationalError as error_msg:
                 self.logger.error(error_msg)
                 raise sqlite3.OperationalError(error_msg)
+
+    def add_column(
+            self,
+            table_name: str,
+            column_name: str,
+            column_type: str,
+            default_value: Any = None,
+    ) -> None:
+
+        if table_name not in self.get_existing_tables_names:
+            self.logger.warning(
+                f"Table '{table_name}' does NOT exist.")
+            return
+
+        try:
+            query = (
+                f'ALTER TABLE {table_name} ADD COLUMN "{column_name}" {column_type}')
+            if default_value is not None:
+                query += f" DEFAULT {default_value}"
+            self.execute_query(query)
+            self.connection.commit()
+            self.logger.debug(
+                f"Column '{column_name}' added to table '{table_name}'.")
+        except Exception as error_msg:
+            self.logger.error(f"Error adding column to table: {error_msg}")
 
     def enable_foreing_keys(self) -> None:
         if not self.foreign_keys_enabled:
