@@ -1,6 +1,7 @@
 from itertools import product
 from pathlib import Path
 from typing import Dict, List, Any
+from numpy.core.fromnumeric import std
 
 import pandas as pd
 import xarray as xr
@@ -99,7 +100,10 @@ class Database:
         )
 
     @connection
-    def generate_blank_database(self) -> None:
+    def generate_blank_database(
+        self,
+        std_values_nametype: List[str] = ['values', 'REAL'],
+    ) -> None:
 
         self.logger.info(f"Generation of empty database...")
 
@@ -123,6 +127,12 @@ class Database:
                 table_name=var_key,
                 table_fields=table_fields,
                 table_content=unpivoted_coordinates,
+            )
+
+            self.sqltools.add_column(
+                table_name=var_key,
+                column_name=std_values_nametype[0],
+                column_type=std_values_nametype[1],
             )
 
         self.logger.info(f"Empty database generated.")
@@ -209,10 +219,44 @@ class Database:
         )
         return df
 
-    # design method to read a pivot map in settings,
-    # then pivot blank input data tables
-    # then print to excel
-    # the same pivot map is supposed to be an argument of the load data method
+    @connection
+    def generate_input_files(
+            self,
+            one_table_per_file: bool = False,
+            std_excel_file_name: str = 'input_data.xlsx',
+    ) -> None:
+
+        self.logger.info(
+            f"Generation of input files for '{self}' object.")
+
+        input_files_dir_path = Path(
+            self.database_dir_path /
+            self.database_settings['input_data_dir_name'])
+
+        self.files.create_dir(input_files_dir_path)
+
+        tables_names_list = self.sqltools.get_existing_tables_names
+
+        for _, var_info in self.variables.items():
+
+            if var_info['type'] == 'exogenous' and \
+                    var_info['symbol'] in tables_names_list:
+
+                if one_table_per_file:
+                    output_file_name = var_info['symbol']+".xlsx"
+                else:
+                    output_file_name = std_excel_file_name
+
+                self.sqltools.table_to_excel(
+                    excel_filename=output_file_name,
+                    excel_dir_path=input_files_dir_path,
+                    table_name=var_info['symbol'],
+                )
+
+        self.logger.info(
+            f"Input files for '{self}' object generated.")
+
+    # deprecated
 
     def generate_input_hierarchy(
             self,
@@ -238,15 +282,3 @@ class Database:
         self.logger.debug("Input data hierarchy labels loaded from settings.")
 
         return hierarchy
-
-    def generate_input_files(self) -> None:
-
-        self.logger.info(
-            f"Generation of input files for '{self}' object.")
-
-        input_files_dir_path = Path(
-            self.database_dir_path /
-            self.database_settings['input_data_dir_name'])
-
-        self.logger.info(
-            f"Input files for '{self}' object generated.")
