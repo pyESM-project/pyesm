@@ -8,16 +8,6 @@ database:
     database_name: database.db
     sets_excel_file_name: sets.xlsx
     input_data_dir_name: input_data
-    input_data_hierarchy_map: 
-        directories: 
-            0: 
-        files:
-            files_name: scenarios
-            sheets_name: variables
-
-    # {directories: None, files: scenarios, sheets: variables}
-    # hierarchy: {directories: scenarios, files: variables, sheets: None}
-    # hierarchy: {directories: None, files: variables, sheets: scenarios}
 
 problem:
-    execution_mode: simulation
+    execution_mode: simulationks
