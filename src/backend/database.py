@@ -122,10 +122,31 @@ class Database:
             self.sqltools.create_table(
                 table_name=var_key,
                 table_fields=table_fields,
-                table_content=unpivoted_coordinates
+                table_content=unpivoted_coordinates,
             )
 
         self.logger.info(f"Empty database generated.")
+
+    @connection
+    def load_foreign_keys(self) -> None:
+
+        self.logger.info('Loading foreign keys...')
+
+        for var_key, var_info in self.variables.items():
+            for coord_key in var_info['coordinates'].keys():
+                set_field = var_info['set_headers']
+                parent_table_info = self.sets_structure[coord_key]
+                parent_table = parent_table_info['table_name']
+                tables_key = parent_table_info['table_headers'][set_field][0]
+
+                self.sqltools.add_foreign_key(
+                    child_table=var_key,
+                    child_key=tables_key,
+                    parent_table=parent_table,
+                    parent_key=tables_key,
+                )
+
+        self.logger.info('Foreign keys loaded.')
 
     def load_variables_coordinates(self) -> None:
 

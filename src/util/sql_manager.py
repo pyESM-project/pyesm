@@ -26,6 +26,7 @@ class SQLManager:
         self.connection = None
         self.cursor = None
         self.xls_engine = xls_engine
+        self.foreign_keys_enabled = False
 
         self.logger.info(f"'{self}' object generated.")
 
@@ -59,6 +60,17 @@ class SQLManager:
         tables = self.cursor.fetchall()
         return [table[0] for table in tables]
 
+    def execute_query(
+            self,
+            query: str,
+    ) -> None:
+        try:
+            self.cursor.execute(query)
+            self.connection.commit()
+        except sqlite3.OperationalError as error_msg:
+            self.logger.error(error_msg)
+            raise sqlite3.OperationalError(error_msg)
+
     def drop_table(self, table_name: str) -> None:
         query = f"DROP TABLE {table_name}"
         self.cursor.execute(query)
@@ -71,8 +83,7 @@ class SQLManager:
     ) -> Dict[str, str]:
 
         table_fields = {}
-        query = f"PRAGMA table_info('{table_name}')"
-        self.cursor.execute(query)
+        self.execute_query(f"PRAGMA table_info('{table_name}')")
         result = self.cursor.fetchall()
         table_fields['labels'] = [row[1] for row in result]
         table_fields['types'] = [row[2] for row in result]
@@ -100,15 +111,7 @@ class SQLManager:
             [f'{field_name} {field_type}'
                 for field_name, field_type in table_fields.values()])
 
-        query = f'CREATE TABLE {table_name}({fields_str})'
-
-        try:
-            self.cursor.execute(query)
-            self.connection.commit()
-            self.logger.debug(f"Table '{table_name}' created.")
-        except sqlite3.OperationalError as error_msg:
-            self.logger.error(error_msg)
-            raise sqlite3.OperationalError(error_msg)
+        self.execute_query(f'CREATE TABLE {table_name}({fields_str})')
 
         if table_content is not None:
             table_headers = set(self.get_table_fields(table_name)['labels'])
@@ -131,16 +134,49 @@ class SQLManager:
                 self.logger.error(error_msg)
                 raise sqlite3.OperationalError(error_msg)
 
+    def enable_foreing_keys(self) -> None:
+        if not self.foreign_keys_enabled:
+            self.execute_query('PRAGMA foreign_keys = ON;')
+            self.foreign_keys_enabled = True
+
+    def disable_foreing_keys(self) -> None:
+        if self.foreign_keys_enabled:
+            self.execute_query('PRAGMA foreign_keys = OFF;')
+            self.foreign_keys_enabled = False
+
+    # this is not working cause ALTER TABLE does not work with FOREIGN KEY
+    # i should create the table and at the same time the foreing key constraints
+    def add_foreign_key(
+            self,
+            child_table: str,
+            child_key: str,
+            parent_table: str,
+            parent_key: str,
+    ) -> None:
+
+        self.enable_foreing_keys()
+
+        self.execute_query(f'''
+            ALTER TABLE {child_table} 
+            ADD FOREIGN KEY ({child_key}) REFERENCES {parent_table}({parent_key});
+        ''')
+
+        self.disable_foreing_keys()
+
+        self.logger.debug(
+            "Foreing key assigned: "
+            f"'{parent_table}({parent_key})' -> '{child_table}({child_key})'")
+
     def count_table_data_entries(
             self,
             table_name: str
     ) -> int:
-        self.cursor.execute(f'SELECT COUNT(*) FROM {table_name}')
+        self.execute_query(f'SELECT COUNT(*) FROM {table_name}')
         return self.cursor.fetchone()[0]
 
     def delete_table_entries(self, table_name: str) -> None:
         num_entries = self.count_table_data_entries(table_name=table_name)
-        self.cursor.execute(f"DELETE FROM {table_name}")
+        self.execute_query(f"DELETE FROM {table_name}")
         self.logger.debug(
             f"{num_entries} rows deleted from table '{table_name}'")
 
@@ -190,8 +226,7 @@ class SQLManager:
             table_name: str,
     ) -> pd.DataFrame:
 
-        query = f"SELECT * FROM {table_name}"
-        self.cursor.execute(query)
+        self.execute_query(f"SELECT * FROM {table_name}")
         data = self.cursor.fetchall()
 
         table_fields = self.get_table_fields(table_name=table_name)
