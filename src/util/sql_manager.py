@@ -73,7 +73,7 @@ class SQLManager:
 
     def drop_table(self, table_name: str) -> None:
         query = f"DROP TABLE {table_name}"
-        self.cursor.execute(query)
+        self.execute_query(query)
         self.connection.commit()
         self.logger.debug(f"Table '{table_name}' deleted.")
 
@@ -159,39 +159,6 @@ class SQLManager:
         except Exception as error_msg:
             self.logger.error(f"Error adding column to table: {error_msg}")
 
-    def enable_foreing_keys(self) -> None:
-        if not self.foreign_keys_enabled:
-            self.execute_query('PRAGMA foreign_keys = ON;')
-            self.foreign_keys_enabled = True
-
-    def disable_foreing_keys(self) -> None:
-        if self.foreign_keys_enabled:
-            self.execute_query('PRAGMA foreign_keys = OFF;')
-            self.foreign_keys_enabled = False
-
-    # this is not working cause ALTER TABLE does not work with FOREIGN KEY
-    # i should create the table and at the same time the foreing key constraints
-    def add_foreign_key(
-            self,
-            child_table: str,
-            child_key: str,
-            parent_table: str,
-            parent_key: str,
-    ) -> None:
-
-        self.enable_foreing_keys()
-
-        self.execute_query(f'''
-            ALTER TABLE {child_table} 
-            ADD FOREIGN KEY ({child_key}) REFERENCES {parent_table}({parent_key});
-        ''')
-
-        self.disable_foreing_keys()
-
-        self.logger.debug(
-            "Foreing key assigned: "
-            f"'{parent_table}({parent_key})' -> '{child_table}({child_key})'")
-
     def count_table_data_entries(
             self,
             table_name: str
@@ -208,12 +175,12 @@ class SQLManager:
     def dataframe_to_table(
             self,
             table_name: str,
-            table_df: pd.DataFrame,
+            dataframe: pd.DataFrame,
     ) -> None:
 
         table_fields = self.get_table_fields(table_name=table_name)
 
-        if not table_df.columns.tolist() == table_fields['labels']:
+        if not dataframe.columns.tolist() == table_fields['labels']:
             error = f"Dataframe and table {table_name} headers mismatch."
             self.logger.error(error)
             raise ValueError(error)
@@ -229,9 +196,9 @@ class SQLManager:
             else:
                 self.delete_table_entries(table_name=table_name)
 
-        data = [tuple(row) for row in table_df.values.tolist()]
+        data = [tuple(row) for row in dataframe.values.tolist()]
 
-        placeholders = ', '.join(['?'] * len(table_df.columns))
+        placeholders = ', '.join(['?'] * len(dataframe.columns))
         query = f"INSERT INTO {table_name} VALUES ({placeholders})"
 
         try:
@@ -267,8 +234,20 @@ class SQLManager:
     ) -> None:
         excel_file_path = Path(excel_dir_path, excel_filename)
 
+        if excel_file_path.exists():
+            confirm = input(
+                f"File {excel_filename} already exists. \
+                    Do you want to overwrite it? (y/[n])"
+            )
+            if confirm.lower() != 'y':
+                self.logger.warning(
+                    f"File '{excel_filename}' not overwritten.")
+                return
+
         mode = 'a' if excel_file_path.exists() else 'w'
         if_sheet_exists = 'replace' if mode == 'a' else None
+
+        self.logger.debug(f"Exporting '{table_name}' to {excel_filename}.")
 
         with pd.ExcelWriter(
             excel_file_path,
@@ -279,6 +258,42 @@ class SQLManager:
             query = f'SELECT * FROM {table_name}'
             df = pd.read_sql_query(query, self.connection)
             df.to_excel(writer, sheet_name=table_name, index=False)
+
+
+"""
+    def enable_foreing_keys(self) -> None:
+        if not self.foreign_keys_enabled:
+            self.execute_query('PRAGMA foreign_keys = ON;')
+            self.foreign_keys_enabled = True
+
+    def disable_foreing_keys(self) -> None:
+        if self.foreign_keys_enabled:
+            self.execute_query('PRAGMA foreign_keys = OFF;')
+            self.foreign_keys_enabled = False
+
+    # this is not working cause ALTER TABLE does not work with FOREIGN KEY
+    # i should create the table and at the same time the foreing key constraints
+    def add_foreign_key(
+            self,
+            child_table: str,
+            child_key: str,
+            parent_table: str,
+            parent_key: str,
+    ) -> None:
+
+        self.enable_foreing_keys()
+
+        self.execute_query(f'''
+            ALTER TABLE {child_table} 
+            ADD FOREIGN KEY ({child_key}) REFERENCES {parent_table}({parent_key});
+        ''')
+
+        self.disable_foreing_keys()
+
+        self.logger.debug(
+            "Foreing key assigned: "
+            f"'{parent_table}({parent_key})' -> '{child_table}({child_key})'")
+"""
 
 
 def connection(method):
