@@ -62,6 +62,7 @@ class Database:
                 table_name=value['table_name'],
                 table_fields=value['table_headers']
             )
+
             self.sqltools.table_to_excel(
                 excel_filename=self.database_settings['sets_excel_file_name'],
                 excel_dir_path=self.database_dir_path,
@@ -260,7 +261,7 @@ class Database:
                 excel_file_dir_path=input_files_dir_path,
                 excel_file_name=self.database_settings['input_file_name']
             )
-            for data_key, data_values in data.keys():
+            for data_key, data_values in data.items():
                 self.sqltools.dataframe_to_table(
                     table_name=data_key,
                     dataframe=data_values

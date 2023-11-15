@@ -8,8 +8,8 @@ database:
     database_name: database.db
     sets_excel_file_name: sets.xlsx
     input_data_dir_name: input_data
-    multiple_input_files: True
+    multiple_input_files: False
     input_file_name: input_data.xlsx
 
 problem:
-    execution_mode: simulationks
+    execution_mode: simulation

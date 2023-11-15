@@ -186,6 +186,7 @@ class SQLManager:
             raise ValueError(error)
 
         num_entries = self.count_table_data_entries(table_name=table_name)
+
         if num_entries > 0:
             confirm = input(
                 f"Table {table_name} already has {num_entries} rows. Do you \
@@ -234,7 +235,10 @@ class SQLManager:
     ) -> None:
         excel_file_path = Path(excel_dir_path, excel_filename)
 
-        if excel_file_path.exists():
+        mode = 'a' if excel_file_path.exists() else 'w'
+        if_sheet_exists = 'replace' if mode == 'a' else None
+
+        if excel_file_path.exists() and if_sheet_exists != 'replace':
             confirm = input(
                 f"File {excel_filename} already exists. \
                     Do you want to overwrite it? (y/[n])"
@@ -243,9 +247,6 @@ class SQLManager:
                 self.logger.warning(
                     f"File '{excel_filename}' not overwritten.")
                 return
-
-        mode = 'a' if excel_file_path.exists() else 'w'
-        if_sheet_exists = 'replace' if mode == 'a' else None
 
         self.logger.debug(f"Exporting '{table_name}' to {excel_filename}.")
 

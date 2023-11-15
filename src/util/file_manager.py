@@ -13,15 +13,26 @@ from src.log_exc.logger import Logger
 
 class FileManager:
 
-    def __init__(self, logger: Logger) -> None:
+    def __init__(
+        self,
+        logger: Logger,
+        xls_engine: str = 'openpyxl',
+    ) -> None:
+
         self.logger = logger.getChild(__name__)
+
+        self.xls_engine = xls_engine
+
         self.logger.info(f"'{self}' object generated.")
 
     def __repr__(self):
         class_name = type(self).__name__
         return f'{class_name}'
 
-    def create_dir(self, dir_path: Path) -> None:
+    def create_dir(
+            self,
+            dir_path: Path
+    ) -> None:
         """This method receives a folder path and generates the folder in case
         it not exists.
 
@@ -193,6 +204,43 @@ class FileManager:
             write_excel(excel_file_path, dict_name)
             self.logger.debug(
                 f"Excel file '{excel_file_name}' generated.")
+
+    def dataframe_to_excel(
+            self,
+            dataframe: pd.DataFrame,
+            excel_filename: str,
+            excel_dir_path: str,
+            sheet_name: str = None,
+    ) -> None:
+
+        excel_file_path = Path(excel_dir_path, excel_filename)
+
+        if excel_file_path.exists():
+            confirm = input(
+                f"File {excel_filename} already exists. \
+                    Do you want to overwrite it? (y/[n])"
+            )
+            if confirm.lower() != 'y':
+                self.logger.warning(
+                    f"File '{excel_filename}' not overwritten.")
+                return
+
+        mode = 'a' if excel_file_path.exists() else 'w'
+        if_sheet_exists = 'replace' if mode == 'a' else None
+
+        self.logger.debug(
+            f"Exporting dataframe {sheet_name} to {excel_filename}.")
+
+        if sheet_name is None:
+            sheet_name = str(dataframe)
+
+        with pd.ExcelWriter(
+            excel_file_path,
+            engine=self.xls_engine,
+            mode=mode,
+            if_sheet_exists=if_sheet_exists,
+        ) as writer:
+            dataframe.to_excel(writer, sheet_name=sheet_name, index=False)
 
     def excel_to_dataframes_dict(
             self,
