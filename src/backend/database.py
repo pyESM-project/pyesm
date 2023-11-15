@@ -49,8 +49,6 @@ class Database:
         ).exists():
             self.create_blank_sets()
 
-        # self.input_data_hierarchy = None
-
         self.logger.info(f"'{self}' object initialized.")
 
     def __repr__(self):
@@ -90,7 +88,7 @@ class Database:
         for table_key, table in self.sets.items():
             self.sqltools.dataframe_to_table(
                 table_name=table_key,
-                table_df=table
+                dataframe=table
             )
 
         self.logger.info(
@@ -136,27 +134,6 @@ class Database:
             )
 
         self.logger.info(f"Empty database generated.")
-
-    @connection
-    def load_foreign_keys(self) -> None:
-
-        self.logger.info('Loading foreign keys...')
-
-        for var_key, var_info in self.variables.items():
-            for coord_key in var_info['coordinates'].keys():
-                set_field = var_info['set_headers']
-                parent_table_info = self.sets_structure[coord_key]
-                parent_table = parent_table_info['table_name']
-                tables_key = parent_table_info['table_headers'][set_field][0]
-
-                self.sqltools.add_foreign_key(
-                    child_table=var_key,
-                    child_key=tables_key,
-                    parent_table=parent_table,
-                    parent_key=tables_key,
-                )
-
-        self.logger.info('Foreign keys loaded.')
 
     def load_variables_coordinates(self) -> None:
 
@@ -220,20 +197,17 @@ class Database:
         return df
 
     @connection
-    def generate_input_files(
-            self,
-            one_table_per_file: bool = False,
-            std_excel_file_name: str = 'input_data.xlsx',
-    ) -> None:
+    def generate_input_files(self) -> None:
 
         self.logger.info(
-            f"Generation of input files for '{self}' object.")
+            f"Generation of input file/s for '{self}' object.")
 
         input_files_dir_path = Path(
             self.database_dir_path /
             self.database_settings['input_data_dir_name'])
 
-        self.files.create_dir(input_files_dir_path)
+        if not input_files_dir_path.exists():
+            self.files.create_dir(input_files_dir_path)
 
         tables_names_list = self.sqltools.get_existing_tables_names
 
@@ -242,10 +216,10 @@ class Database:
             if var_info['type'] == 'exogenous' and \
                     var_info['symbol'] in tables_names_list:
 
-                if one_table_per_file:
+                if self.database_settings['multiple_input_files']:
                     output_file_name = var_info['symbol']+".xlsx"
                 else:
-                    output_file_name = std_excel_file_name
+                    output_file_name = self.database_settings['input_file_name']
 
                 self.sqltools.table_to_excel(
                     excel_filename=output_file_name,
@@ -254,31 +228,67 @@ class Database:
                 )
 
         self.logger.info(
-            f"Input files for '{self}' object generated.")
+            f"Input file/s for '{self}' object generated.")
 
-    # deprecated
+    @connection
+    def load_input_files(self) -> None:
 
-    def generate_input_hierarchy(
-            self,
-            hierarchy_map: Dict[str, Dict[str, str]],
-    ) -> Dict[str, Dict[str, Any]]:
+        self.logger.info(f"Loading input file/s for '{self}' object.")
 
-        hierarchy = util.generate_dict_with_none_values(hierarchy_map)
+        input_files_dir_path = Path(
+            self.database_dir_path /
+            self.database_settings['input_data_dir_name'])
 
-        self.logger.debug(
-            "Loading input data hierarchy labels from settings")
+        if self.database_settings['multiple_input_files']:
+            data = {}
+            for _, var_info in self.variables.items():
+                if var_info['type'] == 'exogenous':
+                    var_name = var_info['symbol']
+                    file_name = var_name + '.xlsx'
+                    data.update(
+                        self.files.excel_to_dataframes_dict(
+                            excel_file_dir_path=input_files_dir_path,
+                            excel_file_name=file_name
+                        )
+                    )
+                    self.sqltools.dataframe_to_table(
+                        table_name=var_name,
+                        dataframe=data[var_name],
+                    )
+        else:
+            data = self.files.excel_to_dataframes_dict(
+                excel_file_dir_path=input_files_dir_path,
+                excel_file_name=self.database_settings['input_file_name']
+            )
+            for data_key, data_values in data.keys():
+                self.sqltools.dataframe_to_table(
+                    table_name=data_key,
+                    dataframe=data_values
+                )
 
-        for item_key, item_value in hierarchy_map.items():
-            for key, value in item_value.items():
+        self.logger.info(f"Input file/s loaded into '{self}' object.")
 
-                if value in self.sets:
-                    value_header_name = \
-                        self.sets_structure[value]['table_headers']['name'][0]
-                    hierarchy[item_key][key] = \
-                        list(self.sets[value][value_header_name])
-                elif value == 'variables':
-                    hierarchy[item_key][key] = list(self.variables.keys())
+    """
+    @connection
+    def load_foreign_keys(self) -> None:
+        # this is not working so far
+        # problems with the add_foreign_key query
 
-        self.logger.debug("Input data hierarchy labels loaded from settings.")
+        self.logger.info('Loading foreign keys...')
 
-        return hierarchy
+        for var_key, var_info in self.variables.items():
+            for coord_key in var_info['coordinates'].keys():
+                set_field = var_info['set_headers']
+                parent_table_info = self.sets_structure[coord_key]
+                parent_table = parent_table_info['table_name']
+                tables_key = parent_table_info['table_headers'][set_field][0]
+
+                self.sqltools.add_foreign_key(
+                    child_table=var_key,
+                    child_key=tables_key,
+                    parent_table=parent_table,
+                    parent_key=tables_key,
+                )
+
+        self.logger.info('Foreign keys loaded.')
+    """
