@@ -1,14 +1,17 @@
+from itertools import product
+from pathlib import Path
+from typing import Dict, List, Any
+from numpy.core.fromnumeric import std
+
 import pandas as pd
 import xarray as xr
 
-from typing import Dict, List, Any
-from pathlib import Path
-
-from log_exc.logger import Logger
-from log_exc import exceptions as exc
-from util import constants
-from util import util
-from util.file_manager import FileManager
+from src.log_exc.logger import Logger
+from src.log_exc import exceptions as exc
+from src.util import constants
+from src.util import util
+from src.util.file_manager import FileManager
+from src.util.sql_manager import SQLManager, connection
 
 
 class Database:
@@ -17,34 +20,34 @@ class Database:
             self,
             logger: Logger,
             files: FileManager,
-            database_dir_path: Path,
             database_settings: Dict[str, str],
+            database_dir_path: Path,
     ) -> None:
 
         self.logger = logger.getChild(__name__)
-        self.logger.info(f"Generation of '{self}' object.")
+        self.logger.info(f"'{self}' object initialization...")
 
         self.files = files
 
-        self.database_dir_path = database_dir_path
-        self.database_settings = database_settings
-
         self.sets_structure = constants._SETS.copy()
-        self.sets = None
-
         self.variables = constants._VARIABLES.copy()
+        self.sets = None
         self.coordinates = None
-        self.input_data_hierarchy = None
 
-        self.data = None
+        self.database_settings = database_settings
+        self.database_dir_path = database_dir_path
 
-        if self.database_settings['generate_blank_sets']:
-            self.files.dict_to_excel_headers(
-                dict_name=self.sets_structure,
-                excel_dir_path=self.database_dir_path,
-                excel_file_name=self.database_settings['sets_file_name'],
-                table_headers_key='table_headers',
-            )
+        self.sqltools = SQLManager(
+            logger=self.logger,
+            database_dir_path=self.database_dir_path,
+            database_name=database_settings['database_name']
+        )
+
+        if not Path(
+            self.database_dir_path,
+            self.database_settings['sets_excel_file_name']
+        ).exists():
+            self.create_blank_sets()
 
         self.logger.info(f"'{self}' object initialized.")
 
@@ -52,30 +55,89 @@ class Database:
         class_name = type(self).__name__
         return f'{class_name}'
 
-    def load_sets(self) -> Dict[str, pd.DataFrame]:
+    @connection
+    def create_blank_sets(self) -> None:
+        for value in self.sets_structure.values():
+            self.sqltools.create_table(
+                table_name=value['table_name'],
+                table_fields=value['table_headers']
+            )
+            self.sqltools.table_to_excel(
+                excel_filename=self.database_settings['sets_excel_file_name'],
+                excel_dir_path=self.database_dir_path,
+                table_name=value['table_name'],
+            )
 
+    @connection
+    def load_sets(self) -> None:
         if self.sets is not None:
             self.logger.debug(
                 f"Sets are already defined in the '{self}' object.")
             user_input = input(
-                f"Overwrite Sets? (y/[n]): ")
+                "Overwrite Sets? (y/[n]): ")
             if user_input.lower() != 'y':
-                self.logger.debug(f"Original Sets not owerwritten.")
+                self.logger.debug("Original Sets not owerwritten.")
                 return
 
         self.sets = self.files.excel_to_dataframes_dict(
-            excel_file_name=self.database_settings['sets_file_name'],
+            excel_file_name=self.database_settings['sets_excel_file_name'],
             excel_file_dir_path=self.database_dir_path,
             empty_data_fill='',
         )
+
+        for table_key, table in self.sets.items():
+            self.sqltools.dataframe_to_table(
+                table_name=table_key,
+                dataframe=table
+            )
+
         self.logger.info(
-            "New Sets loaded from "
-            f"'{self.database_settings['sets_file_name']}'."
+            f"New Sets loaded in {self} class and "
+            f"'{self.database_settings['database_name']}' from "
+            f"'{self.database_settings['sets_excel_file_name']}'."
         )
 
-    def load_coordinates(self) -> None:
+    @connection
+    def generate_blank_database(
+        self,
+        std_values_nametype: List[str] = ['values', 'REAL'],
+    ) -> None:
 
-        self.logger.info(f"Loading variables coordinates.")
+        self.logger.info(f"Generation of empty database...")
+
+        self.load_variables_coordinates()
+
+        for var_key, var_info in self.variables.items():
+            set_field = var_info['set_headers']
+            table_fields = util.generate_dict_with_none_values(
+                var_info['coordinates'])
+
+            for field_key in table_fields.keys():
+                table_fields[field_key] = \
+                    self.sets_structure[field_key]['table_headers'][set_field]
+
+            unpivoted_coordinates = None
+            if self.coordinates[var_key]:
+                unpivoted_coordinates = self.unpivot_coordinates(
+                    self.coordinates[var_key])
+
+            self.sqltools.create_table(
+                table_name=var_key,
+                table_fields=table_fields,
+                table_content=unpivoted_coordinates,
+            )
+
+            self.sqltools.add_column(
+                table_name=var_key,
+                column_name=std_values_nametype[0],
+                column_type=std_values_nametype[1],
+            )
+
+        self.logger.info(f"Empty database generated.")
+
+    def load_variables_coordinates(self) -> None:
+
+        self.logger.info(f"Loading variables coordinates...")
 
         if self.coordinates is not None:
             self.logger.warning(
@@ -89,123 +151,144 @@ class Database:
 
         self.coordinates = {}
 
-        for variable in self.variables:
+        for var_key, var_info in self.variables.items():
             self.logger.debug(
                 "Loading coordinates for variable "
-                f"'{self.variables[variable]['symbol']}'.")
+                f"'{var_info['symbol']}'.")
 
-            self.coordinates[variable] = {}
+            self.coordinates[var_key] = {}
 
-            for set_key, set_value in self.sets.items():
-                if self.sets_structure[set_key]['variables_shape'] is False:
-                    index = pd.MultiIndex.from_frame(set_value)
-                    self.coordinates[variable][set_key] = index
+            for coord_key, coord_info in var_info['coordinates'].items():
+                set_label = self.sets_structure[coord_key]['table_name']
+                header_label_type = var_info['set_headers']
+                header_label = self.sets_structure[coord_key]['table_headers'][header_label_type][0]
 
-            for coordinate in self.variables[variable]['shape']:
-                set_info = self.variables[variable]['shape'][coordinate]
-                set_name = set_info['set']
+                if coord_info == 'all':
+                    set_values = list(self.sets[set_label][header_label])
 
-                if 'set_category' in set_info:
-                    set_cat = self.sets_structure[set_name]['set_categories'][set_info['set_category']]
-                    category_name = self.sets_structure[set_name]['table_headers']['category'][0]
-
-                    index = pd.MultiIndex.from_frame(
-                        self.sets[set_name].query(
-                            f'{category_name} == "{set_cat}"'
-                        )
+                elif isinstance(coord_info, dict) and coord_info['set_categories']:
+                    category_filter_id = coord_info['set_categories']
+                    category_filter = self.sets_structure[coord_key]['set_categories'][category_filter_id]
+                    category_header_name = self.sets_structure[coord_key]['table_headers']['category'][0]
+                    set_filtered = self.sets[set_label].query(
+                        f'{category_header_name} == "{category_filter}"'
                     )
-                    self.coordinates[variable][coordinate] = index
-
+                    set_values = list(set_filtered[header_label])
                 else:
-                    index = pd.MultiIndex.from_frame(self.sets[set_name])
-                    self.coordinates[variable][coordinate] = index
+                    error_msg = f"Missing or wrong data in 'sets_structure' parameter."
+                    self.logger.error(error_msg)
+                    raise exc.MissingDataError(error_msg)
+
+                self.coordinates[var_key][header_label] = set_values
 
         self.logger.info(f"Variables coordinates loaded.")
 
-    def generate_blank_database(self) -> None:
-
-        self.logger.info(f"Generation of blank database.")
-
-        if self.coordinates is None:
-            error_msg = f"Variables coordinates not defined for '{self}' object."
-            self.logger.error(error_msg)
-            raise exc.MissingDataError(error_msg)
-
-        if self.data is not None:
-            self.logger.warning(
-                f"Database already initialized in '{self}' object.")
-            user_input = input(
-                f"Overwrite Database? (y/[n]): ")
-            if user_input.lower() != 'y':
-                self.logger.debug(f"Original Database not overwritten.")
-                return
-
-        self.data = {}
-
-        for var_name, var_coords in self.coordinates.items():
-            self.logger.debug(f"Creating DataArray for variable '{var_name}'.")
-            self.data[var_name] = xr.DataArray(
-                data=None,
-                coords=var_coords,
-                dims=list(var_coords.keys()),
-            )
-
-        self.logger.info(f"Blank database generated.")
-
-    def generate_input_hierarchy(
+    def unpivot_coordinates(
             self,
-            hierarchy_map: Dict[str, Dict[str, str]],
-    ) -> Dict[str, Dict[str, Any]]:
+            coordinates_dict: Dict[str, List[str]],
+    ) -> pd.DataFrame:
 
-        hierarchy = util.generate_dict_with_none_values(hierarchy_map)
+        df = pd.DataFrame()
+        cartesian_product = list(product(*coordinates_dict.values()))
+        df = pd.DataFrame(
+            cartesian_product,
+            columns=coordinates_dict.keys()
+        )
+        return df
 
-        self.logger.debug(
-            "Loading input data hierarchy labels from settings")
-
-        for item_key, item_value in hierarchy_map.items():
-            for key, value in item_value.items():
-
-                if value in self.sets:
-                    value_header_name = \
-                        self.sets_structure[value]['table_headers']['name'][0]
-                    hierarchy[item_key][key] = \
-                        list(self.sets[value][value_header_name])
-                elif value == 'variables':
-                    hierarchy[item_key][key] = list(self.variables.keys())
-
-        self.logger.debug("Input data hierarchy labels loaded from settings.")
-
-        return hierarchy
-
+    @connection
     def generate_input_files(self) -> None:
 
         self.logger.info(
-            f"Generation of input files for '{self}' object.")
+            f"Generation of input file/s for '{self}' object.")
 
         input_files_dir_path = Path(
             self.database_dir_path /
             self.database_settings['input_data_dir_name'])
 
-        self.files.create_dir(input_files_dir_path)
+        if not input_files_dir_path.exists():
+            self.files.create_dir(input_files_dir_path)
 
-        self.input_data_hierarchy = self.generate_input_hierarchy(
-            self.database_settings['input_data_hierarchy_map'])
+        tables_names_list = self.sqltools.get_existing_tables_names
 
-        for dir_key, dir_value in self.input_data_hierarchy['directories']:
+        for _, var_info in self.variables.items():
 
-            for directory in self.input_data_hierarchy['directories']:
-                dir_path = Path(input_files_dir_path/directory)
-                self.files.create_dir(dir_path)
+            if var_info['type'] == 'exogenous' and \
+                    var_info['symbol'] in tables_names_list:
 
-                self.files.dict_map_to_blank_excel(
-                    dir_path=dir_path,
-                    dict_map=self.input_data_hierarchy,
+                if self.database_settings['multiple_input_files']:
+                    output_file_name = var_info['symbol']+".xlsx"
+                else:
+                    output_file_name = self.database_settings['input_file_name']
+
+                self.sqltools.table_to_excel(
+                    excel_filename=output_file_name,
+                    excel_dir_path=input_files_dir_path,
+                    table_name=var_info['symbol'],
                 )
-        else:
-            self.files.dict_map_to_blank_excel(
-                dir_path=input_files_dir_path,
-                dict_map=self.input_data_hierarchy,
-            )
 
         self.logger.info(
-            f"Input files for '{self}' object generated.")
+            f"Input file/s for '{self}' object generated.")
+
+    @connection
+    def load_input_files(self) -> None:
+
+        self.logger.info(f"Loading input file/s for '{self}' object.")
+
+        input_files_dir_path = Path(
+            self.database_dir_path /
+            self.database_settings['input_data_dir_name'])
+
+        if self.database_settings['multiple_input_files']:
+            data = {}
+            for _, var_info in self.variables.items():
+                if var_info['type'] == 'exogenous':
+                    var_name = var_info['symbol']
+                    file_name = var_name + '.xlsx'
+                    data.update(
+                        self.files.excel_to_dataframes_dict(
+                            excel_file_dir_path=input_files_dir_path,
+                            excel_file_name=file_name
+                        )
+                    )
+                    self.sqltools.dataframe_to_table(
+                        table_name=var_name,
+                        dataframe=data[var_name],
+                    )
+        else:
+            data = self.files.excel_to_dataframes_dict(
+                excel_file_dir_path=input_files_dir_path,
+                excel_file_name=self.database_settings['input_file_name']
+            )
+            for data_key, data_values in data.keys():
+                self.sqltools.dataframe_to_table(
+                    table_name=data_key,
+                    dataframe=data_values
+                )
+
+        self.logger.info(f"Input file/s loaded into '{self}' object.")
+
+    """
+    @connection
+    def load_foreign_keys(self) -> None:
+        # this is not working so far
+        # problems with the add_foreign_key query
+
+        self.logger.info('Loading foreign keys...')
+
+        for var_key, var_info in self.variables.items():
+            for coord_key in var_info['coordinates'].keys():
+                set_field = var_info['set_headers']
+                parent_table_info = self.sets_structure[coord_key]
+                parent_table = parent_table_info['table_name']
+                tables_key = parent_table_info['table_headers'][set_field][0]
+
+                self.sqltools.add_foreign_key(
+                    child_table=var_key,
+                    child_key=tables_key,
+                    parent_table=parent_table,
+                    parent_key=tables_key,
+                )
+
+        self.logger.info('Foreign keys loaded.')
+    """

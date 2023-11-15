@@ -1,22 +1,21 @@
+from typing import List, Dict, Any
+from pathlib import Path
+
 import os
 import shutil
 import json
 import yaml
-import sys
+
 import pandas as pd
 
-from typing import List, Dict, Any
-from pathlib import Path
-
-from util.util import find_dict_depth
-from log_exc.logger import Logger
+from src.log_exc.logger import Logger
 
 
 class FileManager:
 
     def __init__(self, logger: Logger) -> None:
         self.logger = logger.getChild(__name__)
-        self.logger.debug(f"'{self}' object generated.")
+        self.logger.info(f"'{self}' object generated.")
 
     def __repr__(self):
         class_name = type(self).__name__
@@ -84,7 +83,7 @@ class FileManager:
             self,
             file_name: str,
             dir_path: Path,
-            file_type: str = 'yaml') -> Dict[str, Any]:
+            file_type: str = 'yml') -> Dict[str, Any]:
         """Loads JSON or YAML file and returns a dictionary with its content.
 
         Args:
@@ -104,7 +103,7 @@ class FileManager:
 
         if file_type == 'json':
             loader = json.load
-        elif file_type == 'yaml':
+        elif file_type in {'yml', 'yaml'}:
             loader = yaml.safe_load
         else:
             self.logger.error(
@@ -199,7 +198,7 @@ class FileManager:
             self,
             excel_file_name: str,
             excel_file_dir_path: Path,
-            empty_data_fill: str,
+            empty_data_fill: str = '',
     ) -> Dict[str, pd.DataFrame]:
         """Reading an excel file composed by multiple tabs and returning
         a dictionary with keys as tabs and tables in each tab as Pandas 
@@ -218,22 +217,3 @@ class FileManager:
 
         self.logger.debug(f"Excel file '{excel_file_name}' loaded.")
         return df_dict
-
-    def dict_map_to_blank_excel(
-            self,
-            dir_path: Path,
-            dict_map: Dict[str, List],
-            writer_engine: str = 'openpyxl',
-    ) -> None:
-
-        for file in dict_map['files']:
-            file_path = Path(dir_path/f"{file}.xlsx")
-            writer = pd.ExcelWriter(file_path, engine=writer_engine)
-
-            if dict_map['sheets']:
-                for sheet in dict_map['sheets']:
-                    pd.DataFrame().to_excel(writer, sheet, index=False)
-            else:
-                pd.DataFrame().to_excel(writer, file, index=False)
-
-        writer.save()

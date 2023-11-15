@@ -1,5 +1,7 @@
-from pathlib import Path
 import logging
+
+from pathlib import Path
+
 
 class Logger:
     """Class defined for logging Model class and subclasses."""

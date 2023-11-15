@@ -5,25 +5,11 @@ general:
     model_data_dir_path: D:\Politecnico di Milano\Documentale DENG - PRIN-MIMO\Models\pyESM_docs\case_studies
 
 database:
-    database_dir_path: "{{ general['model_data_dir_path'] }}{{ general['model_name'] }}"
-    generate_blank_sets: true
-    sets_file_name: sets.xlsx
+    database_name: database.db
+    sets_excel_file_name: sets.xlsx
     input_data_dir_name: input_data
-    input_data_hierarchy_map: 
-        directories: 
-            lv_0: scenarios
-            # lv_1: None
-        files:
-            files_names: None
-            sheets_names: variables
+    multiple_input_files: True
+    input_file_name: input_data.xlsx
 
-    # {directories: None, files: scenarios, sheets: variables}
-    # hierarchy: {directories: scenarios, files: variables, sheets: None}
-    # hierarchy: {directories: None, files: variables, sheets: scenarios}
-
-databaseSQL:
-    generate_database_sql: false    
-    database_sql_name: database.db
-    
 problem:
-    execution_mode: simulation
+    execution_mode: simulationks
