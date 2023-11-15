@@ -1,8 +1,8 @@
 from pathlib import Path
 
-from log_exc.logger import Logger
-from util.file_manager import FileManager
-from backend.model import Model
+from src.log_exc.logger import Logger
+from src.util.file_manager import FileManager
+from src.backend.model import Model
 
 
 class Interface:
@@ -26,7 +26,7 @@ class Interface:
             log_format=log_format
         )
 
-        self.logger.info(f"Initializing '{self}' object.")
+        self.logger.info(f"'{self}' object initialization...")
 
         self.files = FileManager(logger=self.logger)
 
