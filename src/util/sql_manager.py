@@ -93,6 +93,7 @@ class SQLManager:
             self,
             table_name: str,
             table_fields: Dict[str, List[str]],
+            foreign_keys: Dict[str, tuple] = None,
             table_content: pd.DataFrame = None,
     ) -> None:
 
@@ -111,7 +112,16 @@ class SQLManager:
             [f'{field_name} {field_type}'
                 for field_name, field_type in table_fields.values()])
 
-        self.execute_query(f'CREATE TABLE {table_name}({fields_str})')
+        if foreign_keys:
+            self.enable_foreing_keys()
+            foreign_keys_str = ", ".join(
+                [f'FOREIGN KEY ({field_name}) REFERENCES {ref_table}({ref_field})'
+                 for field_name, (ref_field, ref_table) in foreign_keys.items()]
+            )
+            fields_str += f", {foreign_keys_str}"
+
+        query = f"CREATE TABLE {table_name}({fields_str});"
+        self.execute_query(query)
 
         if table_content is not None:
             table_headers = set(self.get_table_fields(table_name)['labels'])
@@ -122,17 +132,38 @@ class SQLManager:
                 return
 
             try:
-                table_content.to_sql(
-                    table_name,
-                    self.connection,
-                    if_exists='replace',
-                    index=False
-                )
-                self.logger.debug(f"Data inserted into table '{table_name}'.")
+                columns_str = ', '.join(table_content.columns)
+
+                for index, row in table_content.iterrows():
+                    values_str = ', '.join(f'"{value}"' for value in row)
+                    query = f'INSERT INTO {table_name} ({columns_str}) VALUES ({values_str})'
+                    self.execute_query(query)
+
+                self.logger.debug(f"Data replaced in table '{table_name}'")
 
             except sqlite3.OperationalError as error_msg:
                 self.logger.error(error_msg)
                 raise sqlite3.OperationalError(error_msg)
+
+    def enable_foreing_keys(self) -> None:
+        if not self.foreign_keys_enabled:
+            self.execute_query('PRAGMA foreign_keys = ON;')
+            self.foreign_keys_enabled = True
+            self.logger.debug('Foreign keys enabled.')
+
+    def disable_foreing_keys(self) -> None:
+        if self.foreign_keys_enabled:
+            self.execute_query('PRAGMA foreign_keys = OFF;')
+            self.foreign_keys_enabled = False
+            self.logger.debug('Foreign keys disabled.')
+
+    def get_foreign_keys(
+            self,
+            table_name
+    ):
+        query = f"PRAGMA foreign_key_list({table_name})"
+        self.execute_query(query)
+        return self.cursor.fetchall()
 
     def add_column(
             self,
@@ -220,12 +251,9 @@ class SQLManager:
     ) -> pd.DataFrame:
 
         self.execute_query(f"SELECT * FROM {table_name}")
-        data = self.cursor.fetchall()
-
+        table = self.cursor.fetchall()
         table_fields = self.get_table_fields(table_name=table_name)
-        df = pd.DataFrame(data, columns=table_fields['labels'])
-
-        return df
+        return pd.DataFrame(table, columns=table_fields['labels'])
 
     def table_to_excel(
             self,
@@ -260,41 +288,58 @@ class SQLManager:
             df = pd.read_sql_query(query, self.connection)
             df.to_excel(writer, sheet_name=table_name, index=False)
 
-
-"""
-    def enable_foreing_keys(self) -> None:
-        if not self.foreign_keys_enabled:
-            self.execute_query('PRAGMA foreign_keys = ON;')
-            self.foreign_keys_enabled = True
-
-    def disable_foreing_keys(self) -> None:
-        if self.foreign_keys_enabled:
-            self.execute_query('PRAGMA foreign_keys = OFF;')
-            self.foreign_keys_enabled = False
-
-    # this is not working cause ALTER TABLE does not work with FOREIGN KEY
-    # i should create the table and at the same time the foreing key constraints
-    def add_foreign_key(
+    def filtered_table_to_dataframe(
             self,
-            child_table: str,
-            child_key: str,
-            parent_table: str,
-            parent_key: str,
-    ) -> None:
+            table_name: str,
+            filters_dict: Dict[str, List[str]],
+    ) -> pd.DataFrame:
 
-        self.enable_foreing_keys()
+        conditions = " AND ".join(
+            [f"{key} IN ({', '.join(['?']*len(values))})"
+             for key, values in filters_dict.items()]
+        )
 
-        self.execute_query(f'''
-            ALTER TABLE {child_table} 
-            ADD FOREIGN KEY ({child_key}) REFERENCES {parent_table}({parent_key});
-        ''')
+        flattened_values = []
+        for list_values in filters_dict.values():
+            for value in list_values:
+                flattened_values.append(value)
 
-        self.disable_foreing_keys()
+        query = f"SELECT * FROM {table_name} WHERE {conditions};"
 
-        self.logger.debug(
-            "Foreing key assigned: "
-            f"'{parent_table}({parent_key})' -> '{child_table}({child_key})'")
-"""
+        result = pd.read_sql_query(
+            query, self.connection, params=flattened_values)
+
+        if result.values.tolist() == []:
+            self.logger.warning(
+                f"Filtered table from '{table_name}' is empty.")
+
+        return result
+
+    def get_related_table_keys(
+            self,
+            table_name: str,
+            column_name: str,
+            parent_table_fields: Dict[str, List[str]],
+    ) -> Dict[str, List[str]]:
+
+        conditions = " AND ".join(
+            [f"{key} IN ({' ,'.join('?')*len(values)})"
+             for key, values in parent_table_fields.items()]
+        )
+
+        flattened_values = []
+        for list_values in parent_table_fields.values():
+            for value in list_values:
+                flattened_values.append(value)
+
+        query = f"SELECT {column_name} FROM {table_name} WHERE {conditions}"
+
+        result = pd.read_sql_query(
+            query, self.connection, params=flattened_values
+        )
+
+        column_values = result[column_name].tolist()
+        return {column_name: column_values}
 
 
 def connection(method):

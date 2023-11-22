@@ -4,6 +4,7 @@ from typing import Dict, List, Any
 from numpy.core.fromnumeric import std
 
 import pandas as pd
+from pandas.plotting import table
 import xarray as xr
 
 from src.log_exc.logger import Logger
@@ -113,18 +114,29 @@ class Database:
             table_fields = util.generate_dict_with_none_values(
                 var_info['coordinates'])
 
+            foreign_keys = {}
             for field_key in table_fields.keys():
                 table_fields[field_key] = \
                     self.sets_structure[field_key]['table_headers'][set_field]
+                foreign_keys[table_fields[field_key][0]] = \
+                    (table_fields[field_key][0],
+                     self.sets_structure[field_key]['table_name'])
 
             unpivoted_coordinates = None
             if self.coordinates[var_key]:
                 unpivoted_coordinates = self.unpivot_coordinates(
                     self.coordinates[var_key])
 
+            table_fields = {'id': ['id', 'INTEGER PRIMARY KEY']} | table_fields
+            id_column_name = table_fields['id'][0]
+            id_column_values = pd.Series(
+                range(0, len(unpivoted_coordinates)+1))
+            unpivoted_coordinates.insert(0, id_column_name, id_column_values)
+
             self.sqltools.create_table(
                 table_name=var_key,
                 table_fields=table_fields,
+                foreign_keys=foreign_keys,
                 table_content=unpivoted_coordinates,
             )
 
@@ -269,7 +281,6 @@ class Database:
 
         self.logger.info(f"Input file/s loaded into '{self}' object.")
 
-    """
     @connection
     def load_foreign_keys(self) -> None:
         # this is not working so far
@@ -292,4 +303,3 @@ class Database:
                 )
 
         self.logger.info('Foreign keys loaded.')
-    """
