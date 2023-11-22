@@ -14,16 +14,23 @@ _SETS = {
         'symbol': 's',
         'table_name': '_set_SCENARIOS',
         'table_headers': {
-            'id': ['s_ID', 'TEXT PRIMARY KEY'],
+            'id': ['s_ID', 'INTEGER PRIMARY KEY'],
             'name': ['s_Name', 'TEXT'],
         },
-        'variables_shape': False
+    },
+    'datetime': {
+        'symbol': 'dt',
+        'table_name': '_set_DATETIME',
+        'table_headers': {
+            'id': ['dt_ID', 'INTEGER PRIMARY KEY'],
+            'name': ['dt_Name', 'TEXT'],
+        },
     },
     'technologies': {
         'symbol': 't',
         'table_name': '_set_TECHNOLOGIES',
         'table_headers': {
-            'id': ['t_ID', 'TEXT PRIMARY KEY'],
+            'id': ['t_ID', 'INTEGER PRIMARY KEY'],
             'name': ['t_Name', 'TEXT'],
             'category': ['t_Category', 'TEXT']
         },
@@ -31,24 +38,22 @@ _SETS = {
             't.s': 'Supply technology',
             't.d': 'Demand technology',
         },
-        'variables_shape': True,
     },
     'flows': {
         'symbol': 'f',
         'table_name': '_set_FLOWS',
         'table_headers': {
-            'id': ['f_ID', 'TEXT PRIMARY KEY'],
+            'id': ['f_ID', 'INTEGER PRIMARY KEY'],
             'name': ['f_Name', 'TEXT'],
             'category': ['f_Category', 'TEXT'],
             'competition': ['f_Competition', 'TEXT'],
-            'parent': ['f_Parent technology', 'TEXT'],
+            'parent': ['f_Parent_technology', 'TEXT'],
             'unit': ['f_Unit', 'TEXT'],
         },
         'set_categories': {
             'f.p': 'Product flow',
             'f.e': 'Environmental flow',
         },
-        'variables_shape': True,
     },
 }
 
@@ -61,6 +66,7 @@ _VARIABLES = {
         'set_headers': 'name',
         'coordinates': {
             'scenarios': 'all',
+            'datetime': 'all',
             'technologies': {'set_categories': 't.s'},
             'flows': {'set_categories': 'f.p'},
         },
@@ -72,6 +78,7 @@ _VARIABLES = {
         'set_headers': 'name',
         'coordinates': {
             'scenarios': 'all',
+            'datetime': 'all',
             'flows': {'set_categories': 'f.p'},
             'technologies': {'set_categories': 't.s'},
         },
@@ -83,6 +90,7 @@ _VARIABLES = {
         'set_headers': 'name',
         'coordinates': {
             'scenarios': 'all',
+            'datetime': 'all',
             'flows': {'set_categories': 'f.p'},
             'technologies': {'set_categories': 't.d'},
         },
