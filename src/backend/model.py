@@ -28,7 +28,7 @@ class Model:
             self.settings['general']['model_name']
         )
 
-        self.files.create_dir(self.model_dir_path)
+        self.model_dir_generation()
 
         self.database = Database(
             logger=self.logger,
@@ -49,5 +49,8 @@ class Model:
         class_name = type(self).__name__
         return f'{class_name}'
 
-    def model_cleanup(self):
+    def model_dir_generation(self) -> None:
+        self.files.create_dir(self.model_dir_path)
+
+    def model_dir_cleanup(self) -> None:
         self.files.erase_dir(self.model_dir_path)
