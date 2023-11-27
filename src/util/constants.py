@@ -79,7 +79,10 @@ _VARIABLES = {
         'coordinates': {
             'scenarios': 'all',
             'datetime': 'all',
-            'flows': {'set_categories': 'f.p'},
+            'flows': {
+                'set_categories': 'f.p',
+                'aggregation_key': 'competition',
+            },
             'technologies': {'set_categories': 't.s'},
         },
     },
@@ -91,7 +94,10 @@ _VARIABLES = {
         'coordinates': {
             'scenarios': 'all',
             'datetime': 'all',
-            'flows': {'set_categories': 'f.p'},
+            'flows': {
+                'set_categories': 'f.p',
+                'aggregation_key': 'competition',
+            },
             'technologies': {'set_categories': 't.d'},
         },
     },

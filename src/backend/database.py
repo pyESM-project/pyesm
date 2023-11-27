@@ -1,11 +1,8 @@
 from itertools import product
 from pathlib import Path
-from typing import Dict, List, Any
-from numpy.core.fromnumeric import std
+from typing import Dict, List
 
 import pandas as pd
-from pandas.plotting import table
-import xarray as xr
 
 from src.log_exc.logger import Logger
 from src.log_exc import exceptions as exc
@@ -73,12 +70,12 @@ class Database:
     @connection
     def load_sets(self) -> None:
         if self.sets is not None:
-            self.logger.debug(
+            self.logger.info(
                 f"Sets are already defined in the '{self}' object.")
             user_input = input(
                 "Overwrite Sets? (y/[n]): ")
             if user_input.lower() != 'y':
-                self.logger.debug("Original Sets not owerwritten.")
+                self.logger.info("Original Sets not owerwritten.")
                 return
 
         self.sets = self.files.excel_to_dataframes_dict(
@@ -137,16 +134,20 @@ class Database:
                 table_name=var_key,
                 table_fields=table_fields,
                 foreign_keys=foreign_keys,
-                table_content=unpivoted_coordinates,
             )
 
-            self.sqltools.add_column(
+            self.sqltools.dataframe_to_table(
+                table_name=var_key,
+                dataframe=unpivoted_coordinates,
+            )
+
+            self.sqltools.add_table_column(
                 table_name=var_key,
                 column_name=std_values_nametype[0],
                 column_type=std_values_nametype[1],
             )
 
-        self.logger.info(f"Empty database generated.")
+        self.logger.info(f"Empty SQLite database generated.")
 
     def load_variables_coordinates(self) -> None:
 
@@ -158,7 +159,7 @@ class Database:
             user_input = input(
                 f"Overwrite variable coordinates? (y/[n]): ")
             if user_input.lower() != 'y':
-                self.logger.debug(
+                self.logger.info(
                     f"Original variables coordinates not overwritten.")
                 return
 
@@ -179,14 +180,25 @@ class Database:
                 if coord_info == 'all':
                     set_values = list(self.sets[set_label][header_label])
 
-                elif isinstance(coord_info, dict) and coord_info['set_categories']:
+                elif isinstance(coord_info, dict) and 'set_categories' in coord_info:
                     category_filter_id = coord_info['set_categories']
                     category_filter = self.sets_structure[coord_key]['set_categories'][category_filter_id]
                     category_header_name = self.sets_structure[coord_key]['table_headers']['category'][0]
                     set_filtered = self.sets[set_label].query(
                         f'{category_header_name} == "{category_filter}"'
                     )
-                    set_values = list(set_filtered[header_label])
+
+                    if 'aggregation_key' in coord_info:
+                        aggregation_key = coord_info['aggregation_key']
+                        aggregation_key_name = \
+                            self.sets_structure[coord_key]['table_headers'][aggregation_key][0]
+
+                        set_filtered.loc[
+                            set_filtered[aggregation_key_name] != '', header_label
+                        ] = set_filtered[aggregation_key_name]
+
+                    set_values = list(set(set_filtered[header_label]))
+
                 else:
                     error_msg = f"Missing or wrong data in 'sets_structure' parameter."
                     self.logger.error(error_msg)
@@ -280,26 +292,3 @@ class Database:
                 )
 
         self.logger.info(f"Input file/s loaded into '{self}' object.")
-
-    @connection
-    def load_foreign_keys(self) -> None:
-        # this is not working so far
-        # problems with the add_foreign_key query
-
-        self.logger.info('Loading foreign keys...')
-
-        for var_key, var_info in self.variables.items():
-            for coord_key in var_info['coordinates'].keys():
-                set_field = var_info['set_headers']
-                parent_table_info = self.sets_structure[coord_key]
-                parent_table = parent_table_info['table_name']
-                tables_key = parent_table_info['table_headers'][set_field][0]
-
-                self.sqltools.add_foreign_key(
-                    child_table=var_key,
-                    child_key=tables_key,
-                    parent_table=parent_table,
-                    parent_key=tables_key,
-                )
-
-        self.logger.info('Foreign keys loaded.')
