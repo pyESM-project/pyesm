@@ -60,6 +60,26 @@ class SQLManager:
         tables = self.cursor.fetchall()
         return [table[0] for table in tables]
 
+    def get_primary_column_name(
+            self,
+            table_name: str,
+    ) -> str:
+
+        query = f"PRAGMA table_info({table_name})"
+        self.execute_query(query)
+        table_info = self.cursor.fetchall()
+        primary_key_column_name = [
+            column[1] for column in table_info if column[5] == 1
+        ]
+
+        if len(primary_key_column_name) == 1:
+            return primary_key_column_name
+        else:
+            raise ValueError(
+                f"SQLite table '{table_name}' does not have "
+                "a unique primary key column."
+            )
+
     def execute_query(
             self,
             query: str,
@@ -94,65 +114,52 @@ class SQLManager:
             table_name: str,
             table_fields: Dict[str, List[str]],
             foreign_keys: Dict[str, tuple] = None,
-            table_content: pd.DataFrame = None,
     ) -> None:
 
         if table_name in self.get_existing_tables_names:
-            self.logger.debug(
-                f"Table '{table_name}' already exists.")
 
-            user_input = input(
-                f"Delete and overwrite '{table_name}'? (y/[n]): ")
-            if user_input.lower() != 'y':
-                self.logger.debug(f"Table '{table_name}' not owerwritten.")
+            self.logger.debug(f"Table '{table_name}' already exists.")
+
+            confirm = input(
+                f"Table '{table_name}' already exists. Overwrite? (y/[n])"
+            )
+            if confirm.lower() != 'y':
+                self.logger.debug(
+                    f"SQLlite table '{table_name}' not overwritten.")
                 return
-            self.drop_table(table_name=table_name)
+
+            self.drop_table(table_name)
 
         fields_str = ", ".join(
             [f'{field_name} {field_type}'
-                for field_name, field_type in table_fields.values()])
+                for field_name, field_type in table_fields.values()]
+        )
 
         if foreign_keys:
-            self.enable_foreing_keys()
+            self.switch_foreing_keys(switch=True)
             foreign_keys_str = ", ".join(
                 [f'FOREIGN KEY ({field_name}) REFERENCES {ref_table}({ref_field})'
-                 for field_name, (ref_field, ref_table) in foreign_keys.items()]
+                    for field_name, (ref_field, ref_table) in foreign_keys.items()]
             )
             fields_str += f", {foreign_keys_str}"
 
         query = f"CREATE TABLE {table_name}({fields_str});"
         self.execute_query(query)
 
-        if table_content is not None:
-            table_headers = set(self.get_table_fields(table_name)['labels'])
-            if set(table_content.columns) != table_headers:
-                self.logger.error(
-                    "Passed DataFrame headers do not match fields for table "
-                    f"{table_name}. Data not inserted.")
-                return
+        self.logger.debug(f"SQLite table '{table_name}' created.")
 
-            try:
-                columns_str = ', '.join(table_content.columns)
-
-                for index, row in table_content.iterrows():
-                    values_str = ', '.join(f'"{value}"' for value in row)
-                    query = f'INSERT INTO {table_name} ({columns_str}) VALUES ({values_str})'
-                    self.execute_query(query)
-
-                self.logger.debug(f"Data replaced in table '{table_name}'")
-
-            except sqlite3.OperationalError as error_msg:
-                self.logger.error(error_msg)
-                raise sqlite3.OperationalError(error_msg)
-
-    def enable_foreing_keys(self) -> None:
-        if not self.foreign_keys_enabled:
-            self.execute_query('PRAGMA foreign_keys = ON;')
-            self.foreign_keys_enabled = True
-            self.logger.debug('Foreign keys enabled.')
-
-    def disable_foreing_keys(self) -> None:
-        if self.foreign_keys_enabled:
+    def switch_foreing_keys(
+            self,
+            switch: bool,
+    ) -> None:
+        if switch:
+            if self.foreign_keys_enabled:
+                self.logger.debug('Foreign keys already enabled.')
+            else:
+                self.execute_query('PRAGMA foreign_keys = ON;')
+                self.foreign_keys_enabled = True
+                self.logger.debug('Foreign keys enabled.')
+        else:
             self.execute_query('PRAGMA foreign_keys = OFF;')
             self.foreign_keys_enabled = False
             self.logger.debug('Foreign keys disabled.')
@@ -165,7 +172,7 @@ class SQLManager:
         self.execute_query(query)
         return self.cursor.fetchall()
 
-    def add_column(
+    def add_table_column(
             self,
             table_name: str,
             column_name: str,
@@ -203,6 +210,8 @@ class SQLManager:
         self.logger.debug(
             f"{num_entries} rows deleted from table '{table_name}'")
 
+    # this method should only update existing tables, not deleting all
+    # entries and reloading all of them
     def dataframe_to_table(
             self,
             table_name: str,
@@ -211,24 +220,25 @@ class SQLManager:
 
         table_fields = self.get_table_fields(table_name=table_name)
 
-        if not dataframe.columns.tolist() == table_fields['labels']:
+        if dataframe.columns.tolist() != table_fields['labels']:
             error = f"Dataframe and table {table_name} headers mismatch."
             self.logger.error(error)
             raise ValueError(error)
 
         num_entries = self.count_table_data_entries(table_name=table_name)
+        data = [tuple(row) for row in dataframe.values.tolist()]
 
         if num_entries > 0:
             confirm = input(
-                f"Table {table_name} already has {num_entries} rows. Do you \
-                    want to delete existing data and insert new data? (y/[n])"
+                f"SQLite table '{table_name}' already has {num_entries} rows. "
+                "Update table with new data? (y/[n])"
             )
             if confirm.lower() != 'y':
+                self.logger.debug(
+                    f"SQLite table '{table_name}' not overwritten.")
                 return
             else:
                 self.delete_table_entries(table_name=table_name)
-
-        data = [tuple(row) for row in dataframe.values.tolist()]
 
         placeholders = ', '.join(['?'] * len(dataframe.columns))
         query = f"INSERT INTO {table_name} VALUES ({placeholders})"
@@ -236,7 +246,7 @@ class SQLManager:
         try:
             self.cursor.executemany(query, data)
             self.logger.debug(
-                f"{len(data)} rows inserted into table '{table_name}'"
+                f"{len(data)} rows inserted into SQLite table '{table_name}'"
             )
         except sqlite3.IntegrityError as error:
             if str(error).startswith('UNIQUE'):
@@ -276,7 +286,8 @@ class SQLManager:
                     f"File '{excel_filename}' not overwritten.")
                 return
 
-        self.logger.debug(f"Exporting '{table_name}' to {excel_filename}.")
+        self.logger.debug(
+            f"Exporting SQLite table '{table_name}' to {excel_filename}.")
 
         with pd.ExcelWriter(
             excel_file_path,
