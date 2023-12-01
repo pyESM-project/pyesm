@@ -1,6 +1,6 @@
 from itertools import product
 from pathlib import Path
-from typing import Dict, List
+from typing import Dict, List, Any
 
 import pandas as pd
 
@@ -13,6 +13,10 @@ from src.util.sql_manager import SQLManager, connection
 
 
 class Database:
+
+    std_id_field = constants._STD_ID_FIELD.copy()
+    std_values_nametype = constants._STD_VALUES_FIELD.copy()
+    var_dict_hierarchy = constants._VAR_DICT_HIERARCHY.copy()
 
     def __init__(
             self,
@@ -27,13 +31,15 @@ class Database:
 
         self.files = files
 
-        self.sets_structure = constants._SETS.copy()
-        self.variables = constants._VARIABLES.copy()
-        self.sets = None
-        self.coordinates = None
-
         self.database_settings = database_settings
         self.database_dir_path = database_dir_path
+
+        self.sets_structure = constants._SETS.copy()
+        self.variables_info = constants._VARIABLES.copy()
+        self.variables_data = None
+
+        self.sets = None
+        self.coordinates = None
 
         self.sqltools = SQLManager(
             logger=self.logger,
@@ -96,59 +102,6 @@ class Database:
             f"'{self.database_settings['sets_excel_file_name']}'."
         )
 
-    @connection
-    def generate_blank_database(
-        self,
-        std_values_nametype: List[str] = ['values', 'REAL'],
-    ) -> None:
-
-        self.logger.info(f"Generation of empty database...")
-
-        self.load_variables_coordinates()
-
-        for var_key, var_info in self.variables.items():
-            set_field = var_info['set_headers']
-            table_fields = util.generate_dict_with_none_values(
-                var_info['coordinates'])
-
-            foreign_keys = {}
-            for field_key in table_fields.keys():
-                table_fields[field_key] = \
-                    self.sets_structure[field_key]['table_headers'][set_field]
-                foreign_keys[table_fields[field_key][0]] = \
-                    (table_fields[field_key][0],
-                     self.sets_structure[field_key]['table_name'])
-
-            unpivoted_coordinates = None
-            if self.coordinates[var_key]:
-                unpivoted_coordinates = self.unpivot_coordinates(
-                    self.coordinates[var_key])
-
-            table_fields = {'id': ['id', 'INTEGER PRIMARY KEY']} | table_fields
-            id_column_name = table_fields['id'][0]
-            id_column_values = pd.Series(
-                range(0, len(unpivoted_coordinates)+1))
-            unpivoted_coordinates.insert(0, id_column_name, id_column_values)
-
-            self.sqltools.create_table(
-                table_name=var_key,
-                table_fields=table_fields,
-                foreign_keys=foreign_keys,
-            )
-
-            self.sqltools.dataframe_to_table(
-                table_name=var_key,
-                dataframe=unpivoted_coordinates,
-            )
-
-            self.sqltools.add_table_column(
-                table_name=var_key,
-                column_name=std_values_nametype[0],
-                column_type=std_values_nametype[1],
-            )
-
-        self.logger.info(f"Empty SQLite database generated.")
-
     def load_variables_coordinates(self) -> None:
 
         self.logger.info(f"Loading variables coordinates...")
@@ -165,7 +118,7 @@ class Database:
 
         self.coordinates = {}
 
-        for var_key, var_info in self.variables.items():
+        for var_key, var_info in self.variables_info.items():
             self.logger.debug(
                 "Loading coordinates for variable "
                 f"'{var_info['symbol']}'.")
@@ -208,6 +161,60 @@ class Database:
 
         self.logger.info(f"Variables coordinates loaded.")
 
+    @connection
+    def generate_blank_database(
+        self,
+        std_values_nametype: List[str] = std_values_nametype,
+    ) -> None:
+
+        self.logger.info("Generation of empty SQLite database...")
+
+        if not self.coordinates:
+            self.load_variables_coordinates()
+
+        for var_key, var_info in self.variables_info.items():
+            set_field = var_info['set_headers']
+            table_fields = util.generate_dict_with_none_values(
+                var_info['coordinates'])
+
+            foreign_keys = {}
+            for field_key in table_fields.keys():
+                table_fields[field_key] = \
+                    self.sets_structure[field_key]['table_headers'][set_field]
+                foreign_keys[table_fields[field_key][0]] = \
+                    (table_fields[field_key][0],
+                     self.sets_structure[field_key]['table_name'])
+
+            unpivoted_coordinates = None
+            if self.coordinates[var_key]:
+                unpivoted_coordinates = self.unpivot_coordinates(
+                    self.coordinates[var_key])
+
+            table_fields = {'id': self.std_id_field} | table_fields
+            id_column_name = table_fields['id'][0]
+            id_column_values = pd.Series(
+                range(0, len(unpivoted_coordinates)+1))
+            unpivoted_coordinates.insert(0, id_column_name, id_column_values)
+
+            self.sqltools.create_table(
+                table_name=var_key,
+                table_fields=table_fields,
+                foreign_keys=foreign_keys,
+            )
+
+            self.sqltools.dataframe_to_table(
+                table_name=var_key,
+                dataframe=unpivoted_coordinates,
+            )
+
+            self.sqltools.add_table_column(
+                table_name=var_key,
+                column_name=std_values_nametype[0],
+                column_type=std_values_nametype[1],
+            )
+
+        self.logger.info(f"Empty SQLite database generated.")
+
     def unpivot_coordinates(
             self,
             coordinates_dict: Dict[str, List[str]],
@@ -220,6 +227,18 @@ class Database:
             columns=coordinates_dict.keys()
         )
         return df
+
+    def clear_database_variables(self) -> None:
+        existing_tables = self.sqltools.get_existing_tables_names
+
+        for table_name in existing_tables:
+            if table_name in self.variables_info.keys():
+                self.sqltools.drop_table(table_name=table_name)
+
+        self.logger.info(
+            "Variables tables dropped from SQLite database "
+            f"{self.database_settings['database_name']}"
+        )
 
     @connection
     def generate_input_files(self) -> None:
@@ -236,7 +255,7 @@ class Database:
 
         tables_names_list = self.sqltools.get_existing_tables_names
 
-        for _, var_info in self.variables.items():
+        for _, var_info in self.variables_info.items():
 
             if var_info['type'] == 'exogenous' and \
                     var_info['symbol'] in tables_names_list:
@@ -266,7 +285,7 @@ class Database:
 
         if self.database_settings['multiple_input_files']:
             data = {}
-            for _, var_info in self.variables.items():
+            for _, var_info in self.variables_info.items():
                 if var_info['type'] == 'exogenous':
                     var_name = var_info['symbol']
                     file_name = var_name + '.xlsx'
@@ -292,3 +311,33 @@ class Database:
                 )
 
         self.logger.info(f"Input file/s loaded into '{self}' object.")
+
+    def generate_variables_data_dict(self) -> Dict[str, Any]:
+
+        self.logger.info("Generating empty dictionary of variables data...")
+
+        variables_data = {}
+
+        for var_key, var_info in self.variables_info.items():
+            variables_data[var_key] = {}
+            keys_parsing_order = []
+
+            if self.variables_info[var_key]['var_dict_hierarchy'] is None:
+                dict_hierarchy = self.var_dict_hierarchy
+            else:
+                dict_hierarchy = self.variables_info[var_key]['var_dict_hierarchy']
+
+            for level in dict_hierarchy:
+                level_header_key = var_info['set_headers']
+                level_header = self.sets_structure[level]['table_headers'][level_header_key][0]
+                keys_parsing_order.append(level_header)
+
+                variables_data[var_key][level_header] = \
+                    self.coordinates[var_key][level_header]
+
+            variables_data[var_key] = \
+                util.pivot_dict(variables_data[var_key])
+
+        self.logger.info("Empty dictionary of variables data generated.")
+
+        return variables_data
