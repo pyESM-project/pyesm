@@ -61,7 +61,7 @@ def generate_nested_directories_paths(
         base_path: Path,
         directories: Dict[int, List[str]],
 ) -> List[Path]:
-    """Generate nested directories based on the provided base_path and 
+    """Generates nested directories based on the provided base_path and 
     directory structure.
 
     Args:
@@ -82,3 +82,49 @@ def generate_nested_directories_paths(
         return full_dir_paths
     else:
         return [base_path]
+
+
+def pivot_dict(
+        data_dict: Dict,
+        order_list: List = None,
+) -> Dict:
+    """Pivot a dictionary of lists (arbitrary number of keys and items in each 
+    list), transforming it into a nested dictionary with keys equal to items of 
+    the lists. Order of parsing keys can be changed.
+
+    Args:
+        data_dict (Dict): dictionary to be converted
+        order_list (List, optional): order of parsing keys. Defaults to None.
+
+    Returns:
+        Dict: dictionary of nested dictionaries with last level = None
+
+    Example:
+        data = {
+            'key_1': ['item_1', 'item_2', 'item_3'], 
+            'key_2': [10, 20, 30]
+        }
+
+        data_pivoted = pivot_dict(data)
+
+        data_pivoted = {
+            item_1: {10: None, 20: None, 30: None},
+            item_2: {10: None, 20: None, 30: None},
+        }
+    """
+    def pivot_recursive(keys, values):
+        if not keys:
+            return {value: None for value in values}
+        else:
+            key = keys[0]
+            remaining_keys = keys[1:]
+            return {item: pivot_recursive(remaining_keys, values)
+                    for item in data_dict[key]}
+
+    if order_list:
+        keys = order_list
+    else:
+        keys = list(data_dict.keys())
+
+    values = list(data_dict[keys[-1]])
+    return pivot_recursive(keys[:-1], values)
