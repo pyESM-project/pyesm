@@ -43,6 +43,8 @@ class Model:
             problem_settings=self.settings['problem'],
         )
 
+        self.variables = None
+
         self.logger.info(f"'{self}' initialized.")
 
     def __repr__(self):
@@ -54,3 +56,18 @@ class Model:
 
     def model_dir_cleanup(self) -> None:
         self.files.erase_dir(self.model_dir_path)
+
+    def variables_generation(self) -> None:
+        if self.variables is not None:
+            self.logger.warning(
+                "Dictionary of variables data already "
+                f"initialized in '{self}' object."
+            )
+            user_input = input(
+                "Overwrite dictionary of variables? (y/[n]): ")
+            if user_input.lower() != 'y':
+                self.logger.info(
+                    "Original dictionary of variables not overwritten.")
+                return
+
+        self.variables = self.database.generate_variables_data_dict()
