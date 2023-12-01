@@ -57,6 +57,13 @@ _SETS = {
     },
 }
 
+# definition of standard column name-type for id and values fields
+_STD_VALUES_FIELD = ['values', 'REAL']
+_STD_ID_FIELD = ['id', 'INTEGER PRIMARY KEY']
+
+# definition of standard hierarchy of problem variables dictionary
+_VAR_DICT_HIERARCHY = ['scenarios', 'datetime']
+
 # definition of model variables
 _VARIABLES = {
     'v': {
@@ -70,6 +77,8 @@ _VARIABLES = {
             'technologies': {'set_categories': 't.s'},
             'flows': {'set_categories': 'f.p'},
         },
+        'var_dict_hierarchy': None,
+        'shape': ['technologies', 'flows'],
     },
     'u': {
         'symbol': 'u',
@@ -85,6 +94,8 @@ _VARIABLES = {
             },
             'technologies': {'set_categories': 't.s'},
         },
+        'var_dict_hierarchy': None,
+        'shape': ['flows', 'technologies'],
     },
     'Y': {
         'symbol': 'Y',
@@ -100,5 +111,38 @@ _VARIABLES = {
             },
             'technologies': {'set_categories': 't.d'},
         },
+        'var_dict_hierarchy': None,
+        'shape': ['flows', 'technologies'],
+    },
+    'Q': {
+        'symbol': 'Q',
+        'name': 'total flows demand vector',
+        'type': 'endogenous',
+        'set_headers': 'name',
+        'coordinates': {
+            'scenarios': 'all',
+            'datetime': 'all',
+            'flows': {
+                'set_categories': 'f.p',
+                'aggregation_key': 'competition',
+            }
+        },
+        'var_dict_hierarchy': None,
+        'shape': ['flows', 1],
+    },
+    'X': {
+        'symbol': 'X',
+        'name': 'total technology activity vector',
+        'type': 'endogenous',
+        'set_headers': 'name',
+        'coordinates': {
+            'scenarios': 'all',
+            'datetime': 'all',
+            'technologies': {
+                'set_categories': 't.s',
+            }
+        },
+        'var_dict_hierarchy': None,
+        'shape': ['technologies', 1],
     },
 }

@@ -26,7 +26,7 @@ class SQLManager:
         self.connection = None
         self.cursor = None
         self.xls_engine = xls_engine
-        self.foreign_keys_enabled = False
+        self.foreign_keys_enabled = None
 
         self.logger.info(f"'{self}' object generated.")
 
@@ -95,7 +95,7 @@ class SQLManager:
         query = f"DROP TABLE {table_name}"
         self.execute_query(query)
         self.connection.commit()
-        self.logger.debug(f"Table '{table_name}' deleted.")
+        self.logger.debug(f"SQLite '{table_name}' - deleted.")
 
     def get_table_fields(
             self,
@@ -118,10 +118,10 @@ class SQLManager:
 
         if table_name in self.get_existing_tables_names:
 
-            self.logger.debug(f"Table '{table_name}' already exists.")
+            self.logger.debug(f"SQLite table '{table_name}' already exists.")
 
             confirm = input(
-                f"Table '{table_name}' already exists. Overwrite? (y/[n])"
+                f"SQLite table '{table_name}' already exists. Overwrite? (y/[n])"
             )
             if confirm.lower() != 'y':
                 self.logger.debug(
@@ -136,7 +136,9 @@ class SQLManager:
         )
 
         if foreign_keys:
-            self.switch_foreing_keys(switch=True)
+            if not self.foreign_keys_enabled:
+                self.switch_foreing_keys(switch=True)
+
             foreign_keys_str = ", ".join(
                 [f'FOREIGN KEY ({field_name}) REFERENCES {ref_table}({ref_field})'
                     for field_name, (ref_field, ref_table) in foreign_keys.items()]
@@ -146,7 +148,11 @@ class SQLManager:
         query = f"CREATE TABLE {table_name}({fields_str});"
         self.execute_query(query)
 
-        self.logger.debug(f"SQLite table '{table_name}' created.")
+        if foreign_keys:
+            self.logger.debug(
+                f"SQLite table '{table_name}' - created with foreign keys.")
+        else:
+            self.logger.debug(f"SQLite table '{table_name}' - created.")
 
     def switch_foreing_keys(
             self,
@@ -221,7 +227,7 @@ class SQLManager:
         table_fields = self.get_table_fields(table_name=table_name)
 
         if dataframe.columns.tolist() != table_fields['labels']:
-            error = f"Dataframe and table {table_name} headers mismatch."
+            error = f"Dataframe and SQLite table '{table_name}' headers mismatch."
             self.logger.error(error)
             raise ValueError(error)
 
@@ -235,7 +241,7 @@ class SQLManager:
             )
             if confirm.lower() != 'y':
                 self.logger.debug(
-                    f"SQLite table '{table_name}' not overwritten.")
+                    f"SQLite table '{table_name}' - not overwritten.")
                 return
             else:
                 self.delete_table_entries(table_name=table_name)
@@ -245,15 +251,14 @@ class SQLManager:
 
         try:
             self.cursor.executemany(query, data)
+            self.connection.commit()
             self.logger.debug(
-                f"{len(data)} rows inserted into SQLite table '{table_name}'"
+                f"SQLite table '{table_name}' - {len(data)} entries added."
             )
         except sqlite3.IntegrityError as error:
             if str(error).startswith('UNIQUE'):
-                error = f"Data already exists in database {table_name}."
+                error = f"SQLite table '{table_name}' - Data already exist."
             self.logger.error(error)
-
-        self.connection.commit()
 
     def table_to_dataframe(
             self,
@@ -287,7 +292,7 @@ class SQLManager:
                 return
 
         self.logger.debug(
-            f"Exporting SQLite table '{table_name}' to {excel_filename}.")
+            f"SQLite table '{table_name}' - exported to {excel_filename}.")
 
         with pd.ExcelWriter(
             excel_file_path,
@@ -328,8 +333,8 @@ class SQLManager:
 
     def get_related_table_keys(
             self,
-            table_name: str,
-            column_name: str,
+            child_column_name: str,
+            parent_table_name: str,
             parent_table_fields: Dict[str, List[str]],
     ) -> Dict[str, List[str]]:
 
@@ -343,14 +348,14 @@ class SQLManager:
             for value in list_values:
                 flattened_values.append(value)
 
-        query = f"SELECT {column_name} FROM {table_name} WHERE {conditions}"
+        query = f"SELECT {child_column_name} FROM {parent_table_name} WHERE {conditions}"
 
         result = pd.read_sql_query(
             query, self.connection, params=flattened_values
         )
 
-        column_values = result[column_name].tolist()
-        return {column_name: column_values}
+        column_values = result[child_column_name].tolist()
+        return {child_column_name: column_values}
 
 
 def connection(method):
