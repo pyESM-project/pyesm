@@ -49,3 +49,9 @@ class Interface:
     def __repr__(self):
         class_name = type(self).__name__
         return f'{class_name}'
+
+    def warm_start_for_debug(self):
+        """Use for debugging: do not overwrite sets and input data
+        """
+        self.model.database.load_sets()
+        self.model.database.load_variables_coordinates()
