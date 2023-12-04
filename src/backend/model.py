@@ -5,6 +5,7 @@ from src.backend.database import Database
 from src.backend.problem import Problem
 from src.log_exc.logger import Logger
 from src.util.file_manager import FileManager
+from src.util.sql_manager import SQLManager, connection
 
 
 class Model:
@@ -20,27 +21,28 @@ class Model:
         self.logger.info(f"'{self}' object initialization...")
 
         self.files = files
-
         self.settings = settings
 
-        self.model_dir_path = Path(
-            self.settings['general']['model_data_dir_path'],
-            self.settings['general']['model_name']
-        )
-
         self.model_dir_generation()
+
+        self.sqltools = SQLManager(
+            logger=self.logger,
+            database_dir_path=self.model_dir_path,
+            database_name=self.settings['database']['database_name'],
+        )
 
         self.database = Database(
             logger=self.logger,
             files=self.files,
-            database_settings=self.settings['database'],
-            database_dir_path=self.model_dir_path
+            sqltools=self.sqltools,
+            database_dir_path=self.model_dir_path,
+            settings=self.settings,
         )
 
         self.problem = Problem(
             logger=self.logger,
             files=self.files,
-            problem_settings=self.settings['problem'],
+            settings=self.settings,
         )
 
         self.variables = None
@@ -50,6 +52,13 @@ class Model:
     def __repr__(self):
         class_name = type(self).__name__
         return f'{class_name}'
+
+    @property
+    def model_dir_path(self):
+        return Path(
+            self.settings['general']['model_dir_path'],
+            self.settings['general']['model_name']
+        )
 
     def model_dir_generation(self) -> None:
         self.files.create_dir(self.model_dir_path)

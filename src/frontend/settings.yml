@@ -2,7 +2,7 @@
 general:
     model_name: test_case_1
     model_description: dummy case study for testing the model
-    model_data_dir_path: D:\Politecnico di Milano\Documentale DENG - PRIN-MIMO\Models\pyESM_docs\case_studies
+    model_dir_path: D:\Politecnico di Milano\Documentale DENG - PRIN-MIMO\Models\pyESM_docs\case_studies
 
 database:
     database_name: database.db

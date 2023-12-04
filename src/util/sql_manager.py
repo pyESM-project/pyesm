@@ -19,9 +19,9 @@ class SQLManager:
     ) -> None:
 
         self.logger = logger.getChild(__name__)
+        self.logger.info(f"Generation of '{self}' object...")
 
         self.database_sql_path = Path(database_dir_path, database_name)
-
         self.database_name = database_name
         self.connection = None
         self.cursor = None

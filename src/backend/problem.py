@@ -8,15 +8,14 @@ class Problem:
             self,
             logger: Logger,
             files: FileManager,
-            problem_settings: dict,
+            settings: dict,
     ) -> None:
 
         self.logger = logger.getChild(__name__)
         self.logger.info(f"'{self}' object initialization...")
 
         self.files = files
-
-        self.problem_settings = problem_settings
+        self.settings = settings
 
         self.logger.info(f"'{self}' object initialized.")
 

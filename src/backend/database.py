@@ -22,30 +22,25 @@ class Database:
             self,
             logger: Logger,
             files: FileManager,
-            database_settings: Dict[str, str],
+            sqltools: SQLManager,
             database_dir_path: Path,
+            settings: Dict,
     ) -> None:
 
         self.logger = logger.getChild(__name__)
         self.logger.info(f"'{self}' object initialization...")
 
         self.files = files
-
-        self.database_settings = database_settings
+        self.sqltools = sqltools
+        self.settings = settings
         self.database_dir_path = database_dir_path
+        self.database_settings = self.settings['database']
 
         self.sets_structure = constants._SETS.copy()
         self.variables_info = constants._VARIABLES.copy()
         self.variables_data = None
-
         self.sets = None
         self.coordinates = None
-
-        self.sqltools = SQLManager(
-            logger=self.logger,
-            database_dir_path=self.database_dir_path,
-            database_name=database_settings['database_name']
-        )
 
         if not Path(
             self.database_dir_path,
@@ -66,7 +61,6 @@ class Database:
                 table_name=value['table_name'],
                 table_fields=value['table_headers']
             )
-
             self.sqltools.table_to_excel(
                 excel_filename=self.database_settings['sets_excel_file_name'],
                 excel_dir_path=self.database_dir_path,
