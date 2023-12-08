@@ -2,9 +2,11 @@ from typing import Dict
 from pathlib import Path
 
 from src.backend.database import Database
+from src.backend.index import Index
 from src.backend.problem import Problem
 from src.log_exc.logger import Logger
 from src.util.file_manager import FileManager
+from src.util.sql_manager import SQLManager, connection
 
 
 class Model:
@@ -14,33 +16,43 @@ class Model:
             logger: Logger,
             files: FileManager,
             settings: Dict[str, str],
+            database_name: str,
+            paths: Dict[str, Path],
     ) -> None:
 
         self.logger = logger.getChild(__name__)
         self.logger.info(f"'{self}' object initialization...")
 
         self.files = files
-
         self.settings = settings
-
-        self.model_dir_path = Path(
-            self.settings['general']['model_data_dir_path'],
-            self.settings['general']['model_name']
-        )
+        self.paths = paths
 
         self.model_dir_generation()
+
+        self.sqltools = SQLManager(
+            logger=self.logger,
+            database_dir_path=self.paths['database_dir'],
+            database_name=database_name,
+        )
+
+        self.index = Index(
+            logger=self.logger,
+            files=self.files,
+        )
 
         self.database = Database(
             logger=self.logger,
             files=self.files,
-            database_settings=self.settings['database'],
-            database_dir_path=self.model_dir_path
+            sqltools=self.sqltools,
+            settings=self.settings,
+            database_dir_path=self.paths['database_dir'],
+            index=self.index,
         )
 
         self.problem = Problem(
             logger=self.logger,
             files=self.files,
-            problem_settings=self.settings['problem'],
+            settings=self.settings,
         )
 
         self.variables = None
@@ -52,22 +64,20 @@ class Model:
         return f'{class_name}'
 
     def model_dir_generation(self) -> None:
-        self.files.create_dir(self.model_dir_path)
+        self.files.create_dir(self.paths['database_dir'])
 
     def model_dir_cleanup(self) -> None:
-        self.files.erase_dir(self.model_dir_path)
+        self.files.erase_dir(self.paths['database_dir'])
 
-    def variables_generation(self) -> None:
-        if self.variables is not None:
-            self.logger.warning(
-                "Dictionary of variables data already "
-                f"initialized in '{self}' object."
-            )
-            user_input = input(
-                "Overwrite dictionary of variables? (y/[n]): ")
-            if user_input.lower() != 'y':
-                self.logger.info(
-                    "Original dictionary of variables not overwritten.")
-                return
+    def load_model_sets(
+            self,
+            excel_file_name: str,
+            excel_file_dir_path: Path,
+    ) -> None:
 
-        self.variables = self.database.generate_variables_data_dict()
+        self.index.load_sets_to_index(
+            excel_file_name=excel_file_name,
+            excel_file_dir_path=excel_file_dir_path,
+        )
+
+        self.database.load_sets_to_database()

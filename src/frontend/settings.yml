@@ -1,11 +1,11 @@
 
-general:
-    model_name: test_case_1
-    model_description: dummy case study for testing the model
-    model_data_dir_path: D:\Politecnico di Milano\Documentale DENG - PRIN-MIMO\Models\pyESM_docs\case_studies
+model:
+    name: test_case_1
+    description: dummy case study for testing the model
 
 database:
-    database_name: database.db
+    dir_path: D:\Politecnico di Milano\Documentale DENG - PRIN-MIMO\Models\pyESM_docs\case_studies
+    name: database.db
     sets_excel_file_name: sets.xlsx
     input_data_dir_name: input_data
     multiple_input_files: False
