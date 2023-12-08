@@ -1,4 +1,5 @@
 from pathlib import Path
+from typing import Dict
 
 from src.log_exc.logger import Logger
 from src.util.file_manager import FileManager
@@ -28,12 +29,17 @@ class Interface:
         self.files = FileManager(logger=self.logger)
 
         self.settings = None
+        self.paths = None
+
         self.load_settings(file_settings_name, file_settings_dir_path)
+        self.load_paths(self.settings)
 
         self.model = Model(
             logger=self.logger,
             files=self.files,
             settings=self.settings,
+            database_name=self.settings['database']['name'],
+            paths=self.paths,
         )
 
         self.logger.info(f"'{self}' object initialized.")
@@ -57,23 +63,59 @@ class Interface:
         """
 
         if self.settings is not None:
-            self.logger.warning(f"Settings already loaded in '{self}' object.")
+            self.logger.warning(f"'{self}' object: settings already loaded.")
             user_input = input("Overwrite settings? (y/[n]): ")
             if user_input.lower() != 'y':
-                self.logger.info("Settings not overwritten.")
+                self.logger.info(f"'{self}' object: settings not overwritten.")
                 return
             else:
-                self.logger.info("Updating settings.")
+                self.logger.info(f"'{self}' object: updating settings.")
         else:
-            self.logger.info("Loading settings.")
+            self.logger.info(f"'{self}' object: loading settings.")
 
         self.settings = self.files.load_file(
             file_name=file_settings_name,
             dir_path=file_settings_dir_path,
         )
 
-    def warm_start_for_debug(self):
-        """Use for debugging: do not overwrite sets and input data
-        """
-        self.model.database.load_sets()
-        self.model.database.load_variables_coordinates()
+    def load_paths(
+            self,
+            settings: Dict,
+    ) -> None:
+        self.logger.info(f"'{self}' object: loading paths from settings.")
+        self.paths = {}
+        self.paths['database_dir'] = Path(
+            settings['database']['dir_path'],
+            settings['model']['name']
+        )
+        self.paths['input_data_dir'] = Path(
+            self.paths['database_dir'],
+            settings['database']['input_data_dir_name']
+        )
+        self.paths['sets_excel_file'] = Path(
+            self.paths['database_dir'],
+            settings['database']['sets_excel_file_name']
+        )
+        self.paths['sql_database'] = Path(
+            self.paths['database_dir'],
+            settings['database']['name']
+        )
+
+    def load_sets(self) -> None:
+        self.model.load_model_sets(
+            excel_file_name=self.settings['database']['sets_excel_file_name'],
+            excel_file_dir_path=self.paths['database_dir'],
+        )
+
+    def generate_blank_sql_database(
+            self,
+            foreign_keys_on: bool = True,
+    ) -> None:
+        self.model.database.generate_blank_database(
+            foreign_keys_on=foreign_keys_on)
+
+    def generate_blank_data_input_files(self):
+        self.model.database.generate_blank_data_input_files()
+
+    def load_data_files_to_database(self):
+        self.model.database.load_data_input_files()

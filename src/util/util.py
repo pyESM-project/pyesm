@@ -1,10 +1,27 @@
-import os
 import itertools as it
 import pprint as pp
 
-
 from pathlib import Path
-from typing import Dict, List, Any
+from typing import Dict, List, Any, OrderedDict
+
+import pandas as pd
+
+
+class DotDict(dict):
+    """This class generates a dictionary where values can be accessed either
+    by key (example: dict_instance['key']) and by dot notation (example:
+    dict_instance.key). The class inherits all methods of standard dict.
+    """
+
+    def __getattr__(self, name: str) -> Any:
+        if name in self:
+            return self[name]
+        else:
+            error = f"No such attribute: {name}"
+            raise AttributeError(error)
+
+    def __setattr__(self, name: str, value: Any) -> None:
+        self[name] = value
 
 
 def prettify(item: dict) -> None:
@@ -128,3 +145,70 @@ def pivot_dict(
 
     values = list(data_dict[keys[-1]])
     return pivot_recursive(keys[:-1], values)
+
+
+def unpivot_dict_to_dataframe(
+        dict: Dict[str, List[str]],
+        headers: List[str] = None,
+) -> pd.DataFrame:
+    """Generates a Pandas DataFrame by unpivoting content of a dictionary of 
+    lists with generic number of items.
+
+    Args:
+        dict (Dict[str, List[str]]): dictionary to be unpivoted. 
+        headers (List, optional): final index of the dictionary. Defaults to None.
+
+    Returns:
+        pd.DataFrame: Pandas DataFrame resulting from the cartesian product of 
+        dictionary values.
+    """
+
+    cartesian_product = list(it.product(*dict.values()))
+
+    if not headers:
+        columns_headers = dict.keys()
+
+    elif len(headers) == len(dict):
+        columns_headers = headers
+
+    else:
+        raise ValueError(
+            "Passed headers do not match number of columns in DataFrame.")
+
+    df = pd.DataFrame(
+        cartesian_product,
+        columns=columns_headers,
+    )
+    return df
+
+
+def add_item_to_dict(
+        dictionary: dict,
+        item: dict,
+        position: int = -1,
+) -> dict:
+    """Add an given item to a defined position in a dictionary. 
+
+    Args:
+        dictionary (dict): dictionary to be modified.
+        item (dict): dictionary item to be added.
+        position (int, default: -1): position in the original dictionary where 
+        add the item. If not indicated, the function add the item at the end of
+        the original dictionary.
+
+    Raises:
+        ValueError: this function works with Python >= 3.7
+
+    Returns:
+        OrderedDict: _description_
+    """
+
+    if not (-len(dictionary) <= position <= len(dictionary)):
+        raise ValueError(
+            "Invalid position. Position must be "
+            f"within {-len(dictionary)} and {len(dictionary)}")
+
+    items = list(dictionary.items())
+    item_list = list(item.items())
+    items.insert(position, *item_list)
+    return dict(items)

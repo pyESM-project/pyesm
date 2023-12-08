@@ -49,7 +49,7 @@ class FileManager:
             ).lower()
 
             if response != 'y':
-                self.logger.warning(
+                self.logger.debug(
                     f"Directory '{dir_name}' not overwritten.")
                 return {}
             else:

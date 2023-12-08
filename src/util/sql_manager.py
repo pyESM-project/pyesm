@@ -19,7 +19,7 @@ class SQLManager:
     ) -> None:
 
         self.logger = logger.getChild(__name__)
-        self.logger.info(f"Generation of '{self}' object...")
+        self.logger.info(f"'{self}' object initialization...")
 
         self.database_sql_path = Path(database_dir_path, database_name)
         self.database_name = database_name
@@ -28,7 +28,7 @@ class SQLManager:
         self.xls_engine = xls_engine
         self.foreign_keys_enabled = None
 
-        self.logger.info(f"'{self}' object generated.")
+        self.logger.info(f"'{self}' object initialized.")
 
     def __repr__(self):
         class_name = type(self).__name__

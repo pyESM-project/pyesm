@@ -1,13 +1,3 @@
-"""Basic constants for definition of model structure"""
-
-# basic package information
-INFO = {
-    'Package name': 'pyESM',
-    'Description': 'Python-based general purpose Engineering Systems Modeller',
-    'Version': 'v.0.1',
-    'Author': 'Matteo V. Rocco'
-}
-
 # structure of the sets of the model
 _SETS = {
     'scenarios': {
@@ -58,8 +48,8 @@ _SETS = {
 }
 
 # definition of standard column name-type for id and values fields
-_STD_VALUES_FIELD = ['values', 'REAL']
-_STD_ID_FIELD = ['id', 'INTEGER PRIMARY KEY']
+_STD_VALUES_FIELD = {'values': ['values', 'REAL']}
+_STD_ID_FIELD = {'id': ['id', 'INTEGER PRIMARY KEY']}
 
 # definition of standard hierarchy of problem variables dictionary
 _VAR_DICT_HIERARCHY = ['scenarios', 'datetime']
@@ -70,10 +60,10 @@ _VARIABLES = {
         'symbol': 'v',
         'name': 'make coefficients matrix',
         'type': 'exogenous',
-        'set_headers': 'name',
-        'coordinates': {
-            'scenarios': 'all',
-            'datetime': 'all',
+        'set_headers_key': 'name',
+        'coordinates_info': {
+            'scenarios': None,
+            'datetime': None,
             'technologies': {'set_categories': 't.s'},
             'flows': {'set_categories': 'f.p'},
         },
@@ -84,10 +74,10 @@ _VARIABLES = {
         'symbol': 'u',
         'name': 'use coefficients matrix',
         'type': 'exogenous',
-        'set_headers': 'name',
-        'coordinates': {
-            'scenarios': 'all',
-            'datetime': 'all',
+        'set_headers_key': 'name',
+        'coordinates_info': {
+            'scenarios': None,
+            'datetime': None,
             'flows': {
                 'set_categories': 'f.p',
                 'aggregation_key': 'competition',
@@ -101,10 +91,10 @@ _VARIABLES = {
         'symbol': 'Y',
         'name': 'total final demand matrix',
         'type': 'exogenous',
-        'set_headers': 'name',
-        'coordinates': {
-            'scenarios': 'all',
-            'datetime': 'all',
+        'set_headers_key': 'name',
+        'coordinates_info': {
+            'scenarios': None,
+            'datetime': None,
             'flows': {
                 'set_categories': 'f.p',
                 'aggregation_key': 'competition',
@@ -112,16 +102,16 @@ _VARIABLES = {
             'technologies': {'set_categories': 't.d'},
         },
         'var_dict_hierarchy': None,
-        'shape': ['flows', 'technologies'],
+        'shape': ['flows', 1],
     },
     'Q': {
         'symbol': 'Q',
         'name': 'total flows demand vector',
         'type': 'endogenous',
-        'set_headers': 'name',
-        'coordinates': {
-            'scenarios': 'all',
-            'datetime': 'all',
+        'set_headers_key': 'name',
+        'coordinates_info': {
+            'scenarios': None,
+            'datetime': None,
             'flows': {
                 'set_categories': 'f.p',
                 'aggregation_key': 'competition',
@@ -134,10 +124,10 @@ _VARIABLES = {
         'symbol': 'X',
         'name': 'total technology activity vector',
         'type': 'endogenous',
-        'set_headers': 'name',
-        'coordinates': {
-            'scenarios': 'all',
-            'datetime': 'all',
+        'set_headers_key': 'name',
+        'coordinates_info': {
+            'scenarios': None,
+            'datetime': None,
             'technologies': {
                 'set_categories': 't.s',
             }

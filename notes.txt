@@ -1,0 +1,9 @@
+"""Basic constants for definition of model structure"""
+
+# basic package information
+INFO = {
+    'Package name': 'pyESM',
+    'Description': 'Python-based general purpose Engineering Systems Modeller',
+    'Version': 'v.0.1',
+    'Author': 'Matteo V. Rocco'
+}
