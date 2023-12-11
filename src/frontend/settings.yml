@@ -2,6 +2,7 @@
 model:
     name: test_case_1
     description: dummy case study for testing the model
+    warm_start: True # True if you want to rely on existing model directory and sql database
 
 database:
     dir_path: D:\Politecnico di Milano\Documentale DENG - PRIN-MIMO\Models\pyESM_docs\case_studies

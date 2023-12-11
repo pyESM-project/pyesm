@@ -15,7 +15,6 @@ from src.util.sql_manager import SQLManager, connection
 
 class Database:
 
-    std_values_nametype = constants._STD_VALUES_FIELD.copy()
     var_dict_hierarchy = constants._VAR_DICT_HIERARCHY.copy()
 
     def __init__(
@@ -47,11 +46,6 @@ class Database:
         self.input_files_dir_path = Path(
             self.database_dir_path /
             self.settings['database']['input_data_dir_name'])
-
-        self.sets_structure = constants._SETS.copy()
-        self.variables_info = constants._VARIABLES.copy()
-        self.sets = None
-        self.coordinates = None
 
         self.logger.info(f"'{self}' object initialized.")
 
@@ -209,6 +203,7 @@ class Database:
                     dataframe=data_values
                 )
 
+    # da qui, ragionare su come è meglio creare le variabili e il problema.
     def generate_variables_data_dict(self) -> Dict[str, Any]:
 
         self.logger.info("Generating empty dictionary of variables data...")

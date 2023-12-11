@@ -64,7 +64,13 @@ class Model:
         return f'{class_name}'
 
     def model_dir_generation(self) -> None:
-        self.files.create_dir(self.paths['database_dir'])
+        if self.settings['model']['warm_start']:
+            self.logger.info(
+                "Warm start option enabled. "
+                "Skipping model directory generation."
+            )
+        else:
+            self.files.create_dir(self.paths['database_dir'])
 
     def model_dir_cleanup(self) -> None:
         self.files.erase_dir(self.paths['database_dir'])
@@ -80,4 +86,10 @@ class Model:
             excel_file_dir_path=excel_file_dir_path,
         )
 
-        self.database.load_sets_to_database()
+        if self.settings['model']['warm_start']:
+            self.logger.info(
+                "Warm start option enabled. "
+                "Skipping loading sets to the SQL database."
+            )
+        else:
+            self.database.load_sets_to_database()
