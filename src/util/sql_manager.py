@@ -19,7 +19,6 @@ class SQLManager:
     ) -> None:
 
         self.logger = logger.getChild(__name__)
-        self.logger.info(f"'{self}' object initialization...")
 
         self.database_sql_path = Path(database_dir_path, database_name)
         self.database_name = database_name
@@ -28,7 +27,7 @@ class SQLManager:
         self.xls_engine = xls_engine
         self.foreign_keys_enabled = None
 
-        self.logger.info(f"'{self}' object initialized.")
+        self.logger.info(f"'{self}' object Generated.")
 
     def __repr__(self):
         class_name = type(self).__name__
@@ -73,7 +72,7 @@ class SQLManager:
         ]
 
         if len(primary_key_column_name) == 1:
-            return primary_key_column_name
+            return primary_key_column_name[0]
         else:
             raise ValueError(
                 f"SQLite table '{table_name}' does not have "
@@ -210,14 +209,79 @@ class SQLManager:
         self.execute_query(f'SELECT COUNT(*) FROM {table_name}')
         return self.cursor.fetchone()[0]
 
-    def delete_table_entries(self, table_name: str) -> None:
+    def delete_all_table_entries(self, table_name: str) -> None:
         num_entries = self.count_table_data_entries(table_name=table_name)
         self.execute_query(f"DELETE FROM {table_name}")
         self.logger.debug(
             f"{num_entries} rows deleted from table '{table_name}'")
 
-    # this method should only update existing tables, not deleting all
-    # entries and reloading all of them
+    # questo metodo non funziona, perchè prima bisogna fare in modo che i
+    # il dataframe e la tabella sql abbiano i valori definiti con gli stessi tipi
+    # (str, int, float). Si potrebbe lavorare sull'importazione da excel per far
+    # sì che i tipi dei valori siano assegnati sulla base di constants.py
+    def update_table_data(
+            self,
+            table_name: str,
+            dataframe: pd.DataFrame,
+    ) -> None:
+
+        table_fields = self.get_table_fields(table_name=table_name)
+
+        if dataframe.columns.tolist() != table_fields['labels']:
+            error = f"Passed Dataframe and SQLite table '{table_name}' " \
+                    "headers mismatch."
+            self.logger.error(error)
+            raise ValueError(error)
+
+        num_entries = self.count_table_data_entries(table_name)
+
+        if num_entries == 0:
+            error = f"SQLite table '{table_name}' is empty. Cannot update values."
+            self.logger.error(error)
+            raise ValueError(error)
+
+        data_table = self.table_to_dataframe(table_name=table_name)
+        different_rows = (data_table != dataframe).any(axis=1)
+        data_table.loc[different_rows] = dataframe.loc[different_rows]
+
+        confirm = input(
+            f"Update {sum(different_rows)} rows in SQLite table '{table_name}'?"
+        )
+        if confirm.lower() != 'y':
+            self.logger.debug(
+                f"SQLite table '{table_name}' update cancelled.")
+            return
+
+        primary_key_column = self.get_primary_column_name(table_name)
+        update_query = f"""
+            UPDATE {table_name}
+            SET {', '.join([f'"{col}" = ?' for col in data_table.columns[1:]])} 
+            WHERE "{primary_key_column}" = ?
+        """
+
+        try:
+            self.cursor.executemany(
+                update_query,
+                [tuple(row[1:]) + (row[0],)
+                 for row in data_table.values.tolist()]
+            )
+            self.connection.commit()
+            self.logger.debug(
+                f"SQLite table '{table_name}' - {sum(different_rows)}.")
+        except sqlite3.IntegrityError as error:
+            if str(error).startswith('UNIQUE'):
+                error = f"SQLite table '{table_name}' - Updated data " \
+                        "violates unique constraint."
+            self.logger.error(error)
+
+    # questo può essere migliorato: deve confrontare dataframe e tabella, e
+    # tutto quello che c'è già in tabella che è uguale al df non toccarlo, ma
+    # aggiungere/cambiare solo elementi diversi.
+    # magari si può mettere un parametro che faccia scegliere tra:
+    # 1. cancella sostituisci tutto
+    # 2. confronta e aggiorna solo elementi diversi da df a tabella
+    # alla fine il risultato sarà lo stesso, ma almeno con opzione 2 si ha
+    # controllo di cosa è stato cambiato.
     def dataframe_to_table(
             self,
             table_name: str,
@@ -237,14 +301,14 @@ class SQLManager:
         if num_entries > 0:
             confirm = input(
                 f"SQLite table '{table_name}' already has {num_entries} rows. "
-                "Update table with new data? (y/[n])"
+                "Delete all table entries and substitute with new data? (y/[n])"
             )
             if confirm.lower() != 'y':
                 self.logger.debug(
                     f"SQLite table '{table_name}' - not overwritten.")
                 return
             else:
-                self.delete_table_entries(table_name=table_name)
+                self.delete_all_table_entries(table_name=table_name)
 
         placeholders = ', '.join(['?'] * len(dataframe.columns))
         query = f"INSERT INTO {table_name} VALUES ({placeholders})"
