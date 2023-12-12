@@ -6,7 +6,6 @@ import pandas as pd
 
 from src.backend.index import Index
 from src.log_exc.logger import Logger
-from src.log_exc import exceptions as exc
 from src.util import constants
 from src.util import util
 from src.util.file_manager import FileManager
@@ -16,6 +15,7 @@ from src.util.sql_manager import SQLManager, connection
 class Database:
 
     var_dict_hierarchy = constants._VAR_DICT_HIERARCHY.copy()
+    data_file_extension = '.xlsx'
 
     def __init__(
             self,
@@ -78,7 +78,7 @@ class Database:
             )
 
     @connection
-    def generate_blank_database(
+    def generate_blank_sql_database(
         self,
         foreign_keys_on: bool = True,
     ) -> None:
@@ -143,7 +143,10 @@ class Database:
         )
 
     @connection
-    def generate_blank_data_input_files(self) -> None:
+    def generate_blank_data_input_files(
+        self,
+        file_extension: str = data_file_extension,
+    ) -> None:
 
         self.logger.info(f"Generation of data input file/s.")
 
@@ -158,7 +161,7 @@ class Database:
                     variable.symbol in tables_names_list:
 
                 if self.settings['database']['multiple_input_files']:
-                    output_file_name = variable.symbol+'.xlsx'
+                    output_file_name = variable.symbol + file_extension
                 else:
                     output_file_name = self.settings['database']['input_file_name']
 
@@ -169,9 +172,13 @@ class Database:
                 )
 
     @connection
-    def load_data_input_files(self) -> None:
+    def load_data_input_files(
+        self,
+        file_extension: str = data_file_extension,
+    ) -> None:
 
-        self.logger.info(f"Loading data input file/s filled by the user.")
+        self.logger.info(
+            "Loading data input file/s filled by the user to SQLite database.")
 
         if self.settings['database']['multiple_input_files']:
             data = {}
@@ -179,7 +186,7 @@ class Database:
                 if variable.type == 'exogenous':
 
                     var_name = variable.symbol
-                    file_name = var_name + '.xlsx'
+                    file_name = var_name + file_extension
 
                     data.update(
                         self.files.excel_to_dataframes_dict(
@@ -189,7 +196,7 @@ class Database:
                     )
                     self.sqltools.dataframe_to_table(
                         table_name=var_name,
-                        dataframe=data[var_name]
+                        dataframe=data[var_name],
                     )
 
         else:
@@ -200,7 +207,7 @@ class Database:
             for data_key, data_values in data.items():
                 self.sqltools.dataframe_to_table(
                     table_name=data_key,
-                    dataframe=data_values
+                    dataframe=data_values,
                 )
 
     # da qui, ragionare su come è meglio creare le variabili e il problema.
