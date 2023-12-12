@@ -6,10 +6,10 @@ from src.backend.index import Index
 from src.backend.problem import Problem
 from src.log_exc.logger import Logger
 from src.util.file_manager import FileManager
-from src.util.sql_manager import SQLManager, connection
+from src.util.sql_manager import SQLManager
 
 
-class Model:
+class Core:
 
     def __init__(
             self,
@@ -31,7 +31,7 @@ class Model:
 
         self.sqltools = SQLManager(
             logger=self.logger,
-            database_dir_path=self.paths['database_dir'],
+            database_dir_path=self.paths['model_dir'],
             database_name=database_name,
         )
 
@@ -45,7 +45,7 @@ class Model:
             files=self.files,
             sqltools=self.sqltools,
             settings=self.settings,
-            database_dir_path=self.paths['database_dir'],
+            database_dir_path=self.paths['model_dir'],
             index=self.index,
         )
 
@@ -64,32 +64,7 @@ class Model:
         return f'{class_name}'
 
     def model_dir_generation(self) -> None:
-        if self.settings['model']['warm_start']:
-            self.logger.info(
-                "Warm start option enabled. "
-                "Skipping model directory generation."
-            )
+        if self.settings['model']['use_existing_database']:
+            self.logger.info("Skipping model directory generation.")
         else:
-            self.files.create_dir(self.paths['database_dir'])
-
-    def model_dir_cleanup(self) -> None:
-        self.files.erase_dir(self.paths['database_dir'])
-
-    def load_model_sets(
-            self,
-            excel_file_name: str,
-            excel_file_dir_path: Path,
-    ) -> None:
-
-        self.index.load_sets_to_index(
-            excel_file_name=excel_file_name,
-            excel_file_dir_path=excel_file_dir_path,
-        )
-
-        if self.settings['model']['warm_start']:
-            self.logger.info(
-                "Warm start option enabled. "
-                "Skipping loading sets to the SQL database."
-            )
-        else:
-            self.database.load_sets_to_database()
+            self.files.create_dir(self.paths['model_dir'])

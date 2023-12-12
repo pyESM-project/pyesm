@@ -3,10 +3,11 @@ from typing import Dict
 
 from src.log_exc.logger import Logger
 from src.util.file_manager import FileManager
-from src.backend.model import Model
+from src.util.powerbi_report import PowerBiReport
+from src.backend.core import Core
 
 
-class Interface:
+class Model:
 
     def __init__(
             self,
@@ -34,12 +35,17 @@ class Interface:
         self.load_settings(file_settings_name, file_settings_dir_path)
         self.load_paths(self.settings)
 
-        self.model = Model(
+        self.core = Core(
             logger=self.logger,
             files=self.files,
             settings=self.settings,
             database_name=self.settings['database']['name'],
             paths=self.paths,
+        )
+
+        self.pbi_report = PowerBiReport(
+            logger=self.logger,
+            settings=self.settings,
         )
 
         self.logger.info(f"'{self}' object initialized.")
@@ -84,38 +90,61 @@ class Interface:
     ) -> None:
         self.logger.info(f"'{self}' object: loading paths from settings.")
         self.paths = {}
-        self.paths['database_dir'] = Path(
-            settings['database']['dir_path'],
+        self.paths['model_dir'] = Path(
+            settings['model']['dir_path'],
             settings['model']['name']
         )
         self.paths['input_data_dir'] = Path(
-            self.paths['database_dir'],
+            self.paths['model_dir'],
             settings['database']['input_data_dir_name']
         )
         self.paths['sets_excel_file'] = Path(
-            self.paths['database_dir'],
+            self.paths['model_dir'],
             settings['database']['sets_excel_file_name']
         )
         self.paths['sql_database'] = Path(
-            self.paths['database_dir'],
+            self.paths['model_dir'],
             settings['database']['name']
         )
 
-    def load_sets(self) -> None:
-        self.model.load_model_sets(
+    def load_model_sets(self) -> None:
+
+        self.core.index.load_sets_to_index(
             excel_file_name=self.settings['database']['sets_excel_file_name'],
-            excel_file_dir_path=self.paths['database_dir'],
+            excel_file_dir_path=self.paths['model_dir'],
         )
 
-    def generate_blank_sql_database(
+        if self.settings['model']['use_existing_database']:
+            self.logger.info(
+                "Relying on existing SQL database "
+                f"'{self.settings['database']['name']}'."
+            )
+            self.core.index.load_vars_coordinates_to_index()
+
+        else:
+            self.core.database.load_sets_to_database()
+
+    def generate_blank_database(
             self,
             foreign_keys_on: bool = True,
     ) -> None:
-        self.model.database.generate_blank_database(
-            foreign_keys_on=foreign_keys_on)
 
-    def generate_blank_data_input_files(self):
-        self.model.database.generate_blank_data_input_files()
+        if self.settings['model']['use_existing_database']:
+            self.logger.warning(
+                "Relying on existing SQL database "
+                f"'{self.settings['database']['name']}' and input data files."
+            )
+        else:
+            self.core.database.generate_blank_sql_database(foreign_keys_on)
+            self.core.database.generate_blank_data_input_files()
+
+        if self.settings['model']['generate_powerbi_report']:
+            self.pbi_report.generate_powerbi_report()
 
     def load_data_files_to_database(self):
-        self.model.database.load_data_input_files()
+        self.core.database.load_data_input_files()
+
+    def erase_model(self) -> None:
+        self.logger.warning(
+            f"Erasing model {self.settings['model']['name']}.")
+        self.files.erase_dir(self.paths['model_dir'])
