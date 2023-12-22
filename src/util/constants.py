@@ -52,7 +52,7 @@ _STD_VALUES_FIELD = {'values': ['values', 'REAL']}
 _STD_ID_FIELD = {'id': ['id', 'INTEGER PRIMARY KEY']}
 
 # definition of standard hierarchy of problem variables dictionary
-_VAR_DICT_HIERARCHY = ['scenarios', 'datetime']
+_VAR_PARSING_HIERARCHY = ['scenarios', 'datetime']
 
 # definition of model variables
 _VARIABLES = {
@@ -67,7 +67,7 @@ _VARIABLES = {
             'technologies': {'set_categories': 't.s'},
             'flows': {'set_categories': 'f.p'},
         },
-        'var_dict_hierarchy': None,
+        'var_parsing_hierarchy': None,
         'shape': ['technologies', 'flows'],
     },
     'u': {
@@ -84,7 +84,7 @@ _VARIABLES = {
             },
             'technologies': {'set_categories': 't.s'},
         },
-        'var_dict_hierarchy': None,
+        'var_parsing_hierarchy': None,
         'shape': ['flows', 'technologies'],
     },
     'Y': {
@@ -101,7 +101,7 @@ _VARIABLES = {
             },
             'technologies': {'set_categories': 't.d'},
         },
-        'var_dict_hierarchy': None,
+        'var_parsing_hierarchy': None,
         'shape': ['flows', 1],
     },
     'Q': {
@@ -117,7 +117,7 @@ _VARIABLES = {
                 'aggregation_key': 'competition',
             }
         },
-        'var_dict_hierarchy': None,
+        'var_parsing_hierarchy': None,
         'shape': ['flows', 1],
     },
     'X': {
@@ -132,7 +132,7 @@ _VARIABLES = {
                 'set_categories': 't.s',
             }
         },
-        'var_dict_hierarchy': None,
+        'var_parsing_hierarchy': None,
         'shape': ['technologies', 1],
     },
 }
