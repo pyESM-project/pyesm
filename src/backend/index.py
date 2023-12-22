@@ -1,44 +1,75 @@
 from pathlib import Path
-from typing import Dict, Any
+from typing import Union, Dict, List, Any
+
+import numpy as np
+import pandas as pd
 
 from src.log_exc.logger import Logger
 from src.log_exc import exceptions as exc
 from src.util import constants
 from src.util.file_manager import FileManager
-from src.util.util import DotDict
+from src.util import util
 
 
-class Set:
-    def __init__(
-            self,
-            values: Dict[str, Any] = None,
-            **kwargs
-    ) -> None:
-
+class BaseItem:
+    def __init__(self, **kwargs) -> None:
         for key, value in kwargs.items():
             setattr(self, key, value)
-
-        self.values = values
 
     def __repr__(self) -> str:
-        return '\n'.join(f'{k}: {v}' for k, v in self.__dict__.items())
+        output = ''
+        for key, value in self.__dict__.items():
+            if key != 'values':
+                output += f'\n{key}: {value}'
+            else:
+                output += f'\n{key}: \n{value}'
+        return output
 
 
-class Variable:
+class Set(BaseItem):
     def __init__(
             self,
-            **kwargs
+            table: pd.DataFrame = None,
+            **kwargs,
     ) -> None:
-        for key, value in kwargs.items():
-            setattr(self, key, value)
+        super().__init__(**kwargs)
+
+        self.table = table
+
+
+class Variable(BaseItem):
+    def __init__(
+            self,
+            **kwargs,
+    ) -> None:
+        super().__init__(**kwargs)
 
         self.variable_fields = {}
         self.table_headers = {}
         self.coordinates = {}
         self.foreign_keys = {}
+        self.data = {}
 
-    def __repr__(self) -> str:
-        return '\n'.join(f'{k}: {v}' for k, v in self.__dict__.items())
+        self.var_parsing_hierarchy = \
+            self.var_parsing_hierarchy or constants._VAR_PARSING_HIERARCHY
+
+    @property
+    def shape_size(self) -> List[int]:
+        shape_size = []
+
+        for item in self.shape:
+            if isinstance(item, str):
+                if item not in self.coordinates.keys():
+                    error = f"'{item}' is not a variable coordinate."
+                    raise ValueError(error)
+                shape_size.append(len(self.coordinates[item]))
+            elif isinstance(item, int):
+                shape_size.append(item)
+            else:
+                error = "Wrong shape format: valid formats are 'str' or 'int'"
+                raise ValueError(error)
+
+        return shape_size
 
 
 class Index:
@@ -54,12 +85,12 @@ class Index:
 
         self.files = files
 
-        self.sets = DotDict({
+        self.sets = util.DotDict({
             key: Set(**value)
             for key, value in constants._SETS.items()
         })
 
-        self.variables = DotDict({
+        self.variables = util.DotDict({
             key: Variable(**value)
             for key, value in constants._VARIABLES.items()
         })
@@ -91,16 +122,16 @@ class Index:
             empty_data_fill='',
     ) -> None:
 
-        if all(set_instance.values is None for set_instance in self.sets.values()):
+        if all(set_instance.table is None for set_instance in self.sets.values()):
             self.logger.info(f"'{self}' object: loading new Sets to Index.")
         else:
             self.logger.warning(
-                f"'{self}' object: Sets values already "
+                f"'{self}' object: Sets tables already "
                 "defined for at least one Set in Index.")
             user_input = input("Overwrite Sets? (y/[n]): ")
             if user_input.lower() != 'y':
                 self.logger.info(
-                    f"'{self}' object: Sets values not overwritten.")
+                    f"'{self}' object: Sets tables not overwritten.")
                 return
             else:
                 self.logger.info(
@@ -115,11 +146,11 @@ class Index:
         for set_instance in self.sets.values():
             table_name = set_instance.table_name
             if table_name in sets_values.keys():
-                set_instance.values = sets_values[table_name]
+                set_instance.table = sets_values[table_name]
 
     def load_vars_coordinates_to_index(self) -> None:
 
-        self.logger.debug(f"Loading variables coordinates to Index.")
+        self.logger.debug(f"Loading variables 'coordinates' to Index.")
 
         for variable in self.variables.values():
 
@@ -128,7 +159,7 @@ class Index:
                 set_header = variable.variable_fields[set_key][0]
 
                 if set_filter is None:
-                    set_values = list(self.sets[set_key].values[set_header])
+                    set_values = list(self.sets[set_key].table[set_header])
 
                 elif isinstance(set_filter, dict):
 
@@ -136,7 +167,7 @@ class Index:
                         category_filter_id = set_filter['set_categories']
                         category_filter = self.sets[set_key].set_categories[category_filter_id]
                         category_header_name = self.sets[set_key].table_headers['category'][0]
-                        set_filtered = self.sets[set_key].values.query(
+                        set_filtered = self.sets[set_key].table.query(
                             f'{category_header_name} == "{category_filter}"'
                         )
 
@@ -155,9 +186,26 @@ class Index:
                     self.logger.error(error_msg)
                     raise exc.MissingDataError(error_msg)
 
-                variable.coordinates[set_key] = set_values
+                variable.coordinates[set_header] = set_values
 
-    def load_foreign_keys_to_index(self) -> None:
+    def load_vars_table_headers_to_index(self) -> None:
+
+        self.logger.debug(f"Loading variables 'table_headers' to Index.")
+
+        for var_key, variable in self.variables.items():
+            if variable.variable_fields is None:
+                error = f"'variable_fields' is empty for variable '{var_key}'."
+                self.logger.error(error)
+                raise ValueError(error)
+
+            variable.table_headers = variable.variable_fields.copy()
+            variable.table_headers = util.add_item_to_dict(
+                dictionary=variable.table_headers,
+                item=constants._STD_ID_FIELD,
+                position=0,
+            )
+
+    def load_foreign_keys_to_vars_index(self) -> None:
 
         self.logger.debug(f"Loading foreign keys to Index.")
 
