@@ -171,7 +171,7 @@ class SQLManager:
 
     def get_foreign_keys(
             self,
-            table_name
+            table_name: str,
     ):
         query = f"PRAGMA foreign_key_list({table_name})"
         self.execute_query(query)
@@ -286,6 +286,7 @@ class SQLManager:
             self,
             table_name: str,
             dataframe: pd.DataFrame,
+            overwrite: bool = False,
     ) -> None:
 
         table_fields = self.get_table_fields(table_name=table_name)
@@ -299,16 +300,17 @@ class SQLManager:
         data = [tuple(row) for row in dataframe.values.tolist()]
 
         if num_entries > 0:
-            confirm = input(
-                f"SQLite table '{table_name}' already has {num_entries} rows. "
-                "Delete all table entries and substitute with new data? (y/[n])"
-            )
-            if confirm.lower() != 'y':
-                self.logger.debug(
-                    f"SQLite table '{table_name}' - not overwritten.")
-                return
-            else:
-                self.delete_all_table_entries(table_name=table_name)
+            if not overwrite:
+                confirm = input(
+                    f"SQLite table '{table_name}' already has {num_entries} rows. "
+                    "Delete all table entries and substitute with new data? (y/[n])"
+                )
+                if confirm.lower() != 'y':
+                    self.logger.debug(
+                        f"SQLite table '{table_name}' - not overwritten.")
+                    return
+
+            self.delete_all_table_entries(table_name=table_name)
 
         placeholders = ', '.join(['?'] * len(dataframe.columns))
         query = f"INSERT INTO {table_name} VALUES ({placeholders})"
