@@ -148,38 +148,43 @@ def pivot_dict(
 
 
 def unpivot_dict_to_dataframe(
-        dict: Dict[str, List[str]],
-        headers: List[str] = None,
+        data_dict: Dict[str, List[str]],
+        key_order: List[str] = None,
 ) -> pd.DataFrame:
     """Generates a Pandas DataFrame by unpivoting content of a dictionary of 
-    lists with generic number of items.
+    lists with generic number of items. User can unpivot just a subset of 
+    entries of the dictionary with the desired order of keys.
 
     Args:
-        dict (Dict[str, List[str]]): dictionary to be unpivoted. 
-        headers (List, optional): final index of the dictionary. Defaults to None.
+        data_dict (Dict[str, List[str]]): dictionary to be unpivoted. 
+        key_order (List, optional): final index of the dictionary. Defaults: None.
 
     Returns:
         pd.DataFrame: Pandas DataFrame resulting from the cartesian product of 
         dictionary values.
     """
 
-    cartesian_product = list(it.product(*dict.values()))
+    if key_order:
+        common_keys = set(key_order).intersection(set(data_dict.keys()))
 
-    if not headers:
-        columns_headers = dict.keys()
+        if not common_keys:
+            raise ValueError(
+                "No common keys between 'key_order' and 'data_dict'.")
 
-    elif len(headers) == len(dict):
-        columns_headers = headers
+        data_dict_to_unpivot = {key: data_dict[key] for key in key_order}
 
     else:
-        raise ValueError(
-            "Passed headers do not match number of columns in DataFrame.")
+        data_dict_to_unpivot = data_dict
+        key_order = list(data_dict_to_unpivot.keys())
 
-    df = pd.DataFrame(
-        cartesian_product,
-        columns=columns_headers,
+    cartesian_product = list(it.product(*data_dict_to_unpivot.values()))
+
+    unpivoted_data_dict = pd.DataFrame(
+        data=cartesian_product,
+        columns=key_order,
     )
-    return df
+
+    return unpivoted_data_dict
 
 
 def add_item_to_dict(
