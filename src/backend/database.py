@@ -14,7 +14,6 @@ from src.util.sql_manager import SQLManager, connection
 
 class Database:
 
-    var_dict_hierarchy = constants._VAR_DICT_HIERARCHY.copy()
     data_file_extension = '.xlsx'
 
     def __init__(
@@ -74,43 +73,30 @@ class Database:
         for set_instance in self.index.sets.values():
             self.sqltools.dataframe_to_table(
                 table_name=set_instance.table_name,
-                dataframe=set_instance.values
+                dataframe=set_instance.table
             )
 
     @connection
-    def generate_blank_sql_database(
-        self,
-        foreign_keys_on: bool = True,
-    ) -> None:
+    def generate_blank_vars_sql_tables(self) -> None:
 
         self.logger.info("Generation of empty SQLite database.")
-
-        self.index.load_vars_coordinates_to_index()
-
-        if foreign_keys_on:
-            self.index.load_foreign_keys_to_index()
 
         for var_key, variable in self.index.variables.items():
 
             table_headers_list = [
                 value[0] for value in variable.variable_fields.values()
             ]
+
             unpivoted_coords_df = util.unpivot_dict_to_dataframe(
-                dict=variable.coordinates,
-                headers=table_headers_list
+                data_dict=variable.coordinates,
+                key_order=table_headers_list
             )
 
-            variable.table_headers = variable.variable_fields.copy()
-            variable.table_headers = util.add_item_to_dict(
-                dictionary=variable.table_headers,
-                item=constants._STD_ID_FIELD,
-                position=0,
+            unpivoted_coords_df.insert(
+                loc=0,
+                column=variable.table_headers['id'][0],
+                value=None
             )
-
-            id_column_name = constants._STD_ID_FIELD['id'][0]
-            id_column_values = pd.Series(
-                range(0, len(unpivoted_coords_df)+1))
-            unpivoted_coords_df.insert(0, id_column_name, id_column_values)
 
             self.sqltools.create_table(
                 table_name=var_key,
@@ -143,7 +129,7 @@ class Database:
         )
 
     @connection
-    def generate_blank_data_input_files(
+    def generate_blank_vars_input_files(
         self,
         file_extension: str = data_file_extension,
     ) -> None:
@@ -175,6 +161,7 @@ class Database:
     def load_data_input_files(
         self,
         file_extension: str = data_file_extension,
+        overwrite_existing_data: bool = False,
     ) -> None:
 
         self.logger.info(
@@ -197,6 +184,7 @@ class Database:
                     self.sqltools.dataframe_to_table(
                         table_name=var_name,
                         dataframe=data[var_name],
+                        overwrite=overwrite_existing_data,
                     )
 
         else:
@@ -208,35 +196,12 @@ class Database:
                 self.sqltools.dataframe_to_table(
                     table_name=data_key,
                     dataframe=data_values,
+                    overwrite=overwrite_existing_data,
                 )
 
-    # da qui, ragionare su come è meglio creare le variabili e il problema.
-    def generate_variables_data_dict(self) -> Dict[str, Any]:
+    def filter_variable_to_ndarray(
+            self,
+            var_name: str,
 
-        self.logger.info("Generating empty dictionary of variables data...")
-
-        variables_data = {}
-
-        for var_key, var_info in self.variables_info.items():
-            variables_data[var_key] = {}
-            keys_parsing_order = []
-
-            if self.variables_info[var_key]['var_dict_hierarchy'] is None:
-                dict_hierarchy = self.var_dict_hierarchy
-            else:
-                dict_hierarchy = self.variables_info[var_key]['var_dict_hierarchy']
-
-            for level in dict_hierarchy:
-                level_header_key = var_info['set_headers']
-                level_header = self.sets_structure[level]['table_headers'][level_header_key][0]
-                keys_parsing_order.append(level_header)
-
-                variables_data[var_key][level_header] = \
-                    self.coordinates[var_key][level_header]
-
-            variables_data[var_key] = \
-                util.pivot_dict(variables_data[var_key])
-
-        self.logger.info("Empty dictionary of variables data generated.")
-
-        return variables_data
+    ):
+        pass
