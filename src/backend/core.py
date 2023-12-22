@@ -53,6 +53,7 @@ class Core:
             logger=self.logger,
             files=self.files,
             settings=self.settings,
+            index=self.index
         )
 
         self.variables = None
@@ -68,3 +69,7 @@ class Core:
             self.logger.info("Skipping model directory generation.")
         else:
             self.files.create_dir(self.paths['model_dir'])
+
+    # slice database and put exogeous data into the index.data cvxpy vars
+    def initialize_model_variables(self):
+        self.logger.info("Initialize dataframes of variables.")
