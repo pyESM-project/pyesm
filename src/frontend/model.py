@@ -3,7 +3,7 @@ from typing import Dict
 
 from src.log_exc.logger import Logger
 from src.util.file_manager import FileManager
-from src.util.powerbi_report import PowerBiReport
+from src.util.pbi_manager import PBIManager
 from src.backend.core import Core
 
 
@@ -43,7 +43,7 @@ class Model:
             paths=self.paths,
         )
 
-        self.pbi_report = PowerBiReport(
+        self.pbi_report = PBIManager(
             logger=self.logger,
             settings=self.settings,
         )
@@ -107,44 +107,48 @@ class Model:
             settings['database']['name']
         )
 
-    def load_model_sets(self) -> None:
+    def load_model_coordinates(self) -> None:
 
         self.core.index.load_sets_to_index(
             excel_file_name=self.settings['database']['sets_excel_file_name'],
-            excel_file_dir_path=self.paths['model_dir'],
-        )
+            excel_file_dir_path=self.paths['model_dir'])
 
         if self.settings['model']['use_existing_database']:
-            self.logger.info(
-                "Relying on existing SQL database "
-                f"'{self.settings['database']['name']}'."
-            )
-            self.core.index.load_vars_coordinates_to_index()
-
+            db_name = self.settings['database']['name']
+            self.logger.info(f"Relying on existing SQL database '{db_name}'.")
         else:
             self.core.database.load_sets_to_database()
 
-    def generate_blank_database(
-            self,
-            foreign_keys_on: bool = True,
-    ) -> None:
+        self.core.index.load_vars_table_headers_to_index()
+        self.core.index.load_vars_coordinates_to_index()
+
+        if self.settings['database']['foreign_keys']:
+            self.core.index.load_foreign_keys_to_vars_index()
+
+    def generate_blank_database(self) -> None:
 
         if self.settings['model']['use_existing_database']:
-            self.logger.warning(
-                "Relying on existing SQL database "
-                f"'{self.settings['database']['name']}' and input data files."
-            )
+            db_name = self.settings['database']['name']
+            self.logger.info(f"Relying on existing SQL database '{db_name}'.")
         else:
-            self.core.database.generate_blank_sql_database(foreign_keys_on)
-            self.core.database.generate_blank_data_input_files()
+            self.core.database.generate_blank_vars_sql_tables()
+            self.core.database.generate_blank_vars_input_files()
 
         if self.settings['model']['generate_powerbi_report']:
             self.pbi_report.generate_powerbi_report()
 
-    def load_data_files_to_database(self):
-        self.core.database.load_data_input_files()
+    def load_data_files_to_database(
+            self,
+            overwrite_existing_data: bool = False,
+    ) -> None:
+        self.core.database.load_data_input_files(
+            overwrite_existing_data=overwrite_existing_data)
 
     def erase_model(self) -> None:
         self.logger.warning(
             f"Erasing model {self.settings['model']['name']}.")
         self.files.erase_dir(self.paths['model_dir'])
+
+    def update_data_values(self) -> None:
+        self.load_data_files_to_database(overwrite_existing_data=True)
+        # update variables values

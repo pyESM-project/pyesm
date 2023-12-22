@@ -13,6 +13,7 @@ database:
     input_data_dir_name: input_data
     multiple_input_files: False
     input_file_name: input_data.xlsx
+    foreign_keys: True
 
 problem:
     execution_mode: simulation
