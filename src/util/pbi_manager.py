@@ -4,7 +4,7 @@ from typing import Dict
 from src.log_exc.logger import Logger
 
 
-class PowerBiReport:
+class PBIManager:
 
     def __init__(
         self,
@@ -17,6 +17,10 @@ class PowerBiReport:
 
         self.settings = settings
         self.file_name = self.settings['model']['powerbi_report_name']
+
+    def __repr__(self):
+        class_name = type(self).__name__
+        return f'{class_name}'
 
     def generate_powerbi_report(
         self,
