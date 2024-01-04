@@ -47,12 +47,14 @@ _SETS = {
     },
 }
 
-# definition of standard column name-type for id and values fields
+# definition of standard column name-type for sets id and values fields
 _STD_VALUES_FIELD = {'values': ['values', 'REAL']}
 _STD_ID_FIELD = {'id': ['id', 'INTEGER PRIMARY KEY']}
 
-# definition of standard hierarchy of problem variables dictionary
-_VAR_PARSING_HIERARCHY = ['scenarios', 'datetime']
+# definition of standard items for problem variables dictionary
+_SETS_PARSING_HIERARCHY = ['scenarios', 'datetime']
+_CVXPY_VAR_HEADER = 'variable'
+_FILTER_DICT_HEADER = 'filter'
 
 # definition of model variables
 _VARIABLES = {
@@ -67,7 +69,6 @@ _VARIABLES = {
             'technologies': {'set_categories': 't.s'},
             'flows': {'set_categories': 'f.p'},
         },
-        'var_parsing_hierarchy': None,
         'shape': ['technologies', 'flows'],
     },
     'u': {
@@ -84,7 +85,6 @@ _VARIABLES = {
             },
             'technologies': {'set_categories': 't.s'},
         },
-        'var_parsing_hierarchy': None,
         'shape': ['flows', 'technologies'],
     },
     'Y': {
@@ -101,8 +101,7 @@ _VARIABLES = {
             },
             'technologies': {'set_categories': 't.d'},
         },
-        'var_parsing_hierarchy': None,
-        'shape': ['flows', 1],
+        'shape': ['flows', 'technologies'],
     },
     'Q': {
         'symbol': 'Q',
@@ -117,7 +116,6 @@ _VARIABLES = {
                 'aggregation_key': 'competition',
             }
         },
-        'var_parsing_hierarchy': None,
         'shape': ['flows', 1],
     },
     'X': {
@@ -132,7 +130,6 @@ _VARIABLES = {
                 'set_categories': 't.s',
             }
         },
-        'var_parsing_hierarchy': None,
         'shape': ['technologies', 1],
     },
 }

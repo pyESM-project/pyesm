@@ -213,7 +213,7 @@ class SQLManager:
         num_entries = self.count_table_data_entries(table_name=table_name)
         self.execute_query(f"DELETE FROM {table_name}")
         self.logger.debug(
-            f"{num_entries} rows deleted from table '{table_name}'")
+            f"SQLite table '{table_name}' - {num_entries} entries deleted.")
 
     # questo metodo non funziona, perchè prima bisogna fare in modo che i
     # il dataframe e la tabella sql abbiano i valori definiti con gli stessi tipi

@@ -3,7 +3,7 @@ model:
     name: test_case_1
     dir_path: D:\Politecnico di Milano\Documentale DENG - PRIN-MIMO\Models\pyESM_docs\case_studies
     description: dummy case study for testing the model
-    use_existing_database: False # True if you want to rely on existing model directory and sql database
+    use_existing_database: True # True if you want to rely on existing model directory and sql database
     generate_powerbi_report: False # this is not ready yet
     powerbi_report_name: data_browser.pbix
 

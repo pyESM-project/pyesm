@@ -1,4 +1,4 @@
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 from pathlib import Path
 
 import os
@@ -247,6 +247,7 @@ class FileManager:
             excel_file_name: str,
             excel_file_dir_path: Path,
             empty_data_fill: str = '',
+            dtype: Optional[str] = None,
     ) -> Dict[str, pd.DataFrame]:
         """Reading an excel file composed by multiple tabs and returning
         a dictionary with keys as tabs and tables in each tab as Pandas 
@@ -259,7 +260,7 @@ class FileManager:
             self.logger.error(f'{excel_file_name} does not exist.')
             raise FileNotFoundError(f"{excel_file_name} does not exist.")
 
-        df_dict = pd.read_excel(io=file_path, sheet_name=None)
+        df_dict = pd.read_excel(io=file_path, sheet_name=None, dtype=dtype)
         df_dict = {sheet_name: df.fillna(empty_data_fill)
                    for sheet_name, df in df_dict.items()}
 
