@@ -19,7 +19,9 @@ class BaseItem:
     def __repr__(self) -> str:
         output = ''
         for key, value in self.__dict__.items():
-            if key != 'values':
+            if key in ['data', 'table']:
+                pass
+            elif key != 'values':
                 output += f'\n{key}: {value}'
             else:
                 output += f'\n{key}: \n{value}'
@@ -48,10 +50,8 @@ class Variable(BaseItem):
         self.table_headers = {}
         self.coordinates = {}
         self.foreign_keys = {}
+        self.sets_parsing_hierarchy = {}
         self.data = {}
-
-        self.var_parsing_hierarchy = \
-            self.var_parsing_hierarchy or constants._VAR_PARSING_HIERARCHY
 
     @property
     def shape_size(self) -> List[int]:
@@ -59,12 +59,15 @@ class Variable(BaseItem):
 
         for item in self.shape:
             if isinstance(item, str):
-                if item not in self.coordinates.keys():
+                if item not in self.variable_fields.keys():
                     error = f"'{item}' is not a variable coordinate."
                     raise ValueError(error)
-                shape_size.append(len(self.coordinates[item]))
+                coordinate_key = self.variable_fields[item][0]
+                shape_size.append(len(self.coordinates[coordinate_key]))
+
             elif isinstance(item, int):
                 shape_size.append(item)
+
             else:
                 error = "Wrong shape format: valid formats are 'str' or 'int'"
                 raise ValueError(error)
@@ -140,7 +143,8 @@ class Index:
         sets_values = self.files.excel_to_dataframes_dict(
             excel_file_name=excel_file_name,
             excel_file_dir_path=excel_file_dir_path,
-            empty_data_fill=empty_data_fill
+            empty_data_fill=empty_data_fill,
+            dtype=str
         )
 
         for set_instance in self.sets.values():
@@ -170,6 +174,10 @@ class Index:
                         set_filtered = self.sets[set_key].table.query(
                             f'{category_header_name} == "{category_filter}"'
                         )
+
+                    set_filtered = self.sets[set_key].table.query(
+                        f'{category_header_name} == "{category_filter}"'
+                    ).copy()
 
                     if 'aggregation_key' in set_filter:
                         aggregation_key = set_filter['aggregation_key']
@@ -207,9 +215,20 @@ class Index:
 
     def load_foreign_keys_to_vars_index(self) -> None:
 
-        self.logger.debug(f"Loading foreign keys to Index.")
+        self.logger.debug(f"Loading tables 'foreign_keys' to Index.")
 
         for variable in self.variables.values():
             for set_key, set_header in variable.variable_fields.items():
                 variable.foreign_keys[set_header[0]] = \
                     (set_header[0], self.sets[set_key].table_name)
+
+    def load_sets_parsing_hierarchy(self) -> None:
+
+        self.logger.debug(
+            f"Loading variables 'sets_parsing_hierarchy' to Index.")
+
+        for variable in self.variables.values():
+            variable.sets_parsing_hierarchy = {
+                item: variable.variable_fields[item][0]
+                for item in constants._SETS_PARSING_HIERARCHY
+            }
