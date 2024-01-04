@@ -1,13 +1,13 @@
-from typing import Any, List, Union
+from typing import Any, List, Dict, Union
 
 import pandas as pd
 import numpy as np
 import cvxpy as cx
 
 from src.log_exc.logger import Logger
-from src.util import constants, util
+from src.util import util, constants
 from src.util.file_manager import FileManager
-from src.backend.index import Index
+from src.backend.index import Index, Variable
 
 
 class Problem:
@@ -35,7 +35,7 @@ class Problem:
         class_name = type(self).__name__
         return f'{class_name}'
 
-    def create_variable(
+    def create_cvxpy_variable(
             self,
             type: str,
             shape: [int, int],
@@ -51,45 +51,81 @@ class Problem:
             self.logger.error(error)
             raise ValueError(error)
 
-    def data_to_variable(
+    def data_to_cvxpy_variable(
             self,
-            variable: cx.Parameter,
+            cvxpy_var: cx.Parameter,
             data: Union[pd.DataFrame, np.ndarray]
     ) -> None:
 
-        if not isinstance(variable, cx.Parameter):
+        if not isinstance(cvxpy_var, cx.Parameter):
             error = "Data can only be assigned to exogenous variables."
             self.logger.error(error)
             raise ValueError(error)
 
         if isinstance(data, pd.DataFrame):
-            data_array = data.values
+            cvxpy_var.value = data.values
         elif isinstance(data, np.ndarray):
-            data_array = data
+            cvxpy_var.value = data
         else:
             error = "Supported data formats: pandas DataFrame or a numpy array."
             self.logger.error(error)
             raise ValueError(error)
 
-        variable.value = data_array
+    def generate_vars_dataframe(
+            self,
+            variable: Variable,
+    ) -> pd.DataFrame:
+        """For a Variable object, generates a Pandas DataFrame with the  
+        hierarchy structure, the related cvxpy variables and the dictionary to
+        filter the sql table for fetching data.
+        """
 
-    def generate_vars_dataframes(self) -> None:
+        cvxpy_header = constants._CVXPY_VAR_HEADER
+        filter_header = constants._FILTER_DICT_HEADER
 
         self.logger.debug(
-            f"Generating variables dataframes of cvxpy variables.")
+            f"Generating variable '{variable.symbol}' dataframe "
+            "(cvxpy object, filter dictionary).")
 
-        for variable in self.index.variables.values():
+        var_data = util.unpivot_dict_to_dataframe(
+            data_dict=variable.coordinates,
+            key_order=variable.sets_parsing_hierarchy.values()
+        )
 
-            variable.data = util.unpivot_dict_to_dataframe(
-                data_dict=variable.coordinates,
-                key_order=variable.var_parsing_hierarchy
-            )
+        var_data[cvxpy_header] = None
+        var_data[filter_header] = None
 
-            variable.data[self.cvxpy_var_column_header] = [
-                self.create_variable(
+        for row in var_data.index:
+
+            var_data.at[row, cvxpy_header] = \
+                self.create_cvxpy_variable(
                     type=variable.type,
                     shape=variable.shape_size,
-                    name=variable.symbol + str(variable.shape)
-                )
-                for _ in variable.data.index
-            ]
+                    name=variable.symbol + str(variable.shape))
+
+            var_filter = {}
+
+            for header in var_data.loc[row].index:
+
+                if header in variable.sets_parsing_hierarchy.values():
+                    var_filter[header] = [var_data.loc[row][header]]
+
+                elif header == cvxpy_header:
+                    for dim in variable.shape:
+                        if isinstance(dim, int):
+                            pass
+                        elif isinstance(dim, str):
+                            dim_header = variable.table_headers[dim][0]
+                            var_filter[dim_header] = variable.coordinates[dim_header]
+
+                elif header == filter_header:
+                    pass
+
+                else:
+                    error = f"Variable 'data' dataframe headers mismatch."
+                    self.logger.error(error)
+                    raise ValueError(error)
+
+            var_data.at[row, filter_header] = var_filter
+
+        return var_data
