@@ -158,7 +158,7 @@ class Database:
                 )
 
     @connection
-    def load_data_input_files(
+    def load_data_input_files_to_database(
         self,
         file_extension: str = data_file_extension,
         overwrite_existing_data: bool = False,
@@ -198,10 +198,3 @@ class Database:
                     dataframe=data_values,
                     overwrite=overwrite_existing_data,
                 )
-
-    def filter_variable_to_ndarray(
-            self,
-            var_name: str,
-
-    ):
-        pass

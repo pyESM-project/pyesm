@@ -5,6 +5,7 @@ from src.log_exc.logger import Logger
 from src.util.file_manager import FileManager
 from src.util.pbi_manager import PBIManager
 from src.backend.core import Core
+from src.util.sql_manager import SQLManager, connection
 
 
 class Model:
@@ -43,7 +44,7 @@ class Model:
             paths=self.paths,
         )
 
-        self.pbi_report = PBIManager(
+        self.pbi_tools = PBIManager(
             logger=self.logger,
             settings=self.settings,
         )
@@ -114,13 +115,16 @@ class Model:
             excel_file_dir_path=self.paths['model_dir'])
 
         if self.settings['model']['use_existing_database']:
-            db_name = self.settings['database']['name']
-            self.logger.info(f"Relying on existing SQL database '{db_name}'.")
+            self.logger.info(
+                "Relying on existing SQL database "
+                f"'{self.settings['database']['name']}'."
+            )
         else:
             self.core.database.load_sets_to_database()
 
         self.core.index.load_vars_table_headers_to_index()
         self.core.index.load_vars_coordinates_to_index()
+        self.core.index.load_sets_parsing_hierarchy()
 
         if self.settings['database']['foreign_keys']:
             self.core.index.load_foreign_keys_to_vars_index()
@@ -135,20 +139,24 @@ class Model:
             self.core.database.generate_blank_vars_input_files()
 
         if self.settings['model']['generate_powerbi_report']:
-            self.pbi_report.generate_powerbi_report()
+            self.pbi_tools.generate_powerbi_report()
 
     def load_data_files_to_database(
             self,
             overwrite_existing_data: bool = False,
     ) -> None:
-        self.core.database.load_data_input_files(
+        self.core.database.load_data_input_files_to_database(
             overwrite_existing_data=overwrite_existing_data)
+
+    def initialize_problem(self) -> None:
+        self.core.initialize_problem_variables()
+        self.core.data_to_cvxpy_exogenous_vars()
 
     def erase_model(self) -> None:
         self.logger.warning(
             f"Erasing model {self.settings['model']['name']}.")
         self.files.erase_dir(self.paths['model_dir'])
 
-    def update_data_values(self) -> None:
+    def update_database_and_problem(self) -> None:
         self.load_data_files_to_database(overwrite_existing_data=True)
-        # update variables values
+        self.initialize_problem()
