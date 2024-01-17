@@ -1,12 +1,16 @@
 from typing import Dict
 from pathlib import Path
 
+import pandas as pd
+
 from src.backend.database import Database
-from src.backend.index import Index
+from src.backend.index import Index, Variable
 from src.backend.problem import Problem
 from src.log_exc.logger import Logger
+from src.util import constants
 from src.util.file_manager import FileManager
-from src.util.sql_manager import SQLManager
+from src.util.sql_manager import SQLManager, connection
+from src.util.util import merge_series_to_dataframe
 
 
 class Core:
@@ -33,6 +37,7 @@ class Core:
             logger=self.logger,
             database_dir_path=self.paths['model_dir'],
             database_name=database_name,
+            # adding index here?
         )
 
         self.index = Index(
@@ -70,6 +75,72 @@ class Core:
         else:
             self.files.create_dir(self.paths['model_dir'])
 
-    # slice database and put exogeous data into the index.data cvxpy vars
-    def initialize_model_variables(self):
-        self.logger.info("Initialize dataframes of variables.")
+    def initialize_problem_variables(self) -> None:
+        self.logger.info(
+            "Initialize variables dataframes "
+            "(cvxpy objects, filters dictionaries).")
+
+        for variable in self.index.variables.values():
+            variable.data = self.problem.generate_vars_dataframe(variable)
+
+    @connection
+    def data_to_cvxpy_exogenous_vars(self) -> None:
+        self.logger.info(
+            f"Fetching data from '{self.settings['database']['name']}' "
+            "to cvxpy exogenous variables.")
+
+        for variable in self.index.variables.values():
+
+            if isinstance(variable, Variable) and variable.type == 'exogenous':
+                self.logger.debug(
+                    f"Fetching data from table '{variable.symbol}' "
+                    "to cvxpy exogenous variable.")
+
+                filter_header = constants._FILTER_DICT_HEADER
+                cvxpy_var_header = constants._CVXPY_VAR_HEADER
+
+                for row in variable.data.index:
+
+                    raw_data = self.database.sqltools.filtered_table_to_dataframe(
+                        table_name=variable.symbol,
+                        filters_dict=variable.data[filter_header][row])
+
+                    pivoted_data = variable.reshaping_sqlite_table_data(
+                        data=raw_data
+                    )
+
+                    self.problem.data_to_cvxpy_variable(
+                        cvxpy_var=variable.data[cvxpy_var_header][row],
+                        data=pivoted_data
+                    )
+
+    @connection
+    def cvxpy_endogenous_data_to_database(self, operation: str) -> None:
+        self.logger.info(
+            "Fetching data from cvxpy endogenous variables "
+            f"to database '{self.settings['database']['name']}' ")
+
+        for variable in self.index.variables.values():
+
+            if isinstance(variable, Variable) and variable.type == 'endogenous':
+                self.logger.debug(
+                    f"Fetching data from cvxpy variable '{variable.symbol} "
+                    "to the related SQLite table.")
+
+                for row in variable.data.index:
+
+                    none_coord = variable.none_data_coordinates(row)
+
+                    if none_coord:
+                        self.logger.warning(
+                            f"SQLite table '{variable.symbol}': "
+                            f"no data available for {none_coord}.")
+                        continue
+
+                    cvxpy_var_data = variable.reshaping_variable_data(row)
+
+                    self.sqltools.dataframe_to_table(
+                        table_name=variable.symbol,
+                        dataframe=cvxpy_var_data,
+                        operation=operation,
+                    )
