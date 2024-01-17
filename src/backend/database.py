@@ -67,7 +67,6 @@ class Database:
 
     @connection
     def load_sets_to_database(self) -> None:
-
         self.logger.info(f"'{self}' object: loading Sets.")
 
         for set_instance in self.index.sets.values():
@@ -78,7 +77,6 @@ class Database:
 
     @connection
     def generate_blank_vars_sql_tables(self) -> None:
-
         self.logger.info("Generation of empty SQLite database.")
 
         for var_key, variable in self.index.variables.items():
@@ -160,10 +158,9 @@ class Database:
     @connection
     def load_data_input_files_to_database(
         self,
+        operation: str,
         file_extension: str = data_file_extension,
-        overwrite_existing_data: bool = False,
     ) -> None:
-
         self.logger.info(
             "Loading data input file/s filled by the user to SQLite database.")
 
@@ -184,7 +181,7 @@ class Database:
                     self.sqltools.dataframe_to_table(
                         table_name=var_name,
                         dataframe=data[var_name],
-                        overwrite=overwrite_existing_data,
+                        operation=operation,
                     )
 
         else:
@@ -196,5 +193,5 @@ class Database:
                 self.sqltools.dataframe_to_table(
                     table_name=data_key,
                     dataframe=data_values,
-                    overwrite=overwrite_existing_data,
+                    operation=operation,
                 )
