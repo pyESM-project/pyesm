@@ -2,7 +2,8 @@ import itertools as it
 import pprint as pp
 
 from pathlib import Path
-from typing import Dict, List, Any, OrderedDict
+from typing import Dict, List, Any, Literal, OrderedDict
+import numpy as np
 
 import pandas as pd
 
@@ -36,6 +37,31 @@ def prettify(item: dict) -> None:
     if not isinstance(item, dict):
         raise TypeError('Function argument should be a dictionary.')
     print(pp.pformat(item))
+
+
+def validate_selection(
+        valid_selections: List[str],
+        selection: str,
+) -> None:
+    """Validates if the given selection is in the list of valid selections.
+
+    Args:
+        valid_selections (List[str]): A list of valid selections.
+        selection (str): The user's selection to be validated.
+
+    Raises:
+        ValueError: If the provided selection is not a valid selection.
+
+    Example:
+    >>> valid_selections = ['option1', 'option2', 'option3']
+    >>> validate_selection(valid_selections, 'option2')  # No exception raised
+    >>> validate_selection(valid_selections, 'invalid_option')
+    ValueError: Invalid selection. Please choose one of: option1, option2, option3.
+    """
+    if selection not in valid_selections:
+        raise ValueError(
+            "Invalid selection. Please choose one "
+            f"of: {', '.join(valid_selections)}.")
 
 
 def find_dict_depth(item) -> int:
@@ -217,3 +243,96 @@ def add_item_to_dict(
     item_list = list(item.items())
     items.insert(position, *item_list)
     return dict(items)
+
+
+def merge_series_to_dataframe(
+        series: pd.Series,
+        dataframe: pd.DataFrame,
+        position: Literal[0, -1] = 0,
+) -> pd.DataFrame:
+    """Merge a given 'series' with a 'dataframe' at the specified position.
+    It repeats all values of series for all rows of the dataframe.
+
+    Parameters:
+    - series (pd.Series): The series to be merged.
+    - dataframe (pd.DataFrame): The dataframe to merge with.
+    - position (Literal[0, -1], optional): The position at which to merge the series.
+        0 indicates merging at the beginning, and -1 indicates merging at the end.
+        Defaults to 0.
+
+    Returns:
+    pd.DataFrame: The merged dataframe.
+    """
+    if series.empty or dataframe.empty:
+        raise ValueError("Both series and dataframe must be non-empty.")
+
+    series_to_df = pd.concat(
+        objs=[series]*len(dataframe),
+        axis=1,
+    ).transpose().reset_index(drop=True)
+
+    objs = [series_to_df, dataframe]
+
+    if position == -1:
+        objs = objs[::-1]
+
+    return pd.concat(objs=objs, axis=1)
+
+
+def update_dataframes_on_condition(
+        existing_df: pd.DataFrame,
+        new_df: pd.DataFrame,
+        col_to_update: str,
+        cols_common: List[str],
+        case: List[str],
+) -> pd.DataFrame:
+    """Compares values in existing and new DataFrames and returns a new DataFrame
+    based on different 'case' options:
+        - merge: data of existing_df and new_df (commond data updated with new_df).
+        - existing_updated: only common data for existing_df and new_df 
+        (commond data updated with new_df).
+        - new_only: new data included in new_df not available in existing_df
+
+    Args:
+        existing_df (pd.DataFrame): DataFrame to be updated.
+        new_df (pd.DataFrame): DataFrame containing the values to update from.
+        col_to_update (str): name of the column to be considered for the comparison.
+        cols_common (List[str]): List of column names representing the common 
+        columns for the comparison.
+        case: The type of comparison to be performed. Options: 
+        'merge', 'existing_updated', 'new_only'.
+
+    Returns:
+        pd.DataFrame: updated DataFrame.
+
+    Raises:
+        ValueError: if an invalid 'case' is provided.
+    """
+
+    valid_cases = ['merge', 'existing_updated', 'new_only']
+    validate_selection(valid_cases, case)
+
+    merged_df = pd.merge(
+        left=existing_df,
+        right=new_df,
+        on=cols_common,
+        how='outer' if case == 'merge' else 'inner',
+        suffixes=('_existing', '_new')
+    )
+
+    merged_df[col_to_update] = np.where(
+        merged_df[col_to_update + '_new'].notna(),
+        merged_df[col_to_update + '_new'],
+        merged_df[col_to_update + '_existing']
+    )
+
+    merged_df.drop(
+        columns=[col_to_update + '_existing', col_to_update + '_new'],
+        inplace=True)
+
+    if case == 'new_only':
+        existing_dict = existing_df[cols_common].to_dict(orient='list')
+        condition = ~new_df[cols_common].isin(existing_dict).all(axis=1)
+        return new_df[condition]
+
+    return merged_df
