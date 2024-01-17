@@ -68,7 +68,6 @@ class Model:
             file_settings_dir_path (Path): The directory path where the 
                 settings file is located.
         """
-
         if self.settings is not None:
             self.logger.warning(f"'{self}' object: settings already loaded.")
             user_input = input("Overwrite settings? (y/[n]): ")
@@ -109,7 +108,6 @@ class Model:
         )
 
     def load_model_coordinates(self) -> None:
-
         self.core.index.load_sets_to_index(
             excel_file_name=self.settings['database']['sets_excel_file_name'],
             excel_file_dir_path=self.paths['model_dir'])
@@ -130,7 +128,6 @@ class Model:
             self.core.index.load_foreign_keys_to_vars_index()
 
     def generate_blank_database(self) -> None:
-
         if self.settings['model']['use_existing_database']:
             db_name = self.settings['database']['name']
             self.logger.info(f"Relying on existing SQL database '{db_name}'.")
@@ -143,14 +140,20 @@ class Model:
 
     def load_data_files_to_database(
             self,
-            overwrite_existing_data: bool = False,
+            operation: str = 'overwrite',
     ) -> None:
         self.core.database.load_data_input_files_to_database(
-            overwrite_existing_data=overwrite_existing_data)
+            operation=operation)
 
     def initialize_problem(self) -> None:
         self.core.initialize_problem_variables()
         self.core.data_to_cvxpy_exogenous_vars()
+
+    def load_results_to_database(
+            self,
+            operation: str = 'overwrite'
+    ) -> None:
+        self.core.cvxpy_endogenous_data_to_database(operation=operation)
 
     def erase_model(self) -> None:
         self.logger.warning(
@@ -158,5 +161,5 @@ class Model:
         self.files.erase_dir(self.paths['model_dir'])
 
     def update_database_and_problem(self) -> None:
-        self.load_data_files_to_database(overwrite_existing_data=True)
+        self.load_data_files_to_database()
         self.initialize_problem()
