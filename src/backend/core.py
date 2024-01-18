@@ -1,8 +1,6 @@
 from typing import Dict
 from pathlib import Path
 
-import pandas as pd
-
 from src.backend.database import Database
 from src.backend.index import Index, Variable
 from src.backend.problem import Problem
@@ -10,7 +8,6 @@ from src.log_exc.logger import Logger
 from src.util import constants
 from src.util.file_manager import FileManager
 from src.util.sql_manager import SQLManager, connection
-from src.util.util import merge_series_to_dataframe
 
 
 class Core:

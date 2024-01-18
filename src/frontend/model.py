@@ -5,7 +5,6 @@ from src.log_exc.logger import Logger
 from src.util.file_manager import FileManager
 from src.util.pbi_manager import PBIManager
 from src.backend.core import Core
-from src.util.sql_manager import SQLManager, connection
 
 
 class Model:
