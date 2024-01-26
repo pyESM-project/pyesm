@@ -5,9 +5,9 @@ from src.backend.database import Database
 from src.backend.index import Index, Variable
 from src.backend.problem import Problem
 from src.log_exc.logger import Logger
-from src.util import constants
-from src.util.file_manager import FileManager
-from src.util.sql_manager import SQLManager, connection
+from src.constants import constants
+from src.support.file_manager import FileManager
+from src.support.sql_manager import SQLManager, connection
 
 
 class Core:
@@ -17,24 +17,21 @@ class Core:
             logger: Logger,
             files: FileManager,
             settings: Dict[str, str],
-            database_name: str,
             paths: Dict[str, Path],
     ) -> None:
 
         self.logger = logger.getChild(__name__)
+
         self.logger.info(f"'{self}' object initialization...")
 
         self.files = files
         self.settings = settings
         self.paths = paths
 
-        self.model_dir_generation()
-
         self.sqltools = SQLManager(
             logger=self.logger,
-            database_dir_path=self.paths['model_dir'],
-            database_name=database_name,
-            # adding index here?
+            database_path=self.paths['sqlite_database'],
+            database_name=self.settings['sqlite_database']['name'],
         )
 
         self.index = Index(
@@ -42,21 +39,21 @@ class Core:
             files=self.files,
         )
 
-        self.database = Database(
-            logger=self.logger,
-            files=self.files,
-            sqltools=self.sqltools,
-            settings=self.settings,
-            database_dir_path=self.paths['model_dir'],
-            index=self.index,
-        )
+        # self.database = Database(
+        #     logger=self.logger,
+        #     files=self.files,
+        #     sqltools=self.sqltools,
+        #     settings=self.settings,
+        #     database_dir_path=self.paths['model_dir'],
+        #     index=self.index,
+        # )
 
-        self.problem = Problem(
-            logger=self.logger,
-            files=self.files,
-            settings=self.settings,
-            index=self.index
-        )
+        # self.problem = Problem(
+        #     logger=self.logger,
+        #     files=self.files,
+        #     settings=self.settings,
+        #     index=self.index
+        # )
 
         self.variables = None
 
@@ -65,12 +62,6 @@ class Core:
     def __repr__(self):
         class_name = type(self).__name__
         return f'{class_name}'
-
-    def model_dir_generation(self) -> None:
-        if self.settings['model']['use_existing_database']:
-            self.logger.info("Skipping model directory generation.")
-        else:
-            self.files.create_dir(self.paths['model_dir'])
 
     def initialize_problem_variables(self) -> None:
         self.logger.info(

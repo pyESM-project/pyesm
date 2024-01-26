@@ -1,7 +1,5 @@
 import logging
 
-from pathlib import Path
-
 
 class Logger:
     """Class defined for logging Model class and subclasses."""
@@ -9,49 +7,23 @@ class Logger:
     def __init__(
             self,
             logger_name: str,
-            log_file_path: Path,
-            log_level: str = 'info',
-            log_format: str = 'standard',
+            log_level: str,
+            log_format: str,
     ) -> None:
-        """Logger generated in the Model class. Blueprint for child loggers
-        generated in other classes.
 
-        Args:
-            logger_name (str): module __name__ where logger is generated. 
-            log_level (str): level of the log message. Defined by 
-                model_settings.json
-            log_file_path (str): path where log file is generated. Defined by 
-                model_settings.json
-        """
-
-        self.logger = logging.getLogger(logger_name)
-        self.logger.setLevel(log_level)
-
-        msg_formats = {
+        formats = {
             'standard': '%(asctime)s | %(levelname)s | %(name)s | %(message)s',
             'minimal': '%(levelname)s | %(name)s | %(message)s'
         }
 
         self.log_format = log_format
-        formatter = logging.Formatter(msg_formats[self.log_format])
+        self.str_format = formats[log_format]
 
-        file_handler = None
-        stream_handler = None
+        self.logger = logging.getLogger(logger_name)
 
-        for handler in self.logger.handlers:
-            if isinstance(handler, logging.FileHandler):
-                file_handler = handler
-            elif isinstance(handler, logging.StreamHandler):
-                stream_handler = handler
-
-        if file_handler is None:
-            file_handler = logging.FileHandler(log_file_path)
-            file_handler.setLevel(log_level)
-            file_handler.setFormatter(formatter)
-            file_handler.propagate = False
-            self.logger.addHandler(file_handler)
-
-        if stream_handler is None:
+        if not self.logger.handlers:
+            self.logger.setLevel(log_level)
+            formatter = logging.Formatter(self.str_format)
             stream_handler = logging.StreamHandler()
             stream_handler.setLevel(log_level)
             stream_handler.setFormatter(formatter)
@@ -76,8 +48,8 @@ class Logger:
         new_logger = Logger(
             logger_name=child_logger.name,
             log_level=child_logger.level,
-            log_file_path=self.logger.handlers[0].baseFilename,
-            log_format=self.log_format)
+            log_format=self.log_format,
+        )
 
         new_logger.logger.propagate = False
         return new_logger

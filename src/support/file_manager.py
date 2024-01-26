@@ -29,12 +29,9 @@ class FileManager:
         class_name = type(self).__name__
         return f'{class_name}'
 
-    def create_dir(
-            self,
-            dir_path: Path
-    ) -> None:
+    def create_dir(self, dir_path: Path) -> None:
         """This method receives a folder path and generates the folder in case
-        it not exists.
+        it does not exist.
 
         Args:
             dir_path (str): path of the folder to be generated.
@@ -94,7 +91,8 @@ class FileManager:
             self,
             file_name: str,
             dir_path: Path,
-            file_type: str = 'yml') -> Dict[str, Any]:
+            file_type: str = 'yml',
+    ) -> Dict[str, Any]:
         """Loads JSON or YAML file and returns a dictionary with its content.
 
         Args:
@@ -132,6 +130,67 @@ class FileManager:
             self.logger.error(
                 f"Could not load file '{file_name}': {str(error)}")
             return {}
+
+    def check_dir(
+            self,
+            dir_path: str | Path,
+            files_names_list: List[str],
+    ) -> bool:
+        dir_path = Path(dir_path)
+
+        if dir_path.is_dir():
+            file_paths = [
+                dir_path / file_name for file_name in files_names_list
+            ]
+            files_exists = all(
+                file_path.is_file()
+                for file_path in file_paths
+            )
+            return files_exists
+        else:
+            return False
+
+    def copy_file_to_destination(
+            self,
+            destination_path: str | Path,
+            file_position: str,
+            file_name: str,
+            new_file_name: str = None,
+            force_overwrite: bool = False,
+    ) -> None:
+        """
+        Copy a file from the specified package folder to a specified 
+        destination path, with an optional new file name.
+
+        Args:
+            destination_path (str or Path): The path where the file will 
+                be copied.
+            file_position (str): The package folder position.
+            file_name (str): The name of the file to be copied.
+            new_file_name (str, optional): The new name for the file. 
+                Defaults to None.
+
+        Raises:
+            FileNotFoundError: If the source file is not found.
+        """
+        source_path = Path(file_position) / file_name
+        destination_file_name = new_file_name or source_path.name
+        destination_file_path = Path(destination_path) / destination_file_name
+
+        if destination_file_path.exists() and not force_overwrite:
+            self.logger.warning(f"'{file_name}' already exists.")
+            user_input = input(f"Overwrite '{file_name}'? (y/[n]): ")
+            if user_input.lower() != 'y':
+                self.logger.info(f"'{file_name}' NOT overwritten.")
+                return
+
+        if source_path.exists() and source_path.is_file():
+            shutil.copy2(source_path, destination_file_path)
+            self.logger.debug(f"File '{file_name}' successfully generated.")
+        else:
+            msg = f"The source file '{source_path}' does not exist."
+            self.logger.error(msg)
+            raise FileNotFoundError(msg)
 
     def dict_to_excel_headers(
             self,

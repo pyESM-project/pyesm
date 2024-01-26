@@ -6,10 +6,10 @@ import pandas as pd
 
 from src.backend.index import Index
 from src.log_exc.logger import Logger
-from src.util import constants
-from src.util import util
-from src.util.file_manager import FileManager
-from src.util.sql_manager import SQLManager, connection
+from src.constants import constants
+from src.support import util
+from src.support.file_manager import FileManager
+from src.support.sql_manager import SQLManager, connection
 
 
 class Database:

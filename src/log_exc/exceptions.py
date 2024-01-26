@@ -1,3 +1,10 @@
+class ModelFolderError(Exception):
+
+    def __init__(self, message='Model folder error.'):
+        self.message = message
+        super().__init__(self.message)
+
+
 class MissingDataError(Exception):
 
     def __init__(self, message='Missing data error.'):

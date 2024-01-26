@@ -1,5 +1,9 @@
+_SETUP_FILES = {
+
+}
+
 # structure of the sets of the model
-_SETS = {
+_SETS_STRUCTURE = {
     'scenarios': {
         'symbol': 's',
         'table_name': '_set_SCENARIOS',
@@ -47,14 +51,18 @@ _SETS = {
     },
 }
 
+
 # definition of standard column name-type for sets id and values fields
 _STD_VALUES_FIELD = {'values': ['values', 'REAL']}
 _STD_ID_FIELD = {'id': ['id', 'INTEGER PRIMARY KEY']}
+_STD_HEADER_KEY = 'name'
+
 
 # definition of standard items for problem variables dictionary
-_SETS_PARSING_HIERARCHY = ['scenarios', 'datetime']
+_STD_COORDINATES = ['scenarios', 'datetime']
 _CVXPY_VAR_HEADER = 'variable'
 _FILTER_DICT_HEADER = 'filter'
+
 
 # definition of model variables
 _VARIABLES = {

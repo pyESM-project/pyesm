@@ -7,8 +7,8 @@ import pandas as pd
 
 from src.log_exc.exceptions import *
 from src.log_exc.logger import Logger
-from src.util import constants
-from src.util import util
+from src.constants import constants
+from src.support import util
 
 
 class SQLManager:
@@ -16,7 +16,7 @@ class SQLManager:
     def __init__(
         self,
         logger: Logger,
-        database_dir_path: Path,
+        database_path: Path,
         database_name: str,
         xls_engine: str = 'openpyxl',
     ) -> None:
@@ -24,23 +24,22 @@ class SQLManager:
 
         Args:
             logger (Logger): Logger object.
-            database_dir_path (Path): Path to the directory containing 
-                the database.
+            database_path (Path): Path to the SQLite database.
             database_name (str): Name of the SQLite database.
             xls_engine (str, optional): Engine to use for Excel writing. 
                 Defaults to 'openpyxl'.
         """
         self.logger = logger.getChild(__name__)
 
-        self.database_sql_path = Path(database_dir_path, database_name)
+        self.logger.info(f"'{self}' object generation.")
+
+        self.database_sql_path = database_path
         self.database_name = database_name
         self.xls_engine = xls_engine
 
         self.connection = None
         self.cursor = None
         self.foreign_keys_enabled = None
-
-        self.logger.info(f"'{self}' object Generated.")
 
     def __repr__(self):
         class_name = type(self).__name__
