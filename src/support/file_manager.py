@@ -29,7 +29,11 @@ class FileManager:
         class_name = type(self).__name__
         return f'{class_name}'
 
-    def create_dir(self, dir_path: Path) -> None:
+    def create_dir(
+            self,
+            dir_path: Path,
+            force_overwrite: bool = False,
+    ) -> None:
         """This method receives a folder path and generates the folder in case
         it does not exist.
 
@@ -39,7 +43,7 @@ class FileManager:
 
         dir_name = str(dir_path).rsplit('\\', maxsplit=1)[-1]
 
-        if os.path.exists(dir_path):
+        if os.path.exists(dir_path) and not force_overwrite:
             self.logger.warning(f"Directory '{dir_name}' already exists.")
             response = input(
                 'Overwrite directory 'f"'{dir_name}'(y/[n]): "
@@ -152,10 +156,10 @@ class FileManager:
 
     def copy_file_to_destination(
             self,
-            destination_path: str | Path,
-            file_position: str,
+            path_destination: str | Path,
+            path_source: str,
             file_name: str,
-            new_file_name: str = None,
+            file_new_name: str = None,
             force_overwrite: bool = False,
     ) -> None:
         """
@@ -173,15 +177,15 @@ class FileManager:
         Raises:
             FileNotFoundError: If the source file is not found.
         """
-        source_path = Path(file_position) / file_name
-        destination_file_name = new_file_name or source_path.name
-        destination_file_path = Path(destination_path) / destination_file_name
+        source_path = Path(path_source) / file_name
+        destination_file_name = file_new_name or source_path.name
+        destination_file_path = Path(path_destination) / destination_file_name
 
         if destination_file_path.exists() and not force_overwrite:
             self.logger.warning(f"'{file_name}' already exists.")
             user_input = input(f"Overwrite '{file_name}'? (y/[n]): ")
             if user_input.lower() != 'y':
-                self.logger.info(f"'{file_name}' NOT overwritten.")
+                self.logger.debug(f"'{file_name}' NOT overwritten.")
                 return
 
         if source_path.exists() and source_path.is_file():

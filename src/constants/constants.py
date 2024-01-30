@@ -1,6 +1,9 @@
-_SETUP_FILES = {
+_SETUP_FILES = [
+    'settings.yml',
+    'variables.yml',
+    'problem.yml',
+]
 
-}
 
 # structure of the sets of the model
 _SETS_STRUCTURE = {

@@ -6,9 +6,9 @@ class Logger:
 
     def __init__(
             self,
-            logger_name: str,
-            log_level: str,
-            log_format: str,
+            logger_name: str = 'default_logger',
+            log_level: str = 'INFO',
+            log_format: str = 'minimal',
     ) -> None:
 
         formats = {
