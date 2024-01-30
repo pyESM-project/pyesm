@@ -29,6 +29,7 @@ dependencies:
   - debugpy=1.6.7=py310hd77b12b_0
   - decorator=5.1.1=pyhd3eb1b0_0
   - defusedxml=0.7.1=pyhd3eb1b0_0
+  - et_xmlfile=1.1.0=py310haa95532_0
   - exceptiongroup=1.2.0=py310haa95532_0
   - executing=0.8.3=pyhd3eb1b0_0
   - fonttools=4.25.0=pyhd3eb1b0_0
@@ -95,6 +96,7 @@ dependencies:
   - numpy=1.26.3=py310h055cbcc_0
   - numpy-base=1.26.3=py310h65a83cf_0
   - openjpeg=2.4.0=h4fc8c34_0
+  - openpyxl=3.0.10=py310h2bbff1b_0
   - openssl=3.0.12=h2bbff1b_0
   - overrides=7.4.0=py310haa95532_0
   - packaging=23.1=py310haa95532_0
