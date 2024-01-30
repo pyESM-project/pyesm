@@ -4,7 +4,7 @@ v:
     symbol: 'v'
     name: 'make coefficients'
     type: 'exogenous'
-    coordinates: null
+    coordinates: ['scenarios', 'datetime']
     shape: 
         0:
             set: technologies
@@ -19,7 +19,7 @@ u:
     symbol: 'u'
     name: 'use coefficients'
     type: 'exogenous'
-    coordinates: null
+    coordinates: ['scenarios', 'datetime']
     shape: 
         0:
             set: flows
@@ -34,7 +34,7 @@ Y:
     symbol: 'Y'
     name: 'total final demand'
     type: 'exogenous'
-    coordinates: null
+    coordinates: ['scenarios', 'datetime']
     shape: 
         0:
             set: flows
@@ -49,7 +49,7 @@ Q:
     symbol: 'Q'
     name: 'total demand by flow'
     type: 'endogenous'
-    coordinates: null
+    coordinates: ['scenarios', 'datetime']
     shape: 
         0:
             set: flows
@@ -60,7 +60,7 @@ X:
     symbol: 'X'
     name: 'total activity by technology'
     type: 'endogenous'
-    coordinates: null
+    coordinates: ['scenarios', 'datetime']
     shape: 
         0:
             set: technologies

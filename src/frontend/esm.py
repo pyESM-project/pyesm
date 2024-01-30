@@ -20,7 +20,7 @@ def create_model_dir(
         force_overwrite=force_overwrite
     )
 
-    for file_name in constants._SETUP_FILES:
+    for file_name in constants._SETUP_FILES.values():
         files.copy_file_to_destination(
             path_destination=model_dir_path,
             path_source='src/constants',

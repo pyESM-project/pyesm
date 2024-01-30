@@ -2,20 +2,21 @@
 
 model:
     description: test model # brief description of the model
-    generate_new_database: False # True if you want to generate a new database
-    generate_powerbi_report: False # True if you want to generate a new PowerBI report
 
 input_data:
-    sets_xlsx_file_name: sets.xlsx # name of the excel sets file (with or without .xlsx extension)
+    input_data_dir: input_data # name of the input data directory
+    generate_sets_xlsx_file: True # True if you want to generate a new sets.xlsx file
+    sets_xlsx_file: sets.xlsx # name of the excel sets file (with or without .xlsx extension)
     multiple_input_files: False # True if you want to use one input file per variable
-    input_file_name: input_data.xlsx # name of the input file (with or without .xlsx extension)
-    input_data_dir_name: input_data # name of the input data directory
+    input_file: input_data.xlsx # name of the input file (with or without .xlsx extension)
 
 sqlite_database:
+    generate_new_database: True # True if you want to generate a new database
     name: database.db # name of the SQLite database file (with or without .db extension)
     foreign_keys: True # True if you want to enable foreign keys
 
 powerbi_report:
+    generate_powerbi_report: False # True if you want to generate a new PowerBI report
     name: dataset.pbix # name of the PowerBI report file (with or without .pbix extension)
 
 problem:
