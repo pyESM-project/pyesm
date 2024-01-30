@@ -30,7 +30,6 @@ class SQLManager:
                 Defaults to 'openpyxl'.
         """
         self.logger = logger.getChild(__name__)
-
         self.logger.info(f"'{self}' object generation.")
 
         self.database_sql_path = database_path
@@ -640,7 +639,7 @@ class SQLManager:
     def table_to_excel(
             self,
             excel_filename: str,
-            excel_dir_path: Path,
+            excel_dir_path: Path | str,
             table_name: str,
     ) -> None:
         """Export data from an SQLite table to an Excel file.
@@ -648,7 +647,7 @@ class SQLManager:
         Args:
             excel_filename (str): The name of the Excel file.
             excel_dir_path (Path): The directory path where the Excel file will 
-                be saved.
+                be saved. If it does not exist, it will be created.
             table_name (str): The name of the SQLite table.
 
         Returns:

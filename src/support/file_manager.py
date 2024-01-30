@@ -8,6 +8,7 @@ import yaml
 
 import pandas as pd
 
+from src.log_exc.exceptions import ModelFolderError
 from src.log_exc.logger import Logger
 
 
@@ -41,7 +42,7 @@ class FileManager:
             dir_path (str): path of the folder to be generated.
         """
 
-        dir_name = str(dir_path).rsplit('\\', maxsplit=1)[-1]
+        dir_name = dir_path.name
 
         if os.path.exists(dir_path) and not force_overwrite:
             self.logger.warning(f"Directory '{dir_name}' already exists.")
@@ -52,12 +53,10 @@ class FileManager:
             if response != 'y':
                 self.logger.debug(
                     f"Directory '{dir_name}' not overwritten.")
-                return {}
-            else:
-                shutil.rmtree(dir_path)
-                os.makedirs(dir_path, exist_ok=True)
-                self.logger.debug(f"Directory '{dir_name}' overwritten.")
-                return {}
+                return
+
+        if os.path.exists(dir_path) and force_overwrite:
+            shutil.rmtree(dir_path)
 
         os.makedirs(dir_path, exist_ok=True)
         self.logger.debug(f"Directory '{dir_name}' created.")
@@ -135,24 +134,30 @@ class FileManager:
                 f"Could not load file '{file_name}': {str(error)}")
             return {}
 
-    def check_dir(
+    def dir_files_check(
             self,
             dir_path: str | Path,
             files_names_list: List[str],
     ) -> bool:
+
         dir_path = Path(dir_path)
 
-        if dir_path.is_dir():
-            file_paths = [
-                dir_path / file_name for file_name in files_names_list
-            ]
-            files_exists = all(
-                file_path.is_file()
-                for file_path in file_paths
-            )
-            return files_exists
-        else:
-            return False
+        if not dir_path.is_dir():
+            msg = f"Directory '{dir_path}' does not exist."
+            self.logger.error(msg)
+            raise ModelFolderError(msg)
+
+        for file_name in files_names_list:
+            file_path = dir_path / file_name
+
+            if not file_path.is_file():
+                msg = f"File '{file_name}' does not exist."
+                self.logger.error(msg)
+                raise ModelFolderError(msg)
+
+            # here add a check on the file structure (further methods needed)
+
+        return True
 
     def copy_file_to_destination(
             self,

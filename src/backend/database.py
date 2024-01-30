@@ -20,9 +20,9 @@ class Database:
             self,
             logger: Logger,
             files: FileManager,
+            paths: Dict,
             sqltools: SQLManager,
             settings: Dict,
-            database_dir_path: Path,
             index: Index,
     ) -> None:
 
@@ -33,18 +33,10 @@ class Database:
         self.sqltools = sqltools
         self.index = index
         self.settings = settings
-        self.database_dir_path = database_dir_path
-        self.database_settings = self.settings['database']
+        self.paths = paths
 
-        if not Path(
-            self.database_dir_path,
-            self.settings['database']['sets_excel_file_name']
-        ).exists():
-            self.create_blank_sets()
-
-        self.input_files_dir_path = Path(
-            self.database_dir_path /
-            self.settings['database']['input_data_dir_name'])
+        self.initialize_blank_database()
+        self.create_blank_sets_xlsx_file()
 
         self.logger.info(f"'{self}' object initialized.")
 
@@ -53,15 +45,47 @@ class Database:
         return f'{class_name}'
 
     @connection
-    def create_blank_sets(self) -> None:
+    def initialize_blank_database(self) -> None:
+        sqlite_database_name = self.settings['sqlite_database']['name']
+
+        if Path(self.paths['sqlite_database']).exists():
+            if self.settings['sqlite_database']['generate_new_database']:
+                self.logger.info(
+                    f"Overwriting database '{sqlite_database_name}'")
+            else:
+                self.logger.info(
+                    f"Relying on existing database '{sqlite_database_name}'")
+                return
+        else:
+            self.logger.info(
+                f"Generating new database '{sqlite_database_name}'")
+
         for set_instance in self.index.sets.values():
             self.sqltools.create_table(
                 table_name=set_instance.table_name,
                 table_fields=set_instance.table_headers
             )
+
+    @connection
+    def create_blank_sets_xlsx_file(self) -> None:
+        sets_file_name = self.settings['input_data']['sets_xlsx_file']
+
+        if Path(self.paths['sets_excel_file']).exists():
+            if self.settings['input_data']['generate_sets_xlsx_file']:
+                self.logger.info(
+                    f"Overwriting sets excel file '{sets_file_name}'")
+            else:
+                self.logger.info(
+                    f"Relying on existing sets excel file '{sets_file_name}'")
+                return
+        else:
+            self.logger.info(
+                f"Generating new sets excel file '{sets_file_name}'")
+
+        for set_instance in self.index.sets.values():
             self.sqltools.table_to_excel(
-                excel_filename=self.database_settings['sets_excel_file_name'],
-                excel_dir_path=self.database_dir_path,
+                excel_filename=self.settings['input_data']['sets_xlsx_file'],
+                excel_dir_path=self.paths['model_dir'],
                 table_name=set_instance.table_name,
             )
 
