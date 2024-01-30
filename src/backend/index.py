@@ -203,24 +203,19 @@ class Index:
             self,
             files: FileManager,
             logger: Logger,
+            paths: Dict,
     ) -> None:
 
         self.logger = logger.getChild(__name__)
         self.logger.info(f"'{self}' object initialization...")
 
         self.files = files
+        self.paths = paths
 
-        self.sets = util.DotDict({
-            key: Set(**value)
-            for key, value in constants._SETS.items()
-        })
+        self.sets = self._load_sets()
+        self.variables = self._load_variables()
 
-        self.variables = util.DotDict({
-            key: Variable(**value)
-            for key, value in constants._VARIABLES.items()
-        })
-
-        self.load_variables_fields()
+        # self.load_variables_fields()
 
         self.logger.info(f"'{self}' object initialized.")
 
@@ -228,13 +223,33 @@ class Index:
         class_name = type(self).__name__
         return f'{class_name}'
 
+    def _load_sets(self) -> Dict[str, Set]:
+        sets_data = self.files.load_file(
+            file_name=constants._SETUP_FILES['sets_structure'],
+            dir_path=self.paths['model_dir'],
+        )
+        return util.DotDict({
+            key: Set(**value)
+            for key, value in sets_data.items()
+        })
+
+    def _load_variables(self) -> Dict[str, Variable]:
+        variables_data = self.files.load_file(
+            file_name=constants._SETUP_FILES['variables'],
+            dir_path=self.paths['model_dir'],
+        )
+        return util.DotDict({
+            key: Variable(**value)
+            for key, value in variables_data.items()
+        })
+
     def load_variables_fields(self) -> None:
 
         self.logger.debug(
             f"Loading variables table headers and label headers to Index.")
 
         for variable in self.variables.values():
-            set_headers_key = variable.set_headers_key
+            set_headers_key = constants._STD_TABLE_HEADER_KEY
 
             for set_key in variable.coordinates_info.keys():
                 set_headers = self.sets[set_key].table_headers[set_headers_key]
