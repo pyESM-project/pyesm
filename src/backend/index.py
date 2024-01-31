@@ -261,7 +261,7 @@ class Index:
     def load_vars_coordinates_fields(self) -> None:
 
         self.logger.debug(
-            f"Loading variables_fields to Index.")
+            f"Loading 'variables_fields' to Index.")
 
         for variable in self.variables.values():
             set_headers_key = constants._STD_TABLE_HEADER_KEY
@@ -272,7 +272,7 @@ class Index:
 
     def load_vars_table_headers(self) -> None:
 
-        self.logger.debug("Loading variables table_headers to Index.")
+        self.logger.debug("Loading variables 'table_headers' to Index.")
 
         for var_key, variable in self.variables.items():
             if variable.coordinates_fields is None:
@@ -303,7 +303,7 @@ class Index:
 
         for variable in self.variables.values():
             variable.sets_parsing_hierarchy = {
-                key: value
+                key: value[0]
                 for key, value in variable.coordinates_fields.items()
                 if key not in variable.shape
             }

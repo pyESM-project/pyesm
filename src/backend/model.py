@@ -45,13 +45,14 @@ class Model:
             paths=self.paths,
         )
 
-        if self.settings['sqlite_database']['use_existing_database']:
+        if self.settings['model']['use_existing_data']:
             self.load_model_coordinates()
+            self.initialize_problem()
 
-        # self.pbi_tools = PBIManager(
-        #     logger=self.logger,
-        #     settings=self.settings,
-        # )
+        self.pbi_tools = PBIManager(
+            logger=self.logger,
+            settings=self.settings,
+        )
 
         self.logger.info(f"'{self}' object initialized.")
 
@@ -109,61 +110,79 @@ class Model:
             self.settings['powerbi_report']['name']
         )
 
-        # non dovrebbe essere creata qui non ha senso
-        # if not self.paths['input_data_dir'].exists():
-        #     self.files.create_dir(self.paths['input_data_dir'])
-
     def load_model_coordinates(self) -> None:
+
+        if self.settings['model']['use_existing_data']:
+            self.logger.info(
+                'Loading existing sets data and variable coordinates.')
+        else:
+            self.logger.info(
+                'Loading new sets data and variable coordinates.')
+
         self.core.index.load_sets_to_index(
             excel_file_name=self.settings['input_data']['sets_xlsx_file'],
             excel_file_dir_path=self.paths['model_dir'])
-
-        if self.settings['sqlite_database']['use_existing_database']:
-            self.logger.info(
-                "Relying on existing SQL database "
-                f"'{self.settings['sqlite_database']['name']}'.")
-        else:
-            self.core.database.load_sets_to_database()
 
         self.core.index.load_vars_coordinates_to_index()
 
         if self.settings['sqlite_database']['foreign_keys']:
             self.core.index.load_foreign_keys_to_vars_index()
 
-    # da QUI
-    def generate_blank_database(self) -> None:
-        if self.settings['model']['use_existing_database']:
-            db_name = self.settings['database']['name']
-            self.logger.info(f"Relying on existing SQL database '{db_name}'.")
-        else:
-            self.core.database.generate_blank_vars_sql_tables()
-            self.core.database.generate_blank_vars_input_files()
+    def initialize_blank_database(self) -> None:
 
-        if self.settings['model']['generate_powerbi_report']:
-            self.pbi_tools.generate_powerbi_report()
+        if self.settings['model']['use_existing_data']:
+            self.logger.info(
+                "Relying on existing SQL database "
+                f"'{self.settings['sqlite_database']['name']}'.")
+            return
+        
+        self.logger.info(
+            'Generating blank SQLite database and excel input files.')
+
+        self.core.database.load_sets_to_database()
+        self.core.database.generate_blank_vars_sql_tables()
+        self.core.database.generate_blank_vars_input_files()       
 
     def load_data_files_to_database(
             self,
             operation: str = 'overwrite',
     ) -> None:
-        self.core.database.load_data_input_files_to_database(
-            operation=operation)
+        
+        self.logger.info('Loading input data to SQLite database.')
+        self.core.database.load_data_input_files_to_database(operation)
 
     def initialize_problem(self) -> None:
+        
+        self.logger.info('Initializing numerical problem.')
         self.core.initialize_problem_variables()
         self.core.data_to_cvxpy_exogenous_vars()
+
+        # reading equations from yml and define cvxpy problem
+        # provide a model.core.problem attribute with technical specs of the problem
+
+    def solve_problem(self) -> None:
+
+        self.logger.info('Solving numerical problem.')
 
     def load_results_to_database(
             self,
             operation: str = 'overwrite'
     ) -> None:
-        self.core.cvxpy_endogenous_data_to_database(operation=operation)
+        
+        self.core.cvxpy_endogenous_data_to_database(operation)
+
+    def update_database_and_problem(self) -> None:
+
+        self.logger.info(f"Updating ")
+        self.load_data_files_to_database()
+        self.initialize_problem()
+
+    def generate_pbi_report(self) -> None:
+
+        self.pbi_tools.generate_powerbi_report()
 
     def erase_model(self) -> None:
+        
         self.logger.warning(
             f"Erasing model {self.settings['model']['name']}.")
         self.files.erase_dir(self.paths['model_dir'])
-
-    def update_database_and_problem(self) -> None:
-        self.load_data_files_to_database()
-        self.initialize_problem()

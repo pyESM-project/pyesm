@@ -190,6 +190,9 @@ def unpivot_dict_to_dataframe(
         dictionary values.
     """
 
+    if all([isinstance(item, List) for item in key_order]):
+        key_order = [item[0] for item in key_order]
+
     if key_order:
         common_keys = set(key_order).intersection(set(data_dict.keys()))
 

@@ -35,8 +35,9 @@ class Database:
         self.settings = settings
         self.paths = paths
 
-        self.initialize_blank_database()
-        self.create_blank_sets_xlsx_file()
+        if not self.settings['model']['use_existing_data']:
+            self.initialize_blank_database()
+            self.create_blank_sets_xlsx_file()
 
         self.logger.info(f"'{self}' object initialized.")
 
@@ -49,7 +50,7 @@ class Database:
         sqlite_database_name = self.settings['sqlite_database']['name']
 
         if Path(self.paths['sqlite_database']).exists():
-            if not self.settings['sqlite_database']['use_existing_database']:
+            if not self.settings['model']['use_existing_data']:
                 self.logger.info(
                     f"Overwriting database '{sqlite_database_name}'")
             else:
@@ -71,7 +72,7 @@ class Database:
         sets_file_name = self.settings['input_data']['sets_xlsx_file']
 
         if Path(self.paths['sets_excel_file']).exists():
-            if self.settings['input_data']['generate_sets_xlsx_file']:
+            if not self.settings['model']['use_existing_data']:
                 self.logger.info(
                     f"Overwriting sets excel file '{sets_file_name}'")
             else:
@@ -102,12 +103,13 @@ class Database:
 
     @connection
     def generate_blank_vars_sql_tables(self) -> None:
-        self.logger.info("Generation of empty SQLite database.")
+        self.logger.info(
+            "Generation of empty SQLite database variables tables.")
 
         for var_key, variable in self.index.variables.items():
 
             table_headers_list = [
-                value[0] for value in variable.table_headers.values()
+                value[0] for value in variable.coordinates_fields.values()
             ]
 
             unpivoted_coords_df = util.unpivot_dict_to_dataframe(
@@ -138,17 +140,18 @@ class Database:
                 column_type=constants._STD_VALUES_FIELD['values'][1],
             )
 
+    # check variables_info non esiste
     @connection
     def clear_database_variables(self) -> None:
         existing_tables = self.sqltools.get_existing_tables_names
 
         for table_name in existing_tables:
             if table_name in self.variables_info.keys():
-                self.sqltools.drop_table(table_name=table_name)
+                self.sqltools.drop_table(table_name)
 
         self.logger.info(
             "All variables tables dropped from SQLite database "
-            f"{self.database_settings['database_name']}"
+            f"{self.settings['sqlite_database']['name']}"
         )
 
     @connection
@@ -159,8 +162,8 @@ class Database:
 
         self.logger.info(f"Generation of data input file/s.")
 
-        if not self.input_files_dir_path.exists():
-            self.files.create_dir(self.input_files_dir_path)
+        if not Path(self.paths['input_data_dir']).exists():
+            self.files.create_dir(self.paths['input_data_dir'])
 
         tables_names_list = self.sqltools.get_existing_tables_names
 
@@ -169,14 +172,14 @@ class Database:
             if variable.type == 'exogenous' and \
                     variable.symbol in tables_names_list:
 
-                if self.settings['database']['multiple_input_files']:
+                if self.settings['input_data']['multiple_input_files']:
                     output_file_name = variable.symbol + file_extension
                 else:
-                    output_file_name = self.settings['database']['input_file_name']
+                    output_file_name = self.settings['input_data']['input_file']
 
                 self.sqltools.table_to_excel(
                     excel_filename=output_file_name,
-                    excel_dir_path=self.input_files_dir_path,
+                    excel_dir_path=self.paths['input_data_dir'],
                     table_name=variable.symbol,
                 )
 
@@ -189,7 +192,7 @@ class Database:
         self.logger.info(
             "Loading data input file/s filled by the user to SQLite database.")
 
-        if self.settings['database']['multiple_input_files']:
+        if self.settings['input_data']['multiple_input_files']:
             data = {}
             for variable in self.index.variables.values():
                 if variable.type == 'exogenous':
@@ -199,7 +202,7 @@ class Database:
 
                     data.update(
                         self.files.excel_to_dataframes_dict(
-                            excel_file_dir_path=self.input_files_dir_path,
+                            excel_file_dir_path=self.paths['input_data_dir'],
                             excel_file_name=file_name,
                         )
                     )
@@ -211,8 +214,8 @@ class Database:
 
         else:
             data = self.files.excel_to_dataframes_dict(
-                excel_file_dir_path=self.input_files_dir_path,
-                excel_file_name=self.database_settings['input_file_name']
+                excel_file_dir_path=self.paths['input_data_dir'],
+                excel_file_name=self.settings['input_data']['input_file']
             )
             for data_key, data_values in data.items():
                 self.sqltools.dataframe_to_table(

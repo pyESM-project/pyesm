@@ -15,6 +15,9 @@ def create_model_dir(
     files = FileManager(Logger())
     model_dir_path = Path(main_dir_path) / model_dir_name
 
+    if model_dir_path.exists():
+        files.erase_dir(model_dir_path)
+
     files.create_dir(
         dir_path=model_dir_path,
         force_overwrite=force_overwrite

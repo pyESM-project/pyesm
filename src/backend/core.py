@@ -49,12 +49,12 @@ class Core:
             index=self.index,
         )
 
-        # self.problem = Problem(
-        #     logger=self.logger,
-        #     files=self.files,
-        #     settings=self.settings,
-        #     index=self.index
-        # )
+        self.problem = Problem(
+            logger=self.logger,
+            files=self.files,
+            settings=self.settings,
+            index=self.index
+        )
 
         self.variables = None
 
@@ -75,7 +75,7 @@ class Core:
     @connection
     def data_to_cvxpy_exogenous_vars(self) -> None:
         self.logger.info(
-            f"Fetching data from '{self.settings['database']['name']}' "
+            f"Fetching data from '{self.settings['sqlite_database']['name']}' "
             "to cvxpy exogenous variables.")
 
         for variable in self.index.variables.values():
@@ -107,7 +107,7 @@ class Core:
     def cvxpy_endogenous_data_to_database(self, operation: str) -> None:
         self.logger.info(
             "Fetching data from cvxpy endogenous variables "
-            f"to database '{self.settings['database']['name']}' ")
+            f"to database '{self.settings['sqlite_database']['name']}' ")
 
         for variable in self.index.variables.values():
 

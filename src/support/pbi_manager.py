@@ -16,7 +16,7 @@ class PBIManager:
         self.logger.info(f"'{self}' object generated.")
 
         self.settings = settings
-        self.file_name = self.settings['model']['powerbi_report_name']
+        self.file_name = self.settings['powerbi_report']['name']
 
     def __repr__(self):
         class_name = type(self).__name__
