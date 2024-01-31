@@ -7,8 +7,8 @@ import pandas as pd
 
 from src.log_exc.exceptions import *
 from src.log_exc.logger import Logger
-from src.util import constants
-from src.util import util
+from src.constants import constants
+from src.support import util
 
 
 class SQLManager:
@@ -16,7 +16,7 @@ class SQLManager:
     def __init__(
         self,
         logger: Logger,
-        database_dir_path: Path,
+        database_path: Path,
         database_name: str,
         xls_engine: str = 'openpyxl',
     ) -> None:
@@ -24,23 +24,21 @@ class SQLManager:
 
         Args:
             logger (Logger): Logger object.
-            database_dir_path (Path): Path to the directory containing 
-                the database.
+            database_path (Path): Path to the SQLite database.
             database_name (str): Name of the SQLite database.
             xls_engine (str, optional): Engine to use for Excel writing. 
                 Defaults to 'openpyxl'.
         """
         self.logger = logger.getChild(__name__)
+        self.logger.info(f"'{self}' object generation.")
 
-        self.database_sql_path = Path(database_dir_path, database_name)
+        self.database_sql_path = database_path
         self.database_name = database_name
         self.xls_engine = xls_engine
 
         self.connection = None
         self.cursor = None
         self.foreign_keys_enabled = None
-
-        self.logger.info(f"'{self}' object Generated.")
 
     def __repr__(self):
         class_name = type(self).__name__
@@ -641,7 +639,7 @@ class SQLManager:
     def table_to_excel(
             self,
             excel_filename: str,
-            excel_dir_path: Path,
+            excel_dir_path: Path | str,
             table_name: str,
     ) -> None:
         """Export data from an SQLite table to an Excel file.
@@ -649,7 +647,7 @@ class SQLManager:
         Args:
             excel_filename (str): The name of the Excel file.
             excel_dir_path (Path): The directory path where the Excel file will 
-                be saved.
+                be saved. If it does not exist, it will be created.
             table_name (str): The name of the SQLite table.
 
         Returns:

@@ -1,0 +1,21 @@
+# pyESM model general settings
+
+model:
+    description: test model # brief description of the model
+    use_existing_data: False # True in case of existing sets.xlsx, database.db and input_data/ files
+
+input_data:
+    sets_xlsx_file: sets.xlsx # name of the excel sets file (with or without .xlsx extension)
+    input_data_dir: input_data # name of the input data directory
+    multiple_input_files: False # True if you want to use one input file per variable
+    input_file: input_data.xlsx # name of the input file (with or without .xlsx extension)
+
+sqlite_database:
+    name: database.db # name of the SQLite database file (with or without .db extension)
+    foreign_keys: True # True if you want to enable foreign keys
+
+powerbi_report:
+    name: dataset.pbix # name of the PowerBI report file (with or without .pbix extension)
+
+problem:
+    execution_mode: simulation # simulation or optimization
