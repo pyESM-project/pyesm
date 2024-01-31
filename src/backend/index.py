@@ -33,6 +33,12 @@ class Set(BaseItem):
             table: pd.DataFrame = None,
             **kwargs,
     ) -> None:
+
+        self.symbol = None
+        self.table_name = None
+        self.table_headers = None
+        self.set_categories = None
+
         super().__init__(**kwargs)
 
         self.table = table
@@ -43,9 +49,16 @@ class Variable(BaseItem):
             self,
             **kwargs,
     ) -> None:
+
+        self.symbol = None
+        self.name = None
+        self.type = None
+        self.coordinates_info = {}
+        self.shape = []
+
         super().__init__(**kwargs)
 
-        self.variable_fields = {}
+        self.coordinates_fields = {}
         self.table_headers = {}
         self.coordinates = {}
         self.foreign_keys = {}
@@ -58,10 +71,10 @@ class Variable(BaseItem):
 
         for item in self.shape:
             if isinstance(item, str):
-                if item not in self.variable_fields.keys():
+                if item not in self.coordinates_fields.keys():
                     error = f"'{item}' is not a variable coordinate."
                     raise ValueError(error)
-                coordinate_key = self.variable_fields[item][0]
+                coordinate_key = self.coordinates_fields[item][0]
                 shape_size.append(len(self.coordinates[coordinate_key]))
 
             elif isinstance(item, int):
@@ -212,10 +225,12 @@ class Index:
         self.files = files
         self.paths = paths
 
-        self.sets = self._load_sets()
-        self.variables = self._load_variables()
+        self.sets = self.load_sets()
+        self.variables = self.load_variables()
 
-        # self.load_variables_fields()
+        self.load_vars_coordinates_fields()
+        self.load_vars_table_headers()
+        self.load_vars_sets_parsing_hierarchy()
 
         self.logger.info(f"'{self}' object initialized.")
 
@@ -223,7 +238,7 @@ class Index:
         class_name = type(self).__name__
         return f'{class_name}'
 
-    def _load_sets(self) -> Dict[str, Set]:
+    def load_sets(self) -> Dict[str, Set]:
         sets_data = self.files.load_file(
             file_name=constants._SETUP_FILES['sets_structure'],
             dir_path=self.paths['model_dir'],
@@ -233,7 +248,7 @@ class Index:
             for key, value in sets_data.items()
         })
 
-    def _load_variables(self) -> Dict[str, Variable]:
+    def load_variables(self) -> Dict[str, Variable]:
         variables_data = self.files.load_file(
             file_name=constants._SETUP_FILES['variables'],
             dir_path=self.paths['model_dir'],
@@ -243,26 +258,67 @@ class Index:
             for key, value in variables_data.items()
         })
 
-    def load_variables_fields(self) -> None:
+    def load_vars_coordinates_fields(self) -> None:
 
         self.logger.debug(
-            f"Loading variables table headers and label headers to Index.")
+            f"Loading variables_fields to Index.")
 
         for variable in self.variables.values():
             set_headers_key = constants._STD_TABLE_HEADER_KEY
 
             for set_key in variable.coordinates_info.keys():
                 set_headers = self.sets[set_key].table_headers[set_headers_key]
-                variable.variable_fields[set_key] = set_headers
+                variable.coordinates_fields[set_key] = set_headers
+
+    def load_vars_table_headers(self) -> None:
+
+        self.logger.debug("Loading variables table_headers to Index.")
+
+        for var_key, variable in self.variables.items():
+            if variable.coordinates_fields is None:
+                error = f"'variable_fields' is empty for variable '{var_key}'."
+                self.logger.error(error)
+                raise ValueError(error)
+
+            variable.table_headers = variable.coordinates_fields.copy()
+            variable.table_headers = util.add_item_to_dict(
+                dictionary=variable.table_headers,
+                item=constants._STD_ID_FIELD,
+                position=0,
+            )
+
+    def load_foreign_keys_to_vars_index(self) -> None:
+
+        self.logger.debug(f"Loading tables 'foreign_keys' to Index.")
+
+        for variable in self.variables.values():
+            for set_key, set_header in variable.coordinates_fields.items():
+                variable.foreign_keys[set_header[0]] = \
+                    (set_header[0], self.sets[set_key].table_name)
+
+    def load_vars_sets_parsing_hierarchy(self) -> None:
+
+        self.logger.debug(
+            f"Loading variables 'sets_parsing_hierarchy' to Index.")
+
+        for variable in self.variables.values():
+            variable.sets_parsing_hierarchy = {
+                key: value
+                for key, value in variable.coordinates_fields.items()
+                if key not in variable.shape
+            }
 
     def load_sets_to_index(
             self,
             excel_file_name: str,
-            excel_file_dir_path: Path,
+            excel_file_dir_path: Path | str,
             empty_data_fill='',
     ) -> None:
 
-        if all(set_instance.table is None for set_instance in self.sets.values()):
+        if all(
+            set_instance.table is None
+            for set_instance in self.sets.values()
+        ):
             self.logger.info(f"'{self}' object: loading new Sets to Index.")
         else:
             self.logger.warning(
@@ -297,26 +353,27 @@ class Index:
 
             for set_key, set_filter in variable.coordinates_info.items():
 
-                set_header = variable.variable_fields[set_key][0]
+                set_header = variable.coordinates_fields[set_key][0]
 
                 if set_filter is None:
                     set_values = list(self.sets[set_key].table[set_header])
 
                 elif isinstance(set_filter, dict):
 
-                    if 'set_categories' in set_filter:
+                    if 'set_categories' in set_filter and \
+                            set_filter['set_categories'] is not None:
+
                         category_filter_id = set_filter['set_categories']
                         category_filter = self.sets[set_key].set_categories[category_filter_id]
                         category_header_name = self.sets[set_key].table_headers['category'][0]
+
                         set_filtered = self.sets[set_key].table.query(
                             f'{category_header_name} == "{category_filter}"'
-                        )
+                        ).copy()
 
-                    set_filtered = self.sets[set_key].table.query(
-                        f'{category_header_name} == "{category_filter}"'
-                    ).copy()
+                    if 'aggregation_key' in set_filter and \
+                            set_filter['aggregation_key'] is not None:
 
-                    if 'aggregation_key' in set_filter:
                         aggregation_key = set_filter['aggregation_key']
                         aggregation_key_name = self.sets[set_key].table_headers[aggregation_key][0]
 
@@ -332,40 +389,3 @@ class Index:
                     raise exc.MissingDataError(error_msg)
 
                 variable.coordinates[set_header] = set_values
-
-    def load_vars_table_headers_to_index(self) -> None:
-
-        self.logger.debug(f"Loading variables 'table_headers' to Index.")
-
-        for var_key, variable in self.variables.items():
-            if variable.variable_fields is None:
-                error = f"'variable_fields' is empty for variable '{var_key}'."
-                self.logger.error(error)
-                raise ValueError(error)
-
-            variable.table_headers = variable.variable_fields.copy()
-            variable.table_headers = util.add_item_to_dict(
-                dictionary=variable.table_headers,
-                item=constants._STD_ID_FIELD,
-                position=0,
-            )
-
-    def load_foreign_keys_to_vars_index(self) -> None:
-
-        self.logger.debug(f"Loading tables 'foreign_keys' to Index.")
-
-        for variable in self.variables.values():
-            for set_key, set_header in variable.variable_fields.items():
-                variable.foreign_keys[set_header[0]] = \
-                    (set_header[0], self.sets[set_key].table_name)
-
-    def load_sets_parsing_hierarchy(self) -> None:
-
-        self.logger.debug(
-            f"Loading variables 'sets_parsing_hierarchy' to Index.")
-
-        for variable in self.variables.values():
-            variable.sets_parsing_hierarchy = {
-                item: variable.variable_fields[item][0]
-                for item in constants._SETS_PARSING_HIERARCHY
-            }

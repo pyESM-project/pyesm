@@ -49,7 +49,7 @@ class Database:
         sqlite_database_name = self.settings['sqlite_database']['name']
 
         if Path(self.paths['sqlite_database']).exists():
-            if self.settings['sqlite_database']['generate_new_database']:
+            if not self.settings['sqlite_database']['use_existing_database']:
                 self.logger.info(
                     f"Overwriting database '{sqlite_database_name}'")
             else:
@@ -91,7 +91,8 @@ class Database:
 
     @connection
     def load_sets_to_database(self) -> None:
-        self.logger.info(f"'{self}' object: loading Sets.")
+        self.logger.info(
+            f"Loading Sets to '{self.settings['sqlite_database']['name']}'.")
 
         for set_instance in self.index.sets.values():
             self.sqltools.dataframe_to_table(
@@ -106,7 +107,7 @@ class Database:
         for var_key, variable in self.index.variables.items():
 
             table_headers_list = [
-                value[0] for value in variable.variable_fields.values()
+                value[0] for value in variable.table_headers.values()
             ]
 
             unpivoted_coords_df = util.unpivot_dict_to_dataframe(

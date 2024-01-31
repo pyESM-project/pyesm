@@ -37,16 +37,17 @@ class Core:
         self.index = Index(
             logger=self.logger,
             files=self.files,
+            paths=self.paths,
         )
 
-        # self.database = Database(
-        #     logger=self.logger,
-        #     files=self.files,
-        #     sqltools=self.sqltools,
-        #     settings=self.settings,
-        #     database_dir_path=self.paths['model_dir'],
-        #     index=self.index,
-        # )
+        self.database = Database(
+            logger=self.logger,
+            files=self.files,
+            paths=self.paths,
+            sqltools=self.sqltools,
+            settings=self.settings,
+            index=self.index,
+        )
 
         # self.problem = Problem(
         #     logger=self.logger,

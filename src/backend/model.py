@@ -30,18 +30,23 @@ class Model:
 
         self.settings = None
 
-        self.paths = {'model_dir': Path(main_dir_path) / model_dir_name}
+        self.paths = {
+            'model_dir': Path(main_dir_path) / model_dir_name
+        }
 
-        # self.check_model_dir()
-        # self.load_settings()
-        # self.load_paths()
+        self.check_model_dir()
+        self.load_settings()
+        self.load_paths()
 
-        # self.core = Core(
-        #     logger=self.logger,
-        #     files=self.files,
-        #     settings=self.settings,
-        #     paths=self.paths,
-        # )
+        self.core = Core(
+            logger=self.logger,
+            files=self.files,
+            settings=self.settings,
+            paths=self.paths,
+        )
+
+        if self.settings['sqlite_database']['use_existing_database']:
+            self.load_model_coordinates()
 
         # self.pbi_tools = PBIManager(
         #     logger=self.logger,
@@ -55,21 +60,17 @@ class Model:
         return f'{class_name}'
 
     def check_model_dir(self) -> None:
-
-        model_dir_exists = self.files.check_dir(
+        """Check if model directory and all the required setup files exist.
+        """
+        if self.files.dir_files_check(
             dir_path=self.paths['model_dir'],
-            files_names_list=constants._SETUP_FILES_LIST,
-        )
-        if model_dir_exists:
+            files_names_list=constants._SETUP_FILES.values(),
+        ):
             self.logger.info('Model directory and required setup files exist.')
-        else:
-            msg = 'Model directory or required setup files are missing.'
-            self.logger.error(msg)
-            raise ModelFolderError(msg)
 
     def load_settings(self) -> None:
-        """Load settings from a file, allowing users to overwrite existing
-        settings if present.
+        """Load settings from settings.yml, allowing users to overwrite 
+        existing settings if present.
         """
         if self.settings is not None:
             self.logger.warning('Settings already loaded.')
@@ -83,7 +84,7 @@ class Model:
             self.logger.info('Loading settings.')
 
         self.settings = self.files.load_file(
-            file_name=constants._SETTINGS_FILE_NAME,
+            file_name=constants._SETUP_FILES['settings'],
             dir_path=self.paths['model_dir'],
         )
 
@@ -93,11 +94,11 @@ class Model:
 
         self.paths['input_data_dir'] = Path(
             self.paths['model_dir'],
-            self.settings['input_data']['input_data_dir_name']
+            self.settings['input_data']['input_data_dir']
         )
         self.paths['sets_excel_file'] = Path(
             self.paths['model_dir'],
-            self.settings['input_data']['sets_xlsx_file_name']
+            self.settings['input_data']['sets_xlsx_file']
         )
         self.paths['sqlite_database'] = Path(
             self.paths['model_dir'],
@@ -108,59 +109,61 @@ class Model:
             self.settings['powerbi_report']['name']
         )
 
-    # def load_model_coordinates(self) -> None:
-    #     self.core.index.load_sets_to_index(
-    #         excel_file_name=self.settings['database']['sets_excel_file_name'],
-    #         excel_file_dir_path=self.paths['model_dir'])
+        # non dovrebbe essere creata qui non ha senso
+        # if not self.paths['input_data_dir'].exists():
+        #     self.files.create_dir(self.paths['input_data_dir'])
 
-    #     if self.settings['model']['use_existing_database']:
-    #         self.logger.info(
-    #             "Relying on existing SQL database "
-    #             f"'{self.settings['database']['name']}'."
-    #         )
-    #     else:
-    #         self.core.database.load_sets_to_database()
+    def load_model_coordinates(self) -> None:
+        self.core.index.load_sets_to_index(
+            excel_file_name=self.settings['input_data']['sets_xlsx_file'],
+            excel_file_dir_path=self.paths['model_dir'])
 
-    #     self.core.index.load_vars_table_headers_to_index()
-    #     self.core.index.load_vars_coordinates_to_index()
-    #     self.core.index.load_sets_parsing_hierarchy()
+        if self.settings['sqlite_database']['use_existing_database']:
+            self.logger.info(
+                "Relying on existing SQL database "
+                f"'{self.settings['sqlite_database']['name']}'.")
+        else:
+            self.core.database.load_sets_to_database()
 
-    #     if self.settings['database']['foreign_keys']:
-    #         self.core.index.load_foreign_keys_to_vars_index()
+        self.core.index.load_vars_coordinates_to_index()
 
-    # def generate_blank_database(self) -> None:
-    #     if self.settings['model']['use_existing_database']:
-    #         db_name = self.settings['database']['name']
-    #         self.logger.info(f"Relying on existing SQL database '{db_name}'.")
-    #     else:
-    #         self.core.database.generate_blank_vars_sql_tables()
-    #         self.core.database.generate_blank_vars_input_files()
+        if self.settings['sqlite_database']['foreign_keys']:
+            self.core.index.load_foreign_keys_to_vars_index()
 
-    #     if self.settings['model']['generate_powerbi_report']:
-    #         self.pbi_tools.generate_powerbi_report()
+    # da QUI
+    def generate_blank_database(self) -> None:
+        if self.settings['model']['use_existing_database']:
+            db_name = self.settings['database']['name']
+            self.logger.info(f"Relying on existing SQL database '{db_name}'.")
+        else:
+            self.core.database.generate_blank_vars_sql_tables()
+            self.core.database.generate_blank_vars_input_files()
 
-    # def load_data_files_to_database(
-    #         self,
-    #         operation: str = 'overwrite',
-    # ) -> None:
-    #     self.core.database.load_data_input_files_to_database(
-    #         operation=operation)
+        if self.settings['model']['generate_powerbi_report']:
+            self.pbi_tools.generate_powerbi_report()
 
-    # def initialize_problem(self) -> None:
-    #     self.core.initialize_problem_variables()
-    #     self.core.data_to_cvxpy_exogenous_vars()
+    def load_data_files_to_database(
+            self,
+            operation: str = 'overwrite',
+    ) -> None:
+        self.core.database.load_data_input_files_to_database(
+            operation=operation)
 
-    # def load_results_to_database(
-    #         self,
-    #         operation: str = 'overwrite'
-    # ) -> None:
-    #     self.core.cvxpy_endogenous_data_to_database(operation=operation)
+    def initialize_problem(self) -> None:
+        self.core.initialize_problem_variables()
+        self.core.data_to_cvxpy_exogenous_vars()
 
-    # def erase_model(self) -> None:
-    #     self.logger.warning(
-    #         f"Erasing model {self.settings['model']['name']}.")
-    #     self.files.erase_dir(self.paths['model_dir'])
+    def load_results_to_database(
+            self,
+            operation: str = 'overwrite'
+    ) -> None:
+        self.core.cvxpy_endogenous_data_to_database(operation=operation)
 
-    # def update_database_and_problem(self) -> None:
-    #     self.load_data_files_to_database()
-    #     self.initialize_problem()
+    def erase_model(self) -> None:
+        self.logger.warning(
+            f"Erasing model {self.settings['model']['name']}.")
+        self.files.erase_dir(self.paths['model_dir'])
+
+    def update_database_and_problem(self) -> None:
+        self.load_data_files_to_database()
+        self.initialize_problem()
