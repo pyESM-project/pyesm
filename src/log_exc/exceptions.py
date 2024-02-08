@@ -26,5 +26,12 @@ class IntegrityError(Exception):
         super().__init__(self.message)
 
 
+class NumericalProblemError(Exception):
+
+    def __init__(self, message='Numerical problem error'):
+        self.message = message
+        super().__init__(self.message)
+
+
 class TableNotFoundError(Exception):
     pass

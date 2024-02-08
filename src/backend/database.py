@@ -98,7 +98,7 @@ class Database:
         for set_instance in self.index.sets.values():
             self.sqltools.dataframe_to_table(
                 table_name=set_instance.table_name,
-                dataframe=set_instance.table
+                dataframe=set_instance.data
             )
 
     @connection

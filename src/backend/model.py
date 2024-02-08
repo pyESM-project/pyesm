@@ -135,29 +135,28 @@ class Model:
                 "Relying on existing SQL database "
                 f"'{self.settings['sqlite_database']['name']}'.")
             return
-        
+
         self.logger.info(
             'Generating blank SQLite database and excel input files.')
 
         self.core.database.load_sets_to_database()
         self.core.database.generate_blank_vars_sql_tables()
-        self.core.database.generate_blank_vars_input_files()       
+        self.core.database.generate_blank_vars_input_files()
 
     def load_data_files_to_database(
             self,
             operation: str = 'overwrite',
     ) -> None:
-        
+
         self.logger.info('Loading input data to SQLite database.')
         self.core.database.load_data_input_files_to_database(operation)
 
     def initialize_problem(self) -> None:
-        
+
         self.logger.info('Initializing numerical problem.')
         self.core.initialize_problem_variables()
         self.core.data_to_cvxpy_exogenous_vars()
 
-        # reading equations from yml and define cvxpy problem
         # provide a model.core.problem attribute with technical specs of the problem
 
     def solve_problem(self) -> None:
@@ -168,7 +167,7 @@ class Model:
             self,
             operation: str = 'overwrite'
     ) -> None:
-        
+
         self.core.cvxpy_endogenous_data_to_database(operation)
 
     def update_database_and_problem(self) -> None:
@@ -182,7 +181,7 @@ class Model:
         self.pbi_tools.generate_powerbi_report()
 
     def erase_model(self) -> None:
-        
+
         self.logger.warning(
             f"Erasing model {self.settings['model']['name']}.")
         self.files.erase_dir(self.paths['model_dir'])

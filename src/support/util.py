@@ -2,7 +2,7 @@ import itertools as it
 import pprint as pp
 
 from pathlib import Path
-from typing import Dict, List, Any, Literal, OrderedDict
+from typing import Dict, List, Any, Literal
 import numpy as np
 
 import pandas as pd
@@ -23,6 +23,9 @@ class DotDict(dict):
 
     def __setattr__(self, name: str, value: Any) -> None:
         self[name] = value
+
+    def __iter__(self):
+        return iter(self.items())
 
 
 def prettify(item: dict) -> None:
@@ -190,7 +193,7 @@ def unpivot_dict_to_dataframe(
         dictionary values.
     """
 
-    if all([isinstance(item, List) for item in key_order]):
+    if key_order and all([isinstance(item, List) for item in key_order]):
         key_order = [item[0] for item in key_order]
 
     if key_order:
@@ -311,7 +314,6 @@ def update_dataframes_on_condition(
     Raises:
         ValueError: if an invalid 'case' is provided.
     """
-
     valid_cases = ['merge', 'existing_updated', 'new_only']
     validate_selection(valid_cases, case)
 
@@ -339,3 +341,39 @@ def update_dataframes_on_condition(
         return new_df[condition]
 
     return merged_df
+
+
+def add_column_to_dataframe(
+        dataframe: pd.DataFrame,
+        column_header: str,
+        column_values: Any = None,
+        column_position: int = None,
+) -> None:
+    """Inserts a new column into the provided DataFrame at the specified 
+    position or at the end if no position is specified.
+
+    Args:
+        dataframe (pd.DataFrame): The pandas DataFrame to which the column 
+            will be added.
+        column_header (str): The name/header of the new column.
+        column_values (Any, optional): The values to be assigned to the new 
+            column. If not provided, the column will be populated with 
+            NaN values.
+        column_position (int, optional): The index position where the new 
+            column will be inserted. If not provided, the column will be 
+            inserted at the end.
+
+    Returns:
+        None
+
+    Raises:
+        None
+    """
+    if column_position is None:
+        column_position = len(dataframe.columns)
+
+    dataframe.insert(
+        loc=column_position,
+        column=column_header,
+        value=column_values,
+    )

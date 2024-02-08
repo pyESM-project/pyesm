@@ -6,6 +6,7 @@ scenarios:
     table_headers:
         id: ['s_ID', 'INTEGER PRIMARY KEY']
         name: ['s_Name', 'TEXT']
+    split_problem: True
 
 datetime:
     symbol: dt

@@ -1,4 +1,6 @@
 from pathlib import Path
+from re import A
+from types import NoneType
 from typing import Literal, Union, Dict, List
 
 import pandas as pd
@@ -30,7 +32,7 @@ class BaseItem:
 class Set(BaseItem):
     def __init__(
             self,
-            table: pd.DataFrame = None,
+            data: pd.DataFrame = None,
             **kwargs,
     ) -> None:
 
@@ -38,10 +40,11 @@ class Set(BaseItem):
         self.table_name = None
         self.table_headers = None
         self.set_categories = None
+        self.split_problem = None
 
         super().__init__(**kwargs)
 
-        self.table = table
+        self.data = data
 
 
 class Variable(BaseItem):
@@ -238,11 +241,36 @@ class Index:
         class_name = type(self).__name__
         return f'{class_name}'
 
-    def load_sets(self) -> Dict[str, Set]:
+    @property
+    def list_sets(self) -> Dict[str, str]:
+        return {
+            key: value.table_headers[constants._STD_TABLE_HEADER_KEY][0]
+            for key, value in self.sets.items()
+        }
+
+    @property
+    def list_sets_split_problem(self) -> Dict[str, str]:
+        list_sets_split_problem = {
+            key: value.table_headers[constants._STD_TABLE_HEADER_KEY][0]
+            for key, value in self.sets.items()
+            if getattr(value, 'split_problem', False)
+        }
+
+        if not list_sets_split_problem:
+            msg = "At least one Set must identify a problem. " \
+                f"Check 'split_problem' properties in 'sets_structure.yml'"
+            self.logger.error(msg)
+            raise exc.NumericalProblemError(msg)
+
+        return list_sets_split_problem
+
+    def load_sets(self) -> util.DotDict[str, Set]:
+
         sets_data = self.files.load_file(
             file_name=constants._SETUP_FILES['sets_structure'],
             dir_path=self.paths['model_dir'],
         )
+
         return util.DotDict({
             key: Set(**value)
             for key, value in sets_data.items()
@@ -302,11 +330,16 @@ class Index:
             f"Loading variables 'sets_parsing_hierarchy' to Index.")
 
         for variable in self.variables.values():
-            variable.sets_parsing_hierarchy = {
+            sets_parsing_hierarchy = {
                 key: value[0]
                 for key, value in variable.coordinates_fields.items()
                 if key not in variable.shape
             }
+
+            if not sets_parsing_hierarchy:
+                variable.sets_parsing_hierarchy = None
+            else:
+                variable.sets_parsing_hierarchy = sets_parsing_hierarchy
 
     def load_sets_to_index(
             self,
@@ -316,7 +349,7 @@ class Index:
     ) -> None:
 
         if all(
-            set_instance.table is None
+            set_instance.data is None
             for set_instance in self.sets.values()
         ):
             self.logger.info(f"'{self}' object: loading new Sets to Index.")
@@ -343,7 +376,7 @@ class Index:
         for set_instance in self.sets.values():
             table_name = set_instance.table_name
             if table_name in sets_values.keys():
-                set_instance.table = sets_values[table_name]
+                set_instance.data = sets_values[table_name]
 
     def load_vars_coordinates_to_index(self) -> None:
 
@@ -356,7 +389,7 @@ class Index:
                 set_header = variable.coordinates_fields[set_key][0]
 
                 if set_filter is None:
-                    set_values = list(self.sets[set_key].table[set_header])
+                    set_values = list(self.sets[set_key].data[set_header])
 
                 elif isinstance(set_filter, dict):
 
@@ -367,7 +400,7 @@ class Index:
                         category_filter = self.sets[set_key].set_categories[category_filter_id]
                         category_header_name = self.sets[set_key].table_headers['category'][0]
 
-                        set_filtered = self.sets[set_key].table.query(
+                        set_filtered = self.sets[set_key].data.query(
                             f'{category_header_name} == "{category_filter}"'
                         ).copy()
 

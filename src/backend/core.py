@@ -52,11 +52,10 @@ class Core:
         self.problem = Problem(
             logger=self.logger,
             files=self.files,
+            paths=self.paths,
             settings=self.settings,
             index=self.index
         )
-
-        self.variables = None
 
         self.logger.info(f"'{self}' initialized.")
 
@@ -71,6 +70,13 @@ class Core:
 
         for variable in self.index.variables.values():
             variable.data = self.problem.generate_vars_dataframe(variable)
+
+    def define_numerical_problems(self) -> None:
+        self.logger.info(
+            "Initialize problems dataframes "
+            "(cvxpy problems, objectives, constrains).")
+
+        self.problem.generate_problems_dataframe()
 
     @connection
     def data_to_cvxpy_exogenous_vars(self) -> None:
