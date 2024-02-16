@@ -1,0 +1,70 @@
+# template for defining variables of the model
+
+v:
+    symbol: 'v'
+    name: 'make coefficients'
+    type: 'exogenous'
+    coordinates_info:
+        scenarios: null
+        datetime: null
+        technologies: 
+            set_categories: t.s
+            aggregation_key: null
+        flows:
+            set_categories: f.p
+            aggregation_key: null
+    shape: [technologies, flows]
+
+u:
+    symbol: 'u'
+    name: 'use coefficients'
+    type: 'exogenous'
+    coordinates_info:
+        scenarios: null
+        datetime: null
+        flows: 
+            set_categories: f.p
+            aggregation_key: competition
+        technologies:
+            set_categories: t.s
+            aggregation_key: null
+    shape: [flows, technologies]
+
+Y:
+    symbol: 'Y'
+    name: 'total final demand'
+    type: 'exogenous'
+    coordinates_info:
+        scenarios: null
+        datetime: null
+        flows: 
+            set_categories: f.p
+            aggregation_key: competition
+        technologies: 
+            set_categories: t.d
+            aggregation_key: null
+    shape: [flows, technologies]
+        
+Q:
+    symbol: 'Q'
+    name: 'total demand by flow'
+    type: 'endogenous'
+    coordinates_info: 
+        scenarios: null
+        datetime: null
+        flows: 
+            set_categories: f.p
+            aggregation_key: competition
+    shape: [flows, 1]
+        
+X:
+    symbol: 'X'
+    name: 'total activity by technology'
+    type: 'endogenous'
+    coordinates_info: 
+        scenarios: null
+        datetime: null
+        technologies: 
+            set_categories: t.s
+            aggregation_key: null
+    shape: [technologies, 1]

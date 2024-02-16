@@ -1,4 +1,4 @@
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 from pathlib import Path
 
 import os
@@ -8,44 +8,55 @@ import yaml
 
 import pandas as pd
 
+from src.log_exc.exceptions import ModelFolderError
 from src.log_exc.logger import Logger
 
 
 class FileManager:
 
-    def __init__(self, logger: Logger) -> None:
+    def __init__(
+        self,
+        logger: Logger,
+        xls_engine: str = 'openpyxl',
+    ) -> None:
+
         self.logger = logger.getChild(__name__)
+
+        self.xls_engine = xls_engine
+
         self.logger.info(f"'{self}' object generated.")
 
     def __repr__(self):
         class_name = type(self).__name__
         return f'{class_name}'
 
-    def create_dir(self, dir_path: Path) -> None:
+    def create_dir(
+            self,
+            dir_path: Path,
+            force_overwrite: bool = False,
+    ) -> None:
         """This method receives a folder path and generates the folder in case
-        it not exists.
+        it does not exist.
 
         Args:
             dir_path (str): path of the folder to be generated.
         """
 
-        dir_name = str(dir_path).rsplit('\\', maxsplit=1)[-1]
+        dir_name = dir_path.name
 
-        if os.path.exists(dir_path):
+        if os.path.exists(dir_path) and not force_overwrite:
             self.logger.warning(f"Directory '{dir_name}' already exists.")
             response = input(
                 'Overwrite directory 'f"'{dir_name}'(y/[n]): "
             ).lower()
 
             if response != 'y':
-                self.logger.warning(
+                self.logger.debug(
                     f"Directory '{dir_name}' not overwritten.")
-                return {}
-            else:
-                shutil.rmtree(dir_path)
-                os.makedirs(dir_path, exist_ok=True)
-                self.logger.debug(f"Directory '{dir_name}' overwritten.")
-                return {}
+                return
+
+        if os.path.exists(dir_path) and force_overwrite:
+            shutil.rmtree(dir_path)
 
         os.makedirs(dir_path, exist_ok=True)
         self.logger.debug(f"Directory '{dir_name}' created.")
@@ -83,7 +94,8 @@ class FileManager:
             self,
             file_name: str,
             dir_path: Path,
-            file_type: str = 'yml') -> Dict[str, Any]:
+            file_type: str = 'yml',
+    ) -> Dict[str, Any]:
         """Loads JSON or YAML file and returns a dictionary with its content.
 
         Args:
@@ -121,6 +133,73 @@ class FileManager:
             self.logger.error(
                 f"Could not load file '{file_name}': {str(error)}")
             return {}
+
+    def dir_files_check(
+            self,
+            dir_path: str | Path,
+            files_names_list: List[str],
+    ) -> bool:
+
+        dir_path = Path(dir_path)
+
+        if not dir_path.is_dir():
+            msg = f"Directory '{dir_path}' does not exist."
+            self.logger.error(msg)
+            raise ModelFolderError(msg)
+
+        for file_name in files_names_list:
+            file_path = dir_path / file_name
+
+            if not file_path.is_file():
+                msg = f"File '{file_name}' does not exist."
+                self.logger.error(msg)
+                raise ModelFolderError(msg)
+
+            # here add a check on the file structure (further methods needed)
+
+        return True
+
+    def copy_file_to_destination(
+            self,
+            path_destination: str | Path,
+            path_source: str,
+            file_name: str,
+            file_new_name: str = None,
+            force_overwrite: bool = False,
+    ) -> None:
+        """
+        Copy a file from the specified package folder to a specified 
+        destination path, with an optional new file name.
+
+        Args:
+            destination_path (str or Path): The path where the file will 
+                be copied.
+            file_position (str): The package folder position.
+            file_name (str): The name of the file to be copied.
+            new_file_name (str, optional): The new name for the file. 
+                Defaults to None.
+
+        Raises:
+            FileNotFoundError: If the source file is not found.
+        """
+        source_path = Path(path_source) / file_name
+        destination_file_name = file_new_name or source_path.name
+        destination_file_path = Path(path_destination) / destination_file_name
+
+        if destination_file_path.exists() and not force_overwrite:
+            self.logger.warning(f"'{file_name}' already exists.")
+            user_input = input(f"Overwrite '{file_name}'? (y/[n]): ")
+            if user_input.lower() != 'y':
+                self.logger.debug(f"'{file_name}' NOT overwritten.")
+                return
+
+        if source_path.exists() and source_path.is_file():
+            shutil.copy2(source_path, destination_file_path)
+            self.logger.debug(f"File '{file_name}' successfully generated.")
+        else:
+            msg = f"The source file '{source_path}' does not exist."
+            self.logger.error(msg)
+            raise FileNotFoundError(msg)
 
     def dict_to_excel_headers(
             self,
@@ -194,11 +273,49 @@ class FileManager:
             self.logger.debug(
                 f"Excel file '{excel_file_name}' generated.")
 
+    def dataframe_to_excel(
+            self,
+            dataframe: pd.DataFrame,
+            excel_filename: str,
+            excel_dir_path: str,
+            sheet_name: str = None,
+    ) -> None:
+
+        excel_file_path = Path(excel_dir_path, excel_filename)
+
+        if excel_file_path.exists():
+            confirm = input(
+                f"File {excel_filename} already exists. \
+                    Do you want to overwrite it? (y/[n])"
+            )
+            if confirm.lower() != 'y':
+                self.logger.warning(
+                    f"File '{excel_filename}' not overwritten.")
+                return
+
+        mode = 'a' if excel_file_path.exists() else 'w'
+        if_sheet_exists = 'replace' if mode == 'a' else None
+
+        self.logger.debug(
+            f"Exporting dataframe {sheet_name} to {excel_filename}.")
+
+        if sheet_name is None:
+            sheet_name = str(dataframe)
+
+        with pd.ExcelWriter(
+            excel_file_path,
+            engine=self.xls_engine,
+            mode=mode,
+            if_sheet_exists=if_sheet_exists,
+        ) as writer:
+            dataframe.to_excel(writer, sheet_name=sheet_name, index=False)
+
     def excel_to_dataframes_dict(
             self,
             excel_file_name: str,
             excel_file_dir_path: Path,
             empty_data_fill: str = '',
+            dtype: Optional[str] = None,
     ) -> Dict[str, pd.DataFrame]:
         """Reading an excel file composed by multiple tabs and returning
         a dictionary with keys as tabs and tables in each tab as Pandas 
@@ -211,7 +328,7 @@ class FileManager:
             self.logger.error(f'{excel_file_name} does not exist.')
             raise FileNotFoundError(f"{excel_file_name} does not exist.")
 
-        df_dict = pd.read_excel(io=file_path, sheet_name=None)
+        df_dict = pd.read_excel(io=file_path, sheet_name=None, dtype=dtype)
         df_dict = {sheet_name: df.fillna(empty_data_fill)
                    for sheet_name, df in df_dict.items()}
 
