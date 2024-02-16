@@ -1,3 +1,5 @@
+import cvxpy as cp
+
 # essenstial model config files
 _SETUP_FILES = {
     'settings': 'settings.yml',
@@ -28,4 +30,11 @@ _ALLOWED_OPERATORS = {
     '*': '*',
     '@': '@',
     '==': '==',
+    '>=': '>=',
+    '<=': '<=',
+    '(': '(',
+    ')': ')',
+    ',': ',',
+    'sum': cp.sum,
+    'Minimize': cp.Minimize,
 }

@@ -1,6 +1,8 @@
 from typing import Dict
 from pathlib import Path
 
+import pandas as pd
+
 from src.backend.database import Database
 from src.backend.index import Index, Variable
 from src.backend.problem import Problem
@@ -63,7 +65,7 @@ class Core:
         class_name = type(self).__name__
         return f'{class_name}'
 
-    def initialize_problem_variables(self) -> None:
+    def initialize_problems_variables(self) -> None:
         self.logger.info(
             "Initialize variables dataframes "
             "(cvxpy objects, filters dictionaries).")
@@ -73,10 +75,16 @@ class Core:
 
     def define_numerical_problems(self) -> None:
         self.logger.info(
-            "Initialize problems dataframes "
-            "(cvxpy problems, objectives, constrains).")
+            "Load symbolic problem, initialize dataframes with cvxpy problems ")
 
+        self.problem.load_symbolic_problem_from_file()
         self.problem.generate_problems_dataframe()
+
+    def solve_numerical_problems(self) -> None:
+        self.logger.info(
+            "Solve numerical problems.")
+
+        self.problem.solve_problems()
 
     @connection
     def data_to_cvxpy_exogenous_vars(self) -> None:
@@ -122,6 +130,8 @@ class Core:
                     f"Fetching data from cvxpy variable '{variable.symbol} "
                     "to the related SQLite table.")
 
+                cvxpy_var_data = pd.DataFrame()
+
                 for row in variable.data.index:
 
                     none_coord = variable.none_data_coordinates(row)
@@ -132,10 +142,12 @@ class Core:
                             f"no data available for {none_coord}.")
                         continue
 
-                    cvxpy_var_data = variable.reshaping_variable_data(row)
-
-                    self.sqltools.dataframe_to_table(
-                        table_name=variable.symbol,
-                        dataframe=cvxpy_var_data,
-                        operation=operation,
+                    cvxpy_var_data = pd.concat(
+                        (cvxpy_var_data, variable.reshaping_variable_data(row))
                     )
+
+                self.sqltools.dataframe_to_table(
+                    table_name=variable.symbol,
+                    dataframe=cvxpy_var_data,
+                    operation=operation,
+                )

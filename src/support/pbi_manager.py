@@ -1,4 +1,3 @@
-from pathlib import Path
 from typing import Dict
 
 from src.log_exc.logger import Logger
@@ -30,4 +29,5 @@ class PBIManager:
         if not self.file_name:
             self.file_name = std_file_name
 
-        self.logger.debug(f"PowerBI report file '{self.file_name}' created.")
+        self.logger.debug(
+            f"Generation of PowerBI report file '{self.file_name}'.")

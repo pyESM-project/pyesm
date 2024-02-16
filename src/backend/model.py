@@ -47,7 +47,7 @@ class Model:
 
         if self.settings['model']['use_existing_data']:
             self.load_model_coordinates()
-            self.initialize_problem()
+            self.initialize_problems()
 
         self.pbi_tools = PBIManager(
             logger=self.logger,
@@ -119,9 +119,16 @@ class Model:
             self.logger.info(
                 'Loading new sets data and variable coordinates.')
 
-        self.core.index.load_sets_to_index(
-            excel_file_name=self.settings['input_data']['sets_xlsx_file'],
-            excel_file_dir_path=self.paths['model_dir'])
+        try:
+            self.core.index.load_sets_to_index(
+                excel_file_name=self.settings['input_data']['sets_xlsx_file'],
+                excel_file_dir_path=self.paths['model_dir'])
+        except FileNotFoundError:
+            msg = f"'{self.settings['input_data']['sets_xlsx_file']}' file " \
+                "missing. Set 'model->use_existing_data' to False to " \
+                "generate a new settings file."
+            self.logger.error(msg)
+            raise SettingsError(msg)
 
         self.core.index.load_vars_coordinates_to_index()
 
@@ -151,33 +158,36 @@ class Model:
         self.logger.info('Loading input data to SQLite database.')
         self.core.database.load_data_input_files_to_database(operation)
 
-    def initialize_problem(self) -> None:
+    def initialize_problems(self) -> None:
 
-        self.logger.info('Initializing numerical problem.')
-        self.core.initialize_problem_variables()
+        self.logger.info('Initializing numerical problems.')
+        self.core.initialize_problems_variables()
         self.core.data_to_cvxpy_exogenous_vars()
-
-        # provide a model.core.problem attribute with technical specs of the problem
+        self.core.define_numerical_problems()
 
     def solve_problem(self) -> None:
 
         self.logger.info('Solving numerical problem.')
+        self.core.solve_numerical_problems()
 
     def load_results_to_database(
             self,
             operation: str = 'overwrite'
     ) -> None:
 
+        self.logger.info(
+            'Exporting endogenous model results to SQLite database.')
         self.core.cvxpy_endogenous_data_to_database(operation)
 
     def update_database_and_problem(self) -> None:
 
         self.logger.info(f"Updating ")
         self.load_data_files_to_database()
-        self.initialize_problem()
+        self.initialize_problems()
 
     def generate_pbi_report(self) -> None:
 
+        self.logger.info('Generating PowerBI report.')
         self.pbi_tools.generate_powerbi_report()
 
     def erase_model(self) -> None:

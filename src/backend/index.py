@@ -40,7 +40,8 @@ class Set(BaseItem):
         self.table_name = None
         self.table_headers = None
         self.set_categories = None
-        self.split_problem = None
+
+        self.split_problem = False
 
         super().__init__(**kwargs)
 
@@ -66,6 +67,7 @@ class Variable(BaseItem):
         self.coordinates = {}
         self.foreign_keys = {}
         self.sets_parsing_hierarchy = {}
+        self.sets_intra_problem = {}
         self.data = {}
 
     @property
@@ -234,6 +236,7 @@ class Index:
         self.load_vars_coordinates_fields()
         self.load_vars_table_headers()
         self.load_vars_sets_parsing_hierarchy()
+        self.load_sets_intra_problem()
 
         self.logger.info(f"'{self}' object initialized.")
 
@@ -388,6 +391,10 @@ class Index:
 
                 set_header = variable.coordinates_fields[set_key][0]
 
+                # partire da qui per cambiare gli headers degli attributi
+                # di sets e variables.
+                # set_header = set_key
+
                 if set_filter is None:
                     set_values = list(self.sets[set_key].data[set_header])
 
@@ -422,3 +429,11 @@ class Index:
                     raise exc.MissingDataError(error_msg)
 
                 variable.coordinates[set_header] = set_values
+
+    def load_sets_intra_problem(self) -> None:
+        for variable in self.variables.values():
+            variable.sets_intra_problem = {
+                key: value
+                for key, value in variable.sets_parsing_hierarchy.items()
+                if key not in self.list_sets_split_problem
+            }

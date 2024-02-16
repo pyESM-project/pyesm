@@ -5,6 +5,20 @@ class ModelFolderError(Exception):
         super().__init__(self.message)
 
 
+class ConceptualModelError(Exception):
+
+    def __init__(self, message='Conceptual Model error.'):
+        self.message = message
+        super().__init__(self.message)
+
+
+class SettingsError(Exception):
+
+    def __init__(self, message='Settings error.'):
+        self.message = message
+        super().__init__(self.message)
+
+
 class MissingDataError(Exception):
 
     def __init__(self, message='Missing data error.'):
