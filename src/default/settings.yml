@@ -2,7 +2,7 @@
 
 model:
     description: test model # brief description of the model
-    use_existing_data: False # True in case of existing sets.xlsx, database.db and input_data/ files
+    use_existing_data: True # True in case of existing sets.xlsx, database.db and input_data/ files
 
 input_data:
     sets_xlsx_file: sets.xlsx # name of the excel sets file (with or without .xlsx extension)
@@ -18,4 +18,5 @@ powerbi_report:
     name: dataset.pbix # name of the PowerBI report file (with or without .pbix extension)
 
 problem:
-    execution_mode: simulation # simulation or optimization
+    solver: GUROBI # solver for the numerical problems (gurobi, cplex, glpk, etc.)
+    verbose: True # True if you want to see the solver output

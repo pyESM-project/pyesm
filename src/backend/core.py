@@ -7,7 +7,7 @@ from src.backend.database import Database
 from src.backend.index import Index, Variable
 from src.backend.problem import Problem
 from src.log_exc.logger import Logger
-from src.constants import constants
+from src.support import constants
 from src.support.file_manager import FileManager
 from src.support.sql_manager import SQLManager, connection
 
@@ -81,10 +81,10 @@ class Core:
         self.problem.generate_problems_dataframe()
 
     def solve_numerical_problems(self) -> None:
-        self.logger.info(
-            "Solve numerical problems.")
-
-        self.problem.solve_problems()
+        self.problem.solve_all_problems(
+            solver=self.settings['problem']['solver'],
+            verbose=self.settings['problem']['verbose'],
+        )
 
     @connection
     def data_to_cvxpy_exogenous_vars(self) -> None:

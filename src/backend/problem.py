@@ -5,7 +5,7 @@ import pandas as pd
 import numpy as np
 import cvxpy as cp
 
-from src.constants import constants
+from src.support import constants
 from src.log_exc import exceptions as exc
 from src.log_exc.logger import Logger
 from src.support import util
@@ -36,7 +36,7 @@ class Problem:
 
         self.symbolic_problem = None
         self.numeric_problems = None
-        self.problems_solved = None
+        self.model_run = None
 
         self.logger.info(f"'{self}' object initialized.")
 
@@ -265,7 +265,8 @@ class Problem:
             'info': constants._PROBLEM_INFO_HEADER,
             'objective': constants._OBJECTIVE_HEADER,
             'constraints': constants._CONSTRAINTS_HEADER,
-            'problem': constants._PROBLEM_HEADER
+            'problem': constants._PROBLEM_HEADER,
+            'status': constants._PROBLEM_STATUS_HEADER,
         }
 
         # per ora le colonne dei set hanno i nomi degli headers (s_Name, ...)
@@ -324,6 +325,7 @@ class Problem:
             problems_data.at[problem_num, headers['constraints']] = constraints
             problems_data.at[problem_num, headers['objective']] = objective
             problems_data.at[problem_num, headers['problem']] = problem
+            problems_data.at[problem_num, headers['status']] = None
 
         self.numeric_problems = problems_data
 
@@ -455,7 +457,26 @@ class Problem:
 
         return expressions
 
-    def solve_problems(self) -> None:
+    def solve_problem(
+            self,
+            problem: cp.Problem,
+            solver: str = None,
+            verbose: bool = True,
+            **kwargs: Any,
+    ) -> None:
+
+        problem.solve(
+            solver=solver,
+            verbose=verbose,
+            **kwargs
+        )
+
+    def solve_all_problems(
+            self,
+            solver: str,
+            verbose: bool,
+            **kwargs: Any,
+    ) -> None:
 
         if self.numeric_problems is None or \
                 self.numeric_problems[constants._PROBLEM_HEADER].isna().all():
@@ -463,9 +484,9 @@ class Problem:
             self.logger.warning(msg)
             raise exc.OperationalError(msg)
 
-        if self.problems_solved:
-            self.logger.warning("Numeric problem already solved.")
-            user_input = input("Solve again numeric problem? (y/[n]): ")
+        if self.model_run:
+            self.logger.warning("Numeric problems already run.")
+            user_input = input("Solve again numeric problems? (y/[n]): ")
 
             if user_input.lower() != 'y':
                 self.logger.info(
@@ -480,11 +501,21 @@ class Problem:
             problem_info = self.numeric_problems.at[
                 problem_num, constants._PROBLEM_INFO_HEADER]
 
-            self.logger.debug(f"Solving problem: {problem_info}")
+            self.logger.debug(f"Solving problem: {problem_info}.")
 
             problem = self.numeric_problems.at[
                 problem_num, constants._PROBLEM_HEADER]
 
-            problem.solve()
+            self.solve_problem(
+                problem=problem,
+                solver=solver,
+                verbose=verbose,
+                **kwargs,
+            )
 
-        self.problems_solved = True
+            problem_status = getattr(problem, 'status', None)
+            self.numeric_problems.at[
+                problem_num,
+                constants._PROBLEM_STATUS_HEADER] = problem_status
+
+        self.model_run = True

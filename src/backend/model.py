@@ -2,7 +2,7 @@ from pathlib import Path
 
 from src.log_exc.logger import Logger
 from src.log_exc.exceptions import *
-from src.constants import constants
+from src.support import constants
 from src.support.file_manager import FileManager
 from src.support.pbi_manager import PBIManager
 from src.backend.core import Core
@@ -165,9 +165,8 @@ class Model:
         self.core.data_to_cvxpy_exogenous_vars()
         self.core.define_numerical_problems()
 
-    def solve_problem(self) -> None:
-
-        self.logger.info('Solving numerical problem.')
+    def run_model(self) -> None:
+        self.logger.info('Running numerical model.')
         self.core.solve_numerical_problems()
 
     def load_results_to_database(

@@ -22,6 +22,7 @@ _OBJECTIVE_HEADER = 'objective function'
 _CONSTRAINTS_HEADER = 'constraints'
 _PROBLEM_HEADER = 'problem'
 _PROBLEM_INFO_HEADER = 'info'
+_PROBLEM_STATUS_HEADER = 'status'
 
 # definition of allowed operators for defining symbolic problem
 _ALLOWED_OPERATORS = {
