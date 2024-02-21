@@ -1,6 +1,5 @@
 from pathlib import Path
 from re import A
-from types import NoneType
 from typing import Literal, Union, Dict, List
 
 import pandas as pd
@@ -9,6 +8,7 @@ from src.log_exc.logger import Logger
 from src.log_exc import exceptions as exc
 from src.support import constants
 from src.support.file_manager import FileManager
+from src.support.dotdict import DotDict
 from src.support import util
 
 
@@ -267,14 +267,14 @@ class Index:
 
         return list_sets_split_problem
 
-    def load_sets(self) -> util.DotDict[str, Set]:
+    def load_sets(self) -> DotDict[str, Set]:
 
         sets_data = self.files.load_file(
             file_name=constants._SETUP_FILES['sets_structure'],
             dir_path=self.paths['model_dir'],
         )
 
-        return util.DotDict({
+        return DotDict({
             key: Set(**value)
             for key, value in sets_data.items()
         })
@@ -284,7 +284,7 @@ class Index:
             file_name=constants._SETUP_FILES['variables'],
             dir_path=self.paths['model_dir'],
         )
-        return util.DotDict({
+        return DotDict({
             key: Variable(**value)
             for key, value in variables_data.items()
         })

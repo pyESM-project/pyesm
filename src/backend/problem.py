@@ -10,6 +10,7 @@ from src.log_exc import exceptions as exc
 from src.log_exc.logger import Logger
 from src.support import util
 from src.support.file_manager import FileManager
+from src.support.dotdict import DotDict
 from src.backend.index import Index, Variable
 
 
@@ -172,7 +173,7 @@ class Problem:
             dir_path=self.paths['model_dir'],
         )
 
-        self.symbolic_problem = util.DotDict(symbolic_problem)
+        self.symbolic_problem = DotDict(symbolic_problem)
 
     def parse_allowed_symbolic_vars(
             self,
@@ -200,7 +201,7 @@ class Problem:
 
     def check_variables_attribute_equality(
             self,
-            variables_subset: util.DotDict[str, Variable],
+            variables_subset: DotDict[str, Variable],
             attribute: str,
     ) -> None:
 
@@ -225,7 +226,7 @@ class Problem:
 
     def find_common_sets_intra_problem(
         self,
-        variables_subset: util.DotDict[str, Variable],
+        variables_subset: DotDict[str, Variable],
     ) -> Dict[str, str]:
 
         sets_dicts_to_compare = {
@@ -331,7 +332,7 @@ class Problem:
 
     def fetch_allowed_cvxpy_variables(
             self,
-            variables_set_dict: util.DotDict[str, Variable],
+            variables_set_dict: DotDict[str, Variable],
             problem_filter: pd.DataFrame = None,
             set_intra_problem_header: str = None,
             set_intra_problem_value: str = None,
@@ -401,7 +402,7 @@ class Problem:
             var_symbols_list = self.parse_allowed_symbolic_vars(expression)
 
             # define subset of variables in the expression
-            vars_subset = util.DotDict({
+            vars_subset = DotDict({
                 key: variable for key, variable in self.index.variables
                 if variable.symbol in var_symbols_list
             })
