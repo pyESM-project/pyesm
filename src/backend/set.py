@@ -1,3 +1,4 @@
+from typing import Any, Dict
 import pandas as pd
 
 
@@ -9,11 +10,11 @@ class Set:
             **kwargs,
     ) -> None:
 
-        self.symbol = None
-        self.table_name = None
-        self.table_headers = None
-        self.set_categories = None
-        self.split_problem = False
+        self.symbol: str = None
+        self.table_name: str = None
+        self.table_headers: Dict[str, Any] = None
+        self.set_categories: Dict[str, Any] = None
+        self.split_problem: bool = False
         self.data = data
 
         for key, value in kwargs.items():

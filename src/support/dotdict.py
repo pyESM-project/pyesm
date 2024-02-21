@@ -1,4 +1,4 @@
-from typing import Any
+from typing import Any, Dict
 
 
 class DotDict(dict):
@@ -17,5 +17,5 @@ class DotDict(dict):
     def __setattr__(self, name: str, value: Any) -> None:
         self[name] = value
 
-    def __iter__(self):
+    def __iter__(self) -> Dict[str, Any]:
         return iter(self.items())

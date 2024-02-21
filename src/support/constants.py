@@ -8,23 +8,41 @@ _SETUP_FILES = {
     'sets_structure': 'sets_structure.yml',
 }
 
-# definition of standard column name-type for sets id and values fields
+# default column name-type for sets id and values fields
 _STD_VALUES_FIELD = {'values': ['values', 'REAL']}
 _STD_ID_FIELD = {'id': ['id', 'INTEGER PRIMARY KEY']}
 _STD_TABLE_HEADER_KEY = 'name'
 
-# definition of standard headers for variables dataframe
+# default headers for variables dataframe
 _CVXPY_VAR_HEADER = 'variable'
 _FILTER_DICT_HEADER = 'filter'
 
-# definition of standard headers for problem dataframe
+# default headers for problem dataframe
 _OBJECTIVE_HEADER = 'objective function'
 _CONSTRAINTS_HEADER = 'constraints'
 _PROBLEM_HEADER = 'problem'
 _PROBLEM_INFO_HEADER = 'info'
 _PROBLEM_STATUS_HEADER = 'status'
 
-# definition of allowed operators for defining symbolic problem
+# default Set info structure (for validation purpose)
+_SET_DEFAULT_STRUCTURE = {
+    'symbol': str,
+    'table_name': str,
+    'table_headers': dict,
+    'set_categories': dict,
+    'split_problem': bool,
+}
+
+# default Variable info structure (for validation purpose)
+_VARIABLE_DEFAULT_STRUCTURE = {
+    'symbol': str,
+    'name': str,
+    'type': str,
+    'coordinates_info': dict,
+    'shape': list,
+}
+
+# allowed operators for defining symbolic CVXPY problem
 _ALLOWED_OPERATORS = {
     '+': '+',
     '-': '-',

@@ -34,7 +34,7 @@ class Model:
             'model_dir': Path(main_dir_path) / model_dir_name
         }
 
-        self.check_model_dir()
+        self.validate_model_dir()
         self.load_settings()
         self.load_paths()
 
@@ -60,7 +60,7 @@ class Model:
         class_name = type(self).__name__
         return f'{class_name}'
 
-    def check_model_dir(self) -> None:
+    def validate_model_dir(self) -> None:
         """Check if model directory and all the required setup files exist.
         """
         if self.files.dir_files_check(

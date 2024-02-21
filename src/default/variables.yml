@@ -1,9 +1,9 @@
 # template for defining variables of the model
 
 v:
-    symbol: 'v'
-    name: 'make coefficients'
-    type: 'exogenous'
+    symbol: v
+    name: make coefficients
+    type: exogenous
     coordinates_info:
         scenarios: null
         datetime: null
@@ -16,9 +16,9 @@ v:
     shape: [technologies, flows]
 
 u:
-    symbol: 'u'
-    name: 'use coefficients'
-    type: 'exogenous'
+    symbol: u
+    name: use coefficients
+    type: exogenous
     coordinates_info:
         scenarios: null
         datetime: null
@@ -31,9 +31,9 @@ u:
     shape: [flows, technologies]
 
 Y:
-    symbol: 'Y'
-    name: 'total final demand'
-    type: 'exogenous'
+    symbol: Y
+    name: total final demand
+    type: exogenous
     coordinates_info:
         scenarios: null
         datetime: null
@@ -46,9 +46,9 @@ Y:
     shape: [flows, technologies]
         
 Q:
-    symbol: 'Q'
-    name: 'total demand by flow'
-    type: 'endogenous'
+    symbol: Q
+    name: total demand by flow
+    type: endogenous
     coordinates_info: 
         scenarios: null
         datetime: null
@@ -58,9 +58,9 @@ Q:
     shape: [flows, 1]
         
 X:
-    symbol: 'X'
-    name: 'total activity by technology'
-    type: 'endogenous'
+    symbol: X
+    name: total activity by technology
+    type: endogenous
     coordinates_info: 
         scenarios: null
         datetime: null

@@ -4,7 +4,6 @@ import pprint as pp
 from pathlib import Path
 from typing import Dict, List, Any, Literal
 import numpy as np
-
 import pandas as pd
 
 
@@ -45,6 +44,30 @@ def validate_selection(
         raise ValueError(
             "Invalid selection. Please choose one "
             f"of: {', '.join(valid_selections)}.")
+
+
+def validate_dict_structure(
+        dictionary: Dict[str, Dict[str, Any]],
+        validation_structure: Dict[str, Any],
+) -> bool:
+    """
+    Validate the structure of a dictionary against a validation structure.
+
+
+    Parameters:
+    - dictionary (Dict[str, Any]): The dictionary to be validated.
+    - validation_structure (Dict[str, Any]): The structure to validate against.
+
+    Returns:
+    - bool: True if the dictionary matches the validation structure, False otherwise.
+    """
+    for value in dictionary.values():
+        for key, sub_value in value.items():
+            if key not in validation_structure:
+                return False
+            if not isinstance(sub_value, validation_structure[key]):
+                return False
+    return True
 
 
 def find_dict_depth(item) -> int:

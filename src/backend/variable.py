@@ -1,4 +1,4 @@
-from typing import Dict, List, Literal
+from typing import Any, Dict, List, Literal
 
 import pandas as pd
 
@@ -11,22 +11,22 @@ class Variable:
             **kwargs,
     ) -> None:
 
-        self.symbol = None
-        self.name = None
-        self.type = None
-        self.coordinates_info = {}
-        self.shape = []
+        self.symbol: str = None
+        self.name: str = None
+        self.type: str = None
+        self.coordinates_info: Dict[str, Any] = {}
+        self.shape: List[int] = []
 
         for key, value in kwargs.items():
             setattr(self, key, value)
 
-        self.coordinates_fields = {}
-        self.table_headers = {}
-        self.coordinates = {}
-        self.foreign_keys = {}
-        self.sets_parsing_hierarchy = {}
-        self.sets_intra_problem = {}
-        self.data = {}
+        self.coordinates_fields: Dict[str, Any] = {}
+        self.table_headers: Dict[str, Any] = {}
+        self.coordinates: Dict[str, Any] = {}
+        self.foreign_keys: Dict[str, Any] = {}
+        self.sets_parsing_hierarchy: Dict[str, str] = {}
+        self.sets_intra_problem: Dict[str, str] = {}
+        self.data: pd.DataFrame = None
 
     def __repr__(self) -> str:
         output = ''

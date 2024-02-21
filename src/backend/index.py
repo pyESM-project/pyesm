@@ -17,7 +17,7 @@ class Index:
             self,
             files: FileManager,
             logger: Logger,
-            paths: Dict,
+            paths: Dict[str, str],
     ) -> None:
 
         self.logger = logger.getChild(__name__)
@@ -26,8 +26,8 @@ class Index:
         self.files = files
         self.paths = paths
 
-        self.sets = self.load_sets()
-        self.variables = self.load_variables()
+        self.sets: DotDict[str, Set] = self.load_sets()
+        self.variables: DotDict[str, Variable] = self.load_variables()
 
         self.load_vars_coordinates_fields()
         self.load_vars_table_headers()
@@ -70,20 +70,40 @@ class Index:
             dir_path=self.paths['model_dir'],
         )
 
-        return DotDict({
-            key: Set(**value)
-            for key, value in sets_data.items()
-        })
+        if util.validate_dict_structure(
+            dictionary=sets_data,
+            validation_structure=constants._SET_DEFAULT_STRUCTURE,
+        ):
+            return DotDict({
+                key: Set(**value)
+                for key, value in sets_data.items()
+            })
+        else:
+            msg = "Sets data validation not successful. " \
+                "Set input data must comply with default structure."
+            self.logger.error(msg)
+            raise exc.SettingsError(msg)
 
-    def load_variables(self) -> Dict[str, Variable]:
+    def load_variables(self) -> DotDict[str, Variable]:
+
         variables_data = self.files.load_file(
             file_name=constants._SETUP_FILES['variables'],
             dir_path=self.paths['model_dir'],
         )
-        return DotDict({
-            key: Variable(**value)
-            for key, value in variables_data.items()
-        })
+
+        if util.validate_dict_structure(
+            dictionary=variables_data,
+            validation_structure=constants._VARIABLE_DEFAULT_STRUCTURE,
+        ):
+            return DotDict({
+                key: Variable(**value)
+                for key, value in variables_data.items()
+            })
+        else:
+            msg = "Variables data validation not successful. " \
+                "Variable input data must comply with default structure."
+            self.logger.error(msg)
+            raise exc.SettingsError(msg)
 
     def load_vars_coordinates_fields(self) -> None:
 
