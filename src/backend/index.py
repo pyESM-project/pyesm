@@ -15,8 +15,8 @@ class Index:
 
     def __init__(
             self,
-            files: FileManager,
             logger: Logger,
+            files: FileManager,
             paths: Dict[str, str],
     ) -> None:
 
@@ -75,7 +75,7 @@ class Index:
             validation_structure=constants._SET_DEFAULT_STRUCTURE,
         ):
             return DotDict({
-                key: Set(**value)
+                key: Set(logger=self.logger, **value)
                 for key, value in sets_data.items()
             })
         else:
@@ -83,6 +83,15 @@ class Index:
                 "Set input data must comply with default structure."
             self.logger.error(msg)
             raise exc.SettingsError(msg)
+
+    def load_sets_intra_problem(self) -> None:
+        for variable in self.variables.values():
+            if variable.type != 'constant':
+                variable.sets_intra_problem = {
+                    key: value
+                    for key, value in variable.sets_parsing_hierarchy.items()
+                    if key not in self.list_sets_split_problem
+                }
 
     def load_variables(self) -> DotDict[str, Variable]:
 
@@ -96,7 +105,7 @@ class Index:
             validation_structure=constants._VARIABLE_DEFAULT_STRUCTURE,
         ):
             return DotDict({
-                key: Variable(**value)
+                key: Variable(logger=self.logger, **value)
                 for key, value in variables_data.items()
             })
         else:
@@ -245,11 +254,3 @@ class Index:
                     raise exc.MissingDataError(error_msg)
 
                 variable.coordinates[set_header] = set_values
-
-    def load_sets_intra_problem(self) -> None:
-        for variable in self.variables.values():
-            variable.sets_intra_problem = {
-                key: value
-                for key, value in variable.sets_parsing_hierarchy.items()
-                if key not in self.list_sets_split_problem
-            }

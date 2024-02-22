@@ -50,18 +50,20 @@ class Problem:
         type: str,
         shape: List[int],
         name: str,
-    ) -> cp.Variable | cp.Parameter:
+        value: int | np.ndarray | np.matrix = None,
+    ) -> cp.Variable | cp.Parameter | cp.Constant:
 
         if type == 'endogenous':
             return cp.Variable(shape=shape, name=name)
         elif type == 'exogenous':
             return cp.Parameter(shape=shape, name=name)
         elif type == 'constant':
-            pass  # tbd
+            return cp.Constant(value=value)
         else:
-            error = f"Unsupported variable type: {type}"
+            error = f"Unsupported variable type: {type}. " \
+                "Check variables definitions."
             self.logger.error(error)
-            raise ValueError(error)
+            raise exc.SettingsError(error)
 
     def data_to_cvxpy_variable(
             self,
@@ -83,6 +85,23 @@ class Problem:
             self.logger.error(error)
             raise ValueError(error)
 
+    def generate_constant_data(
+            self,
+            variable: Variable,
+    ) -> cp.Constant:
+
+        self.logger.debug(
+            f"Generating constant '{variable.symbol}' as '{variable.value}'.")
+
+        var_value = variable.define_constant(variable.value)
+
+        return self.create_cvxpy_variable(
+            type=variable.type,
+            shape=variable.shape_size,
+            name=variable.symbol + str(variable.shape),
+            value=var_value,
+        )
+
     def generate_vars_dataframe(
             self,
             variable: Variable,
@@ -101,7 +120,10 @@ class Problem:
             f"Generating variable '{variable.symbol}' dataframe "
             "(cvxpy object, filter dictionary).")
 
-        sets_parsing_hierarchy = variable.sets_parsing_hierarchy.values()
+        if variable.sets_parsing_hierarchy:
+            sets_parsing_hierarchy = variable.sets_parsing_hierarchy.values()
+        else:
+            sets_parsing_hierarchy = None
 
         var_data = util.unpivot_dict_to_dataframe(
             data_dict=variable.coordinates,
@@ -342,24 +364,27 @@ class Problem:
 
         for variable in variables_set_dict.values():
 
-            if problem_filter is not None:
-                variable_data = pd.merge(
-                    left=variable.data,
-                    right=problem_filter,
-                    on=list(problem_filter.columns),
-                    how='inner'
-                )
-            else:
-                variable_data = variable.data
-
-            if set_intra_problem_header and set_intra_problem_value:
-                cvxpy_variable = variable_data.loc[
-                    variable_data[set_intra_problem_header] == set_intra_problem_value,
-                    constants._CVXPY_VAR_HEADER,
-                ].iloc[0]
+            if variable.type == 'constant':
+                cvxpy_variable = variable.data
 
             else:
-                cvxpy_variable = variable_data.loc[constants._CVXPY_VAR_HEADER]
+                if problem_filter is not None:
+                    variable_data = pd.merge(
+                        left=variable.data,
+                        right=problem_filter,
+                        on=list(problem_filter.columns),
+                        how='inner'
+                    )
+                else:
+                    variable_data = variable.data
+
+                if set_intra_problem_header and set_intra_problem_value:
+                    cvxpy_variable = variable_data.loc[
+                        variable_data[set_intra_problem_header] == set_intra_problem_value,
+                        constants._CVXPY_VAR_HEADER,
+                    ].iloc[0]
+                else:
+                    cvxpy_variable = variable_data.loc[constants._CVXPY_VAR_HEADER]
 
             allowed_variables[variable.symbol] = cvxpy_variable
 
@@ -382,7 +407,7 @@ class Problem:
             )
         except SyntaxError:
             msg = "Error in parsing cvxpy expression: " \
-                "check allowed variables and operators."
+                "check allowed variables, operators or expression syntax."
             self.logger.error(msg)
             raise exc.NumericalProblemError(msg)
 
@@ -405,6 +430,12 @@ class Problem:
             vars_subset = DotDict({
                 key: variable for key, variable in self.index.variables
                 if variable.symbol in var_symbols_list
+                and variable.type != 'constant'
+            })
+
+            constants_subset = DotDict({
+                key: variable for key, variable in self.index.variables
+                if variable.type == 'constant'
             })
 
             # if more than one var, check equality of sets_parsing_hierarchy
@@ -429,7 +460,7 @@ class Problem:
 
                     # fetch allowed cvxpy variables
                     allowed_variables = self.fetch_allowed_cvxpy_variables(
-                        variables_set_dict=vars_subset,
+                        variables_set_dict={**vars_subset, **constants_subset},
                         problem_filter=problem_filter,
                         set_intra_problem_header=set_header,
                         set_intra_problem_value=value,
@@ -445,7 +476,7 @@ class Problem:
 
             else:
                 allowed_variables = self.fetch_allowed_cvxpy_variables(
-                    variables_set_dict=vars_subset,
+                    variables_set_dict={**vars_subset, **constants_subset},
                     problem_filter=problem_filter,
                 )
 

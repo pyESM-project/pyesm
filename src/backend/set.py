@@ -1,14 +1,19 @@
 from typing import Any, Dict
 import pandas as pd
 
+from src.log_exc.logger import Logger
+
 
 class Set:
 
     def __init__(
             self,
+            logger: Logger,
             data: pd.DataFrame = None,
             **kwargs,
     ) -> None:
+
+        self.logger = logger.getChild(__name__)
 
         self.symbol: str = None
         self.table_name: str = None
@@ -23,7 +28,7 @@ class Set:
     def __repr__(self) -> str:
         output = ''
         for key, value in self.__dict__.items():
-            if key == 'data':
+            if key in ('data', 'logger'):
                 pass
             elif key != 'values':
                 output += f'\n{key}: {value}'

@@ -71,7 +71,10 @@ class Core:
             "(cvxpy objects, filters dictionaries).")
 
         for variable in self.index.variables.values():
-            variable.data = self.problem.generate_vars_dataframe(variable)
+            if variable.type == 'constant':
+                variable.data = self.problem.generate_constant_data(variable)
+            else:
+                variable.data = self.problem.generate_vars_dataframe(variable)
 
     def define_numerical_problems(self) -> None:
         self.logger.info(

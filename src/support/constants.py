@@ -1,4 +1,5 @@
 import cvxpy as cp
+import numpy as np
 
 # essenstial model config files
 _SETUP_FILES = {
@@ -40,6 +41,14 @@ _VARIABLE_DEFAULT_STRUCTURE = {
     'type': str,
     'coordinates_info': dict,
     'shape': list,
+    'value': str,
+}
+
+# allowed constants. more can be added, but Variable.define_constant must
+# be modified accordingly
+_ALLOWED_VALUES = {
+    'sum_vector': (np.ones, ),  # vector of 1s
+    'identity': (np.eye, ),  # itentity matrix
 }
 
 # allowed operators for defining symbolic CVXPY problem

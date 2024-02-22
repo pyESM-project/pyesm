@@ -1,21 +1,29 @@
 from typing import Any, Dict, List, Literal
+from cvxpy.interface import is_vector
+import numpy as np
 
 import pandas as pd
-
+from src.log_exc import exceptions as exc
+from src.log_exc.logger import Logger
 from src.support import constants, util
 
 
 class Variable:
+
     def __init__(
             self,
+            logger: Logger,
             **kwargs,
     ) -> None:
+
+        self.logger = logger.getChild(__name__)
 
         self.symbol: str = None
         self.name: str = None
         self.type: str = None
         self.coordinates_info: Dict[str, Any] = {}
         self.shape: List[int] = []
+        self.value: str = None
 
         for key, value in kwargs.items():
             setattr(self, key, value)
@@ -31,7 +39,7 @@ class Variable:
     def __repr__(self) -> str:
         output = ''
         for key, value in self.__dict__.items():
-            if key != 'data':
+            if key not in ('data', 'logger'):
                 output += f'\n{key}: {value}'
         return output
 
@@ -55,6 +63,19 @@ class Variable:
                 raise ValueError(error)
 
         return shape_size
+
+    @property
+    def is_square(self) -> bool:
+        if len(self.shape) != 2:
+            return False
+        if self.shape[0] == self.shape[1]:
+            return True
+        else:
+            return False
+
+    @property
+    def is_vector(self) -> bool:
+        return True if len(self.shape) == 1 or 1 in self.shape else False
 
     @property
     def dim_labels(self) -> List[str]:
@@ -178,3 +199,37 @@ class Variable:
         )
 
         return tabled_data
+
+    def define_constant(
+            self,
+            value_type: str,
+    ) -> int | np.ndarray | np.matrix:
+
+        util.validate_selection(
+            valid_selections=constants._ALLOWED_VALUES.keys(),
+            selection=value_type,
+        )
+
+        factory_function, *args = constants._ALLOWED_VALUES[value_type]
+
+        if value_type == 'identity':
+            if self.is_square:
+                return factory_function(self.shape_size[0])
+            else:
+                msg = 'Identity matrix must be square Check variable shape.'
+
+        elif value_type == 'sum_vector':
+            if self.is_vector:
+                return factory_function(self.shape_size)
+            else:
+                msg = 'Summation vector must be a vector (one dimension). ' \
+                    'Check variable shape.'
+        else:
+            msg = "Variable value type not supported. "
+            f"Supported value types: {constants._ALLOWED_VALUES.keys()}"
+            self.logger.error(msg)
+            raise exc.SettingsError(msg)
+
+        if msg:
+            self.logger.error(msg)
+            raise exc.ConceptualModelError(msg)

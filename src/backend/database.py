@@ -108,6 +108,9 @@ class Database:
 
         for var_key, variable in self.index.variables.items():
 
+            if variable.type == 'constant':
+                continue
+
             table_headers_list = [
                 value[0] for value in variable.coordinates_fields.values()
             ]
@@ -140,7 +143,6 @@ class Database:
                 column_type=constants._STD_VALUES_FIELD['values'][1],
             )
 
-    # check variables_info non esiste
     @connection
     def clear_database_variables(self) -> None:
         existing_tables = self.sqltools.get_existing_tables_names
