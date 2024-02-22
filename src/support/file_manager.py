@@ -40,6 +40,9 @@ class FileManager:
 
         Args:
             dir_path (str): path of the folder to be generated.
+
+        Returns:
+            bool: True if the directory was erased, False otherwise.
         """
 
         dir_name = dir_path.name
@@ -61,7 +64,7 @@ class FileManager:
         os.makedirs(dir_path, exist_ok=True)
         self.logger.debug(f"Directory '{dir_name}' created.")
 
-    def erase_dir(self, dir_path: Path) -> None:
+    def erase_dir(self, dir_path: Path) -> bool:
         """This method erases a folder and its content in a given path.
 
         Args:
@@ -77,7 +80,7 @@ class FileManager:
             if response != 'y':
                 self.logger.info(
                     f"Directory '{dir_name}' and its content not erased.")
-                return {}
+                return False
 
             try:
                 shutil.rmtree(dir_path)
@@ -85,10 +88,12 @@ class FileManager:
                 self.logger.error(f"Error: '{dir_name}' : {error.strerror}")
             else:
                 self.logger.info(f"Folder '{dir_name}' have been erased.")
+                return True
 
         else:
             self.logger.warning(
                 f"Folder '{dir_name}' does not exist. The folder cannot be erased.")
+            return False
 
     def load_file(
             self,

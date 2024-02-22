@@ -6,7 +6,7 @@ from src.log_exc.logger import Logger
 from src.backend.model import Model
 
 
-default_data_path = 'src/constants'
+default_data_path = 'default'
 
 
 def create_model_dir(
@@ -19,7 +19,8 @@ def create_model_dir(
     model_dir_path = Path(main_dir_path) / model_dir_name
 
     if model_dir_path.exists():
-        files.erase_dir(model_dir_path)
+        if not files.erase_dir(model_dir_path):
+            return
 
     files.create_dir(
         dir_path=model_dir_path,
