@@ -1,0 +1,14 @@
+# list and description of available default models
+# defined for testing purposes and as base for defining new models
+# keys of models_list are names of models directories 
+
+models_list:
+
+    model 1: 
+        square industry-by-industry monetary Input-Output model
+        primal and dual Leontief models
+        with environmental extension
+
+
+
+    

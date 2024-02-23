@@ -1,4 +1,4 @@
-from typing import Dict
+from typing import Any, Dict
 from pathlib import Path
 
 import pandas as pd
@@ -33,7 +33,7 @@ class Core:
         self.sqltools = SQLManager(
             logger=self.logger,
             database_path=self.paths['sqlite_database'],
-            database_name=self.settings['sqlite_database']['name'],
+            database_name=self.settings['sqlite_database_file'],
         )
 
         self.index = Index(
@@ -83,16 +83,22 @@ class Core:
         self.problem.load_symbolic_problem_from_file()
         self.problem.generate_problems_dataframe()
 
-    def solve_numerical_problems(self) -> None:
+    def solve_numerical_problems(
+            self,
+            solver: str = None,
+            verbose: bool = True,
+            **kwargs: Any,
+    ) -> None:
         self.problem.solve_all_problems(
-            solver=self.settings['problem']['solver'],
-            verbose=self.settings['problem']['verbose'],
+            solver=solver,
+            verbose=verbose,
+            **kwargs
         )
 
     @connection
     def data_to_cvxpy_exogenous_vars(self) -> None:
         self.logger.info(
-            f"Fetching data from '{self.settings['sqlite_database']['name']}' "
+            f"Fetching data from '{self.settings['sqlite_database_file']}' "
             "to cvxpy exogenous variables.")
 
         for variable in self.index.variables.values():
@@ -124,13 +130,13 @@ class Core:
     def cvxpy_endogenous_data_to_database(self, operation: str) -> None:
         self.logger.info(
             "Fetching data from cvxpy endogenous variables "
-            f"to database '{self.settings['sqlite_database']['name']}' ")
+            f"to database '{self.settings['sqlite_database_file']}' ")
 
         for variable in self.index.variables.values():
 
             if isinstance(variable, Variable) and variable.type == 'endogenous':
                 self.logger.debug(
-                    f"Fetching data from cvxpy variable '{variable.symbol} "
+                    f"Fetching data from cvxpy variable '{variable.symbol}' "
                     "to the related SQLite table.")
 
                 cvxpy_var_data = pd.DataFrame()
@@ -140,7 +146,7 @@ class Core:
                     none_coord = variable.none_data_coordinates(row)
 
                     if none_coord:
-                        self.logger.warning(
+                        self.logger.debug(
                             f"SQLite table '{variable.symbol}': "
                             f"no data available for {none_coord}.")
                         continue
@@ -148,6 +154,12 @@ class Core:
                     cvxpy_var_data = pd.concat(
                         (cvxpy_var_data, variable.reshaping_variable_data(row))
                     )
+
+                if cvxpy_var_data.empty:
+                    self.logger.warning(
+                        "No data available in cvxpy variable "
+                        f"'{variable.symbol}'")
+                    return
 
                 self.sqltools.dataframe_to_table(
                     table_name=variable.symbol,
