@@ -145,22 +145,19 @@ class FileManager:
             files_names_list: List[str],
     ) -> bool:
 
-        dir_path = Path(dir_path)
-
-        if not dir_path.is_dir():
+        if not Path(dir_path).is_dir():
             msg = f"Directory '{dir_path}' does not exist."
+
+        missing_files = [
+            file_name for file_name in files_names_list
+            if not (Path(dir_path) / file_name).is_file()]
+
+        if missing_files:
+            msg = f"Model setup files '{missing_files}' are missing."
+
+        if msg:
             self.logger.error(msg)
             raise ModelFolderError(msg)
-
-        for file_name in files_names_list:
-            file_path = dir_path / file_name
-
-            if not file_path.is_file():
-                msg = f"File '{file_name}' does not exist."
-                self.logger.error(msg)
-                raise ModelFolderError(msg)
-
-            # here add a check on the file structure (further methods needed)
 
         return True
 

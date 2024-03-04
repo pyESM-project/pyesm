@@ -3,7 +3,6 @@ import numpy as np
 
 # essenstial model config files
 _SETUP_FILES = {
-    'settings': 'settings.yml',
     'variables': 'variables.yml',
     'problem': 'problem.yml',
     'sets_structure': 'sets_structure.yml',
@@ -63,6 +62,8 @@ _ALLOWED_OPERATORS = {
     '(': '(',
     ')': ')',
     ',': ',',
+    '.T': '.T',
+    'diag': cp.diag,
     'sum': cp.sum,
     'Minimize': cp.Minimize,
 }

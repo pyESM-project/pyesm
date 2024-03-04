@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from src.support import constants
+from src import constants
 from src.support.file_manager import FileManager
 from src.log_exc.logger import Logger
 from src.backend.model import Model

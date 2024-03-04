@@ -5,7 +5,7 @@ import pandas as pd
 import numpy as np
 import cvxpy as cp
 
-from src.support import constants
+from src import constants
 from src.log_exc import exceptions as exc
 from src.log_exc.logger import Logger
 from src.support import util

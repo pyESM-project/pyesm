@@ -7,7 +7,7 @@ from src.backend.database import Database
 from src.backend.index import Index, Variable
 from src.backend.problem import Problem
 from src.log_exc.logger import Logger
-from src.support import constants
+from src import constants
 from src.support.file_manager import FileManager
 from src.support.sql_manager import SQLManager, connection
 

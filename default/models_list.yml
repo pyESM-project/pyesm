@@ -4,10 +4,12 @@
 
 models_list:
 
-    model 1: 
-        square industry-by-industry monetary Input-Output model
-        primal and dual Leontief models
-        with environmental extension
+    1_sut: 
+        standard Supply and Use model
+        hybrid units
+        industry-technology or product-technology assumption (selectable)
+        primal Leontief model
+        with environmental extensions (factors use)
 
 
 

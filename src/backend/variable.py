@@ -2,9 +2,10 @@ from typing import Any, Dict, Iterator, List, Literal, Tuple
 import numpy as np
 
 import pandas as pd
+from src import constants
 from src.log_exc import exceptions as exc
 from src.log_exc.logger import Logger
-from src.support import constants, util
+from src.support import util
 
 
 class Variable:
