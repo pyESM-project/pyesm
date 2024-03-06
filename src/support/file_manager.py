@@ -4,6 +4,7 @@ from pathlib import Path
 import os
 import shutil
 import json
+from numpy import full
 import yaml
 
 import pandas as pd
@@ -64,7 +65,11 @@ class FileManager:
         os.makedirs(dir_path, exist_ok=True)
         self.logger.debug(f"Directory '{dir_name}' created.")
 
-    def erase_dir(self, dir_path: Path) -> bool:
+    def erase_dir(
+            self,
+            dir_path: Path,
+            force_erase: bool = False,
+    ) -> bool:
         """This method erases a folder and its content in a given path.
 
         Args:
@@ -72,20 +77,23 @@ class FileManager:
         """
         if os.path.exists(dir_path):
             dir_name = str(dir_path).rsplit('\\', maxsplit=1)[-1]
-            response = input(
-                'Do you really want to erase the directory '
-                f"'{dir_name}'(y/[n]): "
-            ).lower()
 
-            if response != 'y':
-                self.logger.info(
-                    f"Directory '{dir_name}' and its content not erased.")
-                return False
+            if not force_erase:
+                response = input(
+                    'Do you really want to erase the directory '
+                    f"'{dir_name}'(y/[n]): "
+                ).lower()
+
+                if response != 'y':
+                    self.logger.info(
+                        f"Directory '{dir_name}' and its content not erased.")
+                    return False
 
             try:
                 shutil.rmtree(dir_path)
             except OSError as error:
                 self.logger.error(f"Error: '{dir_name}' : {error.strerror}")
+                return False
             else:
                 self.logger.info(f"Folder '{dir_name}' have been erased.")
                 return True
@@ -145,6 +153,8 @@ class FileManager:
             files_names_list: List[str],
     ) -> bool:
 
+        msg = ''
+
         if not Path(dir_path).is_dir():
             msg = f"Directory '{dir_path}' does not exist."
 
@@ -202,6 +212,49 @@ class FileManager:
             msg = f"The source file '{source_path}' does not exist."
             self.logger.error(msg)
             raise FileNotFoundError(msg)
+
+    def copy_all_files_to_destination(
+            self,
+            path_source: str | Path,
+            path_destination: str | Path,
+            force_overwrite: bool = False,
+    ) -> None:
+
+        if not path_source.exists():
+            msg = "The passed source path does not exists."
+            self.logger.error(msg)
+            raise ModelFolderError(msg)
+
+        if not os.path.isdir(path_source):
+            msg = "The passed source path is not a directory."
+            self.logger.error(msg)
+            raise ModelFolderError(msg)
+
+        if not path_destination.exists():
+            self.create_dir(path_destination)
+
+        if os.listdir(path_destination) and not force_overwrite:
+            dir_destination = os.path.basename(path_destination)
+
+            self.logger.warning(f"Directory '{dir_destination}' not empty.")
+
+            user_input = input(
+                f"Overwrite content of '{dir_destination}'? (y/[n]): ")
+            if user_input.lower() != 'y':
+                self.logger.debug(f"'{dir_destination}' NOT overwritten.")
+                return
+
+        try:
+            shutil.copytree(
+                src=path_source,
+                dst=path_destination,
+                dirs_exist_ok=True
+            )
+            self.logger.debug(
+                f"Directory '{os.path.basename(path_source)}' and all its "
+                "content successfully copied.")
+        except Exception as msg:
+            self.logger.error(f"Error copying items: {msg}")
 
     def dict_to_excel_headers(
             self,
