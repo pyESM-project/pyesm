@@ -8,6 +8,10 @@ _SETUP_FILES = {
     'sets_structure': 'sets_structure.yml',
 }
 
+_TEMPLATE_MODELS = {
+    '1_sut': 'standard SUT, primal, industry/product-based',
+}
+
 # default column name-type for sets id and values fields
 _STD_VALUES_FIELD = {'values': ['values', 'REAL']}
 _STD_ID_FIELD = {'id': ['id', 'INTEGER PRIMARY KEY']}

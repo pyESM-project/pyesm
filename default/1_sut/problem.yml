@@ -2,8 +2,8 @@
 
 # definition of the objective function (scalar)
 
-objective:
-    - Min(1) # dummy objective
+objective function:
+    - Minimize(1) # dummy objective
 
 # definition of the constraints (vector expressions)
 
@@ -13,12 +13,12 @@ constraints:
     - Q - u @ X - Y == 0  
 
     # industry-based technology assumption
-    - X - d @ Q == 0
-    - V == d @ diag(Q)
+    # - X - d @ Q == 0
+    # - V == d @ diag(Q)
     
     # product-based technology assumption
-    # - Q - x @ X == 0
-    # - V == (c @ diag(X)).T
+    - Q - c @ X == 0
+    - V == (c @ diag(X)).T
 
     # other endogenous variables
     - U == u @ diag(X)

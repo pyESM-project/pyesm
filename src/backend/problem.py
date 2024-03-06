@@ -258,6 +258,9 @@ class Problem:
 
         sets_dicts_list = list(sets_dicts_to_compare.values())
 
+        if not sets_dicts_list:
+            return {}
+
         if all(
             d == sets_dicts_list[0]
             for d in sets_dicts_list[1:]
@@ -384,7 +387,7 @@ class Problem:
                         constants._CVXPY_VAR_HEADER,
                     ].iloc[0]
                 else:
-                    cvxpy_variable = variable_data.loc[constants._CVXPY_VAR_HEADER]
+                    cvxpy_variable = variable_data[constants._CVXPY_VAR_HEADER].values[0]
 
             allowed_variables[variable.symbol] = cvxpy_variable
 
@@ -405,11 +408,16 @@ class Problem:
                 {**allowed_operators, **allowed_variables},
                 local_vars,
             )
+
         except SyntaxError:
             msg = "Error in parsing cvxpy expression: " \
                 "check allowed variables, operators or expression syntax."
             self.logger.error(msg)
             raise exc.NumericalProblemError(msg)
+
+        except NameError as msg:
+            self.logger.error(f'NameError: {msg}')
+            raise exc.NumericalProblemError(f'NameError: {msg}')
 
         return local_vars['output']
 
@@ -533,7 +541,7 @@ class Problem:
             problem_info = self.numeric_problems.at[
                 problem_num, constants._PROBLEM_INFO_HEADER]
 
-            self.logger.debug(f"Solving problem: {problem_info}.")
+            self.logger.info(f"Solving problem: {problem_info}.")
 
             problem = self.numeric_problems.at[
                 problem_num, constants._PROBLEM_HEADER]
@@ -549,5 +557,7 @@ class Problem:
             self.numeric_problems.at[
                 problem_num,
                 constants._PROBLEM_STATUS_HEADER] = problem_status
+
+            self.logger.info(f"Problem status: '{problem_status}'")
 
         self.model_run = True

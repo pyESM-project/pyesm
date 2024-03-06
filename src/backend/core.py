@@ -130,9 +130,9 @@ class Core:
     def cvxpy_endogenous_data_to_database(self, operation: str) -> None:
         self.logger.info(
             "Fetching data from cvxpy endogenous variables "
-            f"to database '{self.settings['sqlite_database_file']}' ")
+            f"to SQLite database '{self.settings['sqlite_database_file']}' ")
 
-        for variable in self.index.variables.values():
+        for var_key, variable in self.index.variables.items():
 
             if isinstance(variable, Variable) and variable.type == 'endogenous':
                 self.logger.debug(
@@ -162,7 +162,7 @@ class Core:
                     return
 
                 self.sqltools.dataframe_to_table(
-                    table_name=variable.symbol,
+                    table_name=var_key,
                     dataframe=cvxpy_var_data,
                     operation=operation,
                 )

@@ -543,10 +543,10 @@ class SQLManager:
             OperationalError: If there is an error during query execution.
 
         Notes:
-            - The 'overwrite' operation deletes all existing entries in the table and writes
-            the new data.
-            - The 'update' operation updates existing entries based on common columns and
-            adds new entries if they do not exist.
+            - The 'overwrite' operation deletes all existing entries in the 
+                table and writes the new data.
+            - The 'update' operation updates existing entries based on common 
+                columns and adds new entries if they do not exist.
 
         """
         valid_operations = ['overwrite', 'update']
@@ -559,7 +559,8 @@ class SQLManager:
         num_entries = self.count_table_data_entries(table_name)
         primary_column_label = self.get_primary_column_name(table_name)
 
-        if operation == 'overwrite' or (operation == 'update' and num_entries == 0):
+        if operation == 'overwrite' or \
+                (operation == 'update' and num_entries == 0):
 
             if num_entries != 0:
                 data_erased = self.delete_all_table_entries(table_name)

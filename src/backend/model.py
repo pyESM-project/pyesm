@@ -140,7 +140,10 @@ class Model:
         self.logger.info('Loading input data to SQLite database.')
         self.core.database.load_data_input_files_to_database(operation)
 
-    def initialize_problems(self) -> None:
+    def initialize_problems(
+            self,
+            operation: str = 'overwrite',
+    ) -> None:
         self.logger.info('Initializing numerical problems.')
         self.core.initialize_problems_variables()
         self.core.data_to_cvxpy_exogenous_vars()
@@ -167,9 +170,12 @@ class Model:
             'Exporting endogenous model results to SQLite database.')
         self.core.cvxpy_endogenous_data_to_database(operation)
 
-    def update_database_and_problem(self) -> None:
+    def update_database_and_problem(
+            self,
+            operation: str = 'overwrite',
+    ) -> None:
         self.logger.info(f"Updating SQLite database and initialize problems.")
-        self.load_data_files_to_database()
+        self.load_data_files_to_database(operation)
         self.initialize_problems()
 
     def generate_pbi_report(self, file_name: str = 'dataset.pbix') -> None:

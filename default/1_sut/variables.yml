@@ -1,5 +1,11 @@
 # template for defining variables of the model
 
+# RULES:
+# - variables define SQLite tables (name case insensitive: two tables named 
+# 'e' and 'E' are not allowed. However, variables symbols are case sensitive).
+# - 
+
+
 # -----------------------------------------
 # exogenous variables
 
@@ -29,7 +35,7 @@ c:
         flows:
             set_categories: f.p
             aggregation_key: null
-    shape: [technologies, flows]
+    shape: [flows, technologies]
 
 u:
     symbol: u
@@ -46,7 +52,7 @@ u:
     shape: [flows, technologies]
 
 r:
-    symbol: u
+    symbol: r
     name: factors use coefficients
     type: exogenous
     coordinates_info:
@@ -65,7 +71,6 @@ Y:
     type: exogenous
     coordinates_info:
         scenarios: null
-        datetime: null
         flows: 
             set_categories: f.p
             aggregation_key: competition
@@ -77,9 +82,9 @@ Y:
 # -----------------------------------------
 # endogenous variables
 
-V:
+VV:
     symbol: V
-    name: products supply (make matrix)
+    name: products supply (make matrix, industry-based)
     type: endogenous
     coordinates_info:
         scenarios: null
@@ -91,9 +96,9 @@ V:
             aggregation_key: null
     shape: [technologies, flows]
 
-U:
+UU:
     symbol: U
-    name: intermediate transactions (use matrix)
+    name: intermediate transactions (use matrix, industry-based)
     type: endogenous
     coordinates_info:
         scenarios: null
@@ -105,9 +110,9 @@ U:
             aggregation_key: null
     shape: [flows, technologies]
 
-R:
+RR:
     symbol: R
-    name: environmental transactions (factors use)
+    name: environmental transactions (factors use, industry-based)
     type: endogenous
     coordinates_info:
         scenarios: null
@@ -121,23 +126,21 @@ R:
 
 Q:
     symbol: Q
-    name: total demand by flow
+    name: total demand by flow (industry-based)
     type: endogenous
     coordinates_info: 
         scenarios: null
-        datetime: null
         flows: 
             set_categories: f.p
             aggregation_key: competition
     shape: [flows, 1]
-        
+
 X:
     symbol: X
-    name: total activity by technology
+    name: total activity by technology (industry-based)
     type: endogenous
     coordinates_info: 
         scenarios: null
-        datetime: null
         technologies: 
             set_categories: t.s
             aggregation_key: null
