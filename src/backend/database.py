@@ -1,6 +1,5 @@
-from operator import index
 from pathlib import Path
-from typing import Dict, List, Any
+from typing import Dict
 
 import pandas as pd
 
@@ -111,6 +110,22 @@ class Database:
             if variable.type == 'constant':
                 continue
 
+            self.sqltools.create_table(
+                table_name=var_key,
+                table_fields=variable.table_headers,
+                foreign_keys=variable.foreign_keys,
+            )
+
+    @connection
+    def sets_data_to_vars_sql_tables(self) -> None:
+        self.logger.info(
+            "Filling empty SQLite database variables tables with sets data.")
+
+        for var_key, variable in self.index.variables.items():
+
+            if variable.type == 'constant':
+                continue
+
             table_headers_list = [
                 value[0] for value in variable.coordinates_fields.values()
             ]
@@ -124,12 +139,6 @@ class Database:
                 loc=0,
                 column=variable.table_headers['id'][0],
                 value=None
-            )
-
-            self.sqltools.create_table(
-                table_name=var_key,
-                table_fields=variable.table_headers,
-                foreign_keys=variable.foreign_keys,
             )
 
             self.sqltools.dataframe_to_table(
