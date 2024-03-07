@@ -1,3 +1,4 @@
+import pprint as pp
 from pathlib import Path
 from typing import Dict, List, Any, Literal
 
@@ -72,6 +73,20 @@ def create_model_dir(
         files.logger.info(
             f"Directory of model '{model_dir_name}' "
             f"generated based on default model '{default_model}'.")
+
+
+def prettify(item: dict) -> None:
+    """Print a dictionary in a human-readable format in the terminal
+
+    Args:
+        item (dict): a generic dictionary
+
+    Raises:
+        TypeError: If the argument is not a dictionary.
+    """
+    if not isinstance(item, dict):
+        raise TypeError('Function argument should be a dictionary.')
+    print(pp.pformat(item))
 
 
 def validate_selection(
