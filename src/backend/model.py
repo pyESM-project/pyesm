@@ -131,18 +131,18 @@ class Model:
 
         self.core.database.load_sets_to_database()
         self.core.database.generate_blank_vars_sql_tables()
+        self.core.database.sets_data_to_vars_sql_tables()
         self.core.database.generate_blank_vars_input_files()
 
     def load_data_files_to_database(
             self,
-            operation: str = 'overwrite',
+            operation: str = 'update',
     ) -> None:
         self.logger.info('Loading input data to SQLite database.')
         self.core.database.load_data_input_files_to_database(operation)
 
     def initialize_problems(
             self,
-            operation: str = 'overwrite',
     ) -> None:
         self.logger.info('Initializing numerical problems.')
         self.core.initialize_problems_variables()
@@ -164,7 +164,7 @@ class Model:
 
     def load_results_to_database(
             self,
-            operation: str = 'overwrite'
+            operation: str = 'update'
     ) -> None:
         self.logger.info(
             'Exporting endogenous model results to SQLite database.')
@@ -172,7 +172,7 @@ class Model:
 
     def update_database_and_problem(
             self,
-            operation: str = 'overwrite',
+            operation: str = 'update',
     ) -> None:
         self.logger.info(f"Updating SQLite database and initialize problems.")
         self.load_data_files_to_database(operation)

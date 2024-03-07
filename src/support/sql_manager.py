@@ -2,6 +2,7 @@ from functools import wraps
 from typing import List, Dict, Any, Optional, Tuple
 from pathlib import Path
 import sqlite3
+from _pytest.doctest import skip
 
 import pandas as pd
 
@@ -389,18 +390,24 @@ class SQLManager:
         self.execute_query(query)
         return self.cursor.fetchone()[0]
 
-    def delete_all_table_entries(self, table_name: str) -> bool:
+    def delete_all_table_entries(
+            self,
+            table_name: str,
+            force_operation: bool = False
+    ) -> bool:
         """Delete all entries in an SQLite table.
 
         Args:
         table_name (str): The name of the SQLite table.
+        force_operation (bool, optional): If True, avoid asking user 
+            confirmation to execute the operation. Defaults to False.
 
         Returns:
             True if entries are deleted, False if user chooses not to delete.
         """
         num_entries = self.count_table_data_entries(table_name)
 
-        if num_entries > 0:
+        if num_entries > 0 and not force_operation:
             confirm = input(
                 f"SQLite table '{table_name}' already has {num_entries} "
                 "rows. Delete all table entries? (y/[n])"
@@ -522,6 +529,7 @@ class SQLManager:
         table_name: str,
         dataframe: pd.DataFrame,
         operation: str = 'overwrite',
+        force_operation: bool = False,
     ) -> None:
         """Add or update a SQLite table based on data provided by a Pandas 
         DataFrame.
@@ -530,8 +538,10 @@ class SQLManager:
             table_name (str): The name of the target SQLite table.
             dataframe (pd.DataFrame): The Pandas DataFrame to be written to 
                 the table.
-            operation (str, optional): The operation to perform ('overwrite' 
-                or 'update'). Defaults to 'overwrite'.
+            operation (str, optional): The operation to perform (see below).
+                Defaults to 'overwrite'.
+            force_operation (bool, optional): If True, avoid asking user 
+                confirmation to execute the operation. Defaults to False.
 
         Returns:
             None
@@ -542,14 +552,13 @@ class SQLManager:
             ValueError: If DataFrame and table headers mismatch.
             OperationalError: If there is an error during query execution.
 
-        Notes:
-            - The 'overwrite' operation deletes all existing entries in the 
-                table and writes the new data.
-            - The 'update' operation updates existing entries based on common 
-                columns and adds new entries if they do not exist.
+        Valid 'operation' modes:
+            - overwrite: deletes all table entries and writes the new data.
+            - update: updates existing values (tables must have same same 
+                entries except for numerical values column).
 
         """
-        valid_operations = ['overwrite', 'update']
+        valid_operations = ['overwrite', 'update', ]
         util.validate_selection(valid_operations, operation)
 
         self.check_table_exists(table_name)
@@ -559,23 +568,25 @@ class SQLManager:
         num_entries = self.count_table_data_entries(table_name)
         primary_column_label = self.get_primary_column_name(table_name)
 
+        if primary_column_label not in dataframe.columns.tolist():
+            dataframe.insert(
+                loc=0,
+                column=primary_column_label,
+                value=range(1, len(dataframe) + 1)
+            )
+
         if operation == 'overwrite' or \
                 (operation == 'update' and num_entries == 0):
 
             if num_entries != 0:
-                data_erased = self.delete_all_table_entries(table_name)
+                data_erased = self.delete_all_table_entries(
+                    table_name,
+                    force_operation)
 
                 if not data_erased:
                     self.logger.debug(
                         f"SQLite table '{table_name}' - original data NOT erased.")
                     return
-
-            if primary_column_label not in dataframe.columns.tolist():
-                dataframe.insert(
-                    loc=0,
-                    column=primary_column_label,
-                    value=range(1, len(dataframe) + 1)
-                )
 
             data = [tuple(row) for row in dataframe.values.tolist()]
             placeholders = ', '.join(['?'] * len(table_fields))
@@ -586,56 +597,45 @@ class SQLManager:
                 f"SQLite table '{table_name}' - table overwritten and "
                 f"{len(data)} entries added.")
 
-        # this has many problems related to non-homogeneous data types in df columns
         elif operation == 'update' and num_entries > 0:
 
-            id_field = constants._STD_ID_FIELD['id'][0]
             values_field = constants._STD_VALUES_FIELD['values'][0]
-            cols_common = [
-                field for field in table_fields
-                if field not in [id_field, values_field]
-            ]
-            existing_df = self.table_to_dataframe(table_name)
+            id_field = constants._STD_ID_FIELD['id'][0]
 
-            df_new_values = util.update_dataframes_on_condition(
-                existing_df=existing_df,
-                new_df=dataframe,
-                col_to_update=values_field,
-                cols_common=cols_common,
-                case='new_only',
-            )
+            dataframe_to_update = self.table_to_dataframe(table_name)
 
-            if not df_new_values.empty:
-                df_new_values.insert(loc=0, column=id_field, value='')
-                data = [tuple(row) for row in df_new_values.values.tolist()]
-                placeholders = ', '.join(['?'] * len(table_fields))
-                query = f"INSERT INTO {table_name} VALUES ({placeholders})"
-                self.execute_query(query, data, many=True)
+            if not util.check_dataframes_equality(
+                df_list=[dataframe_to_update, dataframe],
+                skip_columns=[id_field, values_field]
+            ):
+                msg = "Sets values of the passed dataframe and the SQLite " \
+                    f"table '{table_name}' mismatch. SQLite table NOT updated."
+                self.logger.error(msg)
+                raise OperationalError(msg)
 
-                self.logger.debug(
-                    f"SQLite table '{table_name}' - {len(data)} entries added.")
-
-            df_existing_values = util.update_dataframes_on_condition(
-                existing_df=existing_df,
-                new_df=dataframe,
-                col_to_update=values_field,
-                cols_common=cols_common,
-                case='existing_updated',
-            )
+            if util.check_dataframes_equality([dataframe_to_update, dataframe]):
+                self.logger.warning(
+                    f"SQLite table {table_name} already up to date.")
+                return
 
             data = [
-                tuple([*row, row[0]])
-                for row in df_existing_values.values.tolist()
+                tuple([row[-1], *row[:-1]])
+                for row in dataframe.drop(columns=id_field).values.tolist()
             ]
+
             query = f"""
-                UPDATE {table_name}
-                SET {', '.join([f'"{col}" = ?' for col in df_existing_values.columns])}
-                WHERE "{self.get_primary_column_name(table_name)}" = ?
+                UPDATE {table_name} SET "{values_field}" = ? 
+                WHERE {' AND '.join([
+                    f'"{col}" = ?' 
+                    for col in 
+                    dataframe.drop(columns=[id_field, values_field]).columns
+                ])}
             """
+
             self.execute_query(query, data, many=True)
 
             self.logger.debug(
-                f"SQLite table '{table_name}' - {len(data)} entries added.")
+                f"SQLite table '{table_name}' - {len(data)} entries updated.")
 
     def table_to_excel(
             self,
