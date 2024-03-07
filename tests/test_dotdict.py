@@ -1,5 +1,5 @@
 import pytest
-from src.support.dotdict import DotDict
+from esm.support.dotdict import DotDict
 
 
 def test_dot_access():

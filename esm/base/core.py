@@ -3,13 +3,13 @@ from pathlib import Path
 
 import pandas as pd
 
-from src.backend.database import Database
-from src.backend.index import Index, Variable
-from src.backend.problem import Problem
-from src.log_exc.logger import Logger
-from src import constants
-from src.support.file_manager import FileManager
-from src.support.sql_manager import SQLManager, connection
+from esm.base.database import Database
+from esm.base.index import Index, Variable
+from esm.base.problem import Problem
+from esm.log_exc.logger import Logger
+from esm import constants
+from esm.support.file_manager import FileManager
+from esm.support.sql_manager import SQLManager, connection
 
 
 class Core:

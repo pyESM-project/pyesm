@@ -9,8 +9,8 @@ import yaml
 
 import pandas as pd
 
-from src.log_exc.exceptions import ModelFolderError
-from src.log_exc.logger import Logger
+from esm.log_exc.exceptions import ModelFolderError
+from esm.log_exc.logger import Logger
 
 
 class FileManager:

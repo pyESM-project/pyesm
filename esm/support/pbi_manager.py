@@ -1,6 +1,6 @@
 from typing import Dict
 
-from src.log_exc.logger import Logger
+from esm.log_exc.logger import Logger
 
 
 class PBIManager:
