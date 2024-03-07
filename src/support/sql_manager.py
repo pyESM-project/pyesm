@@ -2,7 +2,6 @@ from functools import wraps
 from typing import List, Dict, Any, Optional, Tuple
 from pathlib import Path
 import sqlite3
-from _pytest.doctest import skip
 
 import pandas as pd
 

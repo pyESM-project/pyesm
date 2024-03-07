@@ -38,8 +38,12 @@ def validate_selection(
     >>> valid_selections = ['option1', 'option2', 'option3']
     >>> validate_selection(valid_selections, 'option2')  # No exception raised
     >>> validate_selection(valid_selections, 'invalid_option')
-    ValueError: Invalid selection. Please choose one of: option1, option2, option3.
+    ValueError: Invalid selection. Please choose one of: option1, option2, 
+        option3.
     """
+    if not valid_selections:
+        raise ValueError("No valid selections are available.")
+
     if selection not in valid_selections:
         raise ValueError(
             "Invalid selection. Please choose one "
@@ -53,13 +57,13 @@ def validate_dict_structure(
     """
     Validate the structure of a dictionary against a validation structure.
 
-
-    Parameters:
-    - dictionary (Dict[str, Any]): The dictionary to be validated.
-    - validation_structure (Dict[str, Any]): The structure to validate against.
+    Args:
+        dictionary (Dict[str, Any]): The dictionary to be validated.
+        validation_structure (Dict[str, Any]): The structure to validate against.
 
     Returns:
-    - bool: True if the dictionary matches the validation structure, False otherwise.
+        bool: True if the dictionary matches the validation structure, 
+            False otherwise.
     """
     for value in dictionary.values():
         for key, sub_value in value.items():
@@ -106,33 +110,6 @@ def generate_dict_with_none_values(item: dict) -> dict:
     return dict_keys
 
 
-def generate_nested_directories_paths(
-        base_path: Path,
-        directories: Dict[int, List[str]],
-) -> List[Path]:
-    """Generates nested directories based on the provided base_path and 
-    directory structure.
-
-    Args:
-        base_path (Path): The base path where the nested directories will be created.
-        directories (Dict[str, List[str]]): A dictionary with the directory structure,
-            where keys are folder levels, and values are lists of folder names.
-
-    Returns:
-        List (Path): List of full paths of the nested directories.
-    """
-    if directories and all(v is not None for v in directories.values()):
-        full_dir_paths = []
-        dir_paths = list(it.product(*directories.values()))
-
-        for dir_path in dir_paths:
-            full_dir_paths.append(Path(base_path, *map(str, dir_path)))
-
-        return full_dir_paths
-    else:
-        return [base_path]
-
-
 def pivot_dict(
         data_dict: Dict,
         order_list: List = None,
@@ -149,17 +126,16 @@ def pivot_dict(
         Dict: dictionary of nested dictionaries with last level = None
 
     Example:
-        data = {
-            'key_1': ['item_1', 'item_2', 'item_3'], 
-            'key_2': [10, 20, 30]
-        }
+    >>> data = {
+    >>>     'key_1': ['item_1', 'item_2', 'item_3'], 
+    >>>     'key_2': [10, 20, 30]
+    >>> }
+    >>> data_pivoted = pivot_dict(data)
 
-        data_pivoted = pivot_dict(data)
-
-        data_pivoted = {
-            item_1: {10: None, 20: None, 30: None},
-            item_2: {10: None, 20: None, 30: None},
-        }
+    data_pivoted = {
+        item_1: {10: None, 20: None, 30: None},
+        item_2: {10: None, 20: None, 30: None},
+    }
     """
     def pivot_recursive(keys, values):
         if not keys:
@@ -286,64 +262,6 @@ def merge_series_to_dataframe(
         objs = objs[::-1]
 
     return pd.concat(objs=objs, axis=1)
-
-
-def update_dataframes_on_condition(
-        existing_df: pd.DataFrame,
-        new_df: pd.DataFrame,
-        col_to_update: str,
-        cols_common: List[str],
-        case: List[str],
-) -> pd.DataFrame:
-    """Compares values in existing and new DataFrames and returns a new DataFrame
-    based on different 'case' options:
-        - merge: data of existing_df and new_df (commond data updated with new_df).
-        - existing_updated: only common data for existing_df and new_df 
-        (commond data updated with new_df).
-        - new_only: new data included in new_df not available in existing_df
-
-    Args:
-        existing_df (pd.DataFrame): DataFrame to be updated.
-        new_df (pd.DataFrame): DataFrame containing the values to update from.
-        col_to_update (str): name of the column to be considered for the comparison.
-        cols_common (List[str]): List of column names representing the common 
-        columns for the comparison.
-        case: The type of comparison to be performed. Options: 
-        'merge', 'existing_updated', 'new_only'.
-
-    Returns:
-        pd.DataFrame: updated DataFrame.
-
-    Raises:
-        ValueError: if an invalid 'case' is provided.
-    """
-    valid_cases = ['merge', 'existing_updated', 'new_only']
-    validate_selection(valid_cases, case)
-
-    merged_df = pd.merge(
-        left=existing_df,
-        right=new_df,
-        on=cols_common,
-        how='outer' if case == 'merge' else 'inner',
-        suffixes=('_existing', '_new')
-    )
-
-    merged_df[col_to_update] = np.where(
-        merged_df[col_to_update + '_new'].notna(),
-        merged_df[col_to_update + '_new'],
-        merged_df[col_to_update + '_existing']
-    )
-
-    merged_df.drop(
-        columns=[col_to_update + '_existing', col_to_update + '_new'],
-        inplace=True)
-
-    if case == 'new_only':
-        existing_dict = existing_df[cols_common].to_dict(orient='list')
-        condition = ~new_df[cols_common].isin(existing_dict).all(axis=1)
-        return new_df[condition]
-
-    return merged_df
 
 
 def check_dataframes_equality(
