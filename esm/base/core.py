@@ -1,15 +1,15 @@
-from typing import Dict
+from typing import Any, Dict
 from pathlib import Path
 
 import pandas as pd
 
-from src.backend.database import Database
-from src.backend.index import Index, Variable
-from src.backend.problem import Problem
-from src.log_exc.logger import Logger
-from src.constants import constants
-from src.support.file_manager import FileManager
-from src.support.sql_manager import SQLManager, connection
+from esm.base.database import Database
+from esm.base.index import Index, Variable
+from esm.base.problem import Problem
+from esm.log_exc.logger import Logger
+from esm import constants
+from esm.support.file_manager import FileManager
+from esm.support.sql_manager import SQLManager, connection
 
 
 class Core:
@@ -33,7 +33,7 @@ class Core:
         self.sqltools = SQLManager(
             logger=self.logger,
             database_path=self.paths['sqlite_database'],
-            database_name=self.settings['sqlite_database']['name'],
+            database_name=self.settings['sqlite_database_file'],
         )
 
         self.index = Index(
@@ -71,7 +71,10 @@ class Core:
             "(cvxpy objects, filters dictionaries).")
 
         for variable in self.index.variables.values():
-            variable.data = self.problem.generate_vars_dataframe(variable)
+            if variable.type == 'constant':
+                variable.data = self.problem.generate_constant_data(variable)
+            else:
+                variable.data = self.problem.generate_vars_dataframe(variable)
 
     def define_numerical_problems(self) -> None:
         self.logger.info(
@@ -80,16 +83,22 @@ class Core:
         self.problem.load_symbolic_problem_from_file()
         self.problem.generate_problems_dataframe()
 
-    def solve_numerical_problems(self) -> None:
-        self.logger.info(
-            "Solve numerical problems.")
-
-        self.problem.solve_problems()
+    def solve_numerical_problems(
+            self,
+            solver: str = None,
+            verbose: bool = True,
+            **kwargs: Any,
+    ) -> None:
+        self.problem.solve_all_problems(
+            solver=solver,
+            verbose=verbose,
+            **kwargs
+        )
 
     @connection
     def data_to_cvxpy_exogenous_vars(self) -> None:
         self.logger.info(
-            f"Fetching data from '{self.settings['sqlite_database']['name']}' "
+            f"Fetching data from '{self.settings['sqlite_database_file']}' "
             "to cvxpy exogenous variables.")
 
         for variable in self.index.variables.values():
@@ -121,13 +130,13 @@ class Core:
     def cvxpy_endogenous_data_to_database(self, operation: str) -> None:
         self.logger.info(
             "Fetching data from cvxpy endogenous variables "
-            f"to database '{self.settings['sqlite_database']['name']}' ")
+            f"to SQLite database '{self.settings['sqlite_database_file']}' ")
 
-        for variable in self.index.variables.values():
+        for var_key, variable in self.index.variables.items():
 
             if isinstance(variable, Variable) and variable.type == 'endogenous':
                 self.logger.debug(
-                    f"Fetching data from cvxpy variable '{variable.symbol} "
+                    f"Fetching data from cvxpy variable '{variable.symbol}' "
                     "to the related SQLite table.")
 
                 cvxpy_var_data = pd.DataFrame()
@@ -137,7 +146,7 @@ class Core:
                     none_coord = variable.none_data_coordinates(row)
 
                     if none_coord:
-                        self.logger.warning(
+                        self.logger.debug(
                             f"SQLite table '{variable.symbol}': "
                             f"no data available for {none_coord}.")
                         continue
@@ -146,8 +155,14 @@ class Core:
                         (cvxpy_var_data, variable.reshaping_variable_data(row))
                     )
 
+                if cvxpy_var_data.empty:
+                    self.logger.warning(
+                        "No data available in cvxpy variable "
+                        f"'{variable.symbol}'")
+                    return
+
                 self.sqltools.dataframe_to_table(
-                    table_name=variable.symbol,
+                    table_name=var_key,
                     dataframe=cvxpy_var_data,
                     operation=operation,
                 )

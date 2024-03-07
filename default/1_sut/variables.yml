@@ -1,0 +1,147 @@
+# template for defining variables of the model
+
+# RULES:
+# - variables define SQLite tables (name case insensitive: two tables named 
+# 'e' and 'E' are not allowed. However, variables symbols are case sensitive).
+# - 
+
+
+# -----------------------------------------
+# exogenous variables
+
+d:
+    symbol: d
+    name: market shares coefficients
+    type: exogenous
+    coordinates_info:
+        scenarios: null
+        technologies: 
+            set_categories: t.s
+            aggregation_key: null
+        flows:
+            set_categories: f.p
+            aggregation_key: null
+    shape: [technologies, flows]
+
+c:
+    symbol: c
+    name: products mix coefficients
+    type: exogenous
+    coordinates_info:
+        scenarios: null
+        technologies: 
+            set_categories: t.s
+            aggregation_key: null
+        flows:
+            set_categories: f.p
+            aggregation_key: null
+    shape: [flows, technologies]
+
+u:
+    symbol: u
+    name: use coefficients
+    type: exogenous
+    coordinates_info:
+        scenarios: null
+        flows: 
+            set_categories: f.p
+            aggregation_key: null
+        technologies:
+            set_categories: t.s
+            aggregation_key: null
+    shape: [flows, technologies]
+
+r:
+    symbol: r
+    name: factors use coefficients
+    type: exogenous
+    coordinates_info:
+        scenarios: null
+        flows: 
+            set_categories: f.e
+            aggregation_key: null
+        technologies:
+            set_categories: t.s
+            aggregation_key: null
+    shape: [flows, technologies]
+
+Y:
+    symbol: Y
+    name: total final demand
+    type: exogenous
+    coordinates_info:
+        scenarios: null
+        flows: 
+            set_categories: f.p
+            aggregation_key: competition
+        technologies: 
+            set_categories: t.d
+            aggregation_key: null
+    shape: [flows, technologies]
+
+# -----------------------------------------
+# endogenous variables
+
+VV:
+    symbol: V
+    name: products supply (make matrix, industry-based)
+    type: endogenous
+    coordinates_info:
+        scenarios: null
+        technologies: 
+            set_categories: t.s
+            aggregation_key: null
+        flows:
+            set_categories: f.p
+            aggregation_key: null
+    shape: [technologies, flows]
+
+UU:
+    symbol: U
+    name: intermediate transactions (use matrix, industry-based)
+    type: endogenous
+    coordinates_info:
+        scenarios: null
+        flows: 
+            set_categories: f.p
+            aggregation_key: null
+        technologies:
+            set_categories: t.s
+            aggregation_key: null
+    shape: [flows, technologies]
+
+RR:
+    symbol: R
+    name: environmental transactions (factors use, industry-based)
+    type: endogenous
+    coordinates_info:
+        scenarios: null
+        flows: 
+            set_categories: f.e
+            aggregation_key: null
+        technologies:
+            set_categories: t.s
+            aggregation_key: null
+    shape: [flows, technologies]
+
+Q:
+    symbol: Q
+    name: total demand by flow (industry-based)
+    type: endogenous
+    coordinates_info: 
+        scenarios: null
+        flows: 
+            set_categories: f.p
+            aggregation_key: competition
+    shape: [flows, 1]
+
+X:
+    symbol: X
+    name: total activity by technology (industry-based)
+    type: endogenous
+    coordinates_info: 
+        scenarios: null
+        technologies: 
+            set_categories: t.s
+            aggregation_key: null
+    shape: [technologies, 1]

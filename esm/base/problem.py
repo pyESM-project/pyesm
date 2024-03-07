@@ -5,12 +5,13 @@ import pandas as pd
 import numpy as np
 import cvxpy as cp
 
-from src.constants import constants
-from src.log_exc import exceptions as exc
-from src.log_exc.logger import Logger
-from src.support import util
-from src.support.file_manager import FileManager
-from src.backend.index import Index, Variable
+from esm import constants
+from esm.log_exc import exceptions as exc
+from esm.log_exc.logger import Logger
+from esm.support import util
+from esm.support.file_manager import FileManager
+from esm.support.dotdict import DotDict
+from esm.base.index import Index, Variable
 
 
 class Problem:
@@ -36,7 +37,7 @@ class Problem:
 
         self.symbolic_problem = None
         self.numeric_problems = None
-        self.problems_solved = None
+        self.model_run = None
 
         self.logger.info(f"'{self}' object initialized.")
 
@@ -49,18 +50,20 @@ class Problem:
         type: str,
         shape: List[int],
         name: str,
-    ) -> cp.Variable | cp.Parameter:
+        value: int | np.ndarray | np.matrix = None,
+    ) -> cp.Variable | cp.Parameter | cp.Constant:
 
         if type == 'endogenous':
             return cp.Variable(shape=shape, name=name)
         elif type == 'exogenous':
             return cp.Parameter(shape=shape, name=name)
         elif type == 'constant':
-            pass  # tbd
+            return cp.Constant(value=value)
         else:
-            error = f"Unsupported variable type: {type}"
+            error = f"Unsupported variable type: {type}. " \
+                "Check variables definitions."
             self.logger.error(error)
-            raise ValueError(error)
+            raise exc.SettingsError(error)
 
     def data_to_cvxpy_variable(
             self,
@@ -82,6 +85,23 @@ class Problem:
             self.logger.error(error)
             raise ValueError(error)
 
+    def generate_constant_data(
+            self,
+            variable: Variable,
+    ) -> cp.Constant:
+
+        self.logger.debug(
+            f"Generating constant '{variable.symbol}' as '{variable.value}'.")
+
+        var_value = variable.define_constant(variable.value)
+
+        return self.create_cvxpy_variable(
+            type=variable.type,
+            shape=variable.shape_size,
+            name=variable.symbol + str(variable.shape),
+            value=var_value,
+        )
+
     def generate_vars_dataframe(
             self,
             variable: Variable,
@@ -100,7 +120,10 @@ class Problem:
             f"Generating variable '{variable.symbol}' dataframe "
             "(cvxpy object, filter dictionary).")
 
-        sets_parsing_hierarchy = variable.sets_parsing_hierarchy.values()
+        if variable.sets_parsing_hierarchy:
+            sets_parsing_hierarchy = variable.sets_parsing_hierarchy.values()
+        else:
+            sets_parsing_hierarchy = None
 
         var_data = util.unpivot_dict_to_dataframe(
             data_dict=variable.coordinates,
@@ -172,7 +195,7 @@ class Problem:
             dir_path=self.paths['model_dir'],
         )
 
-        self.symbolic_problem = util.DotDict(symbolic_problem)
+        self.symbolic_problem = DotDict(symbolic_problem)
 
     def parse_allowed_symbolic_vars(
             self,
@@ -200,7 +223,7 @@ class Problem:
 
     def check_variables_attribute_equality(
             self,
-            variables_subset: util.DotDict[str, Variable],
+            variables_subset: DotDict[str, Variable],
             attribute: str,
     ) -> None:
 
@@ -225,7 +248,7 @@ class Problem:
 
     def find_common_sets_intra_problem(
         self,
-        variables_subset: util.DotDict[str, Variable],
+        variables_subset: DotDict[str, Variable],
     ) -> Dict[str, str]:
 
         sets_dicts_to_compare = {
@@ -234,6 +257,9 @@ class Problem:
         }
 
         sets_dicts_list = list(sets_dicts_to_compare.values())
+
+        if not sets_dicts_list:
+            return {}
 
         if all(
             d == sets_dicts_list[0]
@@ -265,7 +291,8 @@ class Problem:
             'info': constants._PROBLEM_INFO_HEADER,
             'objective': constants._OBJECTIVE_HEADER,
             'constraints': constants._CONSTRAINTS_HEADER,
-            'problem': constants._PROBLEM_HEADER
+            'problem': constants._PROBLEM_HEADER,
+            'status': constants._PROBLEM_STATUS_HEADER,
         }
 
         # per ora le colonne dei set hanno i nomi degli headers (s_Name, ...)
@@ -324,12 +351,13 @@ class Problem:
             problems_data.at[problem_num, headers['constraints']] = constraints
             problems_data.at[problem_num, headers['objective']] = objective
             problems_data.at[problem_num, headers['problem']] = problem
+            problems_data.at[problem_num, headers['status']] = None
 
         self.numeric_problems = problems_data
 
     def fetch_allowed_cvxpy_variables(
             self,
-            variables_set_dict: util.DotDict[str, Variable],
+            variables_set_dict: DotDict[str, Variable],
             problem_filter: pd.DataFrame = None,
             set_intra_problem_header: str = None,
             set_intra_problem_value: str = None,
@@ -339,24 +367,27 @@ class Problem:
 
         for variable in variables_set_dict.values():
 
-            if problem_filter is not None:
-                variable_data = pd.merge(
-                    left=variable.data,
-                    right=problem_filter,
-                    on=list(problem_filter.columns),
-                    how='inner'
-                )
-            else:
-                variable_data = variable.data
-
-            if set_intra_problem_header and set_intra_problem_value:
-                cvxpy_variable = variable_data.loc[
-                    variable_data[set_intra_problem_header] == set_intra_problem_value,
-                    constants._CVXPY_VAR_HEADER,
-                ].iloc[0]
+            if variable.type == 'constant':
+                cvxpy_variable = variable.data
 
             else:
-                cvxpy_variable = variable_data.loc[constants._CVXPY_VAR_HEADER]
+                if problem_filter is not None:
+                    variable_data = pd.merge(
+                        left=variable.data,
+                        right=problem_filter,
+                        on=list(problem_filter.columns),
+                        how='inner'
+                    )
+                else:
+                    variable_data = variable.data
+
+                if set_intra_problem_header and set_intra_problem_value:
+                    cvxpy_variable = variable_data.loc[
+                        variable_data[set_intra_problem_header] == set_intra_problem_value,
+                        constants._CVXPY_VAR_HEADER,
+                    ].iloc[0]
+                else:
+                    cvxpy_variable = variable_data[constants._CVXPY_VAR_HEADER].values[0]
 
             allowed_variables[variable.symbol] = cvxpy_variable
 
@@ -377,11 +408,16 @@ class Problem:
                 {**allowed_operators, **allowed_variables},
                 local_vars,
             )
+
         except SyntaxError:
             msg = "Error in parsing cvxpy expression: " \
-                "check allowed variables and operators."
+                "check allowed variables, operators or expression syntax."
             self.logger.error(msg)
             raise exc.NumericalProblemError(msg)
+
+        except NameError as msg:
+            self.logger.error(f'NameError: {msg}')
+            raise exc.NumericalProblemError(f'NameError: {msg}')
 
         return local_vars['output']
 
@@ -399,9 +435,15 @@ class Problem:
             var_symbols_list = self.parse_allowed_symbolic_vars(expression)
 
             # define subset of variables in the expression
-            vars_subset = util.DotDict({
+            vars_subset = DotDict({
                 key: variable for key, variable in self.index.variables
                 if variable.symbol in var_symbols_list
+                and variable.type != 'constant'
+            })
+
+            constants_subset = DotDict({
+                key: variable for key, variable in self.index.variables
+                if variable.type == 'constant'
             })
 
             # if more than one var, check equality of sets_parsing_hierarchy
@@ -426,7 +468,7 @@ class Problem:
 
                     # fetch allowed cvxpy variables
                     allowed_variables = self.fetch_allowed_cvxpy_variables(
-                        variables_set_dict=vars_subset,
+                        variables_set_dict={**vars_subset, **constants_subset},
                         problem_filter=problem_filter,
                         set_intra_problem_header=set_header,
                         set_intra_problem_value=value,
@@ -442,7 +484,7 @@ class Problem:
 
             else:
                 allowed_variables = self.fetch_allowed_cvxpy_variables(
-                    variables_set_dict=vars_subset,
+                    variables_set_dict={**vars_subset, **constants_subset},
                     problem_filter=problem_filter,
                 )
 
@@ -455,7 +497,26 @@ class Problem:
 
         return expressions
 
-    def solve_problems(self) -> None:
+    def solve_problem(
+            self,
+            problem: cp.Problem,
+            solver: str = None,
+            verbose: bool = True,
+            **kwargs: Any,
+    ) -> None:
+
+        problem.solve(
+            solver=solver,
+            verbose=verbose,
+            **kwargs
+        )
+
+    def solve_all_problems(
+            self,
+            solver: str,
+            verbose: bool,
+            **kwargs: Any,
+    ) -> None:
 
         if self.numeric_problems is None or \
                 self.numeric_problems[constants._PROBLEM_HEADER].isna().all():
@@ -463,9 +524,9 @@ class Problem:
             self.logger.warning(msg)
             raise exc.OperationalError(msg)
 
-        if self.problems_solved:
-            self.logger.warning("Numeric problem already solved.")
-            user_input = input("Solve again numeric problem? (y/[n]): ")
+        if self.model_run:
+            self.logger.warning("Numeric problems already run.")
+            user_input = input("Solve again numeric problems? (y/[n]): ")
 
             if user_input.lower() != 'y':
                 self.logger.info(
@@ -480,11 +541,23 @@ class Problem:
             problem_info = self.numeric_problems.at[
                 problem_num, constants._PROBLEM_INFO_HEADER]
 
-            self.logger.debug(f"Solving problem: {problem_info}")
+            self.logger.info(f"Solving problem: {problem_info}.")
 
             problem = self.numeric_problems.at[
                 problem_num, constants._PROBLEM_HEADER]
 
-            problem.solve()
+            self.solve_problem(
+                problem=problem,
+                solver=solver,
+                verbose=verbose,
+                **kwargs,
+            )
 
-        self.problems_solved = True
+            problem_status = getattr(problem, 'status', None)
+            self.numeric_problems.at[
+                problem_num,
+                constants._PROBLEM_STATUS_HEADER] = problem_status
+
+            self.logger.info(f"Problem status: '{problem_status}'")
+
+        self.model_run = True

@@ -1,15 +1,14 @@
-from operator import index
 from pathlib import Path
-from typing import Dict, List, Any
+from typing import Dict
 
 import pandas as pd
 
-from src.backend.index import Index
-from src.log_exc.logger import Logger
-from src.constants import constants
-from src.support import util
-from src.support.file_manager import FileManager
-from src.support.sql_manager import SQLManager, connection
+from esm.base.index import Index
+from esm.log_exc.logger import Logger
+from esm import constants
+from esm.support import util
+from esm.support.file_manager import FileManager
+from esm.support.sql_manager import SQLManager, connection
 
 
 class Database:
@@ -35,7 +34,7 @@ class Database:
         self.settings = settings
         self.paths = paths
 
-        if not self.settings['model']['use_existing_data']:
+        if not self.settings['use_existing_data']:
             self.initialize_blank_database()
             self.create_blank_sets_xlsx_file()
 
@@ -47,10 +46,10 @@ class Database:
 
     @connection
     def initialize_blank_database(self) -> None:
-        sqlite_database_name = self.settings['sqlite_database']['name']
+        sqlite_database_name = self.settings['sqlite_database_file']
 
         if Path(self.paths['sqlite_database']).exists():
-            if not self.settings['model']['use_existing_data']:
+            if not self.settings['use_existing_data']:
                 self.logger.info(
                     f"Overwriting database '{sqlite_database_name}'")
             else:
@@ -69,10 +68,10 @@ class Database:
 
     @connection
     def create_blank_sets_xlsx_file(self) -> None:
-        sets_file_name = self.settings['input_data']['sets_xlsx_file']
+        sets_file_name = self.settings['sets_xlsx_file']
 
         if Path(self.paths['sets_excel_file']).exists():
-            if not self.settings['model']['use_existing_data']:
+            if not self.settings['use_existing_data']:
                 self.logger.info(
                     f"Overwriting sets excel file '{sets_file_name}'")
             else:
@@ -85,7 +84,7 @@ class Database:
 
         for set_instance in self.index.sets.values():
             self.sqltools.table_to_excel(
-                excel_filename=self.settings['input_data']['sets_xlsx_file'],
+                excel_filename=self.settings['sets_xlsx_file'],
                 excel_dir_path=self.paths['model_dir'],
                 table_name=set_instance.table_name,
             )
@@ -93,7 +92,7 @@ class Database:
     @connection
     def load_sets_to_database(self) -> None:
         self.logger.info(
-            f"Loading Sets to '{self.settings['sqlite_database']['name']}'.")
+            f"Loading Sets to '{self.settings['sqlite_database_file']}'.")
 
         for set_instance in self.index.sets.values():
             self.sqltools.dataframe_to_table(
@@ -107,6 +106,25 @@ class Database:
             "Generation of empty SQLite database variables tables.")
 
         for var_key, variable in self.index.variables.items():
+
+            if variable.type == 'constant':
+                continue
+
+            self.sqltools.create_table(
+                table_name=var_key,
+                table_fields=variable.table_headers,
+                foreign_keys=variable.foreign_keys,
+            )
+
+    @connection
+    def sets_data_to_vars_sql_tables(self) -> None:
+        self.logger.info(
+            "Filling empty SQLite database variables tables with sets data.")
+
+        for var_key, variable in self.index.variables.items():
+
+            if variable.type == 'constant':
+                continue
 
             table_headers_list = [
                 value[0] for value in variable.coordinates_fields.values()
@@ -123,12 +141,6 @@ class Database:
                 value=None
             )
 
-            self.sqltools.create_table(
-                table_name=var_key,
-                table_fields=variable.table_headers,
-                foreign_keys=variable.foreign_keys,
-            )
-
             self.sqltools.dataframe_to_table(
                 table_name=var_key,
                 dataframe=unpivoted_coords_df,
@@ -140,7 +152,6 @@ class Database:
                 column_type=constants._STD_VALUES_FIELD['values'][1],
             )
 
-    # check variables_info non esiste
     @connection
     def clear_database_variables(self) -> None:
         existing_tables = self.sqltools.get_existing_tables_names
@@ -151,7 +162,7 @@ class Database:
 
         self.logger.info(
             "All variables tables dropped from SQLite database "
-            f"{self.settings['sqlite_database']['name']}"
+            f"{self.settings['sqlite_database_file']}"
         )
 
     @connection
@@ -172,10 +183,10 @@ class Database:
             if variable.type == 'exogenous' and \
                     variable.symbol in tables_names_list:
 
-                if self.settings['input_data']['multiple_input_files']:
+                if self.settings['multiple_input_files']:
                     output_file_name = variable.symbol + file_extension
                 else:
-                    output_file_name = self.settings['input_data']['input_file']
+                    output_file_name = self.settings['input_data_file']
 
                 self.sqltools.table_to_excel(
                     excel_filename=output_file_name,
@@ -192,7 +203,7 @@ class Database:
         self.logger.info(
             "Loading data input file/s filled by the user to SQLite database.")
 
-        if self.settings['input_data']['multiple_input_files']:
+        if self.settings['multiple_input_files']:
             data = {}
             for variable in self.index.variables.values():
                 if variable.type == 'exogenous':
@@ -215,7 +226,7 @@ class Database:
         else:
             data = self.files.excel_to_dataframes_dict(
                 excel_file_dir_path=self.paths['input_data_dir'],
-                excel_file_name=self.settings['input_data']['input_file']
+                excel_file_name=self.settings['input_data_file'],
             )
             for data_key, data_values in data.items():
                 self.sqltools.dataframe_to_table(

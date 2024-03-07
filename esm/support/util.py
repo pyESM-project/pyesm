@@ -1,31 +1,78 @@
-import itertools as it
 import pprint as pp
-
 from pathlib import Path
 from typing import Dict, List, Any, Literal
-import numpy as np
 
+import itertools as it
 import pandas as pd
 
+from esm import constants
+from esm.support.file_manager import FileManager
+from esm.log_exc.logger import Logger
 
-class DotDict(dict):
-    """This class generates a dictionary where values can be accessed either
-    by key (example: dict_instance['key']) and by dot notation (example:
-    dict_instance.key). The class inherits all methods of standard dict.
+
+default_models_path = 'default'
+
+
+def create_model_dir(
+    model_dir_name: str,
+    main_dir_path: str,
+    default_model: str = None,
+    force_overwrite: bool = False,
+):
+    """
+    Create a directory structure for the generation of Model instances. 
+    If no default_model is indicated, only basic setup files are generated.
+
+    Args:
+        model_dir_name (str): Name of the model directory.
+        main_dir_path (str): Path to the main directory where the model 
+            directory will be created.
+        default_model (str, optional): Name of the default modle to use as a
+            template. List of available templates in /src/constants.py.
+            Defaults to None.
+        force_overwrite (bool, optional): if True, avoid asking permission to 
+            overwrite existing files/directories. Defaults to False.
     """
 
-    def __getattr__(self, name: str) -> Any:
-        if name in self:
-            return self[name]
-        else:
-            error = f"No such attribute: {name}"
-            raise AttributeError(error)
+    files = FileManager(Logger())
+    model_dir_path = Path(main_dir_path) / model_dir_name
 
-    def __setattr__(self, name: str, value: Any) -> None:
-        self[name] = value
+    if model_dir_path.exists():
+        if not files.erase_dir(
+                dir_path=model_dir_path,
+                force_erase=force_overwrite):
+            return
 
-    def __iter__(self):
-        return iter(self.items())
+    files.create_dir(model_dir_path, force_overwrite)
+
+    if default_model is None:
+        for file_name in constants._SETUP_FILES.values():
+            files.copy_file_to_destination(
+                path_destination=model_dir_path,
+                path_source=default_models_path,
+                file_name='dft_'+file_name,
+                file_new_name=file_name,
+                force_overwrite=force_overwrite,
+            )
+
+        files.logger.info(f"Directory of model '{model_dir_name}' generated.")
+
+    else:
+        validate_selection(
+            valid_selections=constants._TEMPLATE_MODELS,
+            selection=default_model)
+
+        template_dir_path = Path(default_models_path) / default_model
+
+        files.copy_all_files_to_destination(
+            path_source=template_dir_path,
+            path_destination=model_dir_path,
+            force_overwrite=force_overwrite,
+        )
+
+        files.logger.info(
+            f"Directory of model '{model_dir_name}' "
+            f"generated based on default model '{default_model}'.")
 
 
 def prettify(item: dict) -> None:
@@ -59,12 +106,40 @@ def validate_selection(
     >>> valid_selections = ['option1', 'option2', 'option3']
     >>> validate_selection(valid_selections, 'option2')  # No exception raised
     >>> validate_selection(valid_selections, 'invalid_option')
-    ValueError: Invalid selection. Please choose one of: option1, option2, option3.
+    ValueError: Invalid selection. Please choose one of: option1, option2, 
+        option3.
     """
+    if not valid_selections:
+        raise ValueError("No valid selections are available.")
+
     if selection not in valid_selections:
         raise ValueError(
             "Invalid selection. Please choose one "
             f"of: {', '.join(valid_selections)}.")
+
+
+def validate_dict_structure(
+        dictionary: Dict[str, Dict[str, Any]],
+        validation_structure: Dict[str, Any],
+) -> bool:
+    """
+    Validate the structure of a dictionary against a validation structure.
+
+    Args:
+        dictionary (Dict[str, Any]): The dictionary to be validated.
+        validation_structure (Dict[str, Any]): The structure to validate against.
+
+    Returns:
+        bool: True if the dictionary matches the validation structure, 
+            False otherwise.
+    """
+    for value in dictionary.values():
+        for key, sub_value in value.items():
+            if key not in validation_structure:
+                return False
+            if not isinstance(sub_value, validation_structure[key]):
+                return False
+    return True
 
 
 def find_dict_depth(item) -> int:
@@ -103,33 +178,6 @@ def generate_dict_with_none_values(item: dict) -> dict:
     return dict_keys
 
 
-def generate_nested_directories_paths(
-        base_path: Path,
-        directories: Dict[int, List[str]],
-) -> List[Path]:
-    """Generates nested directories based on the provided base_path and 
-    directory structure.
-
-    Args:
-        base_path (Path): The base path where the nested directories will be created.
-        directories (Dict[str, List[str]]): A dictionary with the directory structure,
-            where keys are folder levels, and values are lists of folder names.
-
-    Returns:
-        List (Path): List of full paths of the nested directories.
-    """
-    if directories and all(v is not None for v in directories.values()):
-        full_dir_paths = []
-        dir_paths = list(it.product(*directories.values()))
-
-        for dir_path in dir_paths:
-            full_dir_paths.append(Path(base_path, *map(str, dir_path)))
-
-        return full_dir_paths
-    else:
-        return [base_path]
-
-
 def pivot_dict(
         data_dict: Dict,
         order_list: List = None,
@@ -146,17 +194,16 @@ def pivot_dict(
         Dict: dictionary of nested dictionaries with last level = None
 
     Example:
-        data = {
-            'key_1': ['item_1', 'item_2', 'item_3'], 
-            'key_2': [10, 20, 30]
-        }
+    >>> data = {
+    >>>     'key_1': ['item_1', 'item_2', 'item_3'], 
+    >>>     'key_2': [10, 20, 30]
+    >>> }
+    >>> data_pivoted = pivot_dict(data)
 
-        data_pivoted = pivot_dict(data)
-
-        data_pivoted = {
-            item_1: {10: None, 20: None, 30: None},
-            item_2: {10: None, 20: None, 30: None},
-        }
+    data_pivoted = {
+        item_1: {10: None, 20: None, 30: None},
+        item_2: {10: None, 20: None, 30: None},
+    }
     """
     def pivot_recursive(keys, values):
         if not keys:
@@ -285,62 +332,41 @@ def merge_series_to_dataframe(
     return pd.concat(objs=objs, axis=1)
 
 
-def update_dataframes_on_condition(
-        existing_df: pd.DataFrame,
-        new_df: pd.DataFrame,
-        col_to_update: str,
-        cols_common: List[str],
-        case: List[str],
-) -> pd.DataFrame:
-    """Compares values in existing and new DataFrames and returns a new DataFrame
-    based on different 'case' options:
-        - merge: data of existing_df and new_df (commond data updated with new_df).
-        - existing_updated: only common data for existing_df and new_df 
-        (commond data updated with new_df).
-        - new_only: new data included in new_df not available in existing_df
+def check_dataframes_equality(
+        df_list: List[pd.DataFrame],
+        skip_columns: List[str] = None,
+        rows_order_matters: bool = False,
+) -> bool:
+    """Check the equality of multiple DataFrames while optionally skipping 
+    specified columns.
 
-    Args:
-        existing_df (pd.DataFrame): DataFrame to be updated.
-        new_df (pd.DataFrame): DataFrame containing the values to update from.
-        col_to_update (str): name of the column to be considered for the comparison.
-        cols_common (List[str]): List of column names representing the common 
-        columns for the comparison.
-        case: The type of comparison to be performed. Options: 
-        'merge', 'existing_updated', 'new_only'.
+    Parameters:
+        df_list (List[pd.DataFrame]): A list of Pandas DataFrames to compare.
+        skip_columns (List[str], optional): A list of column names to skip 
+            during comparison.
+        rows_order_matters (bool, optional): If set to False, two dataframes
+            with same rows in different orders are still identified as equal. 
 
     Returns:
-        pd.DataFrame: updated DataFrame.
+        bool: True if all DataFrames are equal, False otherwise.
 
     Raises:
-        ValueError: if an invalid 'case' is provided.
+        None
     """
-    valid_cases = ['merge', 'existing_updated', 'new_only']
-    validate_selection(valid_cases, case)
 
-    merged_df = pd.merge(
-        left=existing_df,
-        right=new_df,
-        on=cols_common,
-        how='outer' if case == 'merge' else 'inner',
-        suffixes=('_existing', '_new')
-    )
+    if skip_columns is not None:
+        df_list = [
+            dataframe.drop(columns=skip_columns)
+            for dataframe in df_list
+        ]
 
-    merged_df[col_to_update] = np.where(
-        merged_df[col_to_update + '_new'].notna(),
-        merged_df[col_to_update + '_new'],
-        merged_df[col_to_update + '_existing']
-    )
+    if not rows_order_matters:
+        df_list = [
+            df.sort_values(df.columns.tolist()).reset_index(drop=True)
+            for df in df_list
+        ]
 
-    merged_df.drop(
-        columns=[col_to_update + '_existing', col_to_update + '_new'],
-        inplace=True)
-
-    if case == 'new_only':
-        existing_dict = existing_df[cols_common].to_dict(orient='list')
-        condition = ~new_df[cols_common].isin(existing_dict).all(axis=1)
-        return new_df[condition]
-
-    return merged_df
+    return all(df.equals(df_list[0]) for df in df_list[1:])
 
 
 def add_column_to_dataframe(

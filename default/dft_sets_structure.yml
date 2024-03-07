@@ -8,13 +8,6 @@ scenarios:
         name: ['s_Name', 'TEXT']
     split_problem: True
 
-datetime:
-    symbol: dt
-    table_name: _set_DATETIME
-    table_headers:
-        id: ['dt_ID', 'INTEGER PRIMARY KEY']
-        name: ['dt_Name', 'TEXT']
-
 technologies:
     symbol: t
     table_name: _set_TECHNOLOGIES

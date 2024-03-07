@@ -1,6 +1,6 @@
 from typing import Dict
 
-from src.log_exc.logger import Logger
+from esm.log_exc.logger import Logger
 
 
 class PBIManager:
@@ -15,7 +15,7 @@ class PBIManager:
         self.logger.info(f"'{self}' object generated.")
 
         self.settings = settings
-        self.file_name = self.settings['powerbi_report']['name']
+        self.file_name = None
 
     def __repr__(self):
         class_name = type(self).__name__
@@ -23,11 +23,11 @@ class PBIManager:
 
     def generate_powerbi_report(
         self,
-        std_file_name: str = "report.pbix"
+        file_name: str,
     ) -> None:
 
         if not self.file_name:
-            self.file_name = std_file_name
+            self.file_name = file_name
 
         self.logger.debug(
             f"Generation of PowerBI report file '{self.file_name}'.")
