@@ -346,6 +346,43 @@ def update_dataframes_on_condition(
     return merged_df
 
 
+def check_dataframes_equality(
+        df_list: List[pd.DataFrame],
+        skip_columns: List[str] = None,
+        rows_order_matters: bool = False,
+) -> bool:
+    """Check the equality of multiple DataFrames while optionally skipping 
+    specified columns.
+
+    Parameters:
+        df_list (List[pd.DataFrame]): A list of Pandas DataFrames to compare.
+        skip_columns (List[str], optional): A list of column names to skip 
+            during comparison.
+        rows_order_matters (bool, optional): If set to False, two dataframes
+            with same rows in different orders are still identified as equal. 
+
+    Returns:
+        bool: True if all DataFrames are equal, False otherwise.
+
+    Raises:
+        None
+    """
+
+    if skip_columns is not None:
+        df_list = [
+            dataframe.drop(columns=skip_columns)
+            for dataframe in df_list
+        ]
+
+    if not rows_order_matters:
+        df_list = [
+            df.sort_values(df.columns.tolist()).reset_index(drop=True)
+            for df in df_list
+        ]
+
+    return all(df.equals(df_list[0]) for df in df_list[1:])
+
+
 def add_column_to_dataframe(
         dataframe: pd.DataFrame,
         column_header: str,
