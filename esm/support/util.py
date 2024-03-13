@@ -3,6 +3,7 @@ from pathlib import Path
 from typing import Dict, List, Any, Literal
 
 import itertools as it
+import numpy as np
 import pandas as pd
 
 from esm import constants
@@ -403,3 +404,21 @@ def add_column_to_dataframe(
         column=column_header,
         value=column_values,
     )
+
+
+def tril(dimension: int) -> np.ndarray:
+    """
+    Generate a square matrix with ones in the lower triangular region
+    (including the diagonal) and zeros elsewhere.
+
+    Parameters:
+        dimension (int): The size of the square matrix.
+
+    Returns:
+        np.ndarray: A square matrix of size 'dimension x dimension' with
+                    ones in the lower triangular region and zeros elsewhere.
+    """
+    matrix = np.tril(np.ones((dimension, dimension)))
+    np.fill_diagonal(matrix, 1)
+
+    return matrix

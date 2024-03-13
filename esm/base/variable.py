@@ -360,17 +360,17 @@ class Variable:
         """
 
         util.validate_selection(
-            valid_selections=constants._ALLOWED_VALUES.keys(),
+            valid_selections=constants._ALLOWED_CONSTANTS.keys(),
             selection=value_type,
         )
 
-        factory_function, *args = constants._ALLOWED_VALUES[value_type]
+        factory_function, *args = constants._ALLOWED_CONSTANTS[value_type]
 
         if value_type == 'identity':
             if self.is_square:
                 return factory_function(self.shape_size[0])
             else:
-                msg = 'Identity matrix must be square Check variable shape.'
+                msg = 'Identity matrix must be square. Check variable shape.'
 
         elif value_type == 'sum_vector':
             if self.is_vector:
@@ -378,9 +378,17 @@ class Variable:
             else:
                 msg = 'Summation vector must be a vector (one dimension). ' \
                     'Check variable shape.'
+
+        elif value_type == 'lower_triangular':
+            if self.is_square:
+                return factory_function(self.shape_size[0])
+            else:
+                msg = 'Lower triangular matrix must be square. ' \
+                    'Check variable shape.'
+
         else:
-            msg = "Variable value type not supported. "
-            f"Supported value types: {constants._ALLOWED_VALUES.keys()}"
+            msg = f"Variable value type '{value_type}' not supported. "
+            f"Supported value types: {constants._ALLOWED_CONSTANTS.keys()}"
             self.logger.error(msg)
             raise exc.SettingsError(msg)
 

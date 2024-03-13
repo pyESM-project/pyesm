@@ -1,6 +1,8 @@
 import cvxpy as cp
 import numpy as np
 
+from esm.support import util
+
 # essenstial model config files
 _SETUP_FILES = {
     'variables': 'variables.yml',
@@ -49,9 +51,11 @@ _VARIABLE_DEFAULT_STRUCTURE = {
 
 # allowed constants. more can be added, but Variable.define_constant must
 # be modified accordingly
-_ALLOWED_VALUES = {
+_ALLOWED_CONSTANTS = {
     'sum_vector': (np.ones, ),  # vector of 1s
     'identity': (np.eye, ),  # itentity matrix
+    # lower triangular matrix of 1s(inc. diagonal)
+    'lower_triangular': (util.tril, ),
 }
 
 # allowed operators for defining symbolic CVXPY problem
