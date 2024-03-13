@@ -140,6 +140,7 @@ class Model:
     ) -> None:
         self.logger.info('Loading input data to SQLite database.')
         self.core.database.load_data_input_files_to_database(operation)
+        self.core.database.empty_data_completion(operation)
 
     def initialize_problems(
             self,

@@ -234,3 +234,12 @@ class Database:
                     dataframe=data_values,
                     operation=operation,
                 )
+
+    @connection
+    def empty_data_completion(
+        self,
+        operation: str,
+    ):
+        self.logger.info(
+            "Auto-completion of blank data in SQLite database.")
+        pass
