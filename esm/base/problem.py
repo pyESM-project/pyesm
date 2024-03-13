@@ -243,32 +243,40 @@ class Problem:
 
             msg = f"Attributes '{attribute}' mismatch in the passed " \
                 f"variables subset {var_subset_symbols}."
-            self.logger.error(msg)
-            raise exc.ConceptualModelError(msg)
+            self.logger.warning(msg)
 
     def find_common_sets_intra_problem(
         self,
         variables_subset: DotDict[str, Variable],
+        allow_none: bool = True,
     ) -> Dict[str, str]:
 
-        sets_dicts_to_compare = {
+        vars_sets_intra_problem = {
             key: getattr(variable, 'sets_intra_problem')
             for key, variable in variables_subset.items()
         }
 
-        sets_dicts_list = list(sets_dicts_to_compare.values())
+        if allow_none:
+            vars_sets_intra_problem_list = [
+                value for value in vars_sets_intra_problem.values() if value
+            ]
+        else:
+            vars_sets_intra_problem_list = list(
+                vars_sets_intra_problem.values())
 
-        if not sets_dicts_list:
+        if not vars_sets_intra_problem_list:
             return {}
 
         if all(
-            d == sets_dicts_list[0]
-            for d in sets_dicts_list[1:]
+            d == vars_sets_intra_problem_list[0]
+            for d in vars_sets_intra_problem_list[1:]
         ):
-            return sets_dicts_list[0]
+            return vars_sets_intra_problem_list[0]
         else:
-            msg = f"Passed variables subset have not " \
-                "the same sets_intra_problem."
+            msg = f"Fore each problem, each expression must be defined for " \
+                "a unique common set (defined by 'sets_intra_problem')." \
+                "A variable can be used for multiple expressions if ." \
+                "'sets_intra_problem' is None."
             self.logger.error(msg)
             raise exc.ConceptualModelError(msg)
 
@@ -358,38 +366,57 @@ class Problem:
     def fetch_allowed_cvxpy_variables(
             self,
             variables_set_dict: DotDict[str, Variable],
-            problem_filter: pd.DataFrame = None,
+            problem_filter: pd.DataFrame,
             set_intra_problem_header: str = None,
             set_intra_problem_value: str = None,
     ) -> Dict[str, cp.Parameter | cp.Variable]:
 
         allowed_variables = {}
+        cvxpy_var_header = constants._CVXPY_VAR_HEADER
 
         for variable in variables_set_dict.values():
 
+            # constants are directly assigned
             if variable.type == 'constant':
-                cvxpy_variable = variable.data
+                allowed_variables[variable.symbol] = variable.data
+                continue
 
+            # filter variable data based on problem filter
+            variable_data = pd.merge(
+                left=variable.data,
+                right=problem_filter,
+                on=list(problem_filter.columns),
+                how='inner'
+            )
+
+            # if no sets_intra_problem is defined for the variable, the cvxpy
+            # variable is fetched for the current ploblem. cvxpy variable must
+            # be unique for the defined problem
+            if not variable.sets_intra_problem:
+                if variable_data.shape[0] == 1:
+                    allowed_variables[variable.symbol] = \
+                        variable_data[cvxpy_var_header].values[0]
+                else:
+                    msg = "Unable to identify a unique cvxpy variable for " \
+                        f"{variable.symbol} based on the current problem filter."
+                    self.logger.error(msg)
+                    raise exc.ConceptualModelError(msg)
+
+            # if sets_intra_problem is defined for the variable, the right
+            # cvxpy variable is fetched for the current problem
+            elif variable.sets_intra_problem \
+                    and set_intra_problem_header and set_intra_problem_value:
+                allowed_variables[variable.symbol] = variable_data.loc[
+                    variable_data[set_intra_problem_header] == set_intra_problem_value,
+                    cvxpy_var_header,
+                ].iloc[0]
+
+            # other cases
             else:
-                if problem_filter is not None:
-                    variable_data = pd.merge(
-                        left=variable.data,
-                        right=problem_filter,
-                        on=list(problem_filter.columns),
-                        how='inner'
-                    )
-                else:
-                    variable_data = variable.data
-
-                if set_intra_problem_header and set_intra_problem_value:
-                    cvxpy_variable = variable_data.loc[
-                        variable_data[set_intra_problem_header] == set_intra_problem_value,
-                        constants._CVXPY_VAR_HEADER,
-                    ].iloc[0]
-                else:
-                    cvxpy_variable = variable_data[constants._CVXPY_VAR_HEADER].values[0]
-
-            allowed_variables[variable.symbol] = cvxpy_variable
+                msg = "Unable to fetch cvxpy variable for " \
+                    f"variable {variable.symbol}."
+                self.logger.error(msg)
+                raise exc.ConceptualModelError(msg)
 
         return allowed_variables
 
@@ -433,28 +460,22 @@ class Problem:
 
             # get variables symbols in expression
             # ISSUE: apparently '.T' is recognized as a variable instead of transposition
-            var_symbols_list = self.parse_allowed_symbolic_vars(expression)
+            vars_symbols_list = self.parse_allowed_symbolic_vars(expression)
 
             # define subset of variables in the expression
             vars_subset = DotDict({
                 key: variable for key, variable in self.index.variables
-                if variable.symbol in var_symbols_list
+                if variable.symbol in vars_symbols_list
                 and variable.type != 'constant'
             })
 
             constants_subset = DotDict({
                 key: variable for key, variable in self.index.variables
-                if variable.type == 'constant'
+                if variable.symbol in vars_symbols_list
+                and variable.type == 'constant'
             })
 
-            # if more than one var, check equality of sets_parsing_hierarchy
-            if len(vars_subset) > 1:
-                self.check_variables_attribute_equality(
-                    variables_subset=vars_subset,
-                    attribute='sets_parsing_hierarchy'
-                )
-
-            # look for intra-problem set (only one allowed for now)
+            # look for intra-problem set (only one per expression allowed)
             set_intra_problem = self.find_common_sets_intra_problem(
                 variables_subset=vars_subset,
             )

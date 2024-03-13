@@ -121,7 +121,8 @@ class Variable:
         for item in self.shape:
             if isinstance(item, str):
                 if item not in self.coordinates_fields.keys():
-                    error = f"'{item}' is not a variable coordinate."
+                    error = f"Variable '{self.symbol}': '{item}' is not " \
+                        "a valid variable coordinate."
                     raise ValueError(error)
                 coordinate_key = self.coordinates_fields[item][0]
                 shape_size.append(len(self.coordinates[coordinate_key]))
