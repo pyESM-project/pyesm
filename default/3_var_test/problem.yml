@@ -9,6 +9,6 @@ objective function:
 
 constraints: 
 
-    - u @ X.T - Y == 0
+    - u @ tran(X) - Y == 0
 
     

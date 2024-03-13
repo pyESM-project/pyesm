@@ -66,7 +66,7 @@ _ALLOWED_OPERATORS = {
     '(': '(',
     ')': ')',
     ',': ',',
-    '.T': '.T',
+    'tran': cp.transpose,
     'diag': cp.diag,
     'sum': cp.sum,
     'Minimize': cp.Minimize,

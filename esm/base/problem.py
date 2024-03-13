@@ -437,7 +437,7 @@ class Problem:
             )
 
         except SyntaxError:
-            msg = "Error in parsing cvxpy expression: " \
+            msg = "Error in executing cvxpy expression: " \
                 "check allowed variables, operators or expression syntax."
             self.logger.error(msg)
             raise exc.NumericalProblemError(msg)
@@ -459,7 +459,6 @@ class Problem:
         for expression in self.symbolic_problem[header_object]:
 
             # get variables symbols in expression
-            # ISSUE: apparently '.T' is recognized as a variable instead of transposition
             vars_symbols_list = self.parse_allowed_symbolic_vars(expression)
 
             # define subset of variables in the expression
