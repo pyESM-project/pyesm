@@ -178,20 +178,20 @@ class Database:
 
         tables_names_list = self.sqltools.get_existing_tables_names
 
-        for variable in self.index.variables.values():
+        for key, variable in self.index.variables.items():
 
             if variable.type == 'exogenous' and \
-                    variable.symbol in tables_names_list:
+                    key in tables_names_list:
 
                 if self.settings['multiple_input_files']:
-                    output_file_name = variable.symbol + file_extension
+                    output_file_name = key + file_extension
                 else:
                     output_file_name = self.settings['input_data_file']
 
                 self.sqltools.table_to_excel(
                     excel_filename=output_file_name,
                     excel_dir_path=self.paths['input_data_dir'],
-                    table_name=variable.symbol,
+                    table_name=key,
                 )
 
     @connection

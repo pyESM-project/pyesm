@@ -386,6 +386,8 @@ class Variable:
                 msg = 'Lower triangular matrix must be square. ' \
                     'Check variable shape.'
 
+        # ADD HERE SPECIAL IDENTITY (define factory function in util module)
+
         else:
             msg = f"Variable value type '{value_type}' not supported. "
             f"Supported value types: {constants._ALLOWED_CONSTANTS.keys()}"

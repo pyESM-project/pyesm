@@ -1,0 +1,35 @@
+# SYMBOLIC PROBLEM
+
+# -----------------------------------------------------------------------------
+# definition of the objective function (scalar)
+objective function:
+    
+    # minimize total operational and capital costs
+    - Minimize(sum(sum(C_op + C_ca))) 
+
+# -----------------------------------------------------------------------------
+# definition of the constraints (vector expressions)
+constraints: 
+
+    # total demand by aggregated flow
+    - Q_agg == I @ tran(Q)
+
+    # aggregated flows demand equals supply
+    - Q_agg - u @ X - Y == 0
+
+    # industry-based technology assumption
+    - X - d @ tran(Q) == 0
+
+    # capacity stock balance
+    - cap_o == cap_oi + T @ cap_n
+
+    # operational costs
+    - C_op == tran(X) @ diag(c_op)
+    
+    # capital costs
+    - C_ca == mult(c_ca, cap_n)
+
+    # availability constraints
+    - cap_o @ diag(ts_max)*0.001 - tran(X) >= 0
+    - cap_o @ diag(ts_min)*0.001 - tran(X) <= 0
+    

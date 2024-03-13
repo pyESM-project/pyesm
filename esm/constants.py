@@ -1,7 +1,7 @@
 import cvxpy as cp
 import numpy as np
 
-from esm.support import util
+from esm.support import util_constants
 
 # essenstial model config files
 _SETUP_FILES = {
@@ -12,6 +12,7 @@ _SETUP_FILES = {
 
 _TEMPLATE_MODELS = {
     '1_sut': 'standard SUT, primal, industry/product-based',
+    '2_multi_year': 'SUT model, multi-year, rcot, primal problem, industry-based'
 }
 
 # default column name-type for sets id and values fields
@@ -55,7 +56,7 @@ _ALLOWED_CONSTANTS = {
     'sum_vector': (np.ones, ),  # vector of 1s
     'identity': (np.eye, ),  # itentity matrix
     # lower triangular matrix of 1s(inc. diagonal)
-    'lower_triangular': (util.tril, ),
+    'lower_triangular': (util_constants.tril, ),
 }
 
 # allowed operators for defining symbolic CVXPY problem
@@ -73,5 +74,6 @@ _ALLOWED_OPERATORS = {
     'tran': cp.transpose,
     'diag': cp.diag,
     'sum': cp.sum,
+    'mult': cp.multiply,
     'Minimize': cp.Minimize,
 }
