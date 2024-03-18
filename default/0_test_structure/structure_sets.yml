@@ -1,0 +1,47 @@
+# structure of sets
+
+scenarios:
+    symbol: s
+    table_name: _set_SCENARIOS
+    table_headers:
+        id: ['s_ID', 'INTEGER PRIMARY KEY']
+        name: ['s_Name', 'TEXT']
+    split_problem: True
+
+sensitivity:
+    symbol: e
+    table_name: _set_SENSITIVITY
+    table_headers:
+        id: ['e_ID', 'INTEGER PRIMARY KEY']
+        name: ['e_Name', 'TEXT']
+    split_problem: True
+
+time:
+    symbol: y 
+    table_name: _set_TIME
+    table_headers:
+        id: ['y_ID', 'INTEGER PRIMARY KEY']
+        name: ['y_Name', 'TEXT']
+
+technologies:
+    symbol: t
+    table_name: _set_TECHNOLOGIES
+    table_headers:
+        id: ['t_ID', 'INTEGER PRIMARY KEY']
+        name: ['t_Name', 'TEXT']
+        category: ['t_Category', 'TEXT']
+    set_categories:
+        t.s: Supply technology
+        t.d: Demand technology
+
+flows:
+    symbol: f
+    table_name: _set_FLOWS
+    table_headers:
+        id: ['f_ID', 'INTEGER PRIMARY KEY']
+        name: ['f_Name', 'TEXT']
+        category: ['f_Category', 'TEXT']
+        competition: ['f_Competition', 'TEXT']
+    set_categories:
+        f.p: Product flow
+        f.c: Cost flow

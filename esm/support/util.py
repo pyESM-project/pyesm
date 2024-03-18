@@ -120,7 +120,7 @@ def validate_selection(
 
 
 def validate_dict_structure(
-        dictionary: Dict[str, Dict[str, Any]],
+        dictionary: Dict[str, Any],
         validation_structure: Dict[str, Any],
 ) -> bool:
     """
@@ -134,12 +134,11 @@ def validate_dict_structure(
         bool: True if the dictionary matches the validation structure, 
             False otherwise.
     """
-    for value in dictionary.values():
-        for key, sub_value in value.items():
-            if key not in validation_structure:
-                return False
-            if not isinstance(sub_value, validation_structure[key]):
-                return False
+    for key, value in dictionary.items():
+        if key not in validation_structure:
+            return False
+        if not isinstance(value, validation_structure[key]):
+            return False
     return True
 
 

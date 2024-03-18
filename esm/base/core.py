@@ -23,7 +23,6 @@ class Core:
     ) -> None:
 
         self.logger = logger.getChild(__name__)
-
         self.logger.info(f"'{self}' object initialization...")
 
         self.files = files
@@ -42,22 +41,22 @@ class Core:
             paths=self.paths,
         )
 
-        self.database = Database(
-            logger=self.logger,
-            files=self.files,
-            paths=self.paths,
-            sqltools=self.sqltools,
-            settings=self.settings,
-            index=self.index,
-        )
+        # self.database = Database(
+        #     logger=self.logger,
+        #     files=self.files,
+        #     paths=self.paths,
+        #     sqltools=self.sqltools,
+        #     settings=self.settings,
+        #     index=self.index,
+        # )
 
-        self.problem = Problem(
-            logger=self.logger,
-            files=self.files,
-            paths=self.paths,
-            settings=self.settings,
-            index=self.index
-        )
+        # self.problem = Problem(
+        #     logger=self.logger,
+        #     files=self.files,
+        #     paths=self.paths,
+        #     settings=self.settings,
+        #     index=self.index
+        # )
 
         self.logger.info(f"'{self}' initialized.")
 

@@ -4,6 +4,7 @@ from typing import Any
 from esm import constants
 from esm.log_exc.logger import Logger
 from esm.log_exc.exceptions import *
+from esm.support.dotdict import DotDict
 from esm.support.file_manager import FileManager
 from esm.support.pbi_manager import PBIManager
 from esm.base.core import Core
@@ -38,7 +39,7 @@ class Model:
         self.files = FileManager(logger=self.logger)
 
         self.logger.info('Defining settings from model arguments.')
-        self.settings = {
+        self.settings = DotDict({
             'model_name': model_dir_name,
             'use_existing_data': use_existing_data,
             'multiple_input_files': multiple_input_files,
@@ -47,18 +48,18 @@ class Model:
             'input_data_file': input_data_file,
             'sqlite_database_file': sqlite_database_file,
             'sqlite_database_foreign_keys': sqlite_database_foreign_keys,
-        }
+        })
 
         self.logger.info('Defining paths from model arguments.')
         model_dir_path = Path(main_dir_path) / model_dir_name
 
-        self.paths = {
+        self.paths = DotDict({
             'model_dir': model_dir_path,
             'input_data_dir': model_dir_path / input_data_dir,
             'sets_excel_file': model_dir_path / sets_xlsx_file,
             'sqlite_database': model_dir_path / sqlite_database_file,
             'pbi_report': model_dir_path / powerbi_report_file,
-        }
+        })
 
         self.validate_model_dir()
 

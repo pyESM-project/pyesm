@@ -1,5 +1,7 @@
 from pathlib import Path
-from typing import Dict
+from typing import Any, Dict
+
+from _pytest.main import validate_basetemp
 
 from esm.base.set import Set
 from esm.base.variable import Variable
@@ -32,7 +34,7 @@ class Index:
         self.load_vars_coordinates_fields()
         self.load_vars_table_headers()
         self.load_vars_sets_parsing_hierarchy()
-        self.load_sets_intra_problem()
+        # self.load_sets_intra_problem()
 
         self.logger.info(f"'{self}' object initialized.")
 
@@ -63,56 +65,48 @@ class Index:
 
         return list_sets_split_problem
 
-    def load_sets(self) -> DotDict[str, Set]:
+    def _load_and_validate(
+            self,
+            file_key: int,
+            validation_structure: dict,
+            object_class: Set | Variable,
+    ) -> DotDict[str, Set | Variable]:
 
-        sets_data = self.files.load_file(
-            file_name=constants._SETUP_FILES['sets_structure'],
-            dir_path=self.paths['model_dir'],
+        data = self.files.load_file(
+            file_name=constants._SETUP_FILES[file_key],
+            dir_path=self.paths['model_dir']
         )
 
-        if util.validate_dict_structure(
-            dictionary=sets_data,
-            validation_structure=constants._SET_DEFAULT_STRUCTURE,
-        ):
+        if all([
+            util.validate_dict_structure(
+                dictionary=dictionary,
+                validation_structure=validation_structure)
+            for dictionary in data.values()
+        ]):
             return DotDict({
-                key: Set(logger=self.logger, **value)
-                for key, value in sets_data.items()
+                key: object_class(logger=self.logger, **value)
+                for key, value in data.items()
             })
         else:
-            msg = "Sets data validation not successful. " \
-                "Set input data must comply with default structure."
+            msg = f"'{object_class.__name__}' data validation not successful: " \
+                f"input data must comply with default structure. " \
+                f"Check setup file: '{constants._SETUP_FILES[file_key]}'"
             self.logger.error(msg)
             raise exc.SettingsError(msg)
 
-    def load_sets_intra_problem(self) -> None:
-        for variable in self.variables.values():
-            if variable.type != 'constant':
-                variable.sets_intra_problem = {
-                    key: value
-                    for key, value in variable.sets_parsing_hierarchy.items()
-                    if key not in self.list_sets_split_problem
-                }
+    def load_sets(self) -> DotDict[str, Set]:
+        return self._load_and_validate(
+            file_key=0,
+            validation_structure=constants._SET_DEFAULT_STRUCTURE,
+            object_class=Set,
+        )
 
     def load_variables(self) -> DotDict[str, Variable]:
-
-        variables_data = self.files.load_file(
-            file_name=constants._SETUP_FILES['variables'],
-            dir_path=self.paths['model_dir'],
+        return self._load_and_validate(
+            file_key=1,
+            validation_structure=constants._VARIABLES_DEFAULT_STRUCTURE,
+            object_class=Variable,
         )
-
-        if util.validate_dict_structure(
-            dictionary=variables_data,
-            validation_structure=constants._VARIABLE_DEFAULT_STRUCTURE,
-        ):
-            return DotDict({
-                key: Variable(logger=self.logger, **value)
-                for key, value in variables_data.items()
-            })
-        else:
-            msg = "Variables data validation not successful. " \
-                "Variable input data must comply with default structure."
-            self.logger.error(msg)
-            raise exc.SettingsError(msg)
 
     def load_vars_coordinates_fields(self) -> None:
 
@@ -122,7 +116,7 @@ class Index:
         for variable in self.variables.values():
             set_headers_key = constants._STD_TABLE_HEADER_KEY
 
-            for set_key in variable.coordinates_info.keys():
+            for set_key in variable.coordinates_info:
                 set_headers = self.sets[set_key].table_headers[set_headers_key]
                 variable.coordinates_fields[set_key] = set_headers
 
@@ -143,15 +137,6 @@ class Index:
                 position=0,
             )
 
-    def load_foreign_keys_to_vars_index(self) -> None:
-
-        self.logger.debug(f"Loading tables 'foreign_keys' to Index.")
-
-        for variable in self.variables.values():
-            for set_key, set_header in variable.coordinates_fields.items():
-                variable.foreign_keys[set_header[0]] = \
-                    (set_header[0], self.sets[set_key].table_name)
-
     def load_vars_sets_parsing_hierarchy(self) -> None:
 
         self.logger.debug(
@@ -168,6 +153,24 @@ class Index:
                 variable.sets_parsing_hierarchy = None
             else:
                 variable.sets_parsing_hierarchy = sets_parsing_hierarchy
+
+    def load_sets_intra_problem(self) -> None:
+        for variable in self.variables.values():
+            if variable.type != 'constant':
+                variable.sets_intra_problem = {
+                    key: value
+                    for key, value in variable.sets_parsing_hierarchy.items()
+                    if key not in self.list_sets_split_problem
+                }
+
+    def load_foreign_keys_to_vars_index(self) -> None:
+
+        self.logger.debug(f"Loading tables 'foreign_keys' to Index.")
+
+        for variable in self.variables.values():
+            for set_key, set_header in variable.coordinates_fields.items():
+                variable.foreign_keys[set_header[0]] = \
+                    (set_header[0], self.sets[set_key].table_name)
 
     def load_sets_to_index(
             self,

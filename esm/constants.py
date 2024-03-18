@@ -5,9 +5,9 @@ from esm.support import util_constants
 
 # essenstial model config files
 _SETUP_FILES = {
-    'variables': 'variables.yml',
-    'problem': 'problem.yml',
-    'sets_structure': 'sets_structure.yml',
+    0: 'structure_sets.yml',
+    1: 'structure_variables.yml',
+    2: 'problem.yml',
 }
 
 _TEMPLATE_MODELS = {
@@ -41,13 +41,17 @@ _SET_DEFAULT_STRUCTURE = {
 }
 
 # default Variable info structure (for validation purpose)
-_VARIABLE_DEFAULT_STRUCTURE = {
-    'symbol': str,
+_VARIABLES_DEFAULT_STRUCTURE = {
     'name': str,
     'type': str,
-    'coordinates_info': dict,
-    'shape': list,
-    'value': str,
+    'coordinates_info': list,
+    'variables_info': dict,
+}
+
+_UNIT_VARIABLE_DEFAULT_STRUCTURE = {
+    'rows': dict,
+    'cols': dict,
+    'value': str
 }
 
 # allowed constants. more can be added, but Variable.define_constant must
