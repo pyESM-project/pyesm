@@ -4,7 +4,7 @@ import pandas as pd
 from esm.log_exc.logger import Logger
 
 
-class Set:
+class SetTable:
     """
     Represents a set with associated attributes and methods.
 

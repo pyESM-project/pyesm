@@ -12,7 +12,7 @@
 V:
     name: short description
     type: exogenous
-    coordinates_info: [scenarios, sensitivity, time, technologies, flows]
+    coordinates: [scenarios, sensitivity, time, technologies, flows]
     variables_info:
         V_tf:
             rows: 
@@ -44,7 +44,7 @@ V:
 constants: 
     name: short description
     type: constant
-    coordinates_info: [technologies, time]
+    coordinates: [technologies, time]
     variables_info:
         i_t1:
             value: sum_vector
@@ -66,7 +66,7 @@ constants:
 X:
     name: short description
     type: endogenous
-    coordinates_info: [scenarios, sensitivity, time, technologies, flows]
+    coordinates: [scenarios, sensitivity, time, technologies, flows]
     variables_info:
         X_tf:
             rows: 

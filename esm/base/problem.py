@@ -307,11 +307,11 @@ class Problem:
         # se si vuole mettere i nomi dei set (Scenarios) bisogna cambiarli anche
         # nelle tabelle sei set e delle variabili.
         dict_to_unpivot = {}
-        for set_name, set_header in self.index.list_sets_split_problem.items():
+        for set_name, set_header in self.index.sets_split_problem_list.items():
             set_values = self.index.sets[set_name].data[set_header]
             dict_to_unpivot[set_header] = list(set_values)
 
-        list_sets_split_problem = self.index.list_sets_split_problem.values()
+        list_sets_split_problem = self.index.sets_split_problem_list.values()
 
         problems_data = util.unpivot_dict_to_dataframe(
             data_dict=dict_to_unpivot,
@@ -463,13 +463,13 @@ class Problem:
 
             # define subset of variables in the expression
             vars_subset = DotDict({
-                key: variable for key, variable in self.index.variables
+                key: variable for key, variable in self.index.data
                 if variable.symbol in vars_symbols_list
                 and variable.type != 'constant'
             })
 
             constants_subset = DotDict({
-                key: variable for key, variable in self.index.variables
+                key: variable for key, variable in self.index.data
                 if variable.symbol in vars_symbols_list
                 and variable.type == 'constant'
             })

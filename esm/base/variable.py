@@ -10,59 +10,7 @@ from esm.support import util
 
 class Variable:
     """
-    Represents a model variable with associated attributes and methods.
-
-    Args:
-        logger (Logger): An instance of the Logger class for logging purposes.
-        **kwargs: Additional keyword arguments representing attributes of 
-            the variable.
-
-    Attributes:
-        logger (Logger): A Logger instance for logging.
-        symbol (str): Symbol representing the variable.
-        name (str): Variable name.
-        type (str): Variable type.
-        coordinates_info (Dict[str, Any]): Information about all sets or 
-            subsets that define the variable (coordinates).
-        shape (List[int]): Shape of the variable matrix (bidimensional).
-        value (str): Type of the variable (defined to assign directly values 
-            to constants).
-        coordinates_fields (Dict[str, Any]): Name and type of the coordinates
-            table headers in the SQLite database.
-        table_headers (Dict[str, Any]): Full SQLite table headers of the table 
-            associated with the variable (including id and value columns).
-        coordinates (Dict[str, Any]): Coordinates of the variable (sets table
-            headers and related values).
-        foreign_keys (Dict[str, Any]): Foreign keys of sets tables associated 
-            with the variable table.
-        sets_parsing_hierarchy (Dict[str, str]): Names and table headers of 
-            the sets that define multiple variables (so excluding sets 
-            defining variable dimension).
-        sets_intra_problem (Dict[str, str]): Names and table headers of the 
-            sets that do not define variable shape and do not define multiple
-            problems (e.g. scenarios may define variable in multiple problems,
-            years may define different variables in the same problem).
-        data (pd.DataFrame): DataFrame containing the cvxpy variables for each
-            combination of sets_parsing_hierarchy, and the related filter 
-            dictionaries necessary to fetch data in SQLite variable tables.
-
-    Methods:
-        __repr__: Representation of the Variable instance.
-        __iter__: Iterator over the Variable instance.
-        shape_size: Returns the size of each dimension in the variable matrix.
-        is_square: Checks if the variable matrix is square.
-        is_vector: Checks if the variable matrix is a vector.
-        dim_labels: Retrieves the labels of the variable matrix dimensions.
-        dim_items: Retrieves the items of the variable matrix dimension.
-        get_dim_label: Retrieves the label for a specific matrix dimension.
-        get_dim_items: Retrieves the items for a specific matrix dimension.
-        none_data_coordinates: Checks for None data values in cvxpy variables 
-            and returns related coordinates.
-        reshaping_sqlite_table_data: Reshapes data fetched from SQLite database 
-            variable table.
-        reshaping_variable_data: Reshapes data for a cvxpy variable to 
-            match SQLite database variable table.
-        define_constant: Defines a constant of a specific type.
+    tbd
     """
 
     def __init__(
@@ -73,23 +21,18 @@ class Variable:
 
         self.logger = logger.getChild(__name__)
 
-        self.symbol: str = None
-        self.name: str = None
-        self.type: str = None
-        self.coordinates_info: Dict[str, Any] = {}
-        self.shape: List[int] = []
+        self.rows: Dict[str, Any] = {}
+        self.cols: Dict[str, Any] = {}
         self.value: str = None
+        self.related_table: str = None
+        self.type: str = None
 
         for key, value in kwargs.items():
             setattr(self, key, value)
 
-        self.coordinates_fields: Dict[str, Any] = {}
-        self.table_headers: Dict[str, Any] = {}
+        self.coordinates_info: Dict[str, Any] = {}
         self.coordinates: Dict[str, Any] = {}
-        self.foreign_keys: Dict[str, Any] = {}
-        self.sets_parsing_hierarchy: Dict[str, str] = {}
-        self.sets_intra_problem: Dict[str, str] = {}
-        self.data: pd.DataFrame = None
+        # self.data: pd.DataFrame = None
 
     def __repr__(self) -> str:
         output = ''
@@ -102,6 +45,12 @@ class Variable:
         for key, value in self.__dict__.items():
             if key not in ('data', 'logger'):
                 yield key, value
+
+    @property
+    def shape(self) -> List[str | int]:
+        rows_shape = self.rows['set'] if 'set' in self.rows else 1
+        cols_shape = self.cols['set'] if 'set' in self.cols else 1
+        return [rows_shape, cols_shape]
 
     @property
     def shape_size(self) -> List[int]:
@@ -120,11 +69,11 @@ class Variable:
 
         for item in self.shape:
             if isinstance(item, str):
-                if item not in self.coordinates_fields.keys():
+                if item not in self.coordinates_table_headers.keys():
                     error = f"Variable '{self.symbol}': '{item}' is not " \
                         "a valid variable coordinate."
                     raise ValueError(error)
-                coordinate_key = self.coordinates_fields[item][0]
+                coordinate_key = self.coordinates_table_headers[item][0]
                 shape_size.append(len(self.coordinates[coordinate_key]))
 
             elif isinstance(item, int):

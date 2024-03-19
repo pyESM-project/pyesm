@@ -105,7 +105,7 @@ class Model:
                 'Loading new sets data and variable coordinates.')
 
         try:
-            self.core.index.load_sets_to_index(
+            self.core.index.load_sets_data_to_index(
                 excel_file_name=self.settings['sets_xlsx_file'],
                 excel_file_dir_path=self.paths['model_dir'])
         except FileNotFoundError:
@@ -115,10 +115,10 @@ class Model:
             self.logger.error(msg)
             raise SettingsError(msg)
 
-        self.core.index.load_vars_coordinates_to_index()
+        self.core.index.load_table_coordinates_data_to_index()
 
         if self.settings['sqlite_database_foreign_keys']:
-            self.core.index.load_foreign_keys_to_vars_index()
+            self.core.index.fetch_foreign_keys_to_data_tables()
 
     def initialize_blank_database(self) -> None:
         if self.settings['use_existing_data']:

@@ -10,15 +10,18 @@ _SETUP_FILES = {
     2: 'problem.yml',
 }
 
+# available template models to be replicated and customized
 _TEMPLATE_MODELS = {
     '1_sut': 'standard SUT, primal, industry/product-based',
     '2_multi_year': 'SUT model, multi-year, rcot, primal problem, industry-based'
 }
 
+# headers for table related to sets and data
+_STD_TABLE_HEADER = 'name'
+
 # default column name-type for sets id and values fields
 _STD_VALUES_FIELD = {'values': ['values', 'REAL']}
 _STD_ID_FIELD = {'id': ['id', 'INTEGER PRIMARY KEY']}
-_STD_TABLE_HEADER_KEY = 'name'
 
 # default headers for variables dataframe
 _CVXPY_VAR_HEADER = 'variable'
@@ -40,15 +43,14 @@ _SET_DEFAULT_STRUCTURE = {
     'split_problem': bool,
 }
 
-# default Variable info structure (for validation purpose)
-_VARIABLES_DEFAULT_STRUCTURE = {
+# default DataTable and Variable structures (for validation purpose)
+_DATA_TABLE_DEFAULT_STRUCTURE = {
     'name': str,
     'type': str,
-    'coordinates_info': list,
+    'coordinates': list,
     'variables_info': dict,
 }
-
-_UNIT_VARIABLE_DEFAULT_STRUCTURE = {
+_VARIABLE_DEFAULT_STRUCTURE = {
     'rows': dict,
     'cols': dict,
     'value': str

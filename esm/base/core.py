@@ -69,7 +69,7 @@ class Core:
             "Initialize variables dataframes "
             "(cvxpy objects, filters dictionaries).")
 
-        for variable in self.index.variables.values():
+        for variable in self.index.data.values():
             if variable.type == 'constant':
                 variable.data = self.problem.generate_constant_data(variable)
             else:
@@ -100,7 +100,7 @@ class Core:
             f"Fetching data from '{self.settings['sqlite_database_file']}' "
             "to cvxpy exogenous variables.")
 
-        for variable in self.index.variables.values():
+        for variable in self.index.data.values():
 
             if isinstance(variable, Variable) and variable.type == 'exogenous':
                 self.logger.debug(
@@ -131,7 +131,7 @@ class Core:
             "Fetching data from cvxpy endogenous variables "
             f"to SQLite database '{self.settings['sqlite_database_file']}' ")
 
-        for var_key, variable in self.index.variables.items():
+        for var_key, variable in self.index.data.items():
 
             if isinstance(variable, Variable) and variable.type == 'endogenous':
                 self.logger.debug(

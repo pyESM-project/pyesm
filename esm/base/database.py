@@ -105,7 +105,7 @@ class Database:
         self.logger.info(
             "Generation of empty SQLite database variables tables.")
 
-        for var_key, variable in self.index.variables.items():
+        for var_key, variable in self.index.data.items():
 
             if variable.type == 'constant':
                 continue
@@ -121,7 +121,7 @@ class Database:
         self.logger.info(
             "Filling empty SQLite database variables tables with sets data.")
 
-        for var_key, variable in self.index.variables.items():
+        for var_key, variable in self.index.data.items():
 
             if variable.type == 'constant':
                 continue
@@ -178,7 +178,7 @@ class Database:
 
         tables_names_list = self.sqltools.get_existing_tables_names
 
-        for key, variable in self.index.variables.items():
+        for key, variable in self.index.data.items():
 
             if variable.type == 'exogenous' and \
                     key in tables_names_list:
@@ -205,7 +205,7 @@ class Database:
 
         if self.settings['multiple_input_files']:
             data = {}
-            for variable in self.index.variables.values():
+            for variable in self.index.data.values():
                 if variable.type == 'exogenous':
 
                     var_name = variable.symbol
