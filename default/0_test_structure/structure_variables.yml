@@ -31,7 +31,6 @@ V:
             rows: 
                 set: flows
                 set_categories: f.p
-                aggregation_key: competition
             cols:
                 set: flows 
                 set_categories: f.p
@@ -44,8 +43,18 @@ V:
 constants: 
     name: short description
     type: constant
-    coordinates: [technologies, time]
+    coordinates: [flows, technologies, time]
     variables_info:
+        I_rcot:
+            value: sum_vector
+            rows:
+                set: flows
+                set_categories: f.p
+                aggregation_key: competition
+            cols:
+                set: flows
+                set_categories: f.p
+
         i_t1:
             value: sum_vector
             rows:
@@ -55,10 +64,8 @@ constants:
             value: lower_triangular
             rows:
                 set: time
-                set_categories: t.s
             cols:
                 set: time
-                set_categories: t.s
 
 # -----------------------------------------------------------------------------
 # endogenous variables

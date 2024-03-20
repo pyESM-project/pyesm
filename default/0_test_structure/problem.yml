@@ -3,13 +3,17 @@
 # definition of the objective function (scalar)
 
 objective function:
-    - Minimize(sum(X)) # dummy objective
+    - Minimize(1) # dummy objective
 
 # definition of the constraints (vector expressions)
 
 constraints: 
 
-    # total flows demand equals total supply
-    - Q - u @ X - Y == 0
+    - I_rcot @ V_ff - X_ff == 0
+    - V_yt - X_yt == 0
+    - V_tf - X_tf == 0
+    - V_yt @ i_t1 - X_yt @ i_t1 == 0
+    - T @ V_yt - T @ X_yt == 0
+
 
     

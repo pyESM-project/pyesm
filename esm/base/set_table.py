@@ -1,6 +1,7 @@
-from typing import Any, Dict, Iterator, Tuple
+from typing import Any, Dict, Iterator, List, Tuple
 import pandas as pd
 
+from esm import constants
 from esm.log_exc.logger import Logger
 
 
@@ -49,6 +50,14 @@ class SetTable:
 
         for key, value in kwargs.items():
             setattr(self, key, value)
+
+    @property
+    def set_header(self) -> str:
+        return self.table_headers[constants._STD_TABLE_HEADER][0]
+
+    @property
+    def set_values(self) -> List[str]:
+        return list(self.data[self.set_header])
 
     def __repr__(self) -> str:
         output = ''

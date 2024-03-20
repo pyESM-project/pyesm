@@ -18,6 +18,7 @@ _TEMPLATE_MODELS = {
 
 # headers for table related to sets and data
 _STD_TABLE_HEADER = 'name'
+_STD_CATEGORY_HEADER = 'category'
 
 # default column name-type for sets id and values fields
 _STD_VALUES_FIELD = {'values': ['values', 'REAL']}

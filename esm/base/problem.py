@@ -87,23 +87,25 @@ class Problem:
 
     def generate_constant_data(
             self,
+            variable_name: str,
             variable: Variable,
     ) -> cp.Constant:
 
         self.logger.debug(
-            f"Generating constant '{variable.symbol}' as '{variable.value}'.")
+            f"Generating constant '{variable_name}' as '{variable.value}'.")
 
         var_value = variable.define_constant(variable.value)
 
         return self.create_cvxpy_variable(
             type=variable.type,
             shape=variable.shape_size,
-            name=variable.symbol + str(variable.shape),
+            name=variable_name + str(variable.shape),
             value=var_value,
         )
 
     def generate_vars_dataframe(
             self,
+            variable_name: str,
             variable: Variable,
     ) -> pd.DataFrame:
         """For a Variable object, generates a Pandas DataFrame with the  
@@ -117,17 +119,22 @@ class Problem:
         }
 
         self.logger.debug(
-            f"Generating variable '{variable.symbol}' dataframe "
+            f"Generating dataframe for variable '{variable_name}' "
             "(cvxpy object, filter dictionary).")
 
-        if variable.sets_parsing_hierarchy:
-            sets_parsing_hierarchy = variable.sets_parsing_hierarchy.values()
+        if variable.coordinates_info['intra']:
+            coords_intra_problem = variable.coordinates_info['intra'].values()
         else:
-            sets_parsing_hierarchy = None
+            coords_intra_problem = None
+
+        coordinates_dict_with_headers = util.substitute_keys(
+            source_dict=variable.coordinates['intra'],
+            key_mapping_dict=variable.coordinates_info['intra']
+        )
 
         var_data = util.unpivot_dict_to_dataframe(
-            data_dict=variable.coordinates,
-            key_order=sets_parsing_hierarchy
+            data_dict=coordinates_dict_with_headers,
+            key_order=coords_intra_problem
         )
 
         for item in headers.values():
@@ -143,23 +150,23 @@ class Problem:
                 self.create_cvxpy_variable(
                     type=variable.type,
                     shape=variable.shape_size,
-                    name=variable.symbol + str(variable.shape))
+                    name=variable_name + str(variable.shape))
 
             var_filter = {}
 
             for header in var_data.loc[row].index:
 
-                if sets_parsing_hierarchy is not None and \
-                        header in sets_parsing_hierarchy:
+                if coords_intra_problem is not None and \
+                        header in coords_intra_problem:
                     var_filter[header] = [var_data.loc[row][header]]
 
                 elif header == headers['cvxpy']:
-                    for dim in variable.shape:
-                        if isinstance(dim, int):
+                    for dim in [0, 1]:
+                        if isinstance(variable.shape[dim], int):
                             pass
-                        elif isinstance(dim, str):
-                            dim_header = variable.table_headers[dim][0]
-                            var_filter[dim_header] = variable.coordinates[dim_header]
+                        elif isinstance(variable.shape[dim], str):
+                            dim_header = variable.dim_labels[dim]
+                            var_filter[dim_header] = variable.dim_items[dim]
 
                 elif header == headers['filter']:
                     pass
@@ -175,7 +182,7 @@ class Problem:
 
     def load_symbolic_problem_from_file(self) -> None:
 
-        problem_file_name = constants._SETUP_FILES['problem']
+        problem_file_name = constants._SETUP_FILES[2]
 
         if self.symbolic_problem is not None:
             self.logger.warning(f"Symbolic problem already loaded.")
@@ -252,7 +259,7 @@ class Problem:
     ) -> Dict[str, str]:
 
         vars_sets_intra_problem = {
-            key: getattr(variable, 'sets_intra_problem')
+            key: variable.coordinates_info['intra']
             for key, variable in variables_subset.items()
         }
 
@@ -374,11 +381,11 @@ class Problem:
         allowed_variables = {}
         cvxpy_var_header = constants._CVXPY_VAR_HEADER
 
-        for variable in variables_set_dict.values():
+        for var_key, variable in variables_set_dict.items():
 
             # constants are directly assigned
             if variable.type == 'constant':
-                allowed_variables[variable.symbol] = variable.data
+                allowed_variables[var_key] = variable.data
                 continue
 
             # filter variable data based on problem filter
@@ -463,14 +470,14 @@ class Problem:
 
             # define subset of variables in the expression
             vars_subset = DotDict({
-                key: variable for key, variable in self.index.data
-                if variable.symbol in vars_symbols_list
+                key: variable for key, variable in self.index.variables.items()
+                if key in vars_symbols_list
                 and variable.type != 'constant'
             })
 
             constants_subset = DotDict({
-                key: variable for key, variable in self.index.data
-                if variable.symbol in vars_symbols_list
+                key: variable for key, variable in self.index.variables.items()
+                if key in vars_symbols_list
                 and variable.type == 'constant'
             })
 

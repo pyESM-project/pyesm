@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Dict
+from typing import Dict, List
 
 from esm import constants
 from esm.base.data_table import DataTable
@@ -61,6 +61,18 @@ class Index:
             raise exc.NumericalProblemError(msg)
 
         return sets_split_problem_list
+
+    @property
+    def list_sets(self) -> List[str]:
+        return list(self.sets.keys())
+
+    @property
+    def list_data_tables(self) -> List[str]:
+        return list(self.data.keys())
+
+    @property
+    def list_variables(self) -> List[str]:
+        return list(self.variables.keys())
 
     def _load_and_validate(
             self,
@@ -162,13 +174,14 @@ class Index:
             related_table = variable.related_table
             related_table_headers = self.data[related_table].table_headers
 
-            rows, cols, intra, inter, all_sets = {}, {}, {}, {}, {}
+            rows, cols, intra, inter = {}, {}, {}, {}
+            # all_sets = {}
 
             for key, value in related_table_headers.items():
                 header = value[0]
 
                 if key not in constants._STD_ID_FIELD:
-                    all_sets[key] = header
+                    # all_sets[key] = header
 
                     if key == variable.shape[0]:
                         rows[key] = header
@@ -186,11 +199,11 @@ class Index:
                 'cols': cols,
                 'intra': intra,
                 'inter': inter,
-                'all': all_sets,
+                # 'all': all_sets,
             }
 
     def fetch_foreign_keys_to_data_tables(self) -> None:
-        self.logger.debug(
+        self.logger.info(
             f"Loading tables 'foreign_keys' to Index.data_tables.")
 
         for table in self.data.values():
@@ -236,62 +249,80 @@ class Index:
             if table_name in sets_values.keys():
                 set_instance.data = sets_values[table_name]
 
-    def load_table_coordinates_data_to_index(self) -> None:
+    def load_coordinates_to_data_index(self) -> None:
+        self.logger.info(
+            f"'{self}' object: loading variable coordinates to Index.data.")
+
+        for table in self.data.values():
+
+            table.coordinates_values.update({
+                set_header: self.sets[set_key].set_values
+                for set_key, set_header in table.coordinates_headers.items()
+            })
+
+    def load_coordinates_to_variables_index(self) -> None:
 
         self.logger.info(
             f"'{self}' object: loading variable coordinates to "
             "Index.variables.")
 
-        for variable in self.variables.values():
+        for var_key, variable in self.variables.items():
+
+            # replicate coordinates_info with inner values as None
             coordinates = {
-                key: value
+                key: {inner_key: None for inner_key in value}
                 for key, value in variable.coordinates_info.items()
             }
 
-            # replicare dizionario variable.coordinates_info con value None
-            # per ogni key, prendere i value come nuova key, e nei value
-            # mettere la lista dei nomi dei set
-            # se rows o cols bisogna filtrare sulla base di variable.rows/cols
+            # parse coordinates and retrieve each related values
+            for coord_group_key, coord_group_value in coordinates.items():
 
-            variable.coordinates = coordinates
+                var_filters = getattr(variable, coord_group_key, {}).copy()
+                var_filters.pop('set', None)
 
-        for table in self.data.values():
+                # if rows/cols, coordinates may be filtered/aggregated
+                if coord_group_key in ['rows', 'cols'] and var_filters:
 
-            for set_key, set_filter in table.coordinates.items():
+                    set_key = list(coord_group_value.keys())[0]
+                    set_value = self.sets[set_key]
 
-                set_header = table.coordinates_table_headers[set_key][0]
+                    if 'set_categories' in var_filters and \
+                            var_filters['set_categories']:
 
-                if set_filter is None:
-                    set_values = list(self.sets[set_key].data[set_header])
+                        name_header = set_value.table_headers[constants._STD_TABLE_HEADER][0]
+                        category_header = set_value.table_headers[constants._STD_CATEGORY_HEADER][0]
+                        category_filter_id = var_filters['set_categories']
+                        category_filter = set_value.set_categories[category_filter_id]
 
-                elif isinstance(set_filter, dict):
-
-                    if 'set_categories' in set_filter and \
-                            set_filter['set_categories'] is not None:
-
-                        category_filter_id = set_filter['set_categories']
-                        category_filter = self.sets[set_key].set_categories[category_filter_id]
-                        category_header_name = self.sets[set_key].table_headers['category'][0]
-
-                        set_filtered = self.sets[set_key].data.query(
-                            f'{category_header_name} == "{category_filter}"'
+                        set_filtered = set_value.data.query(
+                            f'{category_header} == "{category_filter}"'
                         ).copy()
 
-                    if 'aggregation_key' in set_filter and \
-                            set_filter['aggregation_key'] is not None:
+                    if 'aggregation_key' in var_filters and \
+                            var_filters['aggregation_key']:
 
-                        aggregation_key = set_filter['aggregation_key']
-                        aggregation_key_name = self.sets[set_key].table_headers[aggregation_key][0]
+                        aggregation_key = var_filters['aggregation_key']
+                        aggregation_key_header = set_value.table_headers[aggregation_key][0]
 
                         set_filtered.loc[
-                            set_filtered[aggregation_key_name] != '', set_header
-                        ] = set_filtered[aggregation_key_name]
+                            set_filtered[aggregation_key_header] != '', name_header
+                        ] = set_filtered[aggregation_key_header]
 
-                    set_values = list(set(set_filtered[set_header]))
+                    coord_group_value.update(
+                        {set_key: list(set(set_filtered[name_header]))})
 
+                # for coordinates sets different than 'all', no aggregation nor filtering
+                # elif coord_group_key != 'all':
                 else:
-                    error_msg = f"Missing or wrong data in 'constants/_VARIABLES'."
-                    self.logger.error(error_msg)
-                    raise exc.MissingDataError(error_msg)
+                    coord_group_value.update({
+                        set_key: self.sets[set_key].set_values
+                        for set_key in coord_group_value
+                    })
 
-                table.coordinates[set_header] = set_values
+                # coordinates sets equal to 'all' unpack all previous
+                # else:
+                #     keys_to_merge = ['rows', 'cols', 'intra', 'inter']
+                #     for key in keys_to_merge:
+                #         coord_group_value.update(coordinates[key])
+
+            variable.coordinates = coordinates

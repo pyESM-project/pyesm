@@ -20,6 +20,7 @@ class DataTable:
         self.type: str = None
         self.coordinates: List[str] = []
         self.coordinates_headers: Dict[str, str] = {}
+        self.coordinates_values: Dict[str, Any] = {}
         self.table_headers: Dict[str, Any] = {}
         self.variables_info: Dict[str, Any] = {}
         self.foreign_keys: Dict[str, Any] = {}

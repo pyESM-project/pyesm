@@ -403,3 +403,27 @@ def add_column_to_dataframe(
         column=column_header,
         value=column_values,
     )
+
+
+def substitute_keys(source_dict, key_mapping_dict):
+    """
+    Substitute the keys in source_dict with the values from key_mapping.
+    Raises an error if a value in key_mapping does not exist as a key in source_dict.
+
+    Parameters:
+    - source_dict (dict): A dictionary whose keys need to be substituted.
+    - key_mapping (dict): A dictionary containing the mapping of original keys to new keys.
+
+    Returns:
+    - dict: A new dictionary with substituted keys.
+
+    Raises:
+    - ValueError: If a value from key_mapping is not a key in source_dict.
+    """
+    substituted_dict = {}
+    for key, new_key in key_mapping_dict.items():
+        if key not in source_dict:
+            raise ValueError(
+                f"Key '{key}' from key_mapping is not found in source_dict.")
+        substituted_dict[new_key] = source_dict[key]
+    return substituted_dict

@@ -110,12 +110,13 @@ class Model:
                 excel_file_dir_path=self.paths['model_dir'])
         except FileNotFoundError:
             msg = f"'{self.settings['sets_xlsx_file']}' file " \
-                "missing. Set 'model->use_existing_data' to False to " \
+                "missing. Set 'use_existing_data' to False to " \
                 "generate a new settings file."
             self.logger.error(msg)
             raise SettingsError(msg)
 
-        self.core.index.load_table_coordinates_data_to_index()
+        self.core.index.load_coordinates_to_data_index()
+        self.core.index.load_coordinates_to_variables_index()
 
         if self.settings['sqlite_database_foreign_keys']:
             self.core.index.fetch_foreign_keys_to_data_tables()
@@ -131,9 +132,9 @@ class Model:
             'Generating blank SQLite database and excel input files.')
 
         self.core.database.load_sets_to_database()
-        self.core.database.generate_blank_vars_sql_tables()
+        self.core.database.generate_blank_data_sql_tables()
         self.core.database.sets_data_to_vars_sql_tables()
-        self.core.database.generate_blank_vars_input_files()
+        self.core.database.generate_blank_data_input_files()
 
     def load_data_files_to_database(
             self,
@@ -141,6 +142,7 @@ class Model:
     ) -> None:
         self.logger.info('Loading input data to SQLite database.')
         self.core.database.load_data_input_files_to_database(operation)
+        # to be completed
         self.core.database.empty_data_completion(operation)
 
     def initialize_problems(

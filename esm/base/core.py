@@ -41,22 +41,22 @@ class Core:
             paths=self.paths,
         )
 
-        # self.database = Database(
-        #     logger=self.logger,
-        #     files=self.files,
-        #     paths=self.paths,
-        #     sqltools=self.sqltools,
-        #     settings=self.settings,
-        #     index=self.index,
-        # )
+        self.database = Database(
+            logger=self.logger,
+            files=self.files,
+            paths=self.paths,
+            sqltools=self.sqltools,
+            settings=self.settings,
+            index=self.index,
+        )
 
-        # self.problem = Problem(
-        #     logger=self.logger,
-        #     files=self.files,
-        #     paths=self.paths,
-        #     settings=self.settings,
-        #     index=self.index
-        # )
+        self.problem = Problem(
+            logger=self.logger,
+            files=self.files,
+            paths=self.paths,
+            settings=self.settings,
+            index=self.index
+        )
 
         self.logger.info(f"'{self}' initialized.")
 
@@ -69,11 +69,17 @@ class Core:
             "Initialize variables dataframes "
             "(cvxpy objects, filters dictionaries).")
 
-        for variable in self.index.data.values():
+        for var_name, variable in self.index.variables.items():
             if variable.type == 'constant':
-                variable.data = self.problem.generate_constant_data(variable)
+                variable.data = self.problem.generate_constant_data(
+                    variable_name=var_name,
+                    variable=variable
+                )
             else:
-                variable.data = self.problem.generate_vars_dataframe(variable)
+                variable.data = self.problem.generate_vars_dataframe(
+                    variable_name=var_name,
+                    variable=variable
+                )
 
     def define_numerical_problems(self) -> None:
         self.logger.info(

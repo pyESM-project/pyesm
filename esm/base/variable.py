@@ -32,7 +32,7 @@ class Variable:
 
         self.coordinates_info: Dict[str, Any] = {}
         self.coordinates: Dict[str, Any] = {}
-        # self.data: pd.DataFrame = None
+        self.data: pd.DataFrame = None
 
     def __repr__(self) -> str:
         output = ''
@@ -59,31 +59,52 @@ class Variable:
         Returns:
             List[int]: A list containing the size of each dimension in 
                 the shape.
-
-        Raises:
-            ValueError: If the shape format is incorrect or if a variable 
-                coordinate is not found.
         """
-
         shape_size = []
 
-        for item in self.shape:
-            if isinstance(item, str):
-                if item not in self.coordinates_table_headers.keys():
-                    error = f"Variable '{self.symbol}': '{item}' is not " \
-                        "a valid variable coordinate."
-                    raise ValueError(error)
-                coordinate_key = self.coordinates_table_headers[item][0]
-                shape_size.append(len(self.coordinates[coordinate_key]))
-
-            elif isinstance(item, int):
-                shape_size.append(item)
-
+        for dimension in ['rows', 'cols']:
+            if self.coordinates[dimension]:
+                shape_size.append(len(*self.coordinates[dimension].values()))
             else:
-                error = "Wrong shape format: valid formats are 'str' or 'int'"
-                raise ValueError(error)
+                shape_size.append(1)
 
         return shape_size
+
+    @property
+    def dim_labels(self) -> List[str]:
+        """Retrieves the labels for each dimension of the variable.
+
+        Returns:
+            List[str]: A list containing the labels for each dimension.
+        """
+        dim_labels = []
+
+        for dimension in ['rows', 'cols']:
+            if self.coordinates_info[dimension]:
+                dim_labels.append(
+                    list(self.coordinates_info[dimension].values())[0])
+            else:
+                dim_labels.append(1)
+
+        return dim_labels
+
+    @property
+    def dim_items(self) -> List[List[str]]:
+        """Retrieves the items for each variable dimension.
+
+        Returns:
+            List[List[str]]: A list containing the items for each dimension.
+        """
+        dim_items = []
+
+        for dimension in ['rows', 'cols']:
+            if self.coordinates[dimension]:
+                dim_items.append(
+                    list(*self.coordinates[dimension].values()))
+            else:
+                dim_items.append(1)
+
+        return dim_items
 
     @property
     def is_square(self) -> bool:
@@ -95,7 +116,7 @@ class Variable:
 
         if len(self.shape) != 2:
             return False
-        if self.shape[0] == self.shape[1]:
+        if self.shape_size[0] == self.shape_size[1]:
             return True
         else:
             return False
@@ -108,74 +129,10 @@ class Variable:
             bool: True if the variable is a vector, False otherwise.
         """
 
-        return True if len(self.shape) == 1 or 1 in self.shape else False
-
-    @property
-    def dim_labels(self) -> List[str]:
-        """Retrieves the labels for each dimension of the variable.
-
-        Returns:
-            List[str]: A list containing the labels for each dimension.
-        """
-
-        return [self.get_dim_label(dim) for dim, _ in enumerate(self.shape)]
-
-    @property
-    def dim_items(self) -> List[List[str]]:
-        """Retrieves the items for each variable dimension.
-
-        Returns:
-            List[List[str]]: A list containing the items for each dimension.
-        """
-
-        return [self.get_dim_items(dim) for dim, _ in enumerate(self.shape)]
-
-    def get_dim_label(self, dimension: Literal[0, 1]) -> str | int:
-        """Retrieves the label for a specific dimension of the variable.
-
-        Args:
-            dimension (Literal[0, 1]): The dimension to retrieve the label for:
-                0 -> Rows, 1 -> Columns.
-
-        Returns:
-            Union[str, int]: The label for the specified dimension.
-
-        Raises:
-            ValueError: If the dimension is not 0 (rows) or 1 (columns).
-        """
-
-        if dimension not in [0, 1]:
-            raise ValueError("Dimension must be 0 (rows) or 1 (columns).")
-
-        dim_label = self.table_headers.get(
-            self.shape[dimension])
-
-        return dim_label[0] if isinstance(dim_label, list) else dim_label
-
-    def get_dim_items(self, dimension: Literal[0, 1]) -> List[str]:
-        """Retrieves the items for a specific dimension of the variable.
-
-        Args:
-            dimension (Literal[0, 1]): The dimension to retrieve the items for:
-                0 -> Rows, 1 -> Columns.
-
-        Returns:
-            List[str]: A list containing the items for the specified dimension.
-
-        Raises:
-            ValueError: If the dimension is not 0 (rows) or 1 (columns).
-        """
-
-        if dimension not in [0, 1]:
-            raise ValueError("Dimension must be 0 (rows) or 1 (columns).")
-
-        dim_name = self.shape[dimension]
-
-        if isinstance(dim_name, int):
-            return None
+        if len(self.shape_size) == 1 or 1 in self.shape_size:
+            return True
         else:
-            dim_label = self.table_headers[dim_name][0]
-            return self.coordinates[dim_label]
+            return False
 
     def none_data_coordinates(self, row: int) -> Dict:
         """Checks if there are None data values in cvxpy variables and returns

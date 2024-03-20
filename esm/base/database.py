@@ -101,19 +101,19 @@ class Database:
             )
 
     @connection
-    def generate_blank_vars_sql_tables(self) -> None:
+    def generate_blank_data_sql_tables(self) -> None:
         self.logger.info(
-            "Generation of empty SQLite database variables tables.")
+            "Generation of empty SQLite database data tables.")
 
-        for var_key, variable in self.index.data.items():
+        for table_key, table in self.index.data.items():
 
-            if variable.type == 'constant':
+            if table.type == 'constant':
                 continue
 
             self.sqltools.create_table(
-                table_name=var_key,
-                table_fields=variable.table_headers,
-                foreign_keys=variable.foreign_keys,
+                table_name=table_key,
+                table_fields=table.table_headers,
+                foreign_keys=table.foreign_keys,
             )
 
     @connection
@@ -121,39 +121,39 @@ class Database:
         self.logger.info(
             "Filling empty SQLite database variables tables with sets data.")
 
-        for var_key, variable in self.index.data.items():
+        for table_key, table in self.index.data.items():
 
-            if variable.type == 'constant':
+            if table.type == 'constant':
                 continue
 
             table_headers_list = [
-                value[0] for value in variable.coordinates_fields.values()
+                value for value in table.coordinates_headers.values()
             ]
 
             unpivoted_coords_df = util.unpivot_dict_to_dataframe(
-                data_dict=variable.coordinates,
+                data_dict=table.coordinates_values,
                 key_order=table_headers_list
             )
 
             unpivoted_coords_df.insert(
                 loc=0,
-                column=variable.table_headers['id'][0],
+                column=table.table_headers['id'][0],
                 value=None
             )
 
             self.sqltools.dataframe_to_table(
-                table_name=var_key,
+                table_name=table_key,
                 dataframe=unpivoted_coords_df,
             )
 
             self.sqltools.add_table_column(
-                table_name=var_key,
+                table_name=table_key,
                 column_name=constants._STD_VALUES_FIELD['values'][0],
                 column_type=constants._STD_VALUES_FIELD['values'][1],
             )
 
     @connection
-    def clear_database_variables(self) -> None:
+    def clear_database_table(self) -> None:
         existing_tables = self.sqltools.get_existing_tables_names
 
         for table_name in existing_tables:
@@ -166,7 +166,7 @@ class Database:
         )
 
     @connection
-    def generate_blank_vars_input_files(
+    def generate_blank_data_input_files(
         self,
         file_extension: str = data_file_extension,
     ) -> None:
@@ -178,20 +178,20 @@ class Database:
 
         tables_names_list = self.sqltools.get_existing_tables_names
 
-        for key, variable in self.index.data.items():
+        for table_key, table in self.index.data.items():
 
-            if variable.type == 'exogenous' and \
-                    key in tables_names_list:
+            if table.type == 'exogenous' and \
+                    table_key in tables_names_list:
 
                 if self.settings['multiple_input_files']:
-                    output_file_name = key + file_extension
+                    output_file_name = table_key + file_extension
                 else:
                     output_file_name = self.settings['input_data_file']
 
                 self.sqltools.table_to_excel(
                     excel_filename=output_file_name,
                     excel_dir_path=self.paths['input_data_dir'],
-                    table_name=key,
+                    table_name=table_key,
                 )
 
     @connection
@@ -205,11 +205,10 @@ class Database:
 
         if self.settings['multiple_input_files']:
             data = {}
-            for variable in self.index.data.values():
-                if variable.type == 'exogenous':
+            for table_key, table in self.index.data.values():
+                if table.type == 'exogenous':
 
-                    var_name = variable.symbol
-                    file_name = var_name + file_extension
+                    file_name = table_key + file_extension
 
                     data.update(
                         self.files.excel_to_dataframes_dict(
@@ -218,8 +217,8 @@ class Database:
                         )
                     )
                     self.sqltools.dataframe_to_table(
-                        table_name=var_name,
-                        dataframe=data[var_name],
+                        table_name=table_key,
+                        dataframe=data[table_key],
                         operation=operation,
                     )
 
@@ -228,10 +227,10 @@ class Database:
                 excel_file_dir_path=self.paths['input_data_dir'],
                 excel_file_name=self.settings['input_data_file'],
             )
-            for data_key, data_values in data.items():
+            for table_key, table in data.items():
                 self.sqltools.dataframe_to_table(
-                    table_name=data_key,
-                    dataframe=data_values,
+                    table_name=table_key,
+                    dataframe=table,
                     operation=operation,
                 )
 
