@@ -84,7 +84,7 @@ class Variable:
                 dim_labels.append(
                     list(self.coordinates_info[dimension].values())[0])
             else:
-                dim_labels.append(1)
+                dim_labels.append(None)
 
         return dim_labels
 
@@ -102,7 +102,7 @@ class Variable:
                 dim_items.append(
                     list(*self.coordinates[dimension].values()))
             else:
-                dim_items.append(1)
+                dim_items.append([1])
 
         return dim_items
 
@@ -133,6 +133,20 @@ class Variable:
             return True
         else:
             return False
+
+    @property
+    def sets_parsing_hierarchy(self) -> Dict[str, str]:
+        return {
+            **self.coordinates_info['intra'],
+            **self.coordinates_info['inter'],
+        }
+
+    @property
+    def sets_parsing_hierarchy_values(self) -> Dict[str, str]:
+        return {
+            **self.coordinates['intra'],
+            **self.coordinates['inter'],
+        }
 
     def none_data_coordinates(self, row: int) -> Dict:
         """Checks if there are None data values in cvxpy variables and returns

@@ -281,7 +281,7 @@ class Index:
                 var_filters.pop('set', None)
 
                 # if rows/cols, coordinates may be filtered/aggregated
-                if coord_group_key in ['rows', 'cols'] and var_filters:
+                if coord_group_key in ['rows', 'cols'] and var_filters != {}:
 
                     set_key = list(coord_group_value.keys())[0]
                     set_value = self.sets[set_key]
@@ -298,15 +298,16 @@ class Index:
                             f'{category_header} == "{category_filter}"'
                         ).copy()
 
-                    if 'aggregation_key' in var_filters and \
-                            var_filters['aggregation_key']:
+                    # OCCORRE RIPENSARE AL MODO DI FARE PROBLEMI SOTTODETERMINATI
+                    # if 'aggregation_key' in var_filters and \
+                    #         var_filters['aggregation_key']:
 
-                        aggregation_key = var_filters['aggregation_key']
-                        aggregation_key_header = set_value.table_headers[aggregation_key][0]
+                    #     aggregation_key = var_filters['aggregation_key']
+                    #     aggregation_key_header = set_value.table_headers[aggregation_key][0]
 
-                        set_filtered.loc[
-                            set_filtered[aggregation_key_header] != '', name_header
-                        ] = set_filtered[aggregation_key_header]
+                    #     set_filtered.loc[
+                    #         set_filtered[aggregation_key_header] != '', name_header
+                    #     ] = set_filtered[aggregation_key_header]
 
                     coord_group_value.update(
                         {set_key: list(set(set_filtered[name_header]))})

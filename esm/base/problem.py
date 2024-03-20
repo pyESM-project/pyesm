@@ -112,7 +112,6 @@ class Problem:
         hierarchy structure, the related cvxpy variables and the dictionary to
         filter the sql table for fetching data.
         """
-
         headers = {
             'cvxpy': constants._CVXPY_VAR_HEADER,
             'filter': constants._FILTER_DICT_HEADER,
@@ -122,19 +121,19 @@ class Problem:
             f"Generating dataframe for variable '{variable_name}' "
             "(cvxpy object, filter dictionary).")
 
-        if variable.coordinates_info['intra']:
-            coords_intra_problem = variable.coordinates_info['intra'].values()
+        if variable.sets_parsing_hierarchy:
+            sets_parsing_hierarchy = variable.sets_parsing_hierarchy.values()
         else:
-            coords_intra_problem = None
+            sets_parsing_hierarchy = None
 
         coordinates_dict_with_headers = util.substitute_keys(
-            source_dict=variable.coordinates['intra'],
-            key_mapping_dict=variable.coordinates_info['intra']
+            source_dict=variable.sets_parsing_hierarchy_values,
+            key_mapping_dict=variable.sets_parsing_hierarchy,
         )
 
         var_data = util.unpivot_dict_to_dataframe(
             data_dict=coordinates_dict_with_headers,
-            key_order=coords_intra_problem
+            key_order=sets_parsing_hierarchy,
         )
 
         for item in headers.values():
@@ -156,8 +155,8 @@ class Problem:
 
             for header in var_data.loc[row].index:
 
-                if coords_intra_problem is not None and \
-                        header in coords_intra_problem:
+                if sets_parsing_hierarchy is not None and \
+                        header in sets_parsing_hierarchy:
                     var_filter[header] = [var_data.loc[row][header]]
 
                 elif header == headers['cvxpy']:
@@ -396,24 +395,24 @@ class Problem:
                 how='inner'
             )
 
-            # if no sets_intra_problem is defined for the variable, the cvxpy
+            # if no sets intra-probles are defined for the variable, the cvxpy
             # variable is fetched for the current ploblem. cvxpy variable must
             # be unique for the defined problem
-            if not variable.sets_intra_problem:
+            if not variable.coordinates_info['intra']:
                 if variable_data.shape[0] == 1:
-                    allowed_variables[variable.symbol] = \
+                    allowed_variables[var_key] = \
                         variable_data[cvxpy_var_header].values[0]
                 else:
                     msg = "Unable to identify a unique cvxpy variable for " \
-                        f"{variable.symbol} based on the current problem filter."
+                        f"{var_key} based on the current problem filter."
                     self.logger.error(msg)
                     raise exc.ConceptualModelError(msg)
 
             # if sets_intra_problem is defined for the variable, the right
             # cvxpy variable is fetched for the current problem
-            elif variable.sets_intra_problem \
+            elif variable.coordinates_info['intra'] \
                     and set_intra_problem_header and set_intra_problem_value:
-                allowed_variables[variable.symbol] = variable_data.loc[
+                allowed_variables[var_key] = variable_data.loc[
                     variable_data[set_intra_problem_header] == set_intra_problem_value,
                     cvxpy_var_header,
                 ].iloc[0]
@@ -421,7 +420,7 @@ class Problem:
             # other cases
             else:
                 msg = "Unable to fetch cvxpy variable for " \
-                    f"variable {variable.symbol}."
+                    f"variable {var_key}."
                 self.logger.error(msg)
                 raise exc.ConceptualModelError(msg)
 

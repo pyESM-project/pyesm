@@ -9,11 +9,10 @@ objective function:
 
 constraints: 
 
-    - I_rcot @ V_ff - X_ff == 0
-    - V_yt - X_yt == 0
-    - V_tf - X_tf == 0
-    - V_yt @ i_t1 - X_yt @ i_t1 == 0
-    - T @ V_yt - T @ X_yt == 0
+    - X_1f == i_1f @ V_ff
+    - X_tfp == V_tfp
+    - X_tfc == V_tfc
+    - X_yt == T_yy @ V_yt
 
 
     
