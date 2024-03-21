@@ -14,9 +14,14 @@ constraints:
     # demand by flows equals flows supply by technology
     - tran(Q) - u @ X - Y == 0
 
+    # aggregating total demand by flow
+    - Q_agg - I_ff @ Q == 0
+
     # industry-based technology assumption
     - X - d @ tran(Q) == 0
 
     # operational costs
     - C == c @ diag(X)
     
+    # constraint on the maximum technology by activity
+    - X - X_max <= 0

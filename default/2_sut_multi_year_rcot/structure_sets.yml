@@ -32,10 +32,15 @@ flows:
     table_headers:
         id: ['f_ID', 'INTEGER PRIMARY KEY']
         name: ['f_Name', 'TEXT']
-        category: ['f_Category', 'TEXT']
         aggregation_1: ['f_Name_agg_1', 'TEXT']
-    set_categories:
-        f.p: Product flow
+
+
+flows_agg:
+    symbol: f_agg
+    table_name: _set_FLOWS_AGG
+    table_headers:
+        id: ['f_agg_ID', 'INTEGER PRIMARY KEY']
+        name: ['f_agg_Name', 'TEXT']
 
 costs:
     symbol: c
@@ -43,6 +48,3 @@ costs:
     table_headers:
         id: ['c_ID', 'INTEGER PRIMARY KEY']
         name: ['c_Name', 'TEXT']
-        category: ['c_Category', 'TEXT']
-    set_categories:
-        f.o: Operational costs

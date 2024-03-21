@@ -199,15 +199,15 @@ class Variable:
 
         pivoted_data = data.pivot_table(
             index=self.dim_labels[0],
-            columns=self.dim_labels[1] or None,
+            columns=self.dim_labels[1],
             values=values_header,
             aggfunc='first'
         )
 
-        pivoted_data = pivoted_data.reindex(
-            index=self.dim_items[0],
-            columns=self.dim_items[1]
-        )
+        # pivoted_data = pivoted_data.reindex(
+        #     index=self.dim_items[0],
+        #     columns=self.dim_items[1]
+        # )
 
         return pivoted_data
 
