@@ -1,14 +1,15 @@
 from pathlib import Path
-from typing import Dict
+from typing import Dict, List
 
-from esm.base.set import Set
-from esm.base.variable import Variable
-from esm.log_exc.logger import Logger
-from esm.log_exc import exceptions as exc
 from esm import constants
+from esm.base.data_table import DataTable
+from esm.base.set_table import SetTable
+from esm.base.variable import Variable
+from esm.log_exc import exceptions as exc
+from esm.log_exc.logger import Logger
+from esm.support import util
 from esm.support.file_manager import FileManager
 from esm.support.dotdict import DotDict
-from esm.support import util
 
 
 class Index:
@@ -26,13 +27,11 @@ class Index:
         self.files = files
         self.paths = paths
 
-        self.sets: DotDict[str, Set] = self.load_sets()
-        self.variables: DotDict[str, Variable] = self.load_variables()
+        self.sets: DotDict[str, SetTable] = self.load_sets_tables()
+        self.data: DotDict[str, DataTable] = self.load_data_tables()
+        self.variables: DotDict[str, Variable] = self.fetch_variables()
 
-        self.load_vars_coordinates_fields()
-        self.load_vars_table_headers()
-        self.load_vars_sets_parsing_hierarchy()
-        self.load_sets_intra_problem()
+        self.fetch_vars_coordinates_info()
 
         self.logger.info(f"'{self}' object initialized.")
 
@@ -41,135 +40,178 @@ class Index:
         return f'{class_name}'
 
     @property
-    def list_sets(self) -> Dict[str, str]:
+    def sets_headers_in_other_tables(self) -> Dict[str, str]:
         return {
-            key: value.table_headers[constants._STD_TABLE_HEADER_KEY][0]
+            key: value.table_headers[constants._STD_TABLE_HEADER][0]
             for key, value in self.sets.items()
         }
 
     @property
-    def list_sets_split_problem(self) -> Dict[str, str]:
-        list_sets_split_problem = {
-            key: value.table_headers[constants._STD_TABLE_HEADER_KEY][0]
+    def sets_split_problem_list(self) -> Dict[str, str]:
+        sets_split_problem_list = {
+            key: value.table_headers[constants._STD_TABLE_HEADER][0]
             for key, value in self.sets.items()
             if getattr(value, 'split_problem', False)
         }
 
-        if not list_sets_split_problem:
+        if not sets_split_problem_list:
             msg = "At least one Set must identify a problem. " \
                 f"Check 'split_problem' properties in 'sets_structure.yml'"
             self.logger.error(msg)
             raise exc.NumericalProblemError(msg)
 
-        return list_sets_split_problem
+        return sets_split_problem_list
 
-    def load_sets(self) -> DotDict[str, Set]:
+    @property
+    def list_sets(self) -> List[str]:
+        return list(self.sets.keys())
 
-        sets_data = self.files.load_file(
-            file_name=constants._SETUP_FILES['sets_structure'],
-            dir_path=self.paths['model_dir'],
+    @property
+    def list_data_tables(self) -> List[str]:
+        return list(self.data.keys())
+
+    @property
+    def list_variables(self) -> List[str]:
+        return list(self.variables.keys())
+
+    def _load_and_validate(
+            self,
+            file_key: int,
+            validation_structure: dict,
+            object_class: SetTable | DataTable,
+    ) -> DotDict[str, SetTable | DataTable]:
+
+        self.logger.info(
+            "Loading and validating data from file, "
+            f"generating '{object_class.__name__}' objects.")
+
+        data = self.files.load_file(
+            file_name=constants._SETUP_FILES[file_key],
+            dir_path=self.paths['model_dir']
         )
 
-        if util.validate_dict_structure(
-            dictionary=sets_data,
+        if all([
+            util.validate_dict_structure(
+                dictionary=dictionary,
+                validation_structure=validation_structure)
+            for dictionary in data.values()
+        ]):
+            return DotDict({
+                key: object_class(logger=self.logger, **value)
+                for key, value in data.items()
+            })
+        else:
+            msg = f"'{object_class.__name__}' data validation not successful: " \
+                f"input data must comply with default structure. " \
+                f"Check setup file: '{constants._SETUP_FILES[file_key]}'"
+            self.logger.error(msg)
+            raise exc.SettingsError(msg)
+
+    def load_sets_tables(self) -> DotDict[str, SetTable]:
+        return self._load_and_validate(
+            file_key=0,
             validation_structure=constants._SET_DEFAULT_STRUCTURE,
-        ):
-            return DotDict({
-                key: Set(logger=self.logger, **value)
-                for key, value in sets_data.items()
-            })
-        else:
-            msg = "Sets data validation not successful. " \
-                "Set input data must comply with default structure."
-            self.logger.error(msg)
-            raise exc.SettingsError(msg)
-
-    def load_sets_intra_problem(self) -> None:
-        for variable in self.variables.values():
-            if variable.type != 'constant':
-                variable.sets_intra_problem = {
-                    key: value
-                    for key, value in variable.sets_parsing_hierarchy.items()
-                    if key not in self.list_sets_split_problem
-                }
-
-    def load_variables(self) -> DotDict[str, Variable]:
-
-        variables_data = self.files.load_file(
-            file_name=constants._SETUP_FILES['variables'],
-            dir_path=self.paths['model_dir'],
+            object_class=SetTable,
         )
 
-        if util.validate_dict_structure(
-            dictionary=variables_data,
-            validation_structure=constants._VARIABLE_DEFAULT_STRUCTURE,
-        ):
-            return DotDict({
-                key: Variable(logger=self.logger, **value)
-                for key, value in variables_data.items()
-            })
-        else:
-            msg = "Variables data validation not successful. " \
-                "Variable input data must comply with default structure."
-            self.logger.error(msg)
-            raise exc.SettingsError(msg)
+    def load_data_tables(self) -> DotDict[str, DataTable]:
+        data_tables = self._load_and_validate(
+            file_key=1,
+            validation_structure=constants._DATA_TABLE_DEFAULT_STRUCTURE,
+            object_class=DataTable,
+        )
 
-    def load_vars_coordinates_fields(self) -> None:
-
-        self.logger.debug(
-            f"Loading 'variables_fields' to Index.")
-
-        for variable in self.variables.values():
-            set_headers_key = constants._STD_TABLE_HEADER_KEY
-
-            for set_key in variable.coordinates_info.keys():
-                set_headers = self.sets[set_key].table_headers[set_headers_key]
-                variable.coordinates_fields[set_key] = set_headers
-
-    def load_vars_table_headers(self) -> None:
-
-        self.logger.debug("Loading variables 'table_headers' to Index.")
-
-        for var_key, variable in self.variables.items():
-            if variable.coordinates_fields is None:
-                error = f"'variable_fields' is empty for variable '{var_key}'."
-                self.logger.error(error)
-                raise ValueError(error)
-
-            variable.table_headers = variable.coordinates_fields.copy()
-            variable.table_headers = util.add_item_to_dict(
-                dictionary=variable.table_headers,
+        for table in data_tables.values():
+            set_headers_key = constants._STD_TABLE_HEADER
+            table.table_headers = {
+                set_key: self.sets[set_key].table_headers[set_headers_key]
+                for set_key in table.coordinates
+            }
+            table.table_headers = util.add_item_to_dict(
+                dictionary=table.table_headers,
                 item=constants._STD_ID_FIELD,
                 position=0,
             )
-
-    def load_foreign_keys_to_vars_index(self) -> None:
-
-        self.logger.debug(f"Loading tables 'foreign_keys' to Index.")
-
-        for variable in self.variables.values():
-            for set_key, set_header in variable.coordinates_fields.items():
-                variable.foreign_keys[set_header[0]] = \
-                    (set_header[0], self.sets[set_key].table_name)
-
-    def load_vars_sets_parsing_hierarchy(self) -> None:
-
-        self.logger.debug(
-            f"Loading variables 'sets_parsing_hierarchy' to Index.")
-
-        for variable in self.variables.values():
-            sets_parsing_hierarchy = {
-                key: value[0]
-                for key, value in variable.coordinates_fields.items()
-                if key not in variable.shape
+            table.coordinates_headers = {
+                key: value[0] for key, value in table.table_headers.items()
+                if key in table.coordinates
             }
 
-            if not sets_parsing_hierarchy:
-                variable.sets_parsing_hierarchy = None
-            else:
-                variable.sets_parsing_hierarchy = sets_parsing_hierarchy
+        return data_tables
 
-    def load_sets_to_index(
+    def fetch_variables(self) -> DotDict[str, Variable]:
+        self.logger.info(
+            "Fetching and validating data, generating "
+            f"'{Variable.__name__}' objects.")
+
+        variables_info = DotDict({})
+
+        for table_key, data_table in self.data.items():
+            if all([
+                util.validate_dict_structure(
+                    dictionary=var_info,
+                    validation_structure=constants._VARIABLE_DEFAULT_STRUCTURE)
+                for var_info in data_table.variables_info.values()
+            ]):
+                variable = DotDict({
+                    var_key: Variable(
+                        logger=self.logger,
+                        related_table=table_key,
+                        type=data_table.type,
+                        **var_info,
+                    )
+                    for var_key, var_info in data_table.variables_info.items()
+                })
+                variables_info.update(variable)
+
+        return variables_info
+
+    def fetch_vars_coordinates_info(self) -> None:
+        self.logger.debug(
+            f"Fetching 'coordinates_info' to Index.variables.")
+
+        for variable in self.variables.values():
+            related_table = variable.related_table
+            related_table_headers = self.data[related_table].table_headers
+
+            rows, cols, intra, inter = {}, {}, {}, {}
+            # all_sets = {}
+
+            for key, value in related_table_headers.items():
+                header = value[0]
+
+                if key not in constants._STD_ID_FIELD:
+                    # all_sets[key] = header
+
+                    if key == variable.shape[0]:
+                        rows[key] = header
+                    if key == variable.shape[1]:
+                        cols[key] = header
+
+                    if key not in variable.shape:
+                        if key not in self.sets_split_problem_list:
+                            intra[key] = header
+                        else:
+                            inter[key] = header
+
+            variable.coordinates_info = {
+                'rows': rows,
+                'cols': cols,
+                'intra': intra,
+                'inter': inter,
+                # 'all': all_sets,
+            }
+
+    def fetch_foreign_keys_to_data_tables(self) -> None:
+        self.logger.info(
+            f"Loading tables 'foreign_keys' to Index.data_tables.")
+
+        for table in self.data.values():
+            for set_key, set_header in table.coordinates_headers.items():
+                table.foreign_keys[set_header] = \
+                    (set_header, self.sets[set_key].table_name)
+
+    def load_sets_data_to_index(
             self,
             excel_file_name: str,
             excel_file_dir_path: Path | str,
@@ -180,7 +222,8 @@ class Index:
             set_instance.data is None
             for set_instance in self.sets.values()
         ):
-            self.logger.info(f"'{self}' object: loading new Sets to Index.")
+            self.logger.info(
+                f"'{self}' object: loading new Sets data to Index.sets.")
         else:
             self.logger.warning(
                 f"'{self}' object: Sets tables already "
@@ -192,7 +235,7 @@ class Index:
                 return
             else:
                 self.logger.info(
-                    f"'{self}' object: overwriting Sets to Index.")
+                    f"'{self}' object: overwriting Sets to Index.sets.")
 
         sets_values = self.files.excel_to_dataframes_dict(
             excel_file_name=excel_file_name,
@@ -206,51 +249,81 @@ class Index:
             if table_name in sets_values.keys():
                 set_instance.data = sets_values[table_name]
 
-    def load_vars_coordinates_to_index(self) -> None:
+    def load_coordinates_to_data_index(self) -> None:
+        self.logger.info(
+            f"'{self}' object: loading variable coordinates to Index.data.")
 
-        self.logger.debug(f"Loading variables 'coordinates' to Index.")
+        for table in self.data.values():
 
-        for variable in self.variables.values():
+            table.coordinates_values.update({
+                set_header: self.sets[set_key].set_values
+                for set_key, set_header in table.coordinates_headers.items()
+            })
 
-            for set_key, set_filter in variable.coordinates_info.items():
+    def load_coordinates_to_variables_index(self) -> None:
 
-                set_header = variable.coordinates_fields[set_key][0]
+        self.logger.info(
+            f"'{self}' object: loading variable coordinates to "
+            "Index.variables.")
 
-                # partire da qui per cambiare gli headers degli attributi
-                # di sets e variables.
-                # set_header = set_key
+        for var_key, variable in self.variables.items():
 
-                if set_filter is None:
-                    set_values = list(self.sets[set_key].data[set_header])
+            # replicate coordinates_info with inner values as None
+            coordinates = {
+                key: {inner_key: None for inner_key in value}
+                for key, value in variable.coordinates_info.items()
+            }
 
-                elif isinstance(set_filter, dict):
+            # parse coordinates and retrieve each related values
+            for coord_group_key, coord_group_value in coordinates.items():
 
-                    if 'set_categories' in set_filter and \
-                            set_filter['set_categories'] is not None:
+                var_filters = getattr(variable, coord_group_key, {}).copy()
+                var_filters.pop('set', None)
 
-                        category_filter_id = set_filter['set_categories']
-                        category_filter = self.sets[set_key].set_categories[category_filter_id]
-                        category_header_name = self.sets[set_key].table_headers['category'][0]
+                # if rows/cols, coordinates may be filtered/aggregated
+                if coord_group_key in ['rows', 'cols'] and var_filters != {}:
 
-                        set_filtered = self.sets[set_key].data.query(
-                            f'{category_header_name} == "{category_filter}"'
+                    set_key = list(coord_group_value.keys())[0]
+                    set_value = self.sets[set_key]
+
+                    if 'set_categories' in var_filters and \
+                            var_filters['set_categories']:
+
+                        name_header = set_value.table_headers[constants._STD_TABLE_HEADER][0]
+                        category_header = set_value.table_headers[constants._STD_CATEGORY_HEADER][0]
+                        category_filter_id = var_filters['set_categories']
+                        category_filter = set_value.set_categories[category_filter_id]
+
+                        set_filtered = set_value.data.query(
+                            f'{category_header} == "{category_filter}"'
                         ).copy()
 
-                    if 'aggregation_key' in set_filter and \
-                            set_filter['aggregation_key'] is not None:
+                    # OCCORRE RIPENSARE AL MODO DI FARE PROBLEMI SOTTODETERMINATI
+                    # if 'aggregation_key' in var_filters and \
+                    #         var_filters['aggregation_key']:
 
-                        aggregation_key = set_filter['aggregation_key']
-                        aggregation_key_name = self.sets[set_key].table_headers[aggregation_key][0]
+                    #     aggregation_key = var_filters['aggregation_key']
+                    #     aggregation_key_header = set_value.table_headers[aggregation_key][0]
 
-                        set_filtered.loc[
-                            set_filtered[aggregation_key_name] != '', set_header
-                        ] = set_filtered[aggregation_key_name]
+                    #     set_filtered.loc[
+                    #         set_filtered[aggregation_key_header] != '', name_header
+                    #     ] = set_filtered[aggregation_key_header]
 
-                    set_values = list(set(set_filtered[set_header]))
+                    coord_group_value.update(
+                        {set_key: list(set(set_filtered[name_header]))})
 
+                # for coordinates sets different than 'all', no aggregation nor filtering
+                # elif coord_group_key != 'all':
                 else:
-                    error_msg = f"Missing or wrong data in 'constants/_VARIABLES'."
-                    self.logger.error(error_msg)
-                    raise exc.MissingDataError(error_msg)
+                    coord_group_value.update({
+                        set_key: self.sets[set_key].set_values
+                        for set_key in coord_group_value
+                    })
 
-                variable.coordinates[set_header] = set_values
+                # coordinates sets equal to 'all' unpack all previous
+                # else:
+                #     keys_to_merge = ['rows', 'cols', 'intra', 'inter']
+                #     for key in keys_to_merge:
+                #         coord_group_value.update(coordinates[key])
+
+            variable.coordinates = coordinates

@@ -87,37 +87,38 @@ class Problem:
 
     def generate_constant_data(
             self,
+            variable_name: str,
             variable: Variable,
     ) -> cp.Constant:
 
         self.logger.debug(
-            f"Generating constant '{variable.symbol}' as '{variable.value}'.")
+            f"Generating constant '{variable_name}' as '{variable.value}'.")
 
         var_value = variable.define_constant(variable.value)
 
         return self.create_cvxpy_variable(
             type=variable.type,
             shape=variable.shape_size,
-            name=variable.symbol + str(variable.shape),
+            name=variable_name + str(variable.shape),
             value=var_value,
         )
 
     def generate_vars_dataframe(
             self,
+            variable_name: str,
             variable: Variable,
     ) -> pd.DataFrame:
         """For a Variable object, generates a Pandas DataFrame with the  
         hierarchy structure, the related cvxpy variables and the dictionary to
         filter the sql table for fetching data.
         """
-
         headers = {
             'cvxpy': constants._CVXPY_VAR_HEADER,
             'filter': constants._FILTER_DICT_HEADER,
         }
 
         self.logger.debug(
-            f"Generating variable '{variable.symbol}' dataframe "
+            f"Generating dataframe for variable '{variable_name}' "
             "(cvxpy object, filter dictionary).")
 
         if variable.sets_parsing_hierarchy:
@@ -125,9 +126,14 @@ class Problem:
         else:
             sets_parsing_hierarchy = None
 
+        coordinates_dict_with_headers = util.substitute_keys(
+            source_dict=variable.sets_parsing_hierarchy_values,
+            key_mapping_dict=variable.sets_parsing_hierarchy,
+        )
+
         var_data = util.unpivot_dict_to_dataframe(
-            data_dict=variable.coordinates,
-            key_order=sets_parsing_hierarchy
+            data_dict=coordinates_dict_with_headers,
+            key_order=sets_parsing_hierarchy,
         )
 
         for item in headers.values():
@@ -143,7 +149,7 @@ class Problem:
                 self.create_cvxpy_variable(
                     type=variable.type,
                     shape=variable.shape_size,
-                    name=variable.symbol + str(variable.shape))
+                    name=variable_name + str(variable.shape))
 
             var_filter = {}
 
@@ -154,12 +160,12 @@ class Problem:
                     var_filter[header] = [var_data.loc[row][header]]
 
                 elif header == headers['cvxpy']:
-                    for dim in variable.shape:
-                        if isinstance(dim, int):
+                    for dim in [0, 1]:
+                        if isinstance(variable.shape[dim], int):
                             pass
-                        elif isinstance(dim, str):
-                            dim_header = variable.table_headers[dim][0]
-                            var_filter[dim_header] = variable.coordinates[dim_header]
+                        elif isinstance(variable.shape[dim], str):
+                            dim_header = variable.dim_labels[dim]
+                            var_filter[dim_header] = variable.dim_items[dim]
 
                 elif header == headers['filter']:
                     pass
@@ -175,7 +181,7 @@ class Problem:
 
     def load_symbolic_problem_from_file(self) -> None:
 
-        problem_file_name = constants._SETUP_FILES['problem']
+        problem_file_name = constants._SETUP_FILES[2]
 
         if self.symbolic_problem is not None:
             self.logger.warning(f"Symbolic problem already loaded.")
@@ -252,7 +258,7 @@ class Problem:
     ) -> Dict[str, str]:
 
         vars_sets_intra_problem = {
-            key: getattr(variable, 'sets_intra_problem')
+            key: variable.coordinates_info['intra']
             for key, variable in variables_subset.items()
         }
 
@@ -307,11 +313,11 @@ class Problem:
         # se si vuole mettere i nomi dei set (Scenarios) bisogna cambiarli anche
         # nelle tabelle sei set e delle variabili.
         dict_to_unpivot = {}
-        for set_name, set_header in self.index.list_sets_split_problem.items():
+        for set_name, set_header in self.index.sets_split_problem_list.items():
             set_values = self.index.sets[set_name].data[set_header]
             dict_to_unpivot[set_header] = list(set_values)
 
-        list_sets_split_problem = self.index.list_sets_split_problem.values()
+        list_sets_split_problem = self.index.sets_split_problem_list.values()
 
         problems_data = util.unpivot_dict_to_dataframe(
             data_dict=dict_to_unpivot,
@@ -374,11 +380,11 @@ class Problem:
         allowed_variables = {}
         cvxpy_var_header = constants._CVXPY_VAR_HEADER
 
-        for variable in variables_set_dict.values():
+        for var_key, variable in variables_set_dict.items():
 
             # constants are directly assigned
             if variable.type == 'constant':
-                allowed_variables[variable.symbol] = variable.data
+                allowed_variables[var_key] = variable.data
                 continue
 
             # filter variable data based on problem filter
@@ -389,24 +395,24 @@ class Problem:
                 how='inner'
             )
 
-            # if no sets_intra_problem is defined for the variable, the cvxpy
+            # if no sets intra-probles are defined for the variable, the cvxpy
             # variable is fetched for the current ploblem. cvxpy variable must
             # be unique for the defined problem
-            if not variable.sets_intra_problem:
+            if not variable.coordinates_info['intra']:
                 if variable_data.shape[0] == 1:
-                    allowed_variables[variable.symbol] = \
+                    allowed_variables[var_key] = \
                         variable_data[cvxpy_var_header].values[0]
                 else:
                     msg = "Unable to identify a unique cvxpy variable for " \
-                        f"{variable.symbol} based on the current problem filter."
+                        f"{var_key} based on the current problem filter."
                     self.logger.error(msg)
                     raise exc.ConceptualModelError(msg)
 
             # if sets_intra_problem is defined for the variable, the right
             # cvxpy variable is fetched for the current problem
-            elif variable.sets_intra_problem \
+            elif variable.coordinates_info['intra'] \
                     and set_intra_problem_header and set_intra_problem_value:
-                allowed_variables[variable.symbol] = variable_data.loc[
+                allowed_variables[var_key] = variable_data.loc[
                     variable_data[set_intra_problem_header] == set_intra_problem_value,
                     cvxpy_var_header,
                 ].iloc[0]
@@ -414,7 +420,7 @@ class Problem:
             # other cases
             else:
                 msg = "Unable to fetch cvxpy variable for " \
-                    f"variable {variable.symbol}."
+                    f"variable {var_key}."
                 self.logger.error(msg)
                 raise exc.ConceptualModelError(msg)
 
@@ -463,14 +469,14 @@ class Problem:
 
             # define subset of variables in the expression
             vars_subset = DotDict({
-                key: variable for key, variable in self.index.variables
-                if variable.symbol in vars_symbols_list
+                key: variable for key, variable in self.index.variables.items()
+                if key in vars_symbols_list
                 and variable.type != 'constant'
             })
 
             constants_subset = DotDict({
-                key: variable for key, variable in self.index.variables
-                if variable.symbol in vars_symbols_list
+                key: variable for key, variable in self.index.variables.items()
+                if key in vars_symbols_list
                 and variable.type == 'constant'
             })
 

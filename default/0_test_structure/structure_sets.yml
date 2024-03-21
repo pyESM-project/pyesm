@@ -8,13 +8,20 @@ scenarios:
         name: ['s_Name', 'TEXT']
     split_problem: True
 
+sensitivity:
+    symbol: e
+    table_name: _set_SENSITIVITY
+    table_headers:
+        id: ['e_ID', 'INTEGER PRIMARY KEY']
+        name: ['e_Name', 'TEXT']
+    split_problem: True
+
 time:
-    symbol: y
+    symbol: y 
     table_name: _set_TIME
     table_headers:
         id: ['y_ID', 'INTEGER PRIMARY KEY']
         name: ['y_Name', 'TEXT']
-    split_problem: False
 
 technologies:
     symbol: t
@@ -33,5 +40,8 @@ flows:
     table_headers:
         id: ['f_ID', 'INTEGER PRIMARY KEY']
         name: ['f_Name', 'TEXT']
-        
-
+        category: ['f_Category', 'TEXT']
+        aggregation: ['f_Aggregation', 'TEXT']
+    set_categories:
+        f.p: Product flow
+        f.c: Cost flow

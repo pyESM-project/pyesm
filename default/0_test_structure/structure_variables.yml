@@ -1,0 +1,98 @@
+# template for defining variables of the model
+
+# RULES:
+# - variables define SQLite tables (name case insensitive: two tables named 
+# 'e' and 'E' are not allowed. However, variables symbols are case sensitive).
+# - 
+
+
+# -----------------------------------------------------------------------------
+# exogenous variables
+
+V:
+    name: user data
+    type: exogenous
+    coordinates: [scenarios, sensitivity, time, technologies, flows]
+    variables_info:
+        V_tfp:
+            rows: 
+                set: technologies
+                set_categories: t.s
+            cols:
+                set: flows
+                set_categories: f.p
+        V_tfc:
+            rows: 
+                set: technologies
+                set_categories: t.s
+            cols:
+                set: flows
+                set_categories: f.c
+        V_yt:
+            rows: 
+                set: time
+            cols:
+                set: technologies 
+                set_categories: t.s
+        V_ff:
+            rows: 
+                set: flows
+                set_categories: f.p
+            cols:
+                set: flows 
+                set_categories: f.p
+
+
+
+# -----------------------------------------------------------------------------
+# constants
+
+constants: 
+    name: constant values
+    type: constant
+    coordinates: [flows, technologies, time]
+    variables_info:
+        i_1f:
+            value: sum_vector
+            cols:
+                set: flows
+                set_categories: f.p
+        T_yy:
+            value: lower_triangular
+            rows:
+                set: time
+            cols:
+                set: time
+
+# -----------------------------------------------------------------------------
+# endogenous variables
+
+X:
+    name: results
+    type: endogenous
+    coordinates: [scenarios, sensitivity, time, technologies, flows]
+    variables_info:
+        X_tfp:
+            rows: 
+                set: technologies
+                set_categories: t.s
+            cols:
+                set: flows
+                set_categories: f.p
+        X_tfc:
+            rows: 
+                set: technologies
+                set_categories: t.s
+            cols:
+                set: flows
+                set_categories: f.c
+        X_yt:
+            rows: 
+                set: time
+            cols:
+                set: technologies 
+                set_categories: t.s
+        X_1f:
+            cols:
+                set: flows 
+                set_categories: f.p

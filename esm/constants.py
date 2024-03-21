@@ -5,20 +5,24 @@ from esm.support import util_constants
 
 # essenstial model config files
 _SETUP_FILES = {
-    'variables': 'variables.yml',
-    'problem': 'problem.yml',
-    'sets_structure': 'sets_structure.yml',
+    0: 'structure_sets.yml',
+    1: 'structure_variables.yml',
+    2: 'problem.yml',
 }
 
+# available template models to be replicated and customized
 _TEMPLATE_MODELS = {
     '1_sut': 'standard SUT, primal, industry/product-based',
     '2_multi_year': 'SUT model, multi-year, rcot, primal problem, industry-based'
 }
 
+# headers for table related to sets and data
+_STD_TABLE_HEADER = 'name'
+_STD_CATEGORY_HEADER = 'category'
+
 # default column name-type for sets id and values fields
 _STD_VALUES_FIELD = {'values': ['values', 'REAL']}
 _STD_ID_FIELD = {'id': ['id', 'INTEGER PRIMARY KEY']}
-_STD_TABLE_HEADER_KEY = 'name'
 
 # default headers for variables dataframe
 _CVXPY_VAR_HEADER = 'variable'
@@ -40,14 +44,17 @@ _SET_DEFAULT_STRUCTURE = {
     'split_problem': bool,
 }
 
-# default Variable info structure (for validation purpose)
-_VARIABLE_DEFAULT_STRUCTURE = {
-    'symbol': str,
+# default DataTable and Variable structures (for validation purpose)
+_DATA_TABLE_DEFAULT_STRUCTURE = {
     'name': str,
     'type': str,
-    'coordinates_info': dict,
-    'shape': list,
-    'value': str,
+    'coordinates': list,
+    'variables_info': dict,
+}
+_VARIABLE_DEFAULT_STRUCTURE = {
+    'rows': dict,
+    'cols': dict,
+    'value': str
 }
 
 # allowed constants. more can be added, but Variable.define_constant must
