@@ -8,8 +8,8 @@
 # -----------------------------------------------------------------------------
 # exogenous variables
 
-D:
-    name: market shares
+D_coeff:
+    name: market shares coefficients
     type: exogenous
     coordinates: [scenarios, technologies, flows]
     variables_info:
@@ -19,9 +19,8 @@ D:
                 set_categories: t.s
             cols:
                 set: flows
-                set_categories: f.p
 
-UC:
+U_coeff:
     name: technical coefficients
     type: exogenous
     coordinates: [scenarios, technologies, flows]
@@ -29,19 +28,23 @@ UC:
         u:
             rows: 
                 set: flows
-                set_categories: f.p
-            cols:
-                set: technologies
-                set_categories: t.s
-        c:
-            rows: 
-                set: flows
-                set_categories: f.c
             cols:
                 set: technologies
                 set_categories: t.s
 
-Y:
+C_coeff:
+    name: costs coefficients
+    type: exogenous
+    coordinates: [scenarios, technologies, costs]
+    variables_info:
+        c:
+            rows: 
+                set: costs
+            cols:
+                set: technologies
+                set_categories: t.s
+
+Y_tot:
     name: final demand
     type: exogenous
     coordinates: [scenarios, time, flows, technologies]
@@ -97,15 +100,14 @@ Q:
                 set: flows
                 set_categories: f.p
 
-C:
-    name: operational costs
+C_tot:
+    name: costs total
     type: endogenous
-    coordinates: [scenarios, time, flows, technologies]
+    coordinates: [scenarios, time, technologies, costs]
     variables_info:
         C:
             rows: 
-                set: flows
-                set_categories: f.c
+                set: costs
             cols:
                 set: technologies
                 set_categories: t.s

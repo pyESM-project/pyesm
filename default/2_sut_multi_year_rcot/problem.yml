@@ -5,7 +5,7 @@
 objective function:
     
     # minimize total operational and capital costs
-    - Minimize(1) 
+    - Minimize(c @ X) 
 
 # -----------------------------------------------------------------------------
 # definition of the constraints (vector expressions)

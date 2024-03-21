@@ -8,6 +8,13 @@ scenarios:
         name: ['s_Name', 'TEXT']
     split_problem: True
 
+time:
+    symbol: y
+    table_name: _set_TIME
+    table_headers:
+        id: ['y_ID', 'INTEGER PRIMARY KEY']
+        name: ['y_Name', 'TEXT']
+
 technologies:
     symbol: t
     table_name: _set_TECHNOLOGIES
@@ -26,9 +33,16 @@ flows:
         id: ['f_ID', 'INTEGER PRIMARY KEY']
         name: ['f_Name', 'TEXT']
         category: ['f_Category', 'TEXT']
-        competition: ['f_Competition', 'TEXT']
-        parent: ['f_Parent_technology', 'TEXT']
-        unit: ['f_Unit', 'TEXT']
+        aggregation: ['f_Competition', 'TEXT']
     set_categories:
         f.p: Product flow
-        f.e: Environmental flow
+
+costs:
+    symbol: c
+    table_name: _set_COSTS
+    table_headers:
+        id: ['c_ID', 'INTEGER PRIMARY KEY']
+        name: ['c_Name', 'TEXT']
+        category: ['c_Category', 'TEXT']
+    set_categories:
+        f.o: Operational costs
