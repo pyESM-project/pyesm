@@ -8,7 +8,7 @@
 # -----------------------------------------------------------------------------
 # exogenous variables
 
-D_coeff:
+d:
     name: market shares coefficients
     type: exogenous
     coordinates: [scenarios, technologies, flows]
@@ -20,20 +20,19 @@ D_coeff:
             cols:
                 set: flows
 
-U_coeff:
+u:
     name: technical coefficients
     type: exogenous
-    coordinates: [scenarios, technologies, flows: {aggregation_key: aggregation_1}]
+    coordinates: [scenarios, technologies, flows_agg]
     variables_info:
         u:
             rows: 
-                set: flows
-                aggregation_key: aggregation_1 
+                set: flows_agg
             cols:
                 set: technologies
                 set_categories: t.s
 
-C_coeff:
+c:
     name: costs coefficients
     type: exogenous
     coordinates: [scenarios, technologies, costs]
@@ -45,19 +44,27 @@ C_coeff:
                 set: technologies
                 set_categories: t.s
 
-Y_tot:
+Y:
     name: final demand
     type: exogenous
-    coordinates: [scenarios, time, flows, technologies]
+    coordinates: [scenarios, time, flows_agg, technologies]
     variables_info:
         Y:
             rows: 
-                set: flows
-                set_categories: f.p
-                aggregation_key: competition 
+                set: flows_agg
             cols:
                 set: technologies
                 set_categories: t.d
+
+X_max:
+    name: maximum activity by technology
+    type: exogenous
+    coordinates: [scenarios, time, technologies]
+    variables_info:
+        X_max:
+            rows: 
+                set: technologies
+                set_categories: t.s
 
 
 # -----------------------------------------------------------------------------
@@ -66,17 +73,14 @@ Y_tot:
 constants: 
     name: constant values
     type: constant
-    coordinates: [technologies, time]
+    coordinates: [flows, flows_agg]
     variables_info:
-        i_1y:
-            value: sum_vector
-            cols:
-                set: time
-        i_t1:
+        I_ff:
             value: sum_vector
             rows:
-                set: technologies
-                set_categories: t.s
+                set: flows_agg
+            cols:
+                set: flows
 
 
 # -----------------------------------------------------------------------------
@@ -100,7 +104,15 @@ Q:
         Q:
             cols: 
                 set: flows
-                set_categories: f.p
+
+Q_agg:
+    name: demand by flow
+    type: endogenous
+    coordinates: [scenarios, time, flows_agg]
+    variables_info:
+        Q_agg:
+            rows: 
+                set: flows_agg
 
 C_tot:
     name: costs total
