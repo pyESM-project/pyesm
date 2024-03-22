@@ -102,7 +102,8 @@ class Variable:
                 dim_items.append(
                     list(*self.coordinates[dimension].values()))
             else:
-                dim_items.append([1])
+                # dim_items.append([1])
+                dim_items.append(None)
 
         return dim_items
 
@@ -204,10 +205,10 @@ class Variable:
             aggfunc='first'
         )
 
-        # pivoted_data = pivoted_data.reindex(
-        #     index=self.dim_items[0],
-        #     columns=self.dim_items[1]
-        # )
+        pivoted_data = pivoted_data.reindex(
+            index=self.dim_items[0],
+            columns=self.dim_items[1]
+        )
 
         return pivoted_data
 
