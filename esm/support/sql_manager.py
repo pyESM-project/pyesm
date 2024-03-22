@@ -553,8 +553,8 @@ class SQLManager:
 
         Valid 'operation' modes:
             - overwrite: deletes all table entries and writes the new data.
-            - update: updates existing values (tables must have same same 
-                entries except for numerical values column).
+            - update: common entries (except for values) will be updated, while
+                other entries (if present) are unchanged. 
 
         """
         valid_operations = ['overwrite', 'update', ]
@@ -603,19 +603,19 @@ class SQLManager:
 
             dataframe_to_update = self.table_to_dataframe(table_name)
 
-            if not util.check_dataframes_equality(
-                df_list=[dataframe_to_update, dataframe],
-                skip_columns=[id_field, values_field]
-            ):
-                msg = "Sets values of the passed dataframe and the SQLite " \
-                    f"table '{table_name}' mismatch. SQLite table NOT updated."
-                self.logger.error(msg)
-                raise OperationalError(msg)
-
             if util.check_dataframes_equality([dataframe_to_update, dataframe]):
                 self.logger.warning(
                     f"SQLite table {table_name} already up to date.")
                 return
+
+            if not util.check_dataframe_columns_equality(
+                df_list=[dataframe_to_update, dataframe],
+                skip_columns=[id_field, values_field]
+            ):
+                msg = "Sets of the passed dataframe and the SQLite " \
+                    f"table '{table_name}' mismatch. SQLite table NOT updated."
+                self.logger.error(msg)
+                raise OperationalError(msg)
 
             data = [
                 tuple([row[-1], *row[:-1]])

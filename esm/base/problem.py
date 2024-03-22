@@ -87,37 +87,38 @@ class Problem:
 
     def generate_constant_data(
             self,
+            variable_name: str,
             variable: Variable,
     ) -> cp.Constant:
 
         self.logger.debug(
-            f"Generating constant '{variable.symbol}' as '{variable.value}'.")
+            f"Generating constant '{variable_name}' as '{variable.value}'.")
 
         var_value = variable.define_constant(variable.value)
 
         return self.create_cvxpy_variable(
             type=variable.type,
             shape=variable.shape_size,
-            name=variable.symbol + str(variable.shape),
+            name=variable_name + str(variable.shape),
             value=var_value,
         )
 
     def generate_vars_dataframe(
             self,
+            variable_name: str,
             variable: Variable,
     ) -> pd.DataFrame:
         """For a Variable object, generates a Pandas DataFrame with the  
         hierarchy structure, the related cvxpy variables and the dictionary to
         filter the sql table for fetching data.
         """
-
         headers = {
             'cvxpy': constants._CVXPY_VAR_HEADER,
             'filter': constants._FILTER_DICT_HEADER,
         }
 
         self.logger.debug(
-            f"Generating variable '{variable.symbol}' dataframe "
+            f"Generating dataframe for variable '{variable_name}' "
             "(cvxpy object, filter dictionary).")
 
         if variable.sets_parsing_hierarchy:
@@ -125,9 +126,14 @@ class Problem:
         else:
             sets_parsing_hierarchy = None
 
+        coordinates_dict_with_headers = util.substitute_keys(
+            source_dict=variable.sets_parsing_hierarchy_values,
+            key_mapping_dict=variable.sets_parsing_hierarchy,
+        )
+
         var_data = util.unpivot_dict_to_dataframe(
-            data_dict=variable.coordinates,
-            key_order=sets_parsing_hierarchy
+            data_dict=coordinates_dict_with_headers,
+            key_order=sets_parsing_hierarchy,
         )
 
         for item in headers.values():
@@ -143,7 +149,7 @@ class Problem:
                 self.create_cvxpy_variable(
                     type=variable.type,
                     shape=variable.shape_size,
-                    name=variable.symbol + str(variable.shape))
+                    name=variable_name + str(variable.shape))
 
             var_filter = {}
 
@@ -154,12 +160,12 @@ class Problem:
                     var_filter[header] = [var_data.loc[row][header]]
 
                 elif header == headers['cvxpy']:
-                    for dim in variable.shape:
-                        if isinstance(dim, int):
+                    for dim in [0, 1]:
+                        if isinstance(variable.shape[dim], int):
                             pass
-                        elif isinstance(dim, str):
-                            dim_header = variable.table_headers[dim][0]
-                            var_filter[dim_header] = variable.coordinates[dim_header]
+                        elif isinstance(variable.shape[dim], str):
+                            dim_header = variable.dim_labels[dim]
+                            var_filter[dim_header] = variable.dim_items[dim]
 
                 elif header == headers['filter']:
                     pass
@@ -175,7 +181,7 @@ class Problem:
 
     def load_symbolic_problem_from_file(self) -> None:
 
-        problem_file_name = constants._SETUP_FILES['problem']
+        problem_file_name = constants._SETUP_FILES[2]
 
         if self.symbolic_problem is not None:
             self.logger.warning(f"Symbolic problem already loaded.")
@@ -243,32 +249,40 @@ class Problem:
 
             msg = f"Attributes '{attribute}' mismatch in the passed " \
                 f"variables subset {var_subset_symbols}."
-            self.logger.error(msg)
-            raise exc.ConceptualModelError(msg)
+            self.logger.warning(msg)
 
     def find_common_sets_intra_problem(
         self,
         variables_subset: DotDict[str, Variable],
+        allow_none: bool = True,
     ) -> Dict[str, str]:
 
-        sets_dicts_to_compare = {
-            key: getattr(variable, 'sets_intra_problem')
+        vars_sets_intra_problem = {
+            key: variable.coordinates_info['intra']
             for key, variable in variables_subset.items()
         }
 
-        sets_dicts_list = list(sets_dicts_to_compare.values())
+        if allow_none:
+            vars_sets_intra_problem_list = [
+                value for value in vars_sets_intra_problem.values() if value
+            ]
+        else:
+            vars_sets_intra_problem_list = list(
+                vars_sets_intra_problem.values())
 
-        if not sets_dicts_list:
+        if not vars_sets_intra_problem_list:
             return {}
 
         if all(
-            d == sets_dicts_list[0]
-            for d in sets_dicts_list[1:]
+            d == vars_sets_intra_problem_list[0]
+            for d in vars_sets_intra_problem_list[1:]
         ):
-            return sets_dicts_list[0]
+            return vars_sets_intra_problem_list[0]
         else:
-            msg = f"Passed variables subset have not " \
-                "the same sets_intra_problem."
+            msg = f"Fore each problem, each expression must be defined for " \
+                "a unique common set (defined by 'sets_intra_problem')." \
+                "A variable can be used for multiple expressions if ." \
+                "'sets_intra_problem' is None."
             self.logger.error(msg)
             raise exc.ConceptualModelError(msg)
 
@@ -299,11 +313,11 @@ class Problem:
         # se si vuole mettere i nomi dei set (Scenarios) bisogna cambiarli anche
         # nelle tabelle sei set e delle variabili.
         dict_to_unpivot = {}
-        for set_name, set_header in self.index.list_sets_split_problem.items():
+        for set_name, set_header in self.index.sets_split_problem_list.items():
             set_values = self.index.sets[set_name].data[set_header]
             dict_to_unpivot[set_header] = list(set_values)
 
-        list_sets_split_problem = self.index.list_sets_split_problem.values()
+        list_sets_split_problem = self.index.sets_split_problem_list.values()
 
         problems_data = util.unpivot_dict_to_dataframe(
             data_dict=dict_to_unpivot,
@@ -358,38 +372,57 @@ class Problem:
     def fetch_allowed_cvxpy_variables(
             self,
             variables_set_dict: DotDict[str, Variable],
-            problem_filter: pd.DataFrame = None,
+            problem_filter: pd.DataFrame,
             set_intra_problem_header: str = None,
             set_intra_problem_value: str = None,
     ) -> Dict[str, cp.Parameter | cp.Variable]:
 
         allowed_variables = {}
+        cvxpy_var_header = constants._CVXPY_VAR_HEADER
 
-        for variable in variables_set_dict.values():
+        for var_key, variable in variables_set_dict.items():
 
+            # constants are directly assigned
             if variable.type == 'constant':
-                cvxpy_variable = variable.data
+                allowed_variables[var_key] = variable.data
+                continue
 
+            # filter variable data based on problem filter
+            variable_data = pd.merge(
+                left=variable.data,
+                right=problem_filter,
+                on=list(problem_filter.columns),
+                how='inner'
+            )
+
+            # if no sets intra-probles are defined for the variable, the cvxpy
+            # variable is fetched for the current ploblem. cvxpy variable must
+            # be unique for the defined problem
+            if not variable.coordinates_info['intra']:
+                if variable_data.shape[0] == 1:
+                    allowed_variables[var_key] = \
+                        variable_data[cvxpy_var_header].values[0]
+                else:
+                    msg = "Unable to identify a unique cvxpy variable for " \
+                        f"{var_key} based on the current problem filter."
+                    self.logger.error(msg)
+                    raise exc.ConceptualModelError(msg)
+
+            # if sets_intra_problem is defined for the variable, the right
+            # cvxpy variable is fetched for the current problem
+            elif variable.coordinates_info['intra'] \
+                    and set_intra_problem_header and set_intra_problem_value:
+                allowed_variables[var_key] = variable_data.loc[
+                    variable_data[set_intra_problem_header] == set_intra_problem_value,
+                    cvxpy_var_header,
+                ].iloc[0]
+
+            # other cases
             else:
-                if problem_filter is not None:
-                    variable_data = pd.merge(
-                        left=variable.data,
-                        right=problem_filter,
-                        on=list(problem_filter.columns),
-                        how='inner'
-                    )
-                else:
-                    variable_data = variable.data
-
-                if set_intra_problem_header and set_intra_problem_value:
-                    cvxpy_variable = variable_data.loc[
-                        variable_data[set_intra_problem_header] == set_intra_problem_value,
-                        constants._CVXPY_VAR_HEADER,
-                    ].iloc[0]
-                else:
-                    cvxpy_variable = variable_data[constants._CVXPY_VAR_HEADER].values[0]
-
-            allowed_variables[variable.symbol] = cvxpy_variable
+                msg = "Unable to fetch cvxpy variable for " \
+                    f"variable {var_key}."
+                self.logger.error(msg)
+                raise exc.ConceptualModelError(msg)
 
         return allowed_variables
 
@@ -410,7 +443,7 @@ class Problem:
             )
 
         except SyntaxError:
-            msg = "Error in parsing cvxpy expression: " \
+            msg = "Error in executing cvxpy expression: " \
                 "check allowed variables, operators or expression syntax."
             self.logger.error(msg)
             raise exc.NumericalProblemError(msg)
@@ -432,28 +465,22 @@ class Problem:
         for expression in self.symbolic_problem[header_object]:
 
             # get variables symbols in expression
-            var_symbols_list = self.parse_allowed_symbolic_vars(expression)
+            vars_symbols_list = self.parse_allowed_symbolic_vars(expression)
 
             # define subset of variables in the expression
             vars_subset = DotDict({
-                key: variable for key, variable in self.index.variables
-                if variable.symbol in var_symbols_list
+                key: variable for key, variable in self.index.variables.items()
+                if key in vars_symbols_list
                 and variable.type != 'constant'
             })
 
             constants_subset = DotDict({
-                key: variable for key, variable in self.index.variables
-                if variable.type == 'constant'
+                key: variable for key, variable in self.index.variables.items()
+                if key in vars_symbols_list
+                and variable.type == 'constant'
             })
 
-            # if more than one var, check equality of sets_parsing_hierarchy
-            if len(vars_subset) > 1:
-                self.check_variables_attribute_equality(
-                    variables_subset=vars_subset,
-                    attribute='sets_parsing_hierarchy'
-                )
-
-            # look for intra-problem set (only one allowed for now)
+            # look for intra-problem set (only one per expression allowed)
             set_intra_problem = self.find_common_sets_intra_problem(
                 variables_subset=vars_subset,
             )

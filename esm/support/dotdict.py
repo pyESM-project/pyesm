@@ -8,14 +8,16 @@ class DotDict(dict):
     """
 
     def __getattr__(self, name: str) -> Any:
-        if name in self:
+        try:
             return self[name]
-        else:
-            error = f"No such attribute: {name}"
-            raise AttributeError(error)
+        except KeyError as error:
+            raise AttributeError(f"No such attribute: {name}") from error
 
     def __setattr__(self, name: str, value: Any) -> None:
         self[name] = value
 
-    def __iter__(self) -> Dict[str, Any]:
-        return iter(self.items())
+    def __delattr__(self, name: str) -> None:
+        try:
+            del self[name]
+        except KeyError as error:
+            raise AttributeError(f"No such attribute: {name}") from error

@@ -1,0 +1,127 @@
+# template for defining variables of the model
+
+# RULES:
+# - SQLite tables names are case insensitive: two tables named 
+# 'e' and 'E' are not allowed. However, variables symbols are case sensitive
+
+
+# -----------------------------------------------------------------------------
+# exogenous variables
+
+d:
+    name: market shares coefficients
+    type: exogenous
+    coordinates: [scenarios, technologies, flows]
+    variables_info:
+        d:
+            rows: 
+                set: technologies
+                set_categories: t.s
+            cols:
+                set: flows
+
+u:
+    name: technical coefficients
+    type: exogenous
+    coordinates: [scenarios, technologies, flows_agg]
+    variables_info:
+        u:
+            rows: 
+                set: flows_agg
+            cols:
+                set: technologies
+                set_categories: t.s
+
+c:
+    name: costs coefficients
+    type: exogenous
+    coordinates: [scenarios, technologies, costs]
+    variables_info:
+        c:
+            rows: 
+                set: costs
+            cols:
+                set: technologies
+                set_categories: t.s
+
+Y:
+    name: final demand
+    type: exogenous
+    coordinates: [scenarios, time, flows_agg, technologies]
+    variables_info:
+        Y:
+            rows: 
+                set: flows_agg
+            cols:
+                set: technologies
+                set_categories: t.d
+
+X_max:
+    name: maximum activity by technology
+    type: exogenous
+    coordinates: [scenarios, time, technologies]
+    variables_info:
+        X_max:
+            rows: 
+                set: technologies
+                set_categories: t.s
+
+
+# -----------------------------------------------------------------------------
+# constants
+
+constants: 
+    name: constant values
+    type: constant
+    coordinates: [flows, flows_agg]
+    variables_info:
+        I_ff:
+            value: sum_vector
+            rows:
+                set: flows_agg
+            cols:
+                set: flows
+
+
+# -----------------------------------------------------------------------------
+# endogenous variables
+
+X:
+    name: activity by technology
+    type: endogenous
+    coordinates: [scenarios, time, technologies]
+    variables_info:
+        X:
+            rows: 
+                set: technologies
+                set_categories: t.s
+
+Q:
+    name: demand by flow
+    type: endogenous
+    coordinates: [scenarios, time, flows]
+    variables_info:
+        Q:
+            cols: 
+                set: flows
+
+Q_agg:
+    name: demand by flow
+    type: endogenous
+    coordinates: [scenarios, time, flows_agg]
+    variables_info:
+        Q_agg:
+            rows: 
+                set: flows_agg
+
+C_tot:
+    name: costs total
+    type: endogenous
+    coordinates: [scenarios, time, technologies, costs]
+    variables_info:
+        C:
+            rows: 
+                set: costs
+            cols:
+                set: technologies
+                set_categories: t.s

@@ -10,59 +10,7 @@ from esm.support import util
 
 class Variable:
     """
-    Represents a model variable with associated attributes and methods.
-
-    Args:
-        logger (Logger): An instance of the Logger class for logging purposes.
-        **kwargs: Additional keyword arguments representing attributes of 
-            the variable.
-
-    Attributes:
-        logger (Logger): A Logger instance for logging.
-        symbol (str): Symbol representing the variable.
-        name (str): Variable name.
-        type (str): Variable type.
-        coordinates_info (Dict[str, Any]): Information about all sets or 
-            subsets that define the variable (coordinates).
-        shape (List[int]): Shape of the variable matrix (bidimensional).
-        value (str): Type of the variable (defined to assign directly values 
-            to constants).
-        coordinates_fields (Dict[str, Any]): Name and type of the coordinates
-            table headers in the SQLite database.
-        table_headers (Dict[str, Any]): Full SQLite table headers of the table 
-            associated with the variable (including id and value columns).
-        coordinates (Dict[str, Any]): Coordinates of the variable (sets table
-            headers and related values).
-        foreign_keys (Dict[str, Any]): Foreign keys of sets tables associated 
-            with the variable table.
-        sets_parsing_hierarchy (Dict[str, str]): Names and table headers of 
-            the sets that define multiple variables (so excluding sets 
-            defining variable dimension).
-        sets_intra_problem (Dict[str, str]): Names and table headers of the 
-            sets that do not define variable shape and do not define multiple
-            problems (e.g. scenarios may define variable in multiple problems,
-            years may define different variables in the same problem).
-        data (pd.DataFrame): DataFrame containing the cvxpy variables for each
-            combination of sets_parsing_hierarchy, and the related filter 
-            dictionaries necessary to fetch data in SQLite variable tables.
-
-    Methods:
-        __repr__: Representation of the Variable instance.
-        __iter__: Iterator over the Variable instance.
-        shape_size: Returns the size of each dimension in the variable matrix.
-        is_square: Checks if the variable matrix is square.
-        is_vector: Checks if the variable matrix is a vector.
-        dim_labels: Retrieves the labels of the variable matrix dimensions.
-        dim_items: Retrieves the items of the variable matrix dimension.
-        get_dim_label: Retrieves the label for a specific matrix dimension.
-        get_dim_items: Retrieves the items for a specific matrix dimension.
-        none_data_coordinates: Checks for None data values in cvxpy variables 
-            and returns related coordinates.
-        reshaping_sqlite_table_data: Reshapes data fetched from SQLite database 
-            variable table.
-        reshaping_variable_data: Reshapes data for a cvxpy variable to 
-            match SQLite database variable table.
-        define_constant: Defines a constant of a specific type.
+    tbd
     """
 
     def __init__(
@@ -73,22 +21,17 @@ class Variable:
 
         self.logger = logger.getChild(__name__)
 
-        self.symbol: str = None
-        self.name: str = None
-        self.type: str = None
-        self.coordinates_info: Dict[str, Any] = {}
-        self.shape: List[int] = []
+        self.rows: Dict[str, Any] = {}
+        self.cols: Dict[str, Any] = {}
         self.value: str = None
+        self.related_table: str = None
+        self.type: str = None
 
         for key, value in kwargs.items():
             setattr(self, key, value)
 
-        self.coordinates_fields: Dict[str, Any] = {}
-        self.table_headers: Dict[str, Any] = {}
+        self.coordinates_info: Dict[str, Any] = {}
         self.coordinates: Dict[str, Any] = {}
-        self.foreign_keys: Dict[str, Any] = {}
-        self.sets_parsing_hierarchy: Dict[str, str] = {}
-        self.sets_intra_problem: Dict[str, str] = {}
         self.data: pd.DataFrame = None
 
     def __repr__(self) -> str:
@@ -104,36 +47,65 @@ class Variable:
                 yield key, value
 
     @property
+    def shape(self) -> List[str | int]:
+        rows_shape = self.rows['set'] if 'set' in self.rows else 1
+        cols_shape = self.cols['set'] if 'set' in self.cols else 1
+        return [rows_shape, cols_shape]
+
+    @property
     def shape_size(self) -> List[int]:
         """Computes and returns the size of each dimension in the variable.
 
         Returns:
             List[int]: A list containing the size of each dimension in 
                 the shape.
-
-        Raises:
-            ValueError: If the shape format is incorrect or if a variable 
-                coordinate is not found.
         """
-
         shape_size = []
 
-        for item in self.shape:
-            if isinstance(item, str):
-                if item not in self.coordinates_fields.keys():
-                    error = f"'{item}' is not a variable coordinate."
-                    raise ValueError(error)
-                coordinate_key = self.coordinates_fields[item][0]
-                shape_size.append(len(self.coordinates[coordinate_key]))
-
-            elif isinstance(item, int):
-                shape_size.append(item)
-
+        for dimension in ['rows', 'cols']:
+            if self.coordinates[dimension]:
+                shape_size.append(len(*self.coordinates[dimension].values()))
             else:
-                error = "Wrong shape format: valid formats are 'str' or 'int'"
-                raise ValueError(error)
+                shape_size.append(1)
 
         return shape_size
+
+    @property
+    def dim_labels(self) -> List[str]:
+        """Retrieves the labels for each dimension of the variable.
+
+        Returns:
+            List[str]: A list containing the labels for each dimension.
+        """
+        dim_labels = []
+
+        for dimension in ['rows', 'cols']:
+            if self.coordinates_info[dimension]:
+                dim_labels.append(
+                    list(self.coordinates_info[dimension].values())[0])
+            else:
+                dim_labels.append(None)
+
+        return dim_labels
+
+    @property
+    def dim_items(self) -> List[List[str]]:
+        """Retrieves the items for each variable dimension.
+
+        Returns:
+            List[List[str]]: A list containing the items for each dimension.
+        """
+        dim_items = []
+
+        for dimension in ['rows', 'cols']:
+            if self.coordinates[dimension]:
+                dim_items.append(
+                    list(*self.coordinates[dimension].values()))
+            else:
+                # dim_items.append([1])
+                dim_items.append(None)
+
+        return dim_items
 
     @property
     def is_square(self) -> bool:
@@ -145,7 +117,7 @@ class Variable:
 
         if len(self.shape) != 2:
             return False
-        if self.shape[0] == self.shape[1]:
+        if self.shape_size[0] == self.shape_size[1]:
             return True
         else:
             return False
@@ -158,74 +130,24 @@ class Variable:
             bool: True if the variable is a vector, False otherwise.
         """
 
-        return True if len(self.shape) == 1 or 1 in self.shape else False
-
-    @property
-    def dim_labels(self) -> List[str]:
-        """Retrieves the labels for each dimension of the variable.
-
-        Returns:
-            List[str]: A list containing the labels for each dimension.
-        """
-
-        return [self.get_dim_label(dim) for dim, _ in enumerate(self.shape)]
-
-    @property
-    def dim_items(self) -> List[List[str]]:
-        """Retrieves the items for each variable dimension.
-
-        Returns:
-            List[List[str]]: A list containing the items for each dimension.
-        """
-
-        return [self.get_dim_items(dim) for dim, _ in enumerate(self.shape)]
-
-    def get_dim_label(self, dimension: Literal[0, 1]) -> str | int:
-        """Retrieves the label for a specific dimension of the variable.
-
-        Args:
-            dimension (Literal[0, 1]): The dimension to retrieve the label for:
-                0 -> Rows, 1 -> Columns.
-
-        Returns:
-            Union[str, int]: The label for the specified dimension.
-
-        Raises:
-            ValueError: If the dimension is not 0 (rows) or 1 (columns).
-        """
-
-        if dimension not in [0, 1]:
-            raise ValueError("Dimension must be 0 (rows) or 1 (columns).")
-
-        dim_label = self.table_headers.get(
-            self.shape[dimension])
-
-        return dim_label[0] if isinstance(dim_label, list) else dim_label
-
-    def get_dim_items(self, dimension: Literal[0, 1]) -> List[str]:
-        """Retrieves the items for a specific dimension of the variable.
-
-        Args:
-            dimension (Literal[0, 1]): The dimension to retrieve the items for:
-                0 -> Rows, 1 -> Columns.
-
-        Returns:
-            List[str]: A list containing the items for the specified dimension.
-
-        Raises:
-            ValueError: If the dimension is not 0 (rows) or 1 (columns).
-        """
-
-        if dimension not in [0, 1]:
-            raise ValueError("Dimension must be 0 (rows) or 1 (columns).")
-
-        dim_name = self.shape[dimension]
-
-        if isinstance(dim_name, int):
-            return None
+        if len(self.shape_size) == 1 or 1 in self.shape_size:
+            return True
         else:
-            dim_label = self.table_headers[dim_name][0]
-            return self.coordinates[dim_label]
+            return False
+
+    @property
+    def sets_parsing_hierarchy(self) -> Dict[str, str]:
+        return {
+            **self.coordinates_info['intra'],
+            **self.coordinates_info['inter'],
+        }
+
+    @property
+    def sets_parsing_hierarchy_values(self) -> Dict[str, str]:
+        return {
+            **self.coordinates['intra'],
+            **self.coordinates['inter'],
+        }
 
     def none_data_coordinates(self, row: int) -> Dict:
         """Checks if there are None data values in cvxpy variables and returns
@@ -278,7 +200,7 @@ class Variable:
 
         pivoted_data = data.pivot_table(
             index=self.dim_labels[0],
-            columns=self.dim_labels[1] or None,
+            columns=self.dim_labels[1],
             values=values_header,
             aggfunc='first'
         )
@@ -359,17 +281,17 @@ class Variable:
         """
 
         util.validate_selection(
-            valid_selections=constants._ALLOWED_VALUES.keys(),
+            valid_selections=constants._ALLOWED_CONSTANTS.keys(),
             selection=value_type,
         )
 
-        factory_function, *args = constants._ALLOWED_VALUES[value_type]
+        factory_function, *args = constants._ALLOWED_CONSTANTS[value_type]
 
         if value_type == 'identity':
             if self.is_square:
                 return factory_function(self.shape_size[0])
             else:
-                msg = 'Identity matrix must be square Check variable shape.'
+                msg = 'Identity matrix must be square. Check variable shape.'
 
         elif value_type == 'sum_vector':
             if self.is_vector:
@@ -377,9 +299,19 @@ class Variable:
             else:
                 msg = 'Summation vector must be a vector (one dimension). ' \
                     'Check variable shape.'
+
+        elif value_type == 'lower_triangular':
+            if self.is_square:
+                return factory_function(self.shape_size[0])
+            else:
+                msg = 'Lower triangular matrix must be square. ' \
+                    'Check variable shape.'
+
+        # ADD HERE SPECIAL IDENTITY (define factory function in util module)
+
         else:
-            msg = "Variable value type not supported. "
-            f"Supported value types: {constants._ALLOWED_VALUES.keys()}"
+            msg = f"Variable value type '{value_type}' not supported. "
+            f"Supported value types: {constants._ALLOWED_CONSTANTS.keys()}"
             self.logger.error(msg)
             raise exc.SettingsError(msg)
 
