@@ -34,7 +34,6 @@ flows:
         name: ['f_Name', 'TEXT']
         aggregation_1: ['f_Name_agg_1', 'TEXT']
 
-
 flows_agg:
     symbol: f_agg
     table_name: _set_FLOWS_AGG
