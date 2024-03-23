@@ -40,21 +40,21 @@ def test_validate_dict_structure():
         should return False.
     """
     test_items = {
-        1: {"key1": {"subkey1": 1, "subkey2": "value"}},
-        2: {"key1": {"subkey1": 1, "subkey2": 2}},
-        3: {"key1": {"subkey1": 1, "subkey2": "value", "subkey3": "extra"}},
+        1: {"key1": 1, "key2": "value"},
+        2: {"key1": True, "key2": 2},
+        3: {"key1": 1, "key2": {"subkey1": 1, "subkey2": 2}},
     }
 
     validation_structures = {
-        1: {"subkey1": int, "subkey2": str},
-        2: {"subkey1": int, "subkey2": str},
-        3: {"subkey1": int, "subkey2": str},
+        1: {"key1": int, "key2": str},
+        2: {"key1": bool, "key2": int},
+        3: {"key1": int, "key2": dict},
     }
 
     expected_outputs = {
         1: True,
-        2: False,
-        3: False,
+        2: True,
+        3: True,
     }
 
     for key in test_items:
@@ -77,17 +77,26 @@ def test_find_dict_depth():
      - tests a non-dictionary input
     """
 
-    test_items = [
-        ({1: 1, 2: 2}, 1),
-        ({1: {2: 2, 3: {4: 4, 5: 5}}, 6: 6}, 3),
-        ({}, 0),
-        ({1: {2: 'two', 3: (4, 5)}, 6: [7, 8]}, 2),
-        ([], 0),
-        ('dictionary', 0),
-    ]
+    test_items = {
+        1: {1: 1, 2: 2},
+        2: {1: {2: 2, 3: {4: 4, 5: 5}}, 6: 6},
+        3: {},
+        4: {1: {2: 'two', 3: (4, 5)}, 6: [7, 8]},
+        5: [],
+        6: 'dictionary',
+    }
+
+    expected_outputs = {
+        1: 1,
+        2: 3,
+        3: 0,
+        4: 2,
+        5: 0,
+        6: 0,
+    }
 
     for item in test_items:
-        assert find_dict_depth(item[0]) == item[1]
+        assert find_dict_depth(test_items[item]) == expected_outputs[item]
 
 
 def test_generate_dict_with_none_values():
@@ -116,3 +125,46 @@ def test_generate_dict_with_none_values():
 
     for item in test_items:
         assert generate_dict_with_none_values(item[0]) == item[1]
+
+
+def test_unpivot_dict_to_dataframe():
+    """
+    Test cases:
+    - Unpivot dict with unspecified key order.
+    - Unpivot dict with key order as the same order of passed dict keys.
+    - Unpivot dict with key order different compared to passed dict keys.
+    - Unpivot dict with key order as subset of passed dict keys.
+    - 
+    """
+
+    std_dict = {'A': [1, 2], 'B': [3, 4]}
+
+    key_orders = {
+        1: None,
+        2: ['A', 'B'],
+        3: ['B', 'A'],
+        4: ['B'],
+        5: ['Z'],
+    }
+
+    expected_outputs = {
+        1: pd.DataFrame({'A': [1, 1, 2, 2], 'B': [3, 4, 3, 4]}),
+        2: pd.DataFrame({'A': [1, 1, 2, 2], 'B': [3, 4, 3, 4]}),
+        3: pd.DataFrame({'B': [3, 3, 4, 4], 'A': [1, 2, 1, 2]}),
+        4: pd.DataFrame({'B': [3, 4]}),
+        5: ValueError
+    }
+
+    for item, key_order in key_orders.items():
+
+        if expected_outputs[item] is ValueError:
+            with pytest.raises(ValueError):
+                unpivot_dict_to_dataframe(
+                    data_dict=std_dict,
+                    key_order=key_order,
+                )
+        else:
+            assert unpivot_dict_to_dataframe(
+                data_dict=std_dict,
+                key_order=key_order,
+            ).equals(expected_outputs[item]), f"Failed on test case '{item}'"
