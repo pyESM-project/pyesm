@@ -4,6 +4,7 @@ from typing import Any
 from esm import constants
 from esm.log_exc.logger import Logger
 from esm.log_exc.exceptions import *
+from esm.support.dotdict import DotDict
 from esm.support.file_manager import FileManager
 from esm.support.pbi_manager import PBIManager
 from esm.base.core import Core
@@ -38,7 +39,7 @@ class Model:
         self.files = FileManager(logger=self.logger)
 
         self.logger.info('Defining settings from model arguments.')
-        self.settings = {
+        self.settings = DotDict({
             'model_name': model_dir_name,
             'use_existing_data': use_existing_data,
             'multiple_input_files': multiple_input_files,
@@ -47,18 +48,18 @@ class Model:
             'input_data_file': input_data_file,
             'sqlite_database_file': sqlite_database_file,
             'sqlite_database_foreign_keys': sqlite_database_foreign_keys,
-        }
+        })
 
         self.logger.info('Defining paths from model arguments.')
         model_dir_path = Path(main_dir_path) / model_dir_name
 
-        self.paths = {
+        self.paths = DotDict({
             'model_dir': model_dir_path,
             'input_data_dir': model_dir_path / input_data_dir,
             'sets_excel_file': model_dir_path / sets_xlsx_file,
             'sqlite_database': model_dir_path / sqlite_database_file,
             'pbi_report': model_dir_path / powerbi_report_file,
-        }
+        })
 
         self.validate_model_dir()
 
@@ -104,20 +105,21 @@ class Model:
                 'Loading new sets data and variable coordinates.')
 
         try:
-            self.core.index.load_sets_to_index(
+            self.core.index.load_sets_data_to_index(
                 excel_file_name=self.settings['sets_xlsx_file'],
                 excel_file_dir_path=self.paths['model_dir'])
         except FileNotFoundError:
             msg = f"'{self.settings['sets_xlsx_file']}' file " \
-                "missing. Set 'model->use_existing_data' to False to " \
+                "missing. Set 'use_existing_data' to False to " \
                 "generate a new settings file."
             self.logger.error(msg)
             raise SettingsError(msg)
 
-        self.core.index.load_vars_coordinates_to_index()
+        self.core.index.load_coordinates_to_data_index()
+        self.core.index.load_coordinates_to_variables_index()
 
         if self.settings['sqlite_database_foreign_keys']:
-            self.core.index.load_foreign_keys_to_vars_index()
+            self.core.index.fetch_foreign_keys_to_data_tables()
 
     def initialize_blank_database(self) -> None:
         if self.settings['use_existing_data']:
@@ -130,9 +132,9 @@ class Model:
             'Generating blank SQLite database and excel input files.')
 
         self.core.database.load_sets_to_database()
-        self.core.database.generate_blank_vars_sql_tables()
+        self.core.database.generate_blank_data_sql_tables()
         self.core.database.sets_data_to_vars_sql_tables()
-        self.core.database.generate_blank_vars_input_files()
+        self.core.database.generate_blank_data_input_files()
 
     def load_data_files_to_database(
             self,
@@ -140,6 +142,8 @@ class Model:
     ) -> None:
         self.logger.info('Loading input data to SQLite database.')
         self.core.database.load_data_input_files_to_database(operation)
+        # to be completed
+        self.core.database.empty_data_completion(operation)
 
     def initialize_problems(
             self,

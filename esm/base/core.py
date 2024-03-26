@@ -23,7 +23,6 @@ class Core:
     ) -> None:
 
         self.logger = logger.getChild(__name__)
-
         self.logger.info(f"'{self}' object initialization...")
 
         self.files = files
@@ -70,11 +69,17 @@ class Core:
             "Initialize variables dataframes "
             "(cvxpy objects, filters dictionaries).")
 
-        for variable in self.index.variables.values():
+        for var_name, variable in self.index.variables.items():
             if variable.type == 'constant':
-                variable.data = self.problem.generate_constant_data(variable)
+                variable.data = self.problem.generate_constant_data(
+                    variable_name=var_name,
+                    variable=variable
+                )
             else:
-                variable.data = self.problem.generate_vars_dataframe(variable)
+                variable.data = self.problem.generate_vars_dataframe(
+                    variable_name=var_name,
+                    variable=variable
+                )
 
     def define_numerical_problems(self) -> None:
         self.logger.info(
@@ -101,11 +106,11 @@ class Core:
             f"Fetching data from '{self.settings['sqlite_database_file']}' "
             "to cvxpy exogenous variables.")
 
-        for variable in self.index.variables.values():
+        for var_key, variable in self.index.variables.items():
 
             if isinstance(variable, Variable) and variable.type == 'exogenous':
                 self.logger.debug(
-                    f"Fetching data from table '{variable.symbol}' "
+                    f"Fetching data from table '{var_key}' "
                     "to cvxpy exogenous variable.")
 
                 filter_header = constants._FILTER_DICT_HEADER
@@ -114,7 +119,7 @@ class Core:
                 for row in variable.data.index:
 
                     raw_data = self.database.sqltools.filtered_table_to_dataframe(
-                        table_name=variable.symbol,
+                        table_name=variable.related_table,
                         filters_dict=variable.data[filter_header][row])
 
                     pivoted_data = variable.reshaping_sqlite_table_data(
@@ -136,7 +141,7 @@ class Core:
 
             if isinstance(variable, Variable) and variable.type == 'endogenous':
                 self.logger.debug(
-                    f"Fetching data from cvxpy variable '{variable.symbol}' "
+                    f"Fetching data from cvxpy variable '{var_key}' "
                     "to the related SQLite table.")
 
                 cvxpy_var_data = pd.DataFrame()
@@ -147,7 +152,7 @@ class Core:
 
                     if none_coord:
                         self.logger.debug(
-                            f"SQLite table '{variable.symbol}': "
+                            f"SQLite table '{var_key}': "
                             f"no data available for {none_coord}.")
                         continue
 
@@ -158,11 +163,11 @@ class Core:
                 if cvxpy_var_data.empty:
                     self.logger.warning(
                         "No data available in cvxpy variable "
-                        f"'{variable.symbol}'")
+                        f"'{var_key}'")
                     return
 
                 self.sqltools.dataframe_to_table(
-                    table_name=var_key,
+                    table_name=variable.related_table,
                     dataframe=cvxpy_var_data,
                     operation=operation,
                 )

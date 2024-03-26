@@ -1,0 +1,39 @@
+# template for defining variables of the model
+
+# RULES:
+# - variables define SQLite tables (name case insensitive: two tables named 
+# 'e' and 'E' are not allowed. However, variables symbols are case sensitive).
+# - 
+
+
+# -----------------------------------------
+# exogenous variables
+
+d:
+    symbol: d
+    name: market shares coefficients
+    type: exogenous
+    coordinates_info:
+        scenarios: null
+        technologies: 
+            set_categories: t.s
+            aggregation_key: null
+        flows:
+            set_categories: f.p
+            aggregation_key: null
+    shape: [technologies, flows]
+
+
+# -----------------------------------------
+# endogenous variables
+
+X:
+    symbol: X
+    name: total activity by technology (industry-based)
+    type: endogenous
+    coordinates_info: 
+        scenarios: null
+        technologies: 
+            set_categories: t.s
+            aggregation_key: null
+    shape: [technologies, 1]

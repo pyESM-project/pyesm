@@ -1,8 +1,9 @@
 import pprint as pp
 from pathlib import Path
-from typing import Dict, List, Any, Literal
+from typing import Dict, List, Any, Literal, Type
 
 import itertools as it
+import numpy as np
 import pandas as pd
 
 from esm import constants
@@ -119,11 +120,12 @@ def validate_selection(
 
 
 def validate_dict_structure(
-        dictionary: Dict[str, Dict[str, Any]],
+        dictionary: Dict[str, Any],
         validation_structure: Dict[str, Any],
 ) -> bool:
     """
     Validate the structure of a dictionary against a validation structure.
+    Only the first level of the dictionary hierarchy is validated.
 
     Args:
         dictionary (Dict[str, Any]): The dictionary to be validated.
@@ -133,16 +135,15 @@ def validate_dict_structure(
         bool: True if the dictionary matches the validation structure, 
             False otherwise.
     """
-    for value in dictionary.values():
-        for key, sub_value in value.items():
-            if key not in validation_structure:
-                return False
-            if not isinstance(sub_value, validation_structure[key]):
-                return False
+    for key, value in dictionary.items():
+        if key not in validation_structure:
+            return False
+        if not isinstance(value, validation_structure[key]):
+            return False
     return True
 
 
-def find_dict_depth(item) -> int:
+def find_dict_depth(item: dict) -> int:
     """Find and return the depth of a generic dictionary
 
     Args:
@@ -153,6 +154,7 @@ def find_dict_depth(item) -> int:
     """
     if not isinstance(item, dict) or not item:
         return 0
+
     return 1 + max(find_dict_depth(v) for k, v in item.items())
 
 
@@ -369,6 +371,39 @@ def check_dataframes_equality(
     return all(df.equals(df_list[0]) for df in df_list[1:])
 
 
+def check_dataframe_columns_equality(
+    df_list: List[pd.DataFrame],
+    skip_columns: List[str] = None,
+) -> bool:
+    """Check the equality of column headers in multiple DataFrames while 
+    optionally skipping specified columns.
+
+    Parameters:
+        df_list (List[pd.DataFrame]): A list of Pandas DataFrames to compare.
+        skip_columns (List[str], optional): A list of column names to skip 
+            during comparison.
+
+    Returns:
+        bool: True if all DataFrames have the same set of columns, False otherwise.
+
+    Raises:
+        None
+    """
+
+    if skip_columns is not None:
+        modified_df_list = [
+            dataframe.drop(columns=skip_columns, errors='ignore')
+            for dataframe in df_list
+        ]
+    else:
+        modified_df_list = df_list
+
+    columns_list = [set(df.columns) for df in modified_df_list]
+
+    first_columns = columns_list[0]
+    return all(columns == first_columns for columns in columns_list[1:])
+
+
 def add_column_to_dataframe(
         dataframe: pd.DataFrame,
         column_header: str,
@@ -403,3 +438,27 @@ def add_column_to_dataframe(
         column=column_header,
         value=column_values,
     )
+
+
+def substitute_keys(source_dict, key_mapping_dict):
+    """
+    Substitute the keys in source_dict with the values from key_mapping.
+    Raises an error if a value in key_mapping does not exist as a key in source_dict.
+
+    Parameters:
+    - source_dict (dict): A dictionary whose keys need to be substituted.
+    - key_mapping (dict): A dictionary containing the mapping of original keys to new keys.
+
+    Returns:
+    - dict: A new dictionary with substituted keys.
+
+    Raises:
+    - ValueError: If a value from key_mapping is not a key in source_dict.
+    """
+    substituted_dict = {}
+    for key, new_key in key_mapping_dict.items():
+        if key not in source_dict:
+            raise ValueError(
+                f"Key '{key}' from key_mapping is not found in source_dict.")
+        substituted_dict[new_key] = source_dict[key]
+    return substituted_dict

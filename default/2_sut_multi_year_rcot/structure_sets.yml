@@ -1,0 +1,49 @@
+# structure of sets
+
+scenarios:
+    symbol: s
+    table_name: _set_SCENARIOS
+    table_headers:
+        id: ['s_ID', 'INTEGER PRIMARY KEY']
+        name: ['s_Name', 'TEXT']
+    split_problem: True
+
+time:
+    symbol: y
+    table_name: _set_TIME
+    table_headers:
+        id: ['y_ID', 'INTEGER PRIMARY KEY']
+        name: ['y_Name', 'TEXT']
+
+technologies:
+    symbol: t
+    table_name: _set_TECHNOLOGIES
+    table_headers:
+        id: ['t_ID', 'INTEGER PRIMARY KEY']
+        name: ['t_Name', 'TEXT']
+        category: ['t_Category', 'TEXT']
+    set_categories:
+        t.s: Supply technology
+        t.d: Demand technology
+
+flows:
+    symbol: f
+    table_name: _set_FLOWS
+    table_headers:
+        id: ['f_ID', 'INTEGER PRIMARY KEY']
+        name: ['f_Name', 'TEXT']
+        aggregation_1: ['f_Name_agg_1', 'TEXT']
+
+flows_agg:
+    symbol: f_agg
+    table_name: _set_FLOWS_AGG
+    table_headers:
+        id: ['f_agg_ID', 'INTEGER PRIMARY KEY']
+        name: ['f_agg_Name', 'TEXT']
+
+costs:
+    symbol: c
+    table_name: _set_COSTS
+    table_headers:
+        id: ['c_ID', 'INTEGER PRIMARY KEY']
+        name: ['c_Name', 'TEXT']
