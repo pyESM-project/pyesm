@@ -19,7 +19,7 @@ constraints:
     - Q_agg - I_ff @ tran(Q) == 0
 
     # operational costs
-    - C_om == mult(X, c_om)
+    - C_om == X @ diag(c_om)
 
     # investment costs
     - C_inv == Cap_new @ diag(c_inv)

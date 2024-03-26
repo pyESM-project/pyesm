@@ -30,28 +30,23 @@ u:
             cols:
                 set: supply_technologies
 
-# c_inv:
-#     name: inv costs coefficients
-#     type: exogenous
-#     coordinates: [scenarios, supply_technologies, years]
-#     variables_info:
-#         c_inv:
-#             rows: 
-#                 set: years
-#             cols:
-#                 set: supply_technologies
+c_inv:
+    name: inv costs coefficients
+    type: exogenous
+    coordinates: [scenarios, supply_technologies]
+    variables_info:
+        c_inv:
+            cols:
+                set: supply_technologies
 
-# c_om:
-#     name: om costs coefficients
-#     type: exogenous
-#     coordinates: [scenarios, supply_technologies, costs]
-#     variables_info:
-#         c_om:
-#             rows: 
-#                 set: costs
-#                 set_categories: c.o
-#             cols:
-#                 set: supply_technologies
+c_om:
+    name: om costs coefficients
+    type: exogenous
+    coordinates: [scenarios, supply_technologies]
+    variables_info:
+        c_om:
+            cols:
+                set: supply_technologies
 
 e:
     name: emissions
@@ -77,8 +72,6 @@ c_start:
     coordinates: [scenarios, supply_technologies]
     variables_info:
         c_start:
-            # rows: 
-            #     set: start_capacity
             cols:
                 set: supply_technologies
 

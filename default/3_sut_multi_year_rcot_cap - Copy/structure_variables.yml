@@ -44,12 +44,11 @@ c_inv:
 c_om:
     name: om costs coefficients
     type: exogenous
-    coordinates: [scenarios, supply_technologies, costs]
+    coordinates: [scenarios, supply_technologies]
     variables_info:
         c_om:
             rows: 
-                set: costs
-                set_categories: c.o
+                set: years
             cols:
                 set: supply_technologies
 
@@ -74,11 +73,9 @@ e:
 c_start:
     name: starting capacity at year 0
     type: exogenous
-    coordinates: [scenarios, supply_technologies, start_capacity]
+    coordinates: [scenarios, supply_technologies]
     variables_info:
         c_start:
-            rows: 
-                set: start_capacity
             cols:
                 set: supply_technologies
 
@@ -103,13 +100,13 @@ lf_range:
 Y:
     name: final demand
     type: exogenous
-    coordinates: [scenarios, years, flows_agg, demand_technologies]
+    coordinates: [scenarios, years, flows_agg]
     variables_info:
         Y:
             rows: 
                 set: flows_agg
             cols:
-                set: demand_technologies
+                set: years
 
 I_ff:
     name: special identity
@@ -150,7 +147,7 @@ X:
         X:
            rows: 
                 set: years
-            cols: 
+           cols: 
                 set: supply_technologies
 
 Q:
@@ -179,18 +176,16 @@ Q_agg:
 C_tot:
     name: costs total
     type: endogenous
-    coordinates: [scenarios, years, supply_technologies, costs]
+    coordinates: [scenarios, years, supply_technologies]
     variables_info:
         C_inv:
             rows: 
-                set: costs
-                set_categories: c.i
+                set: years
             cols:
                 set: supply_technologies
         C_om:
             rows: 
-                set: costs
-                set_categories: c.o
+                set: years
             cols:
                 set: supply_technologies
 
