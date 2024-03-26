@@ -1,6 +1,6 @@
 import pprint as pp
 from pathlib import Path
-from typing import Dict, List, Any, Literal
+from typing import Dict, List, Any, Literal, Type
 
 import itertools as it
 import numpy as np
@@ -125,6 +125,7 @@ def validate_dict_structure(
 ) -> bool:
     """
     Validate the structure of a dictionary against a validation structure.
+    Only the first level of the dictionary hierarchy is validated.
 
     Args:
         dictionary (Dict[str, Any]): The dictionary to be validated.
@@ -142,7 +143,7 @@ def validate_dict_structure(
     return True
 
 
-def find_dict_depth(item) -> int:
+def find_dict_depth(item: dict) -> int:
     """Find and return the depth of a generic dictionary
 
     Args:
@@ -153,6 +154,7 @@ def find_dict_depth(item) -> int:
     """
     if not isinstance(item, dict) or not item:
         return 0
+
     return 1 + max(find_dict_depth(v) for k, v in item.items())
 
 

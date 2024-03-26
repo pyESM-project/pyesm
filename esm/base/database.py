@@ -61,10 +61,14 @@ class Database:
                 f"Generating new database '{sqlite_database_name}'")
 
         for set_instance in self.index.sets.values():
-            self.sqltools.create_table(
-                table_name=set_instance.table_name,
-                table_fields=set_instance.table_headers
-            )
+            table_name = set_instance.table_name
+            table_fields = set_instance.table_headers
+
+            if constants._STD_ID_FIELD['id'] not in table_fields.values():
+                table_fields = {**constants._STD_ID_FIELD, **table_fields}
+                # set_instance.table_headers = table_fields
+
+            self.sqltools.create_table(table_name, table_fields)
 
     @connection
     def create_blank_sets_xlsx_file(self) -> None:
@@ -95,10 +99,20 @@ class Database:
             f"Loading Sets to '{self.settings['sqlite_database_file']}'.")
 
         for set_instance in self.index.sets.values():
-            self.sqltools.dataframe_to_table(
-                table_name=set_instance.table_name,
-                dataframe=set_instance.data
-            )
+            table_name = set_instance.table_name
+            dataframe = set_instance.data.copy()
+
+            if constants._STD_ID_FIELD['id'] not in \
+                    getattr(set_instance, 'table_headers').values():
+
+                util.add_column_to_dataframe(
+                    dataframe=dataframe,
+                    column_header=constants._STD_ID_FIELD['id'][0],
+                    column_position=0,
+                    column_values=None,
+                )
+
+            self.sqltools.dataframe_to_table(table_name, dataframe)
 
     @connection
     def generate_blank_data_sql_tables(self) -> None:
@@ -135,10 +149,11 @@ class Database:
                 key_order=table_headers_list
             )
 
-            unpivoted_coords_df.insert(
-                loc=0,
-                column=table.table_headers['id'][0],
-                value=None
+            util.add_column_to_dataframe(
+                dataframe=unpivoted_coords_df,
+                column_header=table.table_headers['id'][0],
+                column_position=0,
+                column_values=None
             )
 
             self.sqltools.dataframe_to_table(
