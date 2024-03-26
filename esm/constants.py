@@ -10,15 +10,10 @@ _SETUP_FILES = {
     2: 'problem.yml',
 }
 
-# available template models to be replicated and customized
-_TEMPLATE_MODELS = {
-    '1_sut': 'standard SUT, primal, industry/product-based',
-    '2_multi_year': 'SUT model, multi-year, rcot, primal problem, industry-based'
-}
-
 # headers for table related to sets and data
 _STD_TABLE_HEADER = 'name'
 _STD_CATEGORY_HEADER = 'category'
+_STD_AGGREGATION_HEADER = 'aggregation'
 
 # default column name-type for sets id and values fields
 _STD_VALUES_FIELD = {'values': ['values', 'REAL']}
@@ -64,6 +59,8 @@ _ALLOWED_CONSTANTS = {
     'identity': (np.eye, ),  # itentity matrix
     # lower triangular matrix of 1s(inc. diagonal)
     'lower_triangular': (util_constants.tril, ),
+    # special identity matrix for rcot problems
+    'identity_rcot': (util_constants.identity_rcot, ),
 }
 
 # allowed operators for defining symbolic CVXPY problem
