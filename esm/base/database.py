@@ -66,7 +66,6 @@ class Database:
 
             if constants._STD_ID_FIELD['id'] not in table_fields.values():
                 table_fields = {**constants._STD_ID_FIELD, **table_fields}
-                # set_instance.table_headers = table_fields
 
             self.sqltools.create_table(table_name, table_fields)
 
