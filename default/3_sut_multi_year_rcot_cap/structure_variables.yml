@@ -85,16 +85,6 @@ Y:
             cols:
                 set: years
 
-I_ff:
-    name: special identity
-    type: exogenous
-    coordinates: [scenarios, flows, flows_agg]
-    variables_info:
-        I_ff:
-            rows: 
-                set: flows_agg
-            cols:
-                set: flows
 
 e:
     name: emissions coefficients
@@ -112,7 +102,7 @@ e:
 constants: 
     name: constant values
     type: constant
-    coordinates: [years]
+    coordinates: [scenarios, flows, flows_agg, years]
     variables_info:
         T_yy:
             value: lower_triangular
@@ -120,6 +110,13 @@ constants:
                 set: years
             cols:
                 set: years
+
+        I_ff:
+            value: identity_rcot
+            rows:
+                set: flows_agg
+            cols:
+                set: flows
 
 
 # -----------------------------------------------------------------------------

@@ -19,7 +19,7 @@ flows:
     table_name: _set_FLOWS
     table_headers:
         name: ['f_Name', 'TEXT']
-        unit: ['f_Unit', 'TEXT']
+        aggregation: ['f_agg_Name', 'TEXT']
 
 flows_agg:
     symbol: f_agg
