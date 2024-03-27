@@ -25,8 +25,8 @@ constraints:
     - C_inv == Cap_new @ diag(c_inv)
 
     # limits on production
-    - X_max == Cap_op @ diag(lf_max) 
-    - X_min == Cap_op @ diag(lf_min)
+    - X_max == Cap_op @ diag(lf_max) * 8760
+    - X_min == Cap_op @ diag(lf_min) * 8760
 
     # capacity balance
     - Cap_op == T_yy @ Cap_new
