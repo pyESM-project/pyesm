@@ -301,6 +301,8 @@ class Index:
                     coord_group_value.update(
                         {set_key: list(set(set_filtered[name_header]))})
 
+                # for coordinates sets different than 'all', no aggregation nor filtering
+                # elif coord_group_key != 'all':
                 else:
                     coord_group_value.update({
                         set_key: self.sets[set_key].set_values
