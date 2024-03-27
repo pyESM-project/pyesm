@@ -60,7 +60,7 @@ _ALLOWED_CONSTANTS = {
     # lower triangular matrix of 1s(inc. diagonal)
     'lower_triangular': (util_constants.tril, ),
     # special identity matrix for rcot problems
-    # 'identity_rcot': (util_constants.identity_rcot, ),
+    'identity_rcot': (util_constants.identity_rcot, ),
 }
 
 # allowed operators for defining symbolic CVXPY problem

@@ -25,6 +25,7 @@ class Variable:
         self.cols: Dict[str, Any] = {}
         self.value: str = None
         self.related_table: str = None
+        self.related_dims_map: pd.DataFrame = None
         self.type: str = None
 
         for key, value in kwargs.items():
@@ -102,10 +103,32 @@ class Variable:
                 dim_items.append(
                     list(*self.coordinates[dimension].values()))
             else:
-                # dim_items.append([1])
                 dim_items.append(None)
 
         return dim_items
+
+    @property
+    def dims_sets(self) -> Dict[str, str]:
+        """Get the sets names corresponding to the rows and cols dimension of
+        the variable. If a dimension has not a corrsponding set, it returns
+        None as a value of the resulting dictionary.
+
+        Returns:
+            Dict[str]: A dictionary containing dimension name as keys and 
+                corresponding set name as values.
+        """
+        dims_sets = {}
+
+        for dim in ['rows', 'cols']:
+            if dim in self.coordinates_info:
+                dim_set = self.coordinates_info[dim]
+
+                if dim_set:
+                    dims_sets[dim] = next(iter(dim_set.keys()), None)
+                else:
+                    dims_sets[dim] = None
+
+        return dims_sets
 
     @property
     def is_square(self) -> bool:
@@ -266,6 +289,8 @@ class Variable:
         Constants allowed:
             - 'identity': identity matrix.
             - 'sum_vector': summation vector (vector of 1s).
+            - 'lower_triangular': lower triangular matrix of 1s(inc. diagonal)
+            - 'identity_rcot': special identity matrix for rcot problems
 
         Parameters:
         value_type (str): The type of the constant to be created. 
@@ -307,11 +332,19 @@ class Variable:
                 msg = 'Lower triangular matrix must be square. ' \
                     'Check variable shape.'
 
-        # ADD HERE SPECIAL IDENTITY (define factory function in util module)
+        elif value_type == 'identity_rcot':
+            if self.related_dims_map is not None and \
+                    not self.related_dims_map.empty:
+                return factory_function(self.related_dims_map)
+            else:
+                msg = 'Identity_rcot matrix supported only for variables ' \
+                    'with dimensions defined by the same set, or when one set ' \
+                    'is defined by items defined as aggregation of items of ' \
+                    'another set.'
 
         else:
-            msg = f"Variable value type '{value_type}' not supported. "
-            f"Supported value types: {constants._ALLOWED_CONSTANTS.keys()}"
+            msg = f"Variable 'value': '{value_type}' not supported. " \
+                f"Supported value types: {constants._ALLOWED_CONSTANTS.keys()}"
             self.logger.error(msg)
             raise exc.SettingsError(msg)
 

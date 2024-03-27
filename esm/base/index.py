@@ -1,6 +1,8 @@
 from pathlib import Path
 from typing import Dict, List
 
+import pandas as pd
+
 from esm import constants
 from esm.base.data_table import DataTable
 from esm.base.set_table import SetTable
@@ -175,16 +177,15 @@ class Index:
             related_table_headers = self.data[related_table].table_headers
 
             rows, cols, intra, inter = {}, {}, {}, {}
-            # all_sets = {}
 
             for key, value in related_table_headers.items():
                 header = value[0]
 
                 if key not in constants._STD_ID_FIELD:
-                    # all_sets[key] = header
 
                     if key == variable.shape[0]:
                         rows[key] = header
+
                     if key == variable.shape[1]:
                         cols[key] = header
 
@@ -199,7 +200,6 @@ class Index:
                 'cols': cols,
                 'intra': intra,
                 'inter': inter,
-                # 'all': all_sets,
             }
 
     def fetch_foreign_keys_to_data_tables(self) -> None:
@@ -228,7 +228,7 @@ class Index:
             self.logger.warning(
                 f"'{self}' object: Sets tables already "
                 "defined for at least one Set in Index.")
-            user_input = input("Overwrite Sets? (y/[n]): ")
+            user_input = input("Overwrite Sets in Index? (y/[n]): ")
             if user_input.lower() != 'y':
                 self.logger.info(
                     f"'{self}' object: Sets tables not overwritten.")
@@ -280,7 +280,7 @@ class Index:
                 var_filters = getattr(variable, coord_group_key, {}).copy()
                 var_filters.pop('set', None)
 
-                # if rows/cols, coordinates may be filtered/aggregated
+                # if rows/cols, coordinates may be filtered
                 if coord_group_key in ['rows', 'cols'] and var_filters != {}:
 
                     set_key = list(coord_group_value.keys())[0]
@@ -298,17 +298,6 @@ class Index:
                             f'{category_header} == "{category_filter}"'
                         ).copy()
 
-                    # OCCORRE RIPENSARE AL MODO DI FARE PROBLEMI SOTTODETERMINATI
-                    # if 'aggregation_key' in var_filters and \
-                    #         var_filters['aggregation_key']:
-
-                    #     aggregation_key = var_filters['aggregation_key']
-                    #     aggregation_key_header = set_value.table_headers[aggregation_key][0]
-
-                    #     set_filtered.loc[
-                    #         set_filtered[aggregation_key_header] != '', name_header
-                    #     ] = set_filtered[aggregation_key_header]
-
                     coord_group_value.update(
                         {set_key: list(set(set_filtered[name_header]))})
 
@@ -320,10 +309,55 @@ class Index:
                         for set_key in coord_group_value
                     })
 
-                # coordinates sets equal to 'all' unpack all previous
-                # else:
-                #     keys_to_merge = ['rows', 'cols', 'intra', 'inter']
-                #     for key in keys_to_merge:
-                #         coord_group_value.update(coordinates[key])
-
             variable.coordinates = coordinates
+
+    def mapping_vars_aggregated_dims(self) -> None:
+        for var_key, variable in self.variables.items():
+
+            if not variable.type == 'constant':
+                continue
+
+            set_items_aggregation_map = pd.DataFrame()
+            set_items = pd.DataFrame()
+
+            for dim_key, dim in variable.dims_sets.items():
+                dim_set = getattr(self.sets, dim, None)
+
+                if not dim_set:
+                    break
+
+                std_name = constants._STD_TABLE_HEADER
+                std_aggregation = constants._STD_AGGREGATION_HEADER
+
+                name_header_filter = dim_set.table_headers.get(
+                    std_name, [None])[0]
+
+                aggregation_header_filter = dim_set.table_headers.get(
+                    std_aggregation, [None])[0]
+
+                if std_aggregation in dim_set.table_headers:
+                    set_items_aggregation_map = dim_set.data[[
+                        name_header_filter, aggregation_header_filter]]
+                    set_items_aggregation_map.rename(
+                        columns={name_header_filter: dim_key},
+                        inplace=True,
+                    )
+                else:
+                    set_items = dim_set.data[[name_header_filter]].copy()
+                    set_items.rename(
+                        columns={name_header_filter: dim_key},
+                        inplace=True,
+                    )
+
+                if not set_items_aggregation_map.empty and set_items is not None:
+                    if set(set_items_aggregation_map[aggregation_header_filter]) == \
+                            set(set_items.values.flatten()):
+
+                        set_items_aggregation_map.rename(
+                            columns={
+                                aggregation_header_filter: set_items.columns[0]
+                            },
+                            inplace=True,
+                        )
+                        variable.related_dims_map = set_items_aggregation_map
+                        break
