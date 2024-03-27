@@ -228,7 +228,7 @@ class Index:
             self.logger.warning(
                 f"'{self}' object: Sets tables already "
                 "defined for at least one Set in Index.")
-            user_input = input("Overwrite Sets? (y/[n]): ")
+            user_input = input("Overwrite Sets in Index? (y/[n]): ")
             if user_input.lower() != 'y':
                 self.logger.info(
                     f"'{self}' object: Sets tables not overwritten.")
@@ -341,7 +341,7 @@ class Index:
                         inplace=True,
                     )
                 else:
-                    set_items = dim_set.data[[name_header_filter]]
+                    set_items = dim_set.data[[name_header_filter]].copy()
                     set_items.rename(
                         columns={name_header_filter: dim_key},
                         inplace=True,

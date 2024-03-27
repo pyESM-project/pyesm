@@ -59,6 +59,13 @@ class SetTable:
     def set_values(self) -> List[str]:
         return list(self.data[self.set_header])
 
+    @property
+    def excel_file_set_headers(self) -> List[str]:
+        return [
+            table_headers[0] for table_headers
+            in self.table_headers.values()
+        ]
+
     def __repr__(self) -> str:
         output = ''
         for key, value in self.__dict__.items():

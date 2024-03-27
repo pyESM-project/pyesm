@@ -4,12 +4,11 @@ from pathlib import Path
 import os
 import shutil
 import json
-from numpy import full
 import yaml
 
 import pandas as pd
 
-from esm.log_exc.exceptions import ModelFolderError
+from esm.log_exc import exceptions as exc
 from esm.log_exc.logger import Logger
 
 
@@ -167,7 +166,7 @@ class FileManager:
 
         if msg:
             self.logger.error(msg)
-            raise ModelFolderError(msg)
+            raise exc.ModelFolderError(msg)
 
         return True
 
@@ -223,12 +222,12 @@ class FileManager:
         if not path_source.exists():
             msg = "The passed source path does not exists."
             self.logger.error(msg)
-            raise ModelFolderError(msg)
+            raise exc.ModelFolderError(msg)
 
         if not os.path.isdir(path_source):
             msg = "The passed source path is not a directory."
             self.logger.error(msg)
-            raise ModelFolderError(msg)
+            raise exc.ModelFolderError(msg)
 
         if not path_destination.exists():
             self.create_dir(path_destination)
@@ -258,11 +257,9 @@ class FileManager:
 
     def dict_to_excel_headers(
             self,
-            dict_name: Dict[str, Any],
+            dict_name: Dict[str, List[str]],
             excel_dir_path: Path,
-            excel_file_name: str = "",
-            table_headers_key: str = "",
-            table_headers_key_list_item: int = 0,
+            excel_file_name: str,
             writer_engine: str = 'openpyxl',
     ) -> None:
         """Generates an excel file with headers provided by a dictionary in a 
@@ -278,22 +275,13 @@ class FileManager:
         def write_excel(excel_file_path, dict_name):
             """Support function to generate excel"""
             with pd.ExcelWriter(excel_file_path, engine=writer_engine) as writer:
-                for sheet_name, value in dict_name.items():
-                    if table_headers_key is None:
-                        columns_data = value
-                    else:
-                        if isinstance(value[table_headers_key], List):
-                            columns_data = value[table_headers_key]
-                        elif isinstance(value[table_headers_key], Dict):
-                            columns_data = [
-                                value[table_headers_key][key][table_headers_key_list_item]
-                                for key in value[table_headers_key]
-                            ]
-                        else:
-                            self.logger.error(
-                                f"Invalid table_key '{table_headers_key}'.")
+                for sheet_name, headers_list in dict_name.items():
+                    if not isinstance(headers_list, List):
+                        msg = f"Invalid headers list for table '{sheet_name}'."
+                        self.logger.error(msg)
+                        raise exc.SettingsError(msg)
 
-                    dataframe = pd.DataFrame(columns=columns_data)
+                    dataframe = pd.DataFrame(columns=headers_list)
                     sheet = writer.book.create_sheet(sheet_name)
                     writer.sheets[sheet_name] = sheet
                     dataframe.to_excel(
