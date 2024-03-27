@@ -29,11 +29,11 @@ constraints:
     - X_min == Cap_op @ diag(lf_min) * 8760
 
     # capacity balance
-    - Cap_op == c_start + T_yy @ Cap_new
+    - Cap_op == T_yy @ Cap_new
 
     # constraint on the activity by technology
     - X <= X_max
-    - X >= X_mingit status
+    - X >= X_min
 
     # non negativity of the decision variables
     - Q >= 0
