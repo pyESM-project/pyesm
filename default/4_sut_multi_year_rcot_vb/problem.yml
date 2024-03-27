@@ -25,11 +25,11 @@ constraints:
     - C_inv == Cap_new @ diag(c_inv)
 
     # limits on production
-    - X_max == Cap_op @ diag(lf_max)
+    - X_max == Cap_op @ diag(lf_max) 
     - X_min == Cap_op @ diag(lf_min)
 
     # capacity balance
-    - Cap_op == c_start + T_yy @ Cap_new
+    - Cap_op == T_yy @ Cap_new
 
     # constraint on the activity by technology
     - X <= X_max
@@ -39,3 +39,6 @@ constraints:
     - Q >= 0
     - X >= 0
     
+    # Environmental flows
+
+    - E == X @ diag(e)

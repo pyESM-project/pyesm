@@ -33,11 +33,9 @@ u:
 c_inv:
     name: inv costs coefficients
     type: exogenous
-    coordinates: [scenarios, supply_technologies, years]
+    coordinates: [scenarios, supply_technologies]
     variables_info:
         c_inv:
-            rows: 
-                set: years
             cols:
                 set: supply_technologies
 
@@ -47,29 +45,8 @@ c_om:
     coordinates: [scenarios, supply_technologies]
     variables_info:
         c_om:
-            rows: 
-                set: years
             cols:
                 set: supply_technologies
-
-e:
-    name: emissions
-    type: exogenous
-    coordinates: [scenarios, supply_technologies, emissions]
-    variables_info:
-        # e_f:
-        #     rows: 
-        #         set: emissions
-        #         set_categories: e.f
-        #     cols:
-        #         set: supply_technologies
-        e_t:
-            rows: 
-                set: emissions
-                set_categories: e.t
-            cols:
-                set: supply_technologies
-
 c_start:
     name: starting capacity at year 0
     type: exogenous
@@ -118,6 +95,15 @@ I_ff:
                 set: flows_agg
             cols:
                 set: flows
+
+e:
+    name: emissions coefficients
+    type: exogenous
+    coordinates: [scenarios, supply_technologies]
+    variables_info:
+        e:
+            cols:
+                set: supply_technologies
 
 
 # -----------------------------------------------------------------------------
@@ -221,3 +207,15 @@ Cap:
                 set: years
             cols: 
                 set: supply_technologies
+
+Emi:
+    name: capacity by technology
+    type: endogenous
+    coordinates: [scenarios, years, supply_technologies]
+    variables_info:
+        E:
+            rows: 
+                set: years
+            cols: 
+                set: supply_technologies
+        
