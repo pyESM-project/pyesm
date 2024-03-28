@@ -1,5 +1,6 @@
 import numpy as np
 import pandas as pd
+import scipy.stats as stats
 
 
 def tril(dimension: int) -> np.ndarray:
@@ -51,3 +52,61 @@ def identity_rcot(related_dims_map: pd.DataFrame) -> np.ndarray:
     )
 
     return pivot_df_reorder.values
+
+
+def tril_weibull(
+        l:float,
+        alpha:float,
+        shape:int,
+) -> np.ndarray:
+    """
+    Generate a lower-triangular matrix containing the weibull probability density function
+     
+    Parameters:
+        l: float
+        alpha: float
+        shape: int
+
+    Returns:
+        numpy ndarray containing the lower-triangular identity matrix.
+    """
+
+    matrix = np.zeros((shape,shape))
+
+    # Populate lower-triangular matrix with Weibull distributed values
+    for row in range(1,shape+1):
+        for col in range(row):
+            matrix[row-1, col] = stats.weibull_min.pdf(row, alpha, l)
+            
+    return matrix
+
+
+def vect_weibull(
+        l:float,
+        alpha:float,
+        start:float,
+        shape:int,       
+) -> np.ndarray:
+    """
+    Generate a vector containing a weibull probability density function
+     
+    Parameters:
+        l: float
+        alpha: float
+        start:float
+        shape: int
+
+    Returns:
+        numpy ndarray containing the vector.
+    """
+
+    vector = np.zeros((shape, 1))
+
+    # Populate vector with Weibull distributed values
+    for row in range(1,shape+1):
+        vector[i-1] = weibull_min.pdf(row+start,shape,l)    
+
+    return vector
+
+
+

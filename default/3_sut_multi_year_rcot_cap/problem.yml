@@ -19,17 +19,17 @@ constraints:
     - Q_agg - I_ff @ tran(Q) == 0
 
     # operational costs
-    - C_om == Xy @ diag(c_om)
+    - C_om == X @ diag(c_om)
 
     # investment costs
-    - C_inv == Cap_newy @ diag(c_inv)
+    - C_inv == Cap_new @ diag(c_inv)
 
     # limits on production
-    - X_maxy == Cap_opy @ diag(lf_max) * 8760
-    - X_miny == Cap_opy @ diag(lf_min) * 8760
+    - X_max == Cap_op @ diag(lf_max) * 8760
+    - X_min == Cap_op @ diag(lf_min) * 8760
 
     # capacity balance
-    - Cap_opy == c_start + T_yy @ Cap_newy
+    - Cap_op == c_start + T_yy @ Cap_new
 
     # constraint on the activity by technology
     - X <= X_max
@@ -40,4 +40,4 @@ constraints:
     - X >= 0
     
     # Environmental flows
-    - Emiss == Xy @ diag(e)
+    # - Emiss == X @ diag(emiss)

@@ -35,18 +35,13 @@ Y:
     type: exogenous
     coordinates: [scenarios, years, flows_agg, demand_technologies]
     variables_info:
-        Ytd:
-            rows: 
-                set: flows_agg
-            cols:
-                set: demand_technologies
-        Yy:
+        Y:
             rows: 
                 set: flows_agg
             cols:
                 set: years
 
-c_inv:
+c_i:
     name: inv costs coefficients
     type: exogenous
     coordinates: [scenarios, supply_technologies]
@@ -55,7 +50,7 @@ c_inv:
             cols:
                 set: supply_technologies
 
-c_om:
+c_o:
     name: om costs coefficients
     type: exogenous
     coordinates: [scenarios, supply_technologies]
@@ -78,7 +73,7 @@ lt_res:
     type: exogenous
     coordinates: [scenarios, supply_technologies]
     variables_info:
-        c_start:
+        lt_res:
             cols:
                 set: supply_technologies
 
@@ -87,7 +82,7 @@ lf_min:
     type: exogenous
     coordinates: [scenarios, supply_technologies]
     variables_info:
-        c_start:
+        lf_min:
             cols:
                 set: supply_technologies
 
@@ -96,11 +91,11 @@ lf_max:
     type: exogenous
     coordinates: [scenarios, supply_technologies]
     variables_info:
-        c_start:
+        lf_max:
             cols:
                 set: supply_technologies
 
-lt_avg:
+lifetime:
     name: Average lifetime
     type: exogenous
     coordinates: [scenarios, supply_technologies]
@@ -118,7 +113,7 @@ weib_shape:
             cols:
                 set: supply_technologies
 
-emiss:
+e:
     name: emissions coefficients
     type: exogenous
     coordinates: [scenarios, supply_technologies]
@@ -134,7 +129,7 @@ emiss:
 constants: 
     name: constant values
     type: constant
-    coordinates: [scenarios, flows, flows_agg, years]
+    coordinates: [flows, flows_agg, years]
     variables_info:
         T_yy:
             value: lower_triangular
@@ -149,8 +144,7 @@ constants:
                 set: flows_agg
             cols:
                 set: flows
-
-
+       
 # -----------------------------------------------------------------------------
 # endogenous variables
 
@@ -160,9 +154,6 @@ X:
     coordinates: [scenarios, years, supply_technologies]
     variables_info:
         X:
-           cols: 
-                set: supply_technologies
-        Xy:
            rows: 
                 set: years
            cols: 
@@ -174,8 +165,12 @@ Q:
     coordinates: [scenarios, years, flows]
     variables_info:
         Q:
+           rows: 
+                set: years
            cols: 
                 set: flows
+
+
 
 Q_agg:
     name: demand by flow
@@ -185,6 +180,8 @@ Q_agg:
         Q_agg:
             rows: 
                 set: flows_agg
+            cols: 
+                set: years
 
 C_inv:
     name: total investment costs
@@ -214,9 +211,6 @@ X_max:
     coordinates: [scenarios, years, supply_technologies]
     variables_info:
         X_max:
-            cols: 
-                set: supply_technologies
-        X_maxy:
             rows: 
                 set: years
             cols: 
@@ -228,9 +222,6 @@ X_min:
     coordinates: [scenarios, years, supply_technologies]
     variables_info:
         X_min:
-            cols: 
-                set: supply_technologies
-        X_miny:
             rows: 
                 set: years
             cols: 
@@ -242,9 +233,6 @@ Cap_op:
     coordinates: [scenarios, years, supply_technologies]
     variables_info:
         Cap_op:
-            cols: 
-                set: supply_technologies
-        Cap_opy:
             rows: 
                 set: years
             cols: 
@@ -256,9 +244,6 @@ Cap_new:
     coordinates: [scenarios, years, supply_technologies]
     variables_info:
         Cap_new:
-            cols: 
-                set: supply_technologies
-        Cap_newy:
             rows: 
                 set: years
             cols: 
@@ -269,17 +254,17 @@ Cap_disp:
     type: endogenous
     coordinates: [scenarios, years, supply_technologies]
     variables_info:
-        Cap_dispt:
+        Cap_disp_t:
             rows:
-                set: supply_technologies
-        Cap_dispy:
+                set: years
+        Cap_disp:
             rows: 
                 set: years
-
-
+            cols: 
+                set: supply_technologies
 
 Emiss:
-    name: capacity by technology
+    name: Emissions by technology
     type: endogenous
     coordinates: [scenarios, years, supply_technologies]
     variables_info:
