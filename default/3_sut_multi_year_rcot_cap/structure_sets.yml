@@ -7,19 +7,24 @@ scenarios:
         name: ['s_Name', 'TEXT']
     split_problem: True
 
-supply_technologies:
+technologies_supply:
     symbol: ts
-    table_name: _set_SUP_TECH
+    table_name: _set_TECH_SUP
     table_headers:
-        name: ['t_Name', 'TEXT']
+        name: ['ts_Name', 'TEXT']
 
+technologies_demand:
+    symbol: td
+    table_name: _set_TECH_DEM
+    table_headers:
+        name: ['td_Name', 'TEXT']
 
 flows:
     symbol: f
     table_name: _set_FLOWS
     table_headers:
         name: ['f_Name', 'TEXT']
-        unit: ['f_Unit', 'TEXT']
+        aggregation: ['f_agg_Name', 'TEXT']
 
 flows_agg:
     symbol: f_agg
@@ -27,19 +32,31 @@ flows_agg:
     table_headers:
         name: ['f_agg_Name', 'TEXT']
 
+costs:
+    symbol: c
+    table_name: _set_COSTS
+    table_headers:
+        name: ['c_Name', 'TEXT']
+        category: ['c_Category', 'TEXT']
+    set_categories:
+        c_cap: Capital costs
+        c_om: Operational costs
 
+emissions:
+    symbol: e
+    table_name: _set_EMISSIONS
+    table_headers:
+        name: ['e_Name', 'TEXT']
 
-load_factors_range:
+load_factors:
     symbol: lf
     table_name: _set_LOADFACTORS
     table_headers:
         name: ['lf_Name', 'TEXT']
         category: ['lf_Category', 'TEXT']
-        unit: ['lf_Unit', 'TEXT']
     set_categories:
-        lf.max: Min
-        lf.min: Max  
-
+        lf_max: Min
+        lf_min: Max  
 
 years:
     symbol: y
