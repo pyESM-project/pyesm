@@ -30,6 +30,22 @@ u:
             cols:
                 set: supply_technologies
 
+Y:
+    name: final demand
+    type: exogenous
+    coordinates: [scenarios, years, flows_agg, demand_technologies]
+    variables_info:
+        Ytd:
+            rows: 
+                set: flows_agg
+            cols:
+                set: demand_technologies
+        Yy:
+            rows: 
+                set: flows_agg
+            cols:
+                set: years
+
 c_inv:
     name: inv costs coefficients
     type: exogenous
@@ -57,42 +73,57 @@ c_start:
             cols:
                 set: supply_technologies
 
-lf_range:
-    name: load factors ranges
+lt_res:
+    name: residual lifetime of starting capacity
     type: exogenous
-    coordinates: [scenarios, supply_technologies, load_factors_range]
+    coordinates: [scenarios, supply_technologies]
     variables_info:
-        lf_min:
-            rows: 
-                set: load_factors_range
-                set_categories: lf.min
-            cols:
-                set: supply_technologies
-        lf_max:
-            rows: 
-                set: load_factors_range
-                set_categories: lf.max
+        c_start:
             cols:
                 set: supply_technologies
 
-Y:
-    name: final demand
+lf_min:
+    name: minimum load factors
     type: exogenous
-    coordinates: [scenarios, years, flows_agg]
+    coordinates: [scenarios, supply_technologies]
     variables_info:
-        Y:
-            rows: 
-                set: flows_agg
+        c_start:
             cols:
-                set: years
+                set: supply_technologies
 
+lf_max:
+    name: maximum load factors
+    type: exogenous
+    coordinates: [scenarios, supply_technologies]
+    variables_info:
+        c_start:
+            cols:
+                set: supply_technologies
 
-e:
+lt_avg:
+    name: Average lifetime
+    type: exogenous
+    coordinates: [scenarios, supply_technologies]
+    variables_info:
+        lt_avg:
+            cols:
+                set: supply_technologies
+
+weib_shape:
+    name: Weibull shape factor
+    type: exogenous
+    coordinates: [scenarios, supply_technologies]
+    variables_info:
+        weib_shape:
+            cols:
+                set: supply_technologies
+
+emiss:
     name: emissions coefficients
     type: exogenous
     coordinates: [scenarios, supply_technologies]
     variables_info:
-        e:
+        emiss:
             cols:
                 set: supply_technologies
 
@@ -129,6 +160,9 @@ X:
     coordinates: [scenarios, years, supply_technologies]
     variables_info:
         X:
+           cols: 
+                set: supply_technologies
+        Xy:
            rows: 
                 set: years
            cols: 
@@ -140,8 +174,6 @@ Q:
     coordinates: [scenarios, years, flows]
     variables_info:
         Q:
-           rows: 
-                set: years
            cols: 
                 set: flows
 
@@ -153,12 +185,9 @@ Q_agg:
         Q_agg:
             rows: 
                 set: flows_agg
-            cols: 
-                set: years
 
-
-C_tot:
-    name: costs total
+C_inv:
+    name: total investment costs
     type: endogenous
     coordinates: [scenarios, years, supply_technologies]
     variables_info:
@@ -167,51 +196,94 @@ C_tot:
                 set: years
             cols:
                 set: supply_technologies
+
+C_om:
+    name: total operation and maintenance costs
+    type: endogenous
+    coordinates: [scenarios, years, supply_technologies]
+    variables_info:
         C_om:
             rows: 
                 set: years
             cols:
                 set: supply_technologies
 
-X_limit:
-    name: limits of activity by technology
+X_max:
+    name: max activiity by technology
     type: endogenous
     coordinates: [scenarios, years, supply_technologies]
     variables_info:
         X_max:
+            cols: 
+                set: supply_technologies
+        X_maxy:
             rows: 
                 set: years
             cols: 
                 set: supply_technologies
+
+X_min:
+    name: min activity by technology
+    type: endogenous
+    coordinates: [scenarios, years, supply_technologies]
+    variables_info:
         X_min:
+            cols: 
+                set: supply_technologies
+        X_miny:
             rows: 
                 set: years
             cols: 
                 set: supply_technologies
 
-
-Cap:
-    name: capacity by technology
+Cap_op:
+    name: operative capacity by technology
     type: endogenous
     coordinates: [scenarios, years, supply_technologies]
     variables_info:
         Cap_op:
-            rows: 
-                set: years
             cols: 
                 set: supply_technologies
-        Cap_new:
+        Cap_opy:
             rows: 
                 set: years
             cols: 
                 set: supply_technologies
 
-Emi:
+Cap_new:
+    name: newly installed capacity by technology
+    type: endogenous
+    coordinates: [scenarios, years, supply_technologies]
+    variables_info:
+        Cap_new:
+            cols: 
+                set: supply_technologies
+        Cap_newy:
+            rows: 
+                set: years
+            cols: 
+                set: supply_technologies
+
+Cap_disp:
+    name: disposed capacity by technology
+    type: endogenous
+    coordinates: [scenarios, years, supply_technologies]
+    variables_info:
+        Cap_dispt:
+            rows:
+                set: supply_technologies
+        Cap_dispy:
+            rows: 
+                set: years
+
+
+
+Emiss:
     name: capacity by technology
     type: endogenous
     coordinates: [scenarios, years, supply_technologies]
     variables_info:
-        E:
+        Emiss:
             rows: 
                 set: years
             cols: 

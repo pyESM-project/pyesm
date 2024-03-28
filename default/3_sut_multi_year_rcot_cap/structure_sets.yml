@@ -4,46 +4,38 @@ scenarios:
     symbol: s
     table_name: _set_SCENARIOS
     table_headers:
-        name: ['s_Name', 'TEXT']
+        name: ['Name', 'TEXT']
     split_problem: True
 
 supply_technologies:
     symbol: ts
     table_name: _set_SUP_TECH
     table_headers:
-        name: ['t_Name', 'TEXT']
+        name: ['Name', 'TEXT']
 
+demand_technologies:
+    symbol: td
+    table_name: _set_DEM_TECH
+    table_headers:
+        name: ['Name', 'TEXT']
 
 flows:
     symbol: f
     table_name: _set_FLOWS
     table_headers:
-        name: ['f_Name', 'TEXT']
-        aggregation: ['f_agg_Name', 'TEXT']
+        name: ['Name', 'TEXT']
+        aggregation: ['Name_agg', 'TEXT']
+        unit: ['Unit', 'TEXT']
 
 flows_agg:
     symbol: f_agg
     table_name: _set_FLOWS_AGG
     table_headers:
-        name: ['f_agg_Name', 'TEXT']
-
-
-
-load_factors_range:
-    symbol: lf
-    table_name: _set_LOADFACTORS
-    table_headers:
-        name: ['lf_Name', 'TEXT']
-        category: ['lf_Category', 'TEXT']
-        unit: ['lf_Unit', 'TEXT']
-    set_categories:
-        lf.max: Min
-        lf.min: Max  
-
+        name: ['Name', 'TEXT']
 
 years:
     symbol: y
     table_name: _set_YEARS
     table_headers:
-        name: ['y_Name', 'TEXT']
+        name: ['Name', 'TEXT']
     
