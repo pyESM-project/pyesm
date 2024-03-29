@@ -221,9 +221,19 @@ class Variable:
         """
         values_header = constants._STD_VALUES_FIELD['values'][0]
 
+        # case of a scalar with no rows/cols labels (scalars)
+        if not all(self.dim_labels):
+            index = ''
+            columns = None
+
+        # all other variables with rows/cols labels (scalars, vectors/matrices)
+        else:
+            index = self.dim_labels[0]
+            columns = self.dim_labels[1]
+
         pivoted_data = data.pivot_table(
-            index=self.dim_labels[0],
-            columns=self.dim_labels[1],
+            index=index,
+            columns=columns,
             values=values_header,
             aggfunc='first'
         )

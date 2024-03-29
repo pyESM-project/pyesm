@@ -154,13 +154,14 @@ class Index:
                     dictionary=var_info,
                     validation_structure=constants._VARIABLE_DEFAULT_STRUCTURE)
                 for var_info in data_table.variables_info.values()
+                if var_info is not None
             ]):
                 variable = DotDict({
                     var_key: Variable(
                         logger=self.logger,
                         related_table=table_key,
                         type=data_table.type,
-                        **var_info,
+                        **(var_info or {}),
                     )
                     for var_key, var_info in data_table.variables_info.items()
                 })

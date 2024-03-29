@@ -1,9 +1,8 @@
 import pprint as pp
 from pathlib import Path
-from typing import Dict, List, Any, Literal, Type
+from typing import Dict, List, Any, Literal
 
 import itertools as it
-import numpy as np
 import pandas as pd
 
 from esm import constants
