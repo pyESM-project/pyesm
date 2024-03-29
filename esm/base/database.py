@@ -66,11 +66,9 @@ class Database:
 
             if constants._STD_ID_FIELD['id'] not in table_fields.values():
                 table_fields = {**constants._STD_ID_FIELD, **table_fields}
-                # set_instance.table_headers = table_fields
 
             self.sqltools.create_table(table_name, table_fields)
 
-    @connection
     def create_blank_sets_xlsx_file(self) -> None:
         sets_file_name = self.settings['sets_xlsx_file']
 
@@ -86,12 +84,16 @@ class Database:
             self.logger.info(
                 f"Generating new sets excel file '{sets_file_name}'")
 
-        for set_instance in self.index.sets.values():
-            self.sqltools.table_to_excel(
-                excel_filename=self.settings['sets_xlsx_file'],
-                excel_dir_path=self.paths['model_dir'],
-                table_name=set_instance.table_name,
-            )
+        dict_headers = {
+            set_value.table_name: set_value.excel_file_set_headers
+            for set_value in self.index.sets.values()
+        }
+
+        self.files.dict_to_excel_headers(
+            dict_name=dict_headers,
+            excel_dir_path=self.paths['model_dir'],
+            excel_file_name=self.settings['sets_xlsx_file'],
+        )
 
     @connection
     def load_sets_to_database(self) -> None:
