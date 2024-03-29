@@ -56,11 +56,12 @@ _VARIABLE_DEFAULT_STRUCTURE = {
 # be modified accordingly
 _ALLOWED_CONSTANTS = {
     'sum_vector': (np.ones, ),  # vector of 1s
-    'identity': (np.eye, ),  # itentity matrix
+    'identity': (np.eye, ),  # identity matrix
     # lower triangular matrix of 1s(inc. diagonal)
     'lower_triangular': (util_constants.tril, ),
     # special identity matrix for rcot problems
     'identity_rcot': (util_constants.identity_rcot, ),
+    'range_vector': (np.arange, ),  # vector given a range  
 }
 
 # allowed operators for defining symbolic CVXPY problem
@@ -79,5 +80,7 @@ _ALLOWED_OPERATORS = {
     'diag': cp.diag,
     'sum': cp.sum,
     'mult': cp.multiply,
+    'tweib': util_constants.tril_weibull,
+    'vweib': util_constants.vect_weibull,
     'Minimize': cp.Minimize,
 }

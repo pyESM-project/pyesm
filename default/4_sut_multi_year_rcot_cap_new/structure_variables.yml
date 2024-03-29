@@ -57,8 +57,8 @@ c_start:
             cols:
                 set: technologies_supply
 
-lf_range:
-    name: load factors ranges
+lt_res:
+    name: residual lifetime of starting capacity
     type: exogenous
     coordinates: [scenarios, load_factors, technologies_supply]
     variables_info:
@@ -75,14 +75,12 @@ lf_range:
             cols:
                 set: technologies_supply
 
-Y:
-    name: final demand
+lifetime:
+    name: Average lifetime
     type: exogenous
     coordinates: [scenarios, years, flows_agg, technologies_demand]
     variables_info:
-        Y:
-            rows: 
-                set: flows_agg
+        lt_avg:
             cols:
                 set: technologies_demand
 
@@ -119,7 +117,13 @@ constants:
             cols:
                 set: flows
 
-
+        I_ff:
+            value: identity_rcot
+            rows:
+                set: flows_agg
+            cols:
+                set: flows
+       
 # -----------------------------------------------------------------------------
 # endogenous variables
 
@@ -140,6 +144,8 @@ Q:
         Q:
            cols: 
                 set: flows
+
+
 
 Q_agg:
     name: demand by flow
@@ -168,8 +174,8 @@ C_tot:
             cols:
                 set: technologies_supply
 
-X_limit:
-    name: limits of activity by technology
+X_max:
+    name: max activiity by technology
     type: endogenous
     coordinates: [scenarios, years, load_factors, technologies_supply]
     variables_info:
@@ -219,7 +225,21 @@ E_tot:
     type: endogenous
     coordinates: [scenarios, years, emissions, technologies_supply]
     variables_info:
-        E:
+        Cap_disp_t:
+            rows:
+                set: years
+        Cap_disp:
+            rows: 
+                set: years
+            cols: 
+                set: supply_technologies
+
+Emiss:
+    name: Emissions by technology
+    type: endogenous
+    coordinates: [scenarios, years, supply_technologies]
+    variables_info:
+        Emiss:
             rows: 
                 set: emissions
             cols: 
