@@ -216,6 +216,7 @@ class Database:
         self,
         operation: str,
         file_extension: str = data_file_extension,
+        force_overwrite: bool = False,
     ) -> None:
         self.logger.info(
             "Loading data input file/s filled by the user to SQLite database.")
@@ -249,6 +250,7 @@ class Database:
                     table_name=table_key,
                     dataframe=table,
                     operation=operation,
+                    force_operation=force_overwrite,
                 )
 
     @connection

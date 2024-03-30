@@ -81,12 +81,15 @@ class Core:
                     variable=variable
                 )
 
-    def define_numerical_problems(self) -> None:
+    def define_numerical_problems(
+            self,
+            force_overwrite: bool = False,
+    ) -> None:
         self.logger.info(
             "Load symbolic problem, initialize dataframes with cvxpy problems ")
 
-        self.problem.load_symbolic_problem_from_file()
-        self.problem.generate_problems_dataframe()
+        self.problem.load_symbolic_problem_from_file(force_overwrite)
+        self.problem.generate_problems_dataframe(force_overwrite)
 
     def solve_numerical_problems(
             self,

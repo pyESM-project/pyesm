@@ -179,17 +179,21 @@ class Problem:
 
         return var_data
 
-    def load_symbolic_problem_from_file(self) -> None:
+    def load_symbolic_problem_from_file(
+            self,
+            force_overwrite: bool = False,
+    ) -> None:
 
         problem_file_name = constants._SETUP_FILES[2]
 
         if self.symbolic_problem is not None:
-            self.logger.warning(f"Symbolic problem already loaded.")
-            user_input = input(f"Update symbolic problem? (y/[n]): ")
+            if not force_overwrite:
+                self.logger.warning(f"Symbolic problem already loaded.")
+                user_input = input(f"Update symbolic problem? (y/[n]): ")
 
-            if user_input.lower() != 'y':
-                self.logger.info(f"Symbolic problem NOT updated.")
-                return
+                if user_input.lower() != 'y':
+                    self.logger.info(f"Symbolic problem NOT updated.")
+                    return
             else:
                 self.logger.info(f"Symbolic problem updated.")
         else:
@@ -286,15 +290,19 @@ class Problem:
             self.logger.error(msg)
             raise exc.ConceptualModelError(msg)
 
-    def generate_problems_dataframe(self):
+    def generate_problems_dataframe(
+            self,
+            force_overwrite: bool = False,
+    ) -> None:
 
         if self.numeric_problems is not None:
-            self.logger.warning(f"Numeric problem already defined.")
-            user_input = input(f"Overwrite numeric problem? (y/[n]): ")
+            if not force_overwrite:
+                self.logger.warning(f"Numeric problem already defined.")
+                user_input = input(f"Overwrite numeric problem? (y/[n]): ")
 
-            if user_input.lower() != 'y':
-                self.logger.info(f"Numeric problem NOT overwritten.")
-                return
+                if user_input.lower() != 'y':
+                    self.logger.info(f"Numeric problem NOT overwritten.")
+                    return
             else:
                 self.logger.info(f"Numeric problem overwritten.")
         else:
@@ -542,6 +550,7 @@ class Problem:
             self,
             solver: str,
             verbose: bool,
+            force_overwrite: bool = False,
             **kwargs: Any,
     ) -> None:
 
@@ -552,13 +561,14 @@ class Problem:
             raise exc.OperationalError(msg)
 
         if self.model_run:
-            self.logger.warning("Numeric problems already run.")
-            user_input = input("Solve again numeric problems? (y/[n]): ")
+            if not force_overwrite:
+                self.logger.warning("Numeric problems already run.")
+                user_input = input("Solve again numeric problems? (y/[n]): ")
 
-            if user_input.lower() != 'y':
-                self.logger.info(
-                    "Numeric problem NOT solved.")
-                return
+                if user_input.lower() != 'y':
+                    self.logger.info(
+                        "Numeric problem NOT solved.")
+                    return
             else:
                 self.logger.info(
                     "Solving numeric problem and overwriting existing results.")
