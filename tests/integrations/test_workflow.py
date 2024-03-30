@@ -7,6 +7,7 @@ from esm import Model
 cases = [
     '1_constants',
     '2_expressions',
+    '3_test_problem',
 ]
 
 
