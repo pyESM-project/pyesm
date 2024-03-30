@@ -389,6 +389,7 @@ class Problem:
         cvxpy_var_header = constants._CVXPY_VAR_HEADER
 
         for var_key, variable in variables_set_dict.items():
+            variable: Variable
 
             # constants are directly assigned
             if variable.type == 'constant':

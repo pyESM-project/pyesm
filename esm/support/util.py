@@ -439,7 +439,10 @@ def add_column_to_dataframe(
     )
 
 
-def substitute_keys(source_dict, key_mapping_dict):
+def substitute_keys(
+        source_dict: Dict[str, Any],
+        key_mapping_dict: Dict[str, Any],
+) -> Dict[str, Any]:
     """
     Substitute the keys in source_dict with the values from key_mapping.
     Raises an error if a value in key_mapping does not exist as a key in source_dict.

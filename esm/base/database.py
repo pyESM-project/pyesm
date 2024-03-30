@@ -3,7 +3,9 @@ from typing import Dict
 
 import pandas as pd
 
+from esm.base.data_table import DataTable
 from esm.base.index import Index
+from esm.base.set_table import SetTable
 from esm.log_exc.logger import Logger
 from esm import constants
 from esm.support import util
@@ -61,6 +63,8 @@ class Database:
                 f"Generating new database '{sqlite_database_name}'")
 
         for set_instance in self.index.sets.values():
+            set_instance: SetTable
+
             table_name = set_instance.table_name
             table_fields = set_instance.table_headers
 
@@ -101,6 +105,8 @@ class Database:
             f"Loading Sets to '{self.settings['sqlite_database_file']}'.")
 
         for set_instance in self.index.sets.values():
+            set_instance: SetTable
+
             table_name = set_instance.table_name
             dataframe = set_instance.data.copy()
 
@@ -122,6 +128,7 @@ class Database:
             "Generation of empty SQLite database data tables.")
 
         for table_key, table in self.index.data.items():
+            table: DataTable
 
             if table.type == 'constant':
                 continue
@@ -138,6 +145,7 @@ class Database:
             "Filling empty SQLite database variables tables with sets data.")
 
         for table_key, table in self.index.data.items():
+            table: DataTable
 
             if table.type == 'constant':
                 continue
@@ -174,7 +182,7 @@ class Database:
         existing_tables = self.sqltools.get_existing_tables_names
 
         for table_name in existing_tables:
-            if table_name in self.variables_info.keys():
+            if table_name in self.index.data.keys():
                 self.sqltools.drop_table(table_name)
 
         self.logger.info(
@@ -196,6 +204,7 @@ class Database:
         tables_names_list = self.sqltools.get_existing_tables_names
 
         for table_key, table in self.index.data.items():
+            table: DataTable
 
             if table.type == 'exogenous' and \
                     table_key in tables_names_list:
@@ -224,6 +233,8 @@ class Database:
         if self.settings['multiple_input_files']:
             data = {}
             for table_key, table in self.index.data.values():
+                table: DataTable
+
                 if table.type == 'exogenous':
 
                     file_name = table_key + file_extension

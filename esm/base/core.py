@@ -70,6 +70,8 @@ class Core:
             "(cvxpy objects, filters dictionaries).")
 
         for var_name, variable in self.index.variables.items():
+            variable: Variable
+
             if variable.type == 'constant':
                 variable.data = self.problem.generate_constant_data(
                     variable_name=var_name,

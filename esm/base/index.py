@@ -124,6 +124,8 @@ class Index:
         )
 
         for table in data_tables.values():
+            table: DataTable
+
             set_headers_key = constants._STD_TABLE_HEADER
             table.table_headers = {
                 set_key: self.sets[set_key].table_headers[set_headers_key]
@@ -149,6 +151,8 @@ class Index:
         variables_info = DotDict({})
 
         for table_key, data_table in self.data.items():
+            data_table: DataTable
+
             if all([
                 util.validate_dict_structure(
                     dictionary=var_info,
@@ -174,8 +178,10 @@ class Index:
             f"Fetching 'coordinates_info' to Index.variables.")
 
         for variable in self.variables.values():
+            variable: Variable
+
             related_table = variable.related_table
-            related_table_headers = self.data[related_table].table_headers
+            related_table_headers: dict = self.data[related_table].table_headers
 
             rows, cols, intra, inter = {}, {}, {}, {}
 
@@ -208,6 +214,8 @@ class Index:
             f"Loading tables 'foreign_keys' to Index.data_tables.")
 
         for table in self.data.values():
+            table: DataTable
+
             for set_key, set_header in table.coordinates_headers.items():
                 table.foreign_keys[set_header] = \
                     (set_header, self.sets[set_key].table_name)
@@ -246,6 +254,8 @@ class Index:
         )
 
         for set_instance in self.sets.values():
+            set_instance: SetTable
+
             table_name = set_instance.table_name
             if table_name in sets_values.keys():
                 set_instance.data = sets_values[table_name]
@@ -255,6 +265,7 @@ class Index:
             f"'{self}' object: loading variable coordinates to Index.data.")
 
         for table in self.data.values():
+            table: DataTable
 
             table.coordinates_values.update({
                 set_header: self.sets[set_key].set_values
@@ -268,6 +279,7 @@ class Index:
             "Index.variables.")
 
         for var_key, variable in self.variables.items():
+            variable: Variable
 
             # replicate coordinates_info with inner values as None
             coordinates = {
@@ -285,7 +297,7 @@ class Index:
                 if coord_group_key in ['rows', 'cols'] and var_filters != {}:
 
                     set_key = list(coord_group_value.keys())[0]
-                    set_value = self.sets[set_key]
+                    set_value: SetTable = self.sets[set_key]
 
                     if 'set_categories' in var_filters and \
                             var_filters['set_categories']:
@@ -314,6 +326,7 @@ class Index:
 
     def mapping_vars_aggregated_dims(self) -> None:
         for var_key, variable in self.variables.items():
+            variable: Variable
 
             if not variable.type == 'constant':
                 continue
@@ -322,7 +335,7 @@ class Index:
             set_items = pd.DataFrame()
 
             for dim_key, dim in variable.dims_sets.items():
-                dim_set = getattr(self.sets, dim, None)
+                dim_set: SetTable = getattr(self.sets, dim, None)
 
                 if not dim_set:
                     break

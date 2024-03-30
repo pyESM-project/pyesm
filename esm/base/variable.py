@@ -121,7 +121,7 @@ class Variable:
 
         for dim in ['rows', 'cols']:
             if dim in self.coordinates_info:
-                dim_set = self.coordinates_info[dim]
+                dim_set: dict = self.coordinates_info[dim]
 
                 if dim_set:
                     dims_sets[dim] = next(iter(dim_set.keys()), None)
@@ -172,7 +172,7 @@ class Variable:
             **self.coordinates['inter'],
         }
 
-    def none_data_coordinates(self, row: int) -> Dict:
+    def none_data_coordinates(self, row: int) -> Dict[str, Any]:
         """Checks if there are None data values in cvxpy variables and returns
         the related coordinates (row in Variable.data and related hierarchy 
         coordinates).
