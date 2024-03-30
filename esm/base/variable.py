@@ -222,7 +222,7 @@ class Variable:
         values_header = constants._STD_VALUES_FIELD['values'][0]
 
         # case of a scalar with no rows/cols labels (scalars)
-        if not all(self.dim_labels):
+        if all(item is None for item in self.dim_labels):
             index = ''
             columns = None
 

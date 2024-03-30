@@ -1,10 +1,4 @@
-# template for defining variables of the model
-
-# RULES:
-# - variables define SQLite tables (name case insensitive: two tables named 
-# 'e' and 'E' are not allowed. However, variables symbols are case sensitive).
-# - 
-
+# variables of the model
 
 # -----------------------------------------------------------------------------
 # exogenous variables
