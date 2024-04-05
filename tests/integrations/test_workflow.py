@@ -5,9 +5,13 @@ from esm import Model
 
 
 cases = [
-    '1_constants',
-    '2_expressions',
-    '3_test_problem',
+    '0_constants',
+    '0_expressions',
+    '0_test_problem',
+    '0_test_structure',
+    '1_sut_multi_year',
+    '2_sut_multi_year_rcot',
+    '4_sut_multi_year_rcot_cap_new',
 ]
 
 
@@ -26,7 +30,8 @@ def model_env(request):
         A dictionary essential Model settings.
     """
     model_dir_name = request.param
-    fixtures_dir = 'D:/git_repos/pyesm/tests/fixtures'
+    fixtures_dir = 'D:/git_repos/pyesm/default'
+    # fixtures_dir = 'D:/git_repos/pyesm/tests/fixtures'
     log_level = 'debug'
 
     return {

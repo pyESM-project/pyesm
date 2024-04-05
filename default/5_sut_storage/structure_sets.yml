@@ -1,0 +1,43 @@
+# structure of sets
+
+scenarios:
+    symbol: s
+    table_name: _set_SCENARIOS
+    table_headers:
+        name: ['s_Name', 'TEXT']
+    split_problem: True
+
+supply_technologies:
+    symbol: ts
+    table_name: _set_SUPPLY_TECHS
+    table_headers:
+        name: ['ts_Name', 'TEXT']
+        category: ['ts_Category', 'TEXT']
+    set_categories:
+        t.st: storage
+        t.sp: supply
+
+demand_technologies:
+    symbol: td
+    table_name: _set_DEMAND_TECHS
+    table_headers:
+        name: ['td_Name', 'TEXT']
+
+flows:
+    symbol: f
+    table_name: _set_FLOWS
+    table_headers:
+        name: ['f_Name', 'TEXT']
+        aggregation: ['f_agg', 'TEXT']
+
+flows_agg:
+    symbol: f
+    table_name: _set_FLOWS_AGG
+    table_headers:
+        name: ['fa_Name', 'TEXT']
+
+timeslices:
+    symbol: h
+    table_name: _set_TIMESLICES
+    table_headers:
+        name: ['h_Name', 'TEXT']
