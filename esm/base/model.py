@@ -117,7 +117,8 @@ class Model:
 
         self.core.index.load_coordinates_to_data_index()
         self.core.index.load_coordinates_to_variables_index()
-        self.core.index.mapping_vars_aggregated_dims()
+        self.core.index.map_vars_aggregated_dims()
+        self.core.index.identify_child_variables()
 
         if self.settings['sqlite_database_foreign_keys']:
             self.core.index.fetch_foreign_keys_to_data_tables()

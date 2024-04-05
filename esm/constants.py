@@ -49,7 +49,7 @@ _DATA_TABLE_DEFAULT_STRUCTURE = {
 _VARIABLE_DEFAULT_STRUCTURE = {
     'rows': dict,
     'cols': dict,
-    'value': str
+    'value': str,
 }
 
 # allowed constants. more can be added, but Variable.define_constant must
@@ -61,7 +61,7 @@ _ALLOWED_CONSTANTS = {
     'lower_triangular': (util_constants.tril, ),
     # special identity matrix for rcot problems
     'identity_rcot': (util_constants.identity_rcot, ),
-    'range_vector': (np.arange, ),  # vector given a range  
+    # 'range_vector': (np.arange, ),  # vector given a range TBD
 }
 
 # allowed operators for defining symbolic CVXPY problem

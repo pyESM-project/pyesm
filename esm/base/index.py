@@ -153,23 +153,28 @@ class Index:
         for table_key, data_table in self.data.items():
             data_table: DataTable
 
-            if all([
+            if not all([
                 util.validate_dict_structure(
                     dictionary=var_info,
                     validation_structure=constants._VARIABLE_DEFAULT_STRUCTURE)
                 for var_info in data_table.variables_info.values()
                 if var_info is not None
             ]):
-                variable = DotDict({
-                    var_key: Variable(
-                        logger=self.logger,
-                        related_table=table_key,
-                        type=data_table.type,
-                        **(var_info or {}),
-                    )
-                    for var_key, var_info in data_table.variables_info.items()
-                })
-                variables_info.update(variable)
+                msg = f"Invalid variables structures for table '{table_key}': " \
+                    "variables fields does not match the expected default format."
+                self.logger.error(msg)
+                raise exc.SettingsError(msg)
+
+            variable = DotDict({
+                var_key: Variable(
+                    logger=self.logger,
+                    related_table=table_key,
+                    type=data_table.type,
+                    **(var_info or {}),
+                )
+                for var_key, var_info in data_table.variables_info.items()
+            })
+            variables_info.update(variable)
 
         return variables_info
 
@@ -314,8 +319,7 @@ class Index:
                     coord_group_value.update(
                         {set_key: list(set(set_filtered[name_header]))})
 
-                # for coordinates sets different than 'all', no aggregation nor filtering
-                # elif coord_group_key != 'all':
+                # for other coordinates sets, no aggregation nor filtering
                 else:
                     coord_group_value.update({
                         set_key: self.sets[set_key].set_values
@@ -324,7 +328,11 @@ class Index:
 
             variable.coordinates = coordinates
 
-    def mapping_vars_aggregated_dims(self) -> None:
+    def map_vars_aggregated_dims(self) -> None:
+
+        self.logger.debug(
+            "Identifying aggregated dimensions for variables coordinates.")
+
         for var_key, variable in self.variables.items():
             variable: Variable
 
@@ -375,3 +383,46 @@ class Index:
                         )
                         variable.related_dims_map = set_items_aggregation_map
                         break
+
+    def identify_child_variables(self) -> None:
+
+        self.logger.debug(
+            "Identifying parent-child variables for setting "
+            "implicit constraints.")
+
+        for data_table in self.data.values():
+            data_table: DataTable
+
+            if len(data_table.variables_info) < 2:
+                continue
+
+            related_vars_coords = {
+                var_key: variable.all_coordinates
+                for var_key, variable in self.variables.items()
+                if var_key in data_table.variables_info and
+                variable.type == 'endogenous'
+            }
+
+            related_vars_coords_filtered = \
+                util.filter_dict_by_matching_value_content(related_vars_coords)
+
+            if not related_vars_coords_filtered:
+                continue
+
+            # compare related vars: if one has an intra-problem set that is
+            # a set that defines the shape of the other variable, then the
+            # former is sliced from the latter (i.e. it is the child variable)
+            for child_var_key in related_vars_coords_filtered:
+                child_variable = self.variables[child_var_key]
+
+                if child_variable.coordinates_info['intra']:
+                    slicing_coordinate = next(
+                        iter(child_variable.coordinates_info['intra'].keys())
+                    )
+
+                if slicing_coordinate:
+                    for parent_var_key in related_vars_coords_filtered:
+                        if parent_var_key != child_var_key and \
+                                slicing_coordinate in self.variables[parent_var_key].shape:
+                            self.variables[child_var_key].sliced_from = parent_var_key
+                            break
