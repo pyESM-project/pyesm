@@ -272,7 +272,10 @@ class FileManager:
             self.logger.error(error_msg)
             raise TypeError(error_msg)
 
-        def write_excel(excel_file_path, dict_name):
+        def write_excel(
+                excel_file_path: str | Path,
+                dict_name: Dict[str, Any]
+        ) -> None:
             """Support function to generate excel"""
             with pd.ExcelWriter(excel_file_path, engine=writer_engine) as writer:
                 for sheet_name, headers_list in dict_name.items():

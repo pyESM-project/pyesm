@@ -117,7 +117,8 @@ class Model:
 
         self.core.index.load_coordinates_to_data_index()
         self.core.index.load_coordinates_to_variables_index()
-        self.core.index.mapping_vars_aggregated_dims()
+        self.core.index.map_vars_aggregated_dims()
+        self.core.index.identify_child_variables()
 
         if self.settings['sqlite_database_foreign_keys']:
             self.core.index.fetch_foreign_keys_to_data_tables()
@@ -140,19 +141,24 @@ class Model:
     def load_data_files_to_database(
             self,
             operation: str = 'update',
+            force_overwrite: bool = False,
     ) -> None:
         self.logger.info('Loading input data to SQLite database.')
-        self.core.database.load_data_input_files_to_database(operation)
+        self.core.database.load_data_input_files_to_database(
+            operation,
+            force_overwrite
+        )
         # to be completed
         self.core.database.empty_data_completion(operation)
 
     def initialize_problems(
             self,
+            force_overwrite: bool = False,
     ) -> None:
         self.logger.info('Initializing numerical problems.')
         self.core.initialize_problems_variables()
         self.core.data_to_cvxpy_exogenous_vars()
-        self.core.define_numerical_problems()
+        self.core.define_numerical_problems(force_overwrite)
 
     def run_model(
             self,
@@ -178,10 +184,11 @@ class Model:
     def update_database_and_problem(
             self,
             operation: str = 'update',
+            force_overwrite: bool = False,
     ) -> None:
         self.logger.info(f"Updating SQLite database and initialize problems.")
-        self.load_data_files_to_database(operation)
-        self.initialize_problems()
+        self.load_data_files_to_database(operation, force_overwrite)
+        self.initialize_problems(force_overwrite)
 
     def generate_pbi_report(self, file_name: str = 'dataset.pbix') -> None:
         self.logger.info('Generating PowerBI report.')

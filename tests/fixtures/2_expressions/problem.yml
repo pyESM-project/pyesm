@@ -1,0 +1,16 @@
+# SYMBOLIC PROBLEM
+
+# definition of the objective function (scalar)
+
+objective function:
+    - Minimize(1) # dummy objective
+
+# definition of the constraints (vector expressions)
+
+constraints: 
+
+    # aggregating total demand by flow
+    - dr_exo == dr_end
+
+
+    
