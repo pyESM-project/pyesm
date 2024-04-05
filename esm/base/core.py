@@ -70,6 +70,8 @@ class Core:
             "(cvxpy objects, filters dictionaries).")
 
         for var_name, variable in self.index.variables.items():
+            variable: Variable
+
             if variable.type == 'constant':
                 variable.data = self.problem.generate_constant_data(
                     variable_name=var_name,
@@ -81,12 +83,22 @@ class Core:
                     variable=variable
                 )
 
-    def define_numerical_problems(self) -> None:
+        # way 1: avoid defining cvxpy var for sliced endogenous variables
+        # for var_name, variable in self.index.variables.items():
+        #     variable: Variable
+        #     if variable.type == 'endogenous' and \
+        #             variable.sliced_from:
+        #         pass
+
+    def define_numerical_problems(
+            self,
+            force_overwrite: bool = False,
+    ) -> None:
         self.logger.info(
             "Load symbolic problem, initialize dataframes with cvxpy problems ")
 
-        self.problem.load_symbolic_problem_from_file()
-        self.problem.generate_problems_dataframe()
+        self.problem.load_symbolic_problem_from_file(force_overwrite)
+        self.problem.generate_problems_dataframe(force_overwrite)
 
     def solve_numerical_problems(
             self,
@@ -134,15 +146,15 @@ class Core:
     @connection
     def cvxpy_endogenous_data_to_database(self, operation: str) -> None:
         self.logger.info(
-            "Fetching data from cvxpy endogenous variables "
+            "Exporting data from cvxpy endogenous variables "
             f"to SQLite database '{self.settings['sqlite_database_file']}' ")
 
         for var_key, variable in self.index.variables.items():
 
             if isinstance(variable, Variable) and variable.type == 'endogenous':
                 self.logger.debug(
-                    f"Fetching data from cvxpy variable '{var_key}' "
-                    "to the related SQLite table.")
+                    f"Exporting data from cvxpy variable '{var_key}' "
+                    f"to the related SQLite table '{variable.related_table}'.")
 
                 cvxpy_var_data = pd.DataFrame()
 
@@ -164,7 +176,7 @@ class Core:
                     self.logger.warning(
                         "No data available in cvxpy variable "
                         f"'{var_key}'")
-                    return
+                    continue
 
                 self.sqltools.dataframe_to_table(
                     table_name=variable.related_table,

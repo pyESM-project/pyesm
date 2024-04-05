@@ -1,9 +1,8 @@
 import pprint as pp
 from pathlib import Path
-from typing import Dict, List, Any, Literal, Type
+from typing import Dict, List, Any, Literal
 
 import itertools as it
-import numpy as np
 import pandas as pd
 
 from esm import constants
@@ -308,7 +307,7 @@ def merge_series_to_dataframe(
     """Merge a given 'series' with a 'dataframe' at the specified position.
     It repeats all values of series for all rows of the dataframe.
 
-    Parameters:
+    Args:
     - series (pd.Series): The series to be merged.
     - dataframe (pd.DataFrame): The dataframe to merge with.
     - position (Literal[0, -1], optional): The position at which to merge the series.
@@ -342,7 +341,7 @@ def check_dataframes_equality(
     """Check the equality of multiple DataFrames while optionally skipping 
     specified columns.
 
-    Parameters:
+    Args:
         df_list (List[pd.DataFrame]): A list of Pandas DataFrames to compare.
         skip_columns (List[str], optional): A list of column names to skip 
             during comparison.
@@ -378,7 +377,7 @@ def check_dataframe_columns_equality(
     """Check the equality of column headers in multiple DataFrames while 
     optionally skipping specified columns.
 
-    Parameters:
+    Args:
         df_list (List[pd.DataFrame]): A list of Pandas DataFrames to compare.
         skip_columns (List[str], optional): A list of column names to skip 
             during comparison.
@@ -440,20 +439,25 @@ def add_column_to_dataframe(
     )
 
 
-def substitute_keys(source_dict, key_mapping_dict):
+def substitute_keys(
+        source_dict: Dict[str, Any],
+        key_mapping_dict: Dict[str, Any],
+) -> Dict[str, Any]:
     """
     Substitute the keys in source_dict with the values from key_mapping.
-    Raises an error if a value in key_mapping does not exist as a key in source_dict.
+    Raises an error if a value in key_mapping does not exist as a key in 
+    source_dict.
 
-    Parameters:
-    - source_dict (dict): A dictionary whose keys need to be substituted.
-    - key_mapping (dict): A dictionary containing the mapping of original keys to new keys.
+    Args:
+        source_dict (dict): A dictionary whose keys need to be substituted.
+        key_mapping (dict): A dictionary containing the mapping of original 
+            keys to new keys.
 
     Returns:
-    - dict: A new dictionary with substituted keys.
+        dict: A new dictionary with substituted keys.
 
     Raises:
-    - ValueError: If a value from key_mapping is not a key in source_dict.
+        ValueError: If a value from key_mapping is not a key in source_dict.
     """
     substituted_dict = {}
     for key, new_key in key_mapping_dict.items():
@@ -462,3 +466,76 @@ def substitute_keys(source_dict, key_mapping_dict):
                 f"Key '{key}' from key_mapping is not found in source_dict.")
         substituted_dict[new_key] = source_dict[key]
     return substituted_dict
+
+
+def filter_dict_by_matching_value_content(
+        input_dict: Dict[str, Dict[str, List[str] | None]]
+) -> Dict[str, Dict[str, List[str] | None]]:
+    """
+    Filters a dictionary by keeping only the key-value pairs where the values
+    (which are dictionaries themselves) contain the same items, disregarding
+    the order of items within the lists that are values of the inner 
+    dictionaries.
+
+    Args:
+        input_dict (dict): A dictionary where each value is another dictionary 
+            with strings as keys and lists of strings as values.
+
+    Returns:
+        dict: A filtered dictionary containing only the entries where at least 
+            one other entry exists with the same content in its value, 
+            disregarding the order of items within the lists.
+
+    Example:
+    >>> example_dict = {
+    ...     "item1": {"key1": ["a", "b"], "key2": ["c"]},
+    ...     "item2": {"key2": ["c"], "key1": ["b", "a"]},  # Same as item1 but different order
+    ...     "item3": {"key1": ["a"], "key2": ["b", "c"]},  # Different
+    ... }
+    >>> filtered_dict = filter_dict_by_matching_value_content(example_dict)
+    >>> print(filtered_dict)
+    {'item1': {'key1': ['a', 'b'], 'key2': ['c']},
+     'item2': {'key2': ['c'], 'key1': ['b', 'a']}}  # Only item1 and item2 are included
+
+    Note:
+        This function assumes that the lists within the inner dictionaries 
+            do not contain duplicate items, as it converts these lists to 
+            sets for comparison purposes.
+    """
+    if not isinstance(input_dict, dict):
+        raise TypeError("input_dict must be a dictionary.")
+
+    def dict_to_comparable_form(d):
+        return frozenset((k, tuple(sorted(v))) for k, v in d.items())
+
+    comparable_form_to_keys = {}
+
+    for key, value in input_dict.items():
+        comparable_form = dict_to_comparable_form(value)
+
+        if comparable_form not in comparable_form_to_keys:
+            comparable_form_to_keys[comparable_form] = []
+
+        comparable_form_to_keys[comparable_form].append(key)
+
+    result_dict = {}
+
+    for keys in comparable_form_to_keys.values():
+        if len(keys) > 1:
+            for key in keys:
+                result_dict[key] = input_dict[key]
+
+    return result_dict
+
+
+def compare_dicts_ignoring_order(
+        dict1: Dict[str, List[Any]],
+        dict2: Dict[str, List[Any]],
+) -> bool:
+
+    if set(dict1.keys()) != set(dict2.keys()):
+        return False
+    for key in dict1:
+        if sorted(dict1[key]) != sorted(dict2[key]):
+            return False
+    return True

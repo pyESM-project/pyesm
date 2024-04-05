@@ -6,6 +6,7 @@ import numpy as np
 import cvxpy as cp
 
 from esm import constants
+from esm.base.data_table import DataTable
 from esm.log_exc import exceptions as exc
 from esm.log_exc.logger import Logger
 from esm.support import util
@@ -144,7 +145,6 @@ class Problem:
             )
 
         for row in var_data.index:
-
             var_data.at[row, headers['cvxpy']] = \
                 self.create_cvxpy_variable(
                     type=variable.type,
@@ -164,8 +164,8 @@ class Problem:
                         if isinstance(variable.shape[dim], int):
                             pass
                         elif isinstance(variable.shape[dim], str):
-                            dim_header = variable.dim_labels[dim]
-                            var_filter[dim_header] = variable.dim_items[dim]
+                            dim_header = variable.dims_labels[dim]
+                            var_filter[dim_header] = variable.dims_items[dim]
 
                 elif header == headers['filter']:
                     pass
@@ -179,17 +179,21 @@ class Problem:
 
         return var_data
 
-    def load_symbolic_problem_from_file(self) -> None:
+    def load_symbolic_problem_from_file(
+            self,
+            force_overwrite: bool = False,
+    ) -> None:
 
         problem_file_name = constants._SETUP_FILES[2]
 
         if self.symbolic_problem is not None:
-            self.logger.warning(f"Symbolic problem already loaded.")
-            user_input = input(f"Update symbolic problem? (y/[n]): ")
+            if not force_overwrite:
+                self.logger.warning(f"Symbolic problem already loaded.")
+                user_input = input(f"Update symbolic problem? (y/[n]): ")
 
-            if user_input.lower() != 'y':
-                self.logger.info(f"Symbolic problem NOT updated.")
-                return
+                if user_input.lower() != 'y':
+                    self.logger.info(f"Symbolic problem NOT updated.")
+                    return
             else:
                 self.logger.info(f"Symbolic problem updated.")
         else:
@@ -286,15 +290,19 @@ class Problem:
             self.logger.error(msg)
             raise exc.ConceptualModelError(msg)
 
-    def generate_problems_dataframe(self):
+    def generate_problems_dataframe(
+            self,
+            force_overwrite: bool = False,
+    ) -> None:
 
         if self.numeric_problems is not None:
-            self.logger.warning(f"Numeric problem already defined.")
-            user_input = input(f"Overwrite numeric problem? (y/[n]): ")
+            if not force_overwrite:
+                self.logger.warning(f"Numeric problem already defined.")
+                user_input = input(f"Overwrite numeric problem? (y/[n]): ")
 
-            if user_input.lower() != 'y':
-                self.logger.info(f"Numeric problem NOT overwritten.")
-                return
+                if user_input.lower() != 'y':
+                    self.logger.info(f"Numeric problem NOT overwritten.")
+                    return
             else:
                 self.logger.info(f"Numeric problem overwritten.")
         else:
@@ -309,9 +317,6 @@ class Problem:
             'status': constants._PROBLEM_STATUS_HEADER,
         }
 
-        # per ora le colonne dei set hanno i nomi degli headers (s_Name, ...)
-        # se si vuole mettere i nomi dei set (Scenarios) bisogna cambiarli anche
-        # nelle tabelle sei set e delle variabili.
         dict_to_unpivot = {}
         for set_name, set_header in self.index.sets_split_problem_list.items():
             set_values = self.index.sets[set_name].data[set_header]
@@ -347,13 +352,23 @@ class Problem:
                 list_sets_split_problem
             ]
 
-            constraints = self.define_expressions(
+            # define explicit problem constraints (user-defined constraints)
+            constraints = self.define_explicit_expressions(
                 header_object=headers['constraints'],
                 problem_filter=problem_filter
             )
 
+            # define implicit problem constraints (equality of sliced variables)
+            constraints_implicit = self.define_implicit_expressions(
+                problem_filter=problem_filter
+            )
+
+            if constraints_implicit:
+                constraints.extend(constraints_implicit)
+
+            # define problem objective
             objective = sum(
-                self.define_expressions(
+                self.define_explicit_expressions(
                     header_object=headers['objective'],
                     problem_filter=problem_filter
                 )
@@ -381,6 +396,7 @@ class Problem:
         cvxpy_var_header = constants._CVXPY_VAR_HEADER
 
         for var_key, variable in variables_set_dict.items():
+            variable: Variable
 
             # constants are directly assigned
             if variable.type == 'constant':
@@ -454,7 +470,7 @@ class Problem:
 
         return local_vars['output']
 
-    def define_expressions(
+    def define_explicit_expressions(
             self,
             header_object: str,
             problem_filter: pd.DataFrame,
@@ -464,10 +480,8 @@ class Problem:
 
         for expression in self.symbolic_problem[header_object]:
 
-            # get variables symbols in expression
             vars_symbols_list = self.parse_allowed_symbolic_vars(expression)
 
-            # define subset of variables in the expression
             vars_subset = DotDict({
                 key: variable for key, variable in self.index.variables.items()
                 if key in vars_symbols_list
@@ -480,7 +494,8 @@ class Problem:
                 and variable.type == 'constant'
             })
 
-            # look for intra-problem set (only one per expression allowed)
+            # look for intra-problem set in variables
+            # only one intra-problem set per expression allowed
             set_intra_problem = self.find_common_sets_intra_problem(
                 variables_subset=vars_subset,
             )
@@ -524,6 +539,148 @@ class Problem:
 
         return expressions
 
+    def identify_child_parent_variables(
+            self,
+            data_table: DataTable,
+    ) -> Dict[str, DotDict[str, Variable]] | None:
+
+        if not data_table.type == 'endogenous':
+            return None
+
+        variables = self.index.variables
+        child_var_key = None
+        parent_var_key = None
+
+        for var_key in data_table.variables_list:
+            variable = variables[var_key]
+
+            if variable.sliced_from:
+                if child_var_key is not None:
+                    msg = "Only one variable can be sliced from a parent " \
+                        f"for each data table. Chech variable '{var_key}'."
+                    self.logger.error(msg)
+                    raise exc.SettingsError(msg)
+
+                child_var_key = var_key
+                parent_var_key = variable.sliced_from
+
+                if parent_var_key not in data_table.variables_list:
+                    msg = f"Variable '{var_key}' cannot be sliced from " \
+                        f"'{parent_var_key}'. '{parent_var_key}' not " \
+                        "defined in data table."
+                    self.logger.error(msg)
+                    raise exc.SettingsError(msg)
+
+        if child_var_key is None or parent_var_key is None:
+            return None
+
+        child_var = DotDict({child_var_key: variables[child_var_key]})
+        parent_var = DotDict({parent_var_key: variables[parent_var_key]})
+
+        # check if parent and child variables represent the same quantities
+        if not util.compare_dicts_ignoring_order(
+            dict1=variables[child_var_key].all_coordinates,
+            dict2=variables[parent_var_key].all_coordinates,
+        ):
+            msg = f"Child variable '{child_var_key}' and parent variable " \
+                f"'{parent_var_key}' are not representing the same " \
+                "quantities. Check definition of variables sets."
+            self.logger.error(msg)
+            raise exc.SettingsError(msg)
+
+        return {
+            'child_var': child_var,
+            'parent_var': parent_var
+        }
+
+    def define_implicit_expressions(
+            self,
+            problem_filter: pd.DataFrame,
+    ) -> List[Any]:
+        """This method defines equality constraints that do not appear 
+        explicitly in the problem.yml. Considering a data table where two or 
+        more variables are defined with different shapes but with the same set:
+        actually the variables represent the same data shaped in different ways.
+        Since two distinct cvxpy variables are generate, it is necessary to set
+        implicit equality constraints for such variables.
+
+        Args:
+            problem_filter (pd.DataFrame): DataFrame that identifies a specific
+                problem as a combination of inter-problem sets.
+
+        Returns:
+            List[Any]: List of cvxpy expressions defining equality constraints
+                to be added to the problem.                
+        """
+        expressions = []
+
+        for data_table in self.index.data.values():
+            related_vars = self.identify_child_parent_variables(data_table)
+
+            if not related_vars:
+                continue
+
+            child_var = related_vars['child_var']
+            child_var_key = next(iter(child_var.keys()))
+            child_var_value = child_var[child_var_key]
+
+            parent_var = related_vars['parent_var']
+            parent_var_key = next(iter(parent_var.keys()))
+            parent_var_value = parent_var[parent_var_key]
+
+            intra_set_header = list(
+                child_var_value.coordinates_info['intra'].values())[0]
+            intra_set_values = list(
+                child_var_value.coordinates['intra'].values())[0]
+
+            # find cvxpy parent var for the considered problem
+            parent_cvxpy_var = self.fetch_allowed_cvxpy_variables(
+                variables_set_dict=parent_var,
+                problem_filter=problem_filter,
+            )
+
+            # loop in intra-problem coordinates
+            for set_item in intra_set_values:
+
+                # find cvxpy child var for the given coordinate
+                child_cvxpy_var_dict = self.fetch_allowed_cvxpy_variables(
+                    variables_set_dict=child_var,
+                    problem_filter=problem_filter,
+                    set_intra_problem_header=intra_set_header,
+                    set_intra_problem_value=set_item,
+                )
+                child_cvxpy_var = child_cvxpy_var_dict[child_var_key]
+
+                # get parent slice and define cvxpy equality expression
+                slicer = self.define_slicer(
+                    dims_items=parent_var_value.dims_items,
+                    item_to_slice=set_item
+                )
+
+                parent_cvxpy_var_slice = parent_cvxpy_var[parent_var_key][slicer]
+
+                expressions.extend(
+                    [child_cvxpy_var - parent_cvxpy_var_slice == 0]
+                )
+
+        return expressions
+
+    def define_slicer(
+            self,
+            dims_items: List[List[str]],
+            item_to_slice: str,
+    ) -> tuple:
+
+        slicers = [slice(None) for _ in dims_items]
+
+        for dim_index, items in enumerate(dims_items):
+            if item_to_slice in items:
+                item_index = items.index(item_to_slice)
+                slicers[dim_index] = slice(item_index, item_index+1)
+                break
+
+        return tuple(slicers)
+
     def solve_problem(
             self,
             problem: cp.Problem,
@@ -542,6 +699,7 @@ class Problem:
             self,
             solver: str,
             verbose: bool,
+            force_overwrite: bool = False,
             **kwargs: Any,
     ) -> None:
 
@@ -552,13 +710,14 @@ class Problem:
             raise exc.OperationalError(msg)
 
         if self.model_run:
-            self.logger.warning("Numeric problems already run.")
-            user_input = input("Solve again numeric problems? (y/[n]): ")
+            if not force_overwrite:
+                self.logger.warning("Numeric problems already run.")
+                user_input = input("Solve again numeric problems? (y/[n]): ")
 
-            if user_input.lower() != 'y':
-                self.logger.info(
-                    "Numeric problem NOT solved.")
-                return
+                if user_input.lower() != 'y':
+                    self.logger.info(
+                        "Numeric problem NOT solved.")
+                    return
             else:
                 self.logger.info(
                     "Solving numeric problem and overwriting existing results.")
