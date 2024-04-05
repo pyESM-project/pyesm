@@ -28,7 +28,7 @@ class DataTable:
         for key, value in kwargs.items():
             setattr(self, key, value)
 
-        self.variable_list: List[str] = list(self.variables_info.keys())
+        self.variables_list: List[str] = list(self.variables_info.keys())
 
     def __repr__(self) -> str:
         output = ''

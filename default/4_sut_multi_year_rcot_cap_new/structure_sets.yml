@@ -55,8 +55,8 @@ load_factors:
         name: ['lf_Name', 'TEXT']
         category: ['lf_Category', 'TEXT']
     set_categories:
-        lf_max: Min
-        lf_min: Max  
+        lf_max: Max
+        lf_min: Min  
 
 years:
     symbol: y

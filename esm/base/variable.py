@@ -1,4 +1,4 @@
-from typing import Any, Dict, Iterator, List, Literal, Tuple
+from typing import Any, Dict, Iterator, List, Tuple
 import numpy as np
 
 import pandas as pd
@@ -33,6 +33,7 @@ class Variable:
 
         self.coordinates_info: Dict[str, Any] = {}
         self.coordinates: Dict[str, Any] = {}
+        self.sliced_from: str = None
         self.data: pd.DataFrame = None
 
     def __repr__(self) -> str:
@@ -72,7 +73,7 @@ class Variable:
         return shape_size
 
     @property
-    def dim_labels(self) -> List[str]:
+    def dims_labels(self) -> List[str]:
         """Retrieves the labels for each dimension of the variable.
 
         Returns:
@@ -90,7 +91,7 @@ class Variable:
         return dim_labels
 
     @property
-    def dim_items(self) -> List[List[str]]:
+    def dims_items(self) -> List[List[str]]:
         """Retrieves the items for each variable dimension.
 
         Returns:
@@ -172,6 +173,16 @@ class Variable:
             **self.coordinates['inter'],
         }
 
+    @property
+    def all_coordinates(self) -> Dict[str, List[str] | None]:
+        # attention: in case a variable has same coordinates in different
+        # dimensions, only one of them is reported (rare case of a variable
+        # with same rows and cols).
+        all_coordinates = {}
+        for coordinates in self.coordinates.values():
+            all_coordinates.update(coordinates)
+        return all_coordinates
+
     def none_data_coordinates(self, row: int) -> Dict[str, Any]:
         """Checks if there are None data values in cvxpy variables and returns
         the related coordinates (row in Variable.data and related hierarchy 
@@ -222,14 +233,14 @@ class Variable:
         values_header = constants._STD_VALUES_FIELD['values'][0]
 
         # case of a scalar with no rows/cols labels (scalars)
-        if all(item is None for item in self.dim_labels):
+        if all(item is None for item in self.dims_labels):
             index = ''
             columns = None
 
         # all other variables with rows/cols labels (scalars, vectors/matrices)
         else:
-            index = self.dim_labels[0]
-            columns = self.dim_labels[1]
+            index = self.dims_labels[0]
+            columns = self.dims_labels[1]
 
         pivoted_data = data.pivot_table(
             index=index,
@@ -239,8 +250,8 @@ class Variable:
         )
 
         pivoted_data = pivoted_data.reindex(
-            index=self.dim_items[0],
-            columns=self.dim_items[1]
+            index=self.dims_items[0],
+            columns=self.dims_items[1]
         )
 
         return pivoted_data
@@ -263,11 +274,11 @@ class Variable:
 
         unpivoted_data = pd.DataFrame(
             data=self.data[cvxpy_var_header][row].value,
-            index=self.dim_items[0],
-            columns=self.dim_items[1],
+            index=self.dims_items[0],
+            columns=self.dims_items[1],
         ).stack().reset_index()
 
-        unpivoted_data.columns = [*self.dim_labels, values_header]
+        unpivoted_data.columns = [*self.dims_labels, values_header]
 
         columns_to_drop = [
             col for col in unpivoted_data.columns if col == None]
@@ -314,7 +325,6 @@ class Variable:
             - exc.ConceptualModelError: If the shape of the variable is not 
                 suitable for creating the constant.
         """
-
         util.validate_selection(
             valid_selections=constants._ALLOWED_CONSTANTS.keys(),
             selection=value_type,
