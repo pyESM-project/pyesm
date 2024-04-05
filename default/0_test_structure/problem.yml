@@ -9,7 +9,6 @@ objective function:
 
 constraints: 
 
-    - X_1f == i_1f @ V_ff
     - X_tfp == V_tfp
     - X_tfc == V_tfc
     - X_yt == T_yy @ V_yt

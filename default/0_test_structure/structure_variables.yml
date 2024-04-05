@@ -34,14 +34,6 @@ V:
             cols:
                 set: technologies 
                 set_categories: t.s
-        V_ff:
-            rows: 
-                set: flows
-                set_categories: f.p
-            cols:
-                set: flows 
-                set_categories: f.p
-
 
 
 # -----------------------------------------------------------------------------
@@ -50,7 +42,7 @@ V:
 constants: 
     name: constant values
     type: constant
-    coordinates: [flows, technologies, time]
+    coordinates: [flows, time]
     variables_info:
         i_1f:
             value: sum_vector

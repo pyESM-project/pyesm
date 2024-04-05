@@ -343,7 +343,7 @@ class Index:
             set_items = pd.DataFrame()
 
             for dim_key, dim in variable.dims_sets.items():
-                dim_set: SetTable = getattr(self.sets, dim, None)
+                dim_set: SetTable = getattr(self.sets, str(dim), None)
 
                 if not dim_set:
                     break
