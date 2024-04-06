@@ -1,6 +1,7 @@
 from functools import wraps
 from typing import List, Dict, Any, Optional, Tuple
 from pathlib import Path
+import contextlib
 import sqlite3
 
 import pandas as pd
@@ -805,22 +806,21 @@ class SQLManager:
         return {child_column_name: column_values}
 
 
-def connection(method):
-    """Decorator to automatically open and close a database connection for a 
-    method in a class.
+@contextlib.contextmanager
+def db_handler(sql_manager: SQLManager):
+    """
+    A context manager for handling database connections using a SQLManager 
+    object.
 
     Args:
-        method (function): The method to be decorated.
+        sql_manager (SQLManager): The SQLManager object used for managing 
+            the database connection.
 
-    Returns:
-        function: The decorated method.
+    Raises:
+        Any exceptions raised by the SQLManager.open_connection() method.
     """
-    @wraps(method)
-    def wrapper(self, *args, **kwargs):
-        self.sqltools.open_connection()
-        try:
-            result = method(self, *args, **kwargs)
-        finally:
-            self.sqltools.close_connection()
-        return result
-    return wrapper
+    try:
+        sql_manager.open_connection()
+        yield
+    finally:
+        sql_manager.close_connection()

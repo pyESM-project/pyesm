@@ -9,7 +9,7 @@ from esm.base.problem import Problem
 from esm.log_exc.logger import Logger
 from esm import constants
 from esm.support.file_manager import FileManager
-from esm.support.sql_manager import SQLManager, connection
+from esm.support.sql_manager import SQLManager, db_handler
 
 
 class Core:
@@ -83,13 +83,6 @@ class Core:
                     variable=variable
                 )
 
-        # way 1: avoid defining cvxpy var for sliced endogenous variables
-        # for var_name, variable in self.index.variables.items():
-        #     variable: Variable
-        #     if variable.type == 'endogenous' and \
-        #             variable.sliced_from:
-        #         pass
-
     def define_numerical_problems(
             self,
             force_overwrite: bool = False,
@@ -112,15 +105,22 @@ class Core:
             **kwargs
         )
 
-    @connection
     def data_to_cvxpy_exogenous_vars(self) -> None:
         self.logger.info(
             f"Fetching data from '{self.settings['sqlite_database_file']}' "
             "to cvxpy exogenous variables.")
 
-        for var_key, variable in self.index.variables.items():
+        with db_handler(self.sqltools):
+            for var_key, variable in self.index.variables.items():
 
-            if isinstance(variable, Variable) and variable.type == 'exogenous':
+                if not isinstance(variable, Variable):
+                    msg = "Passed item is not a 'Variable' class instance."
+                    self.logger.error(msg)
+                    raise TypeError(msg)
+
+                if variable.type != 'exogenous':
+                    continue
+
                 self.logger.debug(
                     f"Fetching data from table '{var_key}' "
                     "to cvxpy exogenous variable.")
@@ -143,15 +143,22 @@ class Core:
                         data=pivoted_data
                     )
 
-    @connection
     def cvxpy_endogenous_data_to_database(self, operation: str) -> None:
         self.logger.info(
             "Exporting data from cvxpy endogenous variables "
             f"to SQLite database '{self.settings['sqlite_database_file']}' ")
 
-        for var_key, variable in self.index.variables.items():
+        with db_handler(self.sqltools):
+            for var_key, variable in self.index.variables.items():
 
-            if isinstance(variable, Variable) and variable.type == 'endogenous':
+                if not isinstance(variable, Variable):
+                    msg = "Passed item is not a 'Variable' class instance."
+                    self.logger.error(msg)
+                    raise TypeError(msg)
+
+                if variable.type != 'endogenous':
+                    continue
+
                 self.logger.debug(
                     f"Exporting data from cvxpy variable '{var_key}' "
                     f"to the related SQLite table '{variable.related_table}'.")
@@ -174,8 +181,7 @@ class Core:
 
                 if cvxpy_var_data.empty:
                     self.logger.warning(
-                        "No data available in cvxpy variable "
-                        f"'{var_key}'")
+                        f"No data available in cvxpy variable '{var_key}'")
                     continue
 
                 self.sqltools.dataframe_to_table(
