@@ -18,6 +18,7 @@ def create_model_dir(
     main_dir_path: str,
     default_model: str = None,
     force_overwrite: bool = False,
+    default_files_prefix: str = 'template_'
 ):
     """
     Create a directory structure for the generation of Model instances. 
@@ -50,7 +51,7 @@ def create_model_dir(
             files.copy_file_to_destination(
                 path_destination=model_dir_path,
                 path_source=default_models_path,
-                file_name='dft_'+file_name,
+                file_name=default_files_prefix+file_name,
                 file_new_name=file_name,
                 force_overwrite=force_overwrite,
             )
