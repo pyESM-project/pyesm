@@ -23,7 +23,7 @@ class Core:
     ) -> None:
 
         self.logger = logger.getChild(__name__)
-        self.logger.info(f"'{self}' object initialization...")
+        self.logger.debug(f"'{self}' object initialization...")
 
         self.files = files
         self.settings = settings
@@ -58,14 +58,14 @@ class Core:
             index=self.index
         )
 
-        self.logger.info(f"'{self}' initialized.")
+        self.logger.debug(f"'{self}' initialized.")
 
     def __repr__(self):
         class_name = type(self).__name__
         return f'{class_name}'
 
     def initialize_problems_variables(self) -> None:
-        self.logger.info(
+        self.logger.debug(
             "Initialize variables dataframes "
             "(cvxpy objects, filters dictionaries).")
 
@@ -87,7 +87,7 @@ class Core:
             self,
             force_overwrite: bool = False,
     ) -> None:
-        self.logger.info(
+        self.logger.debug(
             "Load symbolic problem, initialize dataframes with cvxpy problems ")
 
         self.problem.load_symbolic_problem_from_file(force_overwrite)
@@ -106,7 +106,7 @@ class Core:
         )
 
     def data_to_cvxpy_exogenous_vars(self) -> None:
-        self.logger.info(
+        self.logger.debug(
             f"Fetching data from '{self.settings['sqlite_database_file']}' "
             "to cvxpy exogenous variables.")
 
@@ -144,7 +144,7 @@ class Core:
                     )
 
     def cvxpy_endogenous_data_to_database(self, operation: str) -> None:
-        self.logger.info(
+        self.logger.debug(
             "Exporting data from cvxpy endogenous variables "
             f"to SQLite database '{self.settings['sqlite_database_file']}' ")
 

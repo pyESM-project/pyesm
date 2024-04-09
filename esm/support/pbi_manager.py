@@ -1,6 +1,7 @@
-from typing import Dict
+from pathlib import Path
 
 from esm.log_exc.logger import Logger
+from esm.support.dotdict import DotDict
 
 
 class PBIManager:
@@ -8,26 +9,22 @@ class PBIManager:
     def __init__(
         self,
         logger: Logger,
-        settings: Dict[str, str],
+        settings: DotDict[str, str],
+        paths: DotDict[str, str | Path]
     ) -> None:
 
         self.logger = logger.getChild(__name__)
-        self.logger.info(f"'{self}' object generated.")
+        self.logger.debug(f"'{self}' object generated.")
 
         self.settings = settings
-        self.file_name = None
+        self.paths = paths
 
     def __repr__(self):
         class_name = type(self).__name__
         return f'{class_name}'
 
-    def generate_powerbi_report(
-        self,
-        file_name: str,
-    ) -> None:
-
-        if not self.file_name:
-            self.file_name = file_name
+    def generate_powerbi_report(self) -> None:
+        pbi_report_file = self.settings['powerbi_report_file']
 
         self.logger.debug(
-            f"Generation of PowerBI report file '{self.file_name}'.")
+            f"Generation of PowerBI report file '{pbi_report_file}'.")

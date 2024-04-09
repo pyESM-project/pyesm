@@ -24,7 +24,7 @@ class Index:
     ) -> None:
 
         self.logger = logger.getChild(__name__)
-        self.logger.info(f"'{self}' object initialization...")
+        self.logger.debug(f"'{self}' object initialization...")
 
         self.files = files
         self.paths = paths
@@ -35,7 +35,7 @@ class Index:
 
         self.fetch_vars_coordinates_info()
 
-        self.logger.info(f"'{self}' object initialized.")
+        self.logger.debug(f"'{self}' object initialized.")
 
     def __repr__(self):
         class_name = type(self).__name__
@@ -83,7 +83,7 @@ class Index:
             object_class: SetTable | DataTable,
     ) -> DotDict[str, SetTable | DataTable]:
 
-        self.logger.info(
+        self.logger.debug(
             "Loading and validating data from file, "
             f"generating '{object_class.__name__}' objects.")
 
@@ -144,7 +144,7 @@ class Index:
         return data_tables
 
     def fetch_variables(self) -> DotDict[str, Variable]:
-        self.logger.info(
+        self.logger.debug(
             "Fetching and validating data, generating "
             f"'{Variable.__name__}' objects.")
 
@@ -215,7 +215,7 @@ class Index:
             }
 
     def fetch_foreign_keys_to_data_tables(self) -> None:
-        self.logger.info(
+        self.logger.debug(
             f"Loading tables 'foreign_keys' to Index.data_tables.")
 
         for table in self.data.values():
@@ -236,20 +236,16 @@ class Index:
             set_instance.data is None
             for set_instance in self.sets.values()
         ):
-            self.logger.info(
-                f"'{self}' object: loading new Sets data to Index.sets.")
+            self.logger.debug("Loading Sets data to Index.sets.")
         else:
             self.logger.warning(
-                f"'{self}' object: Sets tables already "
-                "defined for at least one Set in Index.")
+                "At least one Set is already defined in Index.")
             user_input = input("Overwrite Sets in Index? (y/[n]): ")
             if user_input.lower() != 'y':
-                self.logger.info(
-                    f"'{self}' object: Sets tables not overwritten.")
+                self.logger.info("Sets not overwritten in Index.")
                 return
             else:
-                self.logger.info(
-                    f"'{self}' object: overwriting Sets to Index.sets.")
+                self.logger.info("Overwriting Sets in Index.")
 
         sets_values = self.files.excel_to_dataframes_dict(
             excel_file_name=excel_file_name,
@@ -266,7 +262,7 @@ class Index:
                 set_instance.data = sets_values[table_name]
 
     def load_coordinates_to_data_index(self) -> None:
-        self.logger.info(
+        self.logger.debug(
             f"'{self}' object: loading variable coordinates to Index.data.")
 
         for table in self.data.values():
@@ -279,7 +275,7 @@ class Index:
 
     def load_coordinates_to_variables_index(self) -> None:
 
-        self.logger.info(
+        self.logger.debug(
             f"'{self}' object: loading variable coordinates to "
             "Index.variables.")
 

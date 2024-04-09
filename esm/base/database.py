@@ -26,7 +26,7 @@ class Database:
     ) -> None:
 
         self.logger = logger.getChild(__name__)
-        self.logger.info(f"'{self}' object initialization...")
+        self.logger.debug(f"'{self}' object initialization...")
 
         self.files = files
         self.sqltools = sqltools
@@ -35,29 +35,59 @@ class Database:
         self.paths = paths
 
         if not self.settings['use_existing_data']:
-            self.initialize_blank_database()
             self.create_blank_sets_xlsx_file()
 
-        self.logger.info(f"'{self}' object initialized.")
+        self.logger.debug(f"'{self}' object initialized.")
 
     def __repr__(self):
         class_name = type(self).__name__
         return f'{class_name}'
 
-    def initialize_blank_database(self) -> None:
-        sqlite_database_name = self.settings['sqlite_database_file']
+    def create_blank_sets_xlsx_file(self) -> None:
+        sets_file_name = self.settings['sets_xlsx_file']
 
-        if Path(self.paths['sqlite_database']).exists():
+        if Path(self.paths['sets_excel_file']).exists():
             if not self.settings['use_existing_data']:
                 self.logger.info(
-                    f"Overwriting database '{sqlite_database_name}'")
+                    f"Sets excel file '{sets_file_name}' already exists.")
+
+                erased = self.files.erase_file(
+                    dir_path=self.paths['model_dir'],
+                    file_name=sets_file_name,
+                    force_erase=False,
+                    confirm=True,
+                )
+
+                if erased:
+                    self.logger.info(
+                        f"Sets excel file '{sets_file_name}' erased and "
+                        "overwritten.")
+                else:
+                    self.logger.info(
+                        f"Relying on existing sets excel file '{sets_file_name}'.")
+                    return
             else:
                 self.logger.info(
-                    f"Relying on existing database '{sqlite_database_name}'")
+                    f"Relying on existing sets excel file '{sets_file_name}'.")
                 return
         else:
             self.logger.info(
-                f"Generating new database '{sqlite_database_name}'")
+                f"Generating new sets excel file '{sets_file_name}'.")
+
+        dict_headers = {
+            set_value.table_name: set_value.excel_file_set_headers
+            for set_value in self.index.sets.values()
+        }
+
+        self.files.dict_to_excel_headers(
+            dict_name=dict_headers,
+            excel_dir_path=self.paths['model_dir'],
+            excel_file_name=self.settings['sets_xlsx_file'],
+        )
+
+    def create_blank_sqlite_database(self) -> None:
+        self.logger.debug(
+            f"Generating database '{self.settings['sqlite_database_file']}'.")
 
         with db_handler(self.sqltools):
             for set_instance in self.index.sets.values():
@@ -71,34 +101,8 @@ class Database:
 
                 self.sqltools.create_table(table_name, table_fields)
 
-    def create_blank_sets_xlsx_file(self) -> None:
-        sets_file_name = self.settings['sets_xlsx_file']
-
-        if Path(self.paths['sets_excel_file']).exists():
-            if not self.settings['use_existing_data']:
-                self.logger.info(
-                    f"Overwriting sets excel file '{sets_file_name}'")
-            else:
-                self.logger.info(
-                    f"Relying on existing sets excel file '{sets_file_name}'")
-                return
-        else:
-            self.logger.info(
-                f"Generating new sets excel file '{sets_file_name}'")
-
-        dict_headers = {
-            set_value.table_name: set_value.excel_file_set_headers
-            for set_value in self.index.sets.values()
-        }
-
-        self.files.dict_to_excel_headers(
-            dict_name=dict_headers,
-            excel_dir_path=self.paths['model_dir'],
-            excel_file_name=self.settings['sets_xlsx_file'],
-        )
-
-    def load_sets_to_database(self) -> None:
-        self.logger.info(
+    def load_sets_to_sqlite_database(self) -> None:
+        self.logger.debug(
             f"Loading Sets to '{self.settings['sqlite_database_file']}'.")
 
         with db_handler(self.sqltools):
@@ -121,9 +125,10 @@ class Database:
                 self.sqltools.dataframe_to_table(table_name, dataframe)
 
     # MODIFY HERE TO PUT ALSO CONSTANTS IN DB
-    def generate_blank_data_sql_tables(self) -> None:
-        self.logger.info(
-            "Generation of empty SQLite database data tables.")
+    def generate_blank_sqlite_data_tables(self) -> None:
+        self.logger.debug(
+            "Generation of empty data tables in "
+            f"'{self.settings['sqlite_database_file']}'.")
 
         with db_handler(self.sqltools):
             for table_key, table in self.index.data.items():
@@ -139,8 +144,9 @@ class Database:
                 )
 
     def sets_data_to_vars_sql_tables(self) -> None:
-        self.logger.info(
-            "Filling empty SQLite database variables tables with sets data.")
+        self.logger.debug(
+            "Adding sets information to sqlite variables tables in "
+            f"'{self.settings['sqlite_database_file']}'.")
 
         with db_handler(self.sqltools):
             for table_key, table in self.index.data.items():
@@ -215,7 +221,7 @@ class Database:
         file_extension: str = data_file_extension,
     ) -> None:
 
-        self.logger.info(f"Generation of data input file/s.")
+        self.logger.debug(f"Generation of data input file/s.")
 
         if not Path(self.paths['input_data_dir']).exists():
             self.files.create_dir(self.paths['input_data_dir'])
@@ -247,7 +253,7 @@ class Database:
         file_extension: str = data_file_extension,
         force_overwrite: bool = False,
     ) -> None:
-        self.logger.info(
+        self.logger.debug(
             "Loading data from input file/s filled by the user "
             "to SQLite database.")
 
@@ -293,7 +299,7 @@ class Database:
         self,
         operation: str,
     ):
-        self.logger.info(
+        self.logger.debug(
             "Auto-completion of blank data in SQLite database.")
 
         with db_handler(self.sqltools):

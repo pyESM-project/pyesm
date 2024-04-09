@@ -29,7 +29,7 @@ class Problem:
     ) -> None:
 
         self.logger = logger.getChild(__name__)
-        self.logger.info(f"'{self}' object initialization...")
+        self.logger.debug(f"'{self}' object initialization...")
 
         self.files = files
         self.settings = settings
@@ -40,7 +40,7 @@ class Problem:
         self.numeric_problems = None
         self.model_run = None
 
-        self.logger.info(f"'{self}' object initialized.")
+        self.logger.debug(f"'{self}' object initialized.")
 
     def __repr__(self):
         class_name = type(self).__name__
@@ -197,7 +197,7 @@ class Problem:
             else:
                 self.logger.info(f"Symbolic problem updated.")
         else:
-            self.logger.info(
+            self.logger.debug(
                 f"Loading symbolic problem from '{problem_file_name}' file.")
 
         symbolic_problem = self.files.load_file(
@@ -306,7 +306,7 @@ class Problem:
             else:
                 self.logger.info(f"Numeric problem overwritten.")
         else:
-            self.logger.info(
+            self.logger.debug(
                 "Defining numeric problems based on symbolic problem.")
 
         headers = {

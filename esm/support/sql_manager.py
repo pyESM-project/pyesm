@@ -31,7 +31,7 @@ class SQLManager:
                 Defaults to 'openpyxl'.
         """
         self.logger = logger.getChild(__name__)
-        self.logger.info(f"'{self}' object generation.")
+        self.logger.debug(f"'{self}' object generation.")
 
         self.database_sql_path = database_path
         self.database_name = database_name
@@ -278,14 +278,14 @@ class SQLManager:
             table creation.
         """
         if table_name in self.get_existing_tables_names:
-            self.logger.debug(f"SQLite table '{table_name}' already exists.")
+            self.logger.info(f"SQLite table '{table_name}' already exists.")
 
             confirm = input(
                 f"SQLite table '{table_name}' already exists. "
                 "Overwrite? (y/[n])"
             )
             if confirm.lower() != 'y':
-                self.logger.debug(
+                self.logger.info(
                     f"SQLlite table '{table_name}' NOT overwritten.")
                 return
 
