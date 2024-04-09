@@ -10,6 +10,7 @@ import pandas as pd
 
 from esm.log_exc import exceptions as exc
 from esm.log_exc.logger import Logger
+from esm.support import util
 
 
 class FileManager:
@@ -24,7 +25,7 @@ class FileManager:
 
         self.xls_engine = xls_engine
 
-        self.logger.info(f"'{self}' object generated.")
+        self.logger.debug(f"'{self}' object generated.")
 
     def __repr__(self):
         class_name = type(self).__name__
@@ -69,10 +70,12 @@ class FileManager:
             dir_path: Path,
             force_erase: bool = False,
     ) -> bool:
-        """This method erases a folder and its content in a given path.
+        """This method erases a directory and its content in a given path.
 
         Args:
-            folder_path (str): path of the folder to be deleted.
+            dir_path (str): path of the directory to be deleted.
+            force_erase (bool, optional): Forcefully erase the file without
+                asking. Defaults to False.
         """
         if os.path.exists(dir_path):
             dir_name = str(dir_path).rsplit('\\', maxsplit=1)[-1]
@@ -94,7 +97,7 @@ class FileManager:
                 self.logger.error(f"Error: '{dir_name}' : {error.strerror}")
                 return False
             else:
-                self.logger.info(f"Folder '{dir_name}' have been erased.")
+                self.logger.info(f"Directory '{dir_name}' have been erased.")
                 return True
 
         else:
@@ -113,8 +116,8 @@ class FileManager:
         Args:
             file_name (str): file name to be loaded.
             file_type (str): file type (only .json or .yaml allowed)
-            dir_path (str, optional): The path to the folder where the file 
-                is located. If None, the default path of the FileManager 
+            dir_path (str, optional): The path to the folder where the file
+                is located. If None, the default path of the FileManager
                 instance is used.
 
         Raises:
@@ -145,6 +148,48 @@ class FileManager:
             self.logger.error(
                 f"Could not load file '{file_name}': {str(error)}")
             return {}
+
+    def erase_file(
+            self,
+            dir_path: Path | str,
+            file_name: str,
+            force_erase: bool = False,
+            confirm: bool = True,
+    ) -> bool:
+        """Erase a file in a given path with an option to confirm before erasing.
+
+        Args:
+            dir_path (Path or str): Path of the directory of the file.
+            file_name (str): Name of the file to be erased.
+            force_erase (bool, optional): Forcefully erase the file without
+                asking. Defaults to False.
+            confirm (bool, optional): Ask for user confirmation before erasing.
+                Defaults to True.
+
+        Returns:
+            bool: True if the file was successfully erased, False otherwise.
+        """
+        file_path = Path(dir_path) / file_name
+
+        if not os.path.exists(file_path):
+            self.logger.warning(
+                f"File '{file_name}' does not exist. The file cannot be erased.")
+            return False
+
+        if confirm and not force_erase:
+            if not util.confirm_action(
+                    f"Do you really want to erase file '{file_name}'? "
+            ):
+                self.logger.debug(f"File '{file_name}' not erased.")
+                return False
+
+        try:
+            os.remove(file_path)
+            self.logger.debug(f"File '{file_name}' have been erased.")
+            return True
+        except OSError as error:
+            self.logger.error(f"Error: '{file_name}' : {error.strerror}")
+            return False
 
     def dir_files_check(
             self,
