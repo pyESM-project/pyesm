@@ -83,7 +83,7 @@ def create_model_dir(
             path_source=default_dir_path,
             path_destination=model_dir_path,
             file_name=tutorial_file_name,
-            file_name=constants._TUTORIAL_FILE_NAME,
+            file_new_name=constants._TUTORIAL_FILE_NAME,
         )
 
 
