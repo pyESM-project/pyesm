@@ -35,6 +35,9 @@ def create_model_dir(
             Defaults to None.
         force_overwrite (bool, optional): if True, avoid asking permission to 
             overwrite existing files/directories. Defaults to False.
+        export_tutorial (bool, optional): if True, exports the tutorial jupyter 
+            notebook with guidance for generating and solving pyesm models. 
+            Default to False.
     """
 
     files = FileManager(Logger())
@@ -48,7 +51,19 @@ def create_model_dir(
 
     files.create_dir(model_dir_path, force_overwrite)
 
+    if export_tutorial:
+        file_name = constants._TUTORIAL_FILE_NAME
+        files.copy_file_to_destination(
+            path_source=default_dir_path,
+            path_destination=model_dir_path,
+            file_name=default_files_prefix + file_name,
+            file_new_name=file_name,
+            force_overwrite=True,
+        )
+
     if default_model is None:
+        files.logger.info(f"Generating model '{model_dir_name}' directory.")
+
         for file_name in constants._SETUP_FILES.values():
             files.copy_file_to_destination(
                 path_destination=model_dir_path,
@@ -58,9 +73,11 @@ def create_model_dir(
                 force_overwrite=force_overwrite,
             )
 
-        files.logger.info(f"Directory of model '{model_dir_name}' generated.")
-
     else:
+        files.logger.info(
+            f"Directory of model '{model_dir_name}' "
+            f"generated based on default model '{default_model}'.")
+
         validate_selection(
             valid_selections=constants._TEMPLATE_MODELS,
             selection=default_model)
@@ -71,19 +88,6 @@ def create_model_dir(
             path_source=template_dir_path,
             path_destination=model_dir_path,
             force_overwrite=force_overwrite,
-        )
-
-        files.logger.info(
-            f"Directory of model '{model_dir_name}' "
-            f"generated based on default model '{default_model}'.")
-
-    if export_tutorial:
-        tutorial_file_name = default_files_prefix + constants._TUTORIAL_FILE_NAME
-        files.copy_file_to_destination(
-            path_source=default_dir_path,
-            path_destination=model_dir_path,
-            file_name=tutorial_file_name,
-            file_new_name=constants._TUTORIAL_FILE_NAME,
         )
 
 
