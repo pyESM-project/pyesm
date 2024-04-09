@@ -10,6 +10,8 @@ _SETUP_FILES = {
     2: 'problem.yml',
 }
 
+_TUTRIAL_FILE_NAME = 'default_tutorial.ipynb'
+
 # headers for table related to sets and data
 _STD_TABLE_HEADER = 'name'
 _STD_CATEGORY_HEADER = 'category'

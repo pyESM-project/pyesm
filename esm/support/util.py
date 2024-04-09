@@ -1,3 +1,4 @@
+from os import path
 import pprint as pp
 from pathlib import Path
 from typing import Dict, List, Any, Literal
@@ -10,7 +11,7 @@ from esm.support.file_manager import FileManager
 from esm.log_exc.logger import Logger
 
 
-default_models_path = 'default'
+default_dir_path = 'default'
 
 
 def create_model_dir(
@@ -18,6 +19,7 @@ def create_model_dir(
     main_dir_path: str,
     default_model: str = None,
     force_overwrite: bool = False,
+    export_tutorial: bool = False,
     default_files_prefix: str = 'template_'
 ):
     """
@@ -50,7 +52,7 @@ def create_model_dir(
         for file_name in constants._SETUP_FILES.values():
             files.copy_file_to_destination(
                 path_destination=model_dir_path,
-                path_source=default_models_path,
+                path_source=default_dir_path,
                 file_name=default_files_prefix+file_name,
                 file_new_name=file_name,
                 force_overwrite=force_overwrite,
@@ -63,7 +65,7 @@ def create_model_dir(
             valid_selections=constants._TEMPLATE_MODELS,
             selection=default_model)
 
-        template_dir_path = Path(default_models_path) / default_model
+        template_dir_path = Path(default_dir_path) / default_model
 
         files.copy_all_files_to_destination(
             path_source=template_dir_path,
@@ -74,6 +76,15 @@ def create_model_dir(
         files.logger.info(
             f"Directory of model '{model_dir_name}' "
             f"generated based on default model '{default_model}'.")
+
+    if export_tutorial:
+        tutorial_file_name = default_files_prefix + constants._TUTORIAL_FILE_NAME
+        files.copy_file_to_destination(
+            path_source=default_dir_path,
+            path_destination=model_dir_path,
+            file_name=tutorial_file_name,
+            file_name=constants._TUTORIAL_FILE_NAME,
+        )
 
 
 def prettify(item: dict) -> None:
@@ -141,6 +152,19 @@ def validate_dict_structure(
         if not isinstance(value, validation_structure[key]):
             return False
     return True
+
+
+def confirm_action(message: str) -> bool:
+    """Ask the user to confirm an action.
+
+    Args:
+        message (str): Confirmation message to display.
+
+    Returns:
+        bool: True if the user confirms, False otherwise.
+    """
+    response = input(f"{message} (y/[n]): ").lower()
+    return response == 'y'
 
 
 def find_dict_depth(item: dict) -> int:
