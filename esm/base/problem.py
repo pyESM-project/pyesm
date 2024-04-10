@@ -599,9 +599,9 @@ class Problem:
     ) -> List[Any]:
         """This method defines equality constraints that do not appear 
         explicitly in the problem.yml. Considering a data table where two or 
-        more variables are defined with different shapes but with the same set:
+        more variables are defined with different shapes but with the same sets:
         actually the variables represent the same data shaped in different ways.
-        Since two distinct cvxpy variables are generate, it is necessary to set
+        Since two distinct cvxpy variables are generated, it is necessary to set
         implicit equality constraints for such variables.
 
         Args:

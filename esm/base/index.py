@@ -24,7 +24,7 @@ class Index:
     ) -> None:
 
         self.logger = logger.getChild(__name__)
-        self.logger.debug(f"'{self}' object initialization...")
+        self.logger.debug(f"Object initialization...")
 
         self.files = files
         self.paths = paths
@@ -35,7 +35,7 @@ class Index:
 
         self.fetch_vars_coordinates_info()
 
-        self.logger.debug(f"'{self}' object initialized.")
+        self.logger.debug(f"Object initialized.")
 
     def __repr__(self):
         class_name = type(self).__name__
@@ -262,8 +262,7 @@ class Index:
                 set_instance.data = sets_values[table_name]
 
     def load_coordinates_to_data_index(self) -> None:
-        self.logger.debug(
-            f"'{self}' object: loading variable coordinates to Index.data.")
+        self.logger.debug("Loading variable coordinates to Index.data.")
 
         for table in self.data.values():
             table: DataTable
@@ -275,9 +274,7 @@ class Index:
 
     def load_coordinates_to_variables_index(self) -> None:
 
-        self.logger.debug(
-            f"'{self}' object: loading variable coordinates to "
-            "Index.variables.")
+        self.logger.debug("Loading variable coordinates to Index.variables.")
 
         for var_key, variable in self.variables.items():
             variable: Variable
@@ -327,7 +324,7 @@ class Index:
     def map_vars_aggregated_dims(self) -> None:
 
         self.logger.debug(
-            "Identifying aggregated dimensions for variables coordinates.")
+            "Identifying aggregated dimensions for constants coordinates.")
 
         for var_key, variable in self.variables.items():
             variable: Variable
@@ -335,7 +332,7 @@ class Index:
             if not variable.type == 'constant':
                 continue
 
-            set_items_aggregation_map = pd.DataFrame()
+            set_items_agg_map = pd.DataFrame()
             set_items = pd.DataFrame()
 
             for dim_key, dim in variable.dims_sets.items():
@@ -344,22 +341,23 @@ class Index:
                 if not dim_set:
                     break
 
-                std_name = constants._STD_TABLE_HEADER
-                std_aggregation = constants._STD_AGGREGATION_HEADER
+                key_name = constants._STD_TABLE_HEADER
+                key_aggregation = constants._STD_AGGREGATION_HEADER
 
                 name_header_filter = dim_set.table_headers.get(
-                    std_name, [None])[0]
+                    key_name, [None])[0]
 
                 aggregation_header_filter = dim_set.table_headers.get(
-                    std_aggregation, [None])[0]
+                    key_aggregation, [None])[0]
 
-                if std_aggregation in dim_set.table_headers:
-                    set_items_aggregation_map = dim_set.data[[
-                        name_header_filter, aggregation_header_filter]]
-                    set_items_aggregation_map.rename(
+                if key_aggregation in dim_set.table_headers:
+                    set_items_agg_map = dim_set.data[[
+                        name_header_filter, aggregation_header_filter]].copy()
+                    set_items_agg_map.rename(
                         columns={name_header_filter: dim_key},
                         inplace=True,
                     )
+                    # renaming column representing filtered dimension
                 else:
                     set_items = dim_set.data[[name_header_filter]].copy()
                     set_items.rename(
@@ -367,17 +365,29 @@ class Index:
                         inplace=True,
                     )
 
-                if not set_items_aggregation_map.empty and set_items is not None:
-                    if set(set_items_aggregation_map[aggregation_header_filter]) == \
+                if not set_items_agg_map.empty and set_items is not None:
+                    if set(set_items_agg_map[aggregation_header_filter]) == \
                             set(set_items.values.flatten()):
 
-                        set_items_aggregation_map.rename(
+                        # renaming column representing non-filtered dimension
+                        set_items_agg_map.rename(
                             columns={
                                 aggregation_header_filter: set_items.columns[0]
                             },
                             inplace=True,
                         )
-                        variable.related_dims_map = set_items_aggregation_map
+
+                        # filtering rows and cols (in case of filtered vars)
+                        filter_dict = {
+                            'rows': variable.dims_items[0],
+                            'cols': variable.dims_items[1],
+                        }
+                        set_items_agg_map_filtered = util.filter_dataframe(
+                            df_to_filter=set_items_agg_map,
+                            filter_dict=filter_dict,
+                        )
+
+                        variable.related_dims_map = set_items_agg_map_filtered
                         break
 
     def identify_child_variables(self) -> None:
@@ -399,6 +409,10 @@ class Index:
                 variable.type == 'endogenous'
             }
 
+            # case of one variable as sub-set of another
+
+            # case of same variables sliced in rows- cols- and intra-problem
+            # sets in different ways
             related_vars_coords_filtered = \
                 util.filter_dict_by_matching_value_content(related_vars_coords)
 
