@@ -12,5 +12,9 @@ constraints:
     # aggregating total demand by flow
     - Q_agg - I_ff @ tran(Q) == 0
 
+    # aggregating total demand by hourly flow
+    - Q_agg_h - I_ff_h*2 @ tran(Q_h) == 0
+
+    # equality 
 
     
