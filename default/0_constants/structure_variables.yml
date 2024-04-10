@@ -11,6 +11,11 @@ Q:
         Q:
             cols: 
                 set: flows
+        Q_h:
+            cols: 
+                set: flows
+                set_categories: f_hours
+
 
 # -----------------------------------------------------------------------------
 # constants
@@ -26,6 +31,15 @@ constants:
                 set: flows_aggregated
             cols:
                 set: flows
+        I_ff_h:
+            value: identity_rcot
+            rows:
+                set: flows_aggregated
+                set_categories: f_hours
+            cols:
+                set: flows
+                set_categories: f_hours
+        
 
 # -----------------------------------------------------------------------------
 # endogenous variables
@@ -38,3 +52,7 @@ Q_agg:
         Q_agg:
             rows: 
                 set: flows_aggregated
+        Q_agg_h:
+            rows: 
+                set: flows_aggregated
+                set_categories: f_hours

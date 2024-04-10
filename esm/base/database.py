@@ -220,6 +220,8 @@ class Database:
         self,
         file_extension: str = data_file_extension,
     ) -> None:
+        # note: a file/tab is generated for each data table (and not for each
+        # variable!)
 
         self.logger.debug(f"Generation of data input file/s.")
 
@@ -227,13 +229,10 @@ class Database:
             self.files.create_dir(self.paths['input_data_dir'])
 
         with db_handler(self.sqltools):
-            tables_names_list = self.sqltools.get_existing_tables_names
-
             for table_key, table in self.index.data.items():
                 table: DataTable
 
-                if table.type != 'exogenous' and \
-                        table_key not in tables_names_list:
+                if table.type != 'exogenous':
                     continue
 
                 if self.settings['multiple_input_files']:

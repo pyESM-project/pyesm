@@ -12,10 +12,18 @@ flows:
     table_name: _set_FLOWS
     table_headers:
         name: ['f_Name', 'TEXT']
+        category: ['f_Category', 'TEXT']
         aggregation: ['f_Aggregation', 'TEXT']
+    set_categories:
+        f_hours: Hourly dispatched
+        f_annual: Annually dispatched
 
 flows_aggregated:
     symbol: f_agg
     table_name: _set_FLOWS_AGG
     table_headers:
         name: ['f_agg_Name', 'TEXT']
+        category: ['f_Category', 'TEXT']
+    set_categories:
+        f_hours: Hourly dispatched
+        f_annual: Annually dispatched

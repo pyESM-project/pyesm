@@ -557,6 +557,35 @@ def filter_dict_by_matching_value_content(
     return result_dict
 
 
+def filter_dataframe(
+        df_to_filter: pd.DataFrame,
+        filter_dict: Dict[str, List[str]],
+) -> pd.DataFrame:
+    """
+    Filters a DataFrame based on a dictionary identifying dataframe columns 
+    and the related items to be filtered.
+
+    Args:
+        df_to_filter (pd.DataFrame): The DataFrame to filter.
+        filter_dict (dict): A dictionary where keys are dataframe column names 
+            and values are lists of strings that the filtered dictionary 
+            columns will include.
+
+    Returns:
+        pd.DataFrame: A DataFrame filtered based on the specified column 
+            criteria.
+    """
+    combined_mask = pd.Series([True] * len(df_to_filter))
+
+    for column, values in filter_dict.items():
+
+        if column in df_to_filter.columns:
+            current_mask = df_to_filter[column].isin(values)
+            combined_mask &= current_mask
+
+    return df_to_filter[combined_mask]
+
+
 def compare_dicts_ignoring_order(
         dict1: Dict[str, List[Any]],
         dict2: Dict[str, List[Any]],
