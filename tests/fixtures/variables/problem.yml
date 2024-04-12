@@ -1,0 +1,18 @@
+# SYMBOLIC PROBLEM
+
+# definition of the objective function (scalar)
+
+objective function:
+    - Minimize(1)
+
+# definition of the constraints (vector expressions)
+
+constraints: 
+
+    # - ex_ft - en_ft == 0
+
+    - ex_yt - en_yt == 0
+
+    # - ex_fy - en_fy == 0
+
+

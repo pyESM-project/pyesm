@@ -12,12 +12,14 @@ unit_cases = [
     'constants',
     'expressions',
     'test_structure',
+    'variables',
 ]
 dft_cases = [
     '1_sut_multi_year',
     '2_sut_multi_year_rcot',
     '3_sut_multi_year_rcot_cap',
 ]
+
 
 params_unit_cases = [
     (name, unit_cases_dir_path, log_level)
@@ -39,20 +41,10 @@ test_methods = {
 }
 
 
+# testing unit cases
+
 @pytest.fixture(scope='module', params=params_unit_cases, ids=ids_unit_cases)
 def unit_model_instance(request):
-    model_name, path, log_level = request.param
-    model = Model(
-        model_dir_name=model_name,
-        main_dir_path=path,
-        log_level=log_level,
-        use_existing_data=True,
-    )
-    return model
-
-
-@pytest.fixture(scope='module', params=params_dft_cases, ids=ids_dft_cases)
-def default_model_instance(request):
     model_name, path, log_level = request.param
     model = Model(
         model_dir_name=model_name,
@@ -76,6 +68,20 @@ def test_unit_model_methods(
             f"Method '{method}' failed for "
             f"'{unit_model_instance.settings['model_name']}': {str(e)}"
         )
+
+
+# testing default models
+
+@pytest.fixture(scope='module', params=params_dft_cases, ids=ids_dft_cases)
+def default_model_instance(request):
+    model_name, path, log_level = request.param
+    model = Model(
+        model_dir_name=model_name,
+        main_dir_path=path,
+        log_level=log_level,
+        use_existing_data=True,
+    )
+    return model
 
 
 @pytest.mark.parametrize('method, kwargs', test_methods.items())

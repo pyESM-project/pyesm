@@ -50,7 +50,7 @@ class Problem:
         self,
         type: str,
         shape: List[int],
-        name: str,
+        name: str = None,
         value: int | np.ndarray | np.matrix = None,
     ) -> cp.Variable | cp.Parameter | cp.Constant:
 
@@ -65,6 +65,38 @@ class Problem:
                 "Check variables definitions."
             self.logger.error(error)
             raise exc.SettingsError(error)
+
+    def slice_cvxpy_variable(
+            self,
+            type: str,
+            shape: List[int],
+            related_table: str,
+            var_filter: Dict[str, List[str]],
+    ) -> cp.Variable:
+
+        if type != 'endogenous':
+            msg = "Only endogenous variables can be sliced from DataTable."
+            self.logger.error(msg)
+            raise exc.SettingsError(msg)
+
+        related_table: DataTable = self.index.data[related_table]
+        full_var_dataframe = related_table.coordinates_dataframe
+        full_cvxpy_var = related_table.cvxpy_var
+
+        filtered_var_dataframe = util.filter_dataframe(
+            df_to_filter=full_var_dataframe,
+            filter_dict=var_filter,
+            reorder_columns_as_dict_keys=True
+        )
+
+        filtered_index = filtered_var_dataframe.index
+        sliced_cvxpy_var = full_cvxpy_var[filtered_index]
+        sliced_cvxpy_var = cp.reshape(
+            expr=sliced_cvxpy_var,
+            shape=shape,
+        )
+
+        return sliced_cvxpy_var
 
     def data_to_cvxpy_variable(
             self,
@@ -144,13 +176,8 @@ class Problem:
                 column_values=None,
             )
 
+        # create variable filter
         for row in var_data.index:
-            var_data.at[row, headers['cvxpy']] = \
-                self.create_cvxpy_variable(
-                    type=variable.type,
-                    shape=variable.shape_size,
-                    name=variable_name + str(variable.shape))
-
             var_filter = {}
 
             for header in var_data.loc[row].index:
@@ -176,6 +203,27 @@ class Problem:
                     raise ValueError(msg)
 
             var_data.at[row, headers['filter']] = var_filter
+
+        # create new cvxpy variables (exogenous vars and constants)
+        if variable.type != 'endogenous':
+            for row in var_data.index:
+                var_data.at[row, headers['cvxpy']] = \
+                    self.create_cvxpy_variable(
+                        type=variable.type,
+                        shape=variable.shape_size,
+                        name=variable_name + str(variable.shape))
+
+        # slice endogenous cvxpy variables (all endogenous variables are
+        # slices of one unique variable stored in data table.)
+        else:
+            for row in var_data.index:
+                var_data.at[row, headers['cvxpy']] = \
+                    self.slice_cvxpy_variable(
+                        type=variable.type,
+                        shape=variable.shape_size,
+                        related_table=variable.related_table,
+                        var_filter=var_data.at[row, headers['filter']]
+                )
 
         return var_data
 
@@ -358,14 +406,6 @@ class Problem:
                 problem_filter=problem_filter
             )
 
-            # define implicit problem constraints (equality of sliced variables)
-            constraints_implicit = self.define_implicit_expressions(
-                problem_filter=problem_filter
-            )
-
-            if constraints_implicit:
-                constraints.extend(constraints_implicit)
-
             # define problem objective
             objective = sum(
                 self.define_explicit_expressions(
@@ -538,148 +578,6 @@ class Problem:
                 expressions.append(cvxpy_expression)
 
         return expressions
-
-    def identify_child_parent_variables(
-            self,
-            data_table: DataTable,
-    ) -> Dict[str, DotDict[str, Variable]] | None:
-
-        if not data_table.type == 'endogenous':
-            return None
-
-        variables = self.index.variables
-        child_var_key = None
-        parent_var_key = None
-
-        for var_key in data_table.variables_list:
-            variable = variables[var_key]
-
-            if variable.sliced_from:
-                if child_var_key is not None:
-                    msg = "Only one variable can be sliced from a parent " \
-                        f"for each data table. Chech variable '{var_key}'."
-                    self.logger.error(msg)
-                    raise exc.SettingsError(msg)
-
-                child_var_key = var_key
-                parent_var_key = variable.sliced_from
-
-                if parent_var_key not in data_table.variables_list:
-                    msg = f"Variable '{var_key}' cannot be sliced from " \
-                        f"'{parent_var_key}'. '{parent_var_key}' not " \
-                        "defined in data table."
-                    self.logger.error(msg)
-                    raise exc.SettingsError(msg)
-
-        if child_var_key is None or parent_var_key is None:
-            return None
-
-        child_var = DotDict({child_var_key: variables[child_var_key]})
-        parent_var = DotDict({parent_var_key: variables[parent_var_key]})
-
-        # check if parent and child variables represent the same quantities
-        if not util.compare_dicts_ignoring_order(
-            dict1=variables[child_var_key].all_coordinates,
-            dict2=variables[parent_var_key].all_coordinates,
-        ):
-            msg = f"Child variable '{child_var_key}' and parent variable " \
-                f"'{parent_var_key}' are not representing the same " \
-                "quantities. Check definition of variables sets."
-            self.logger.error(msg)
-            raise exc.SettingsError(msg)
-
-        return {
-            'child_var': child_var,
-            'parent_var': parent_var
-        }
-
-    def define_implicit_expressions(
-            self,
-            problem_filter: pd.DataFrame,
-    ) -> List[Any]:
-        """This method defines equality constraints that do not appear 
-        explicitly in the problem.yml. Considering a data table where two or 
-        more variables are defined with different shapes but with the same sets:
-        actually the variables represent the same data shaped in different ways.
-        Since two distinct cvxpy variables are generated, it is necessary to set
-        implicit equality constraints for such variables.
-
-        Args:
-            problem_filter (pd.DataFrame): DataFrame that identifies a specific
-                problem as a combination of inter-problem sets.
-
-        Returns:
-            List[Any]: List of cvxpy expressions defining equality constraints
-                to be added to the problem.                
-        """
-        expressions = []
-
-        for data_table in self.index.data.values():
-            related_vars = self.identify_child_parent_variables(data_table)
-
-            if not related_vars:
-                continue
-
-            child_var = related_vars['child_var']
-            child_var_key = next(iter(child_var.keys()))
-            child_var_value = child_var[child_var_key]
-
-            parent_var = related_vars['parent_var']
-            parent_var_key = next(iter(parent_var.keys()))
-            parent_var_value = parent_var[parent_var_key]
-
-            intra_set_header = list(
-                child_var_value.coordinates_info['intra'].values())[0]
-            intra_set_values = list(
-                child_var_value.coordinates['intra'].values())[0]
-
-            # find cvxpy parent var for the considered problem
-            parent_cvxpy_var = self.fetch_allowed_cvxpy_variables(
-                variables_set_dict=parent_var,
-                problem_filter=problem_filter,
-            )
-
-            # loop in intra-problem coordinates
-            for set_item in intra_set_values:
-
-                # find cvxpy child var for the given coordinate
-                child_cvxpy_var_dict = self.fetch_allowed_cvxpy_variables(
-                    variables_set_dict=child_var,
-                    problem_filter=problem_filter,
-                    set_intra_problem_header=intra_set_header,
-                    set_intra_problem_value=set_item,
-                )
-                child_cvxpy_var = child_cvxpy_var_dict[child_var_key]
-
-                # get parent slice and define cvxpy equality expression
-                slicer = self.define_slicer(
-                    dims_items=parent_var_value.dims_items,
-                    item_to_slice=set_item
-                )
-
-                parent_cvxpy_var_slice = parent_cvxpy_var[parent_var_key][slicer]
-
-                expressions.extend(
-                    [child_cvxpy_var - parent_cvxpy_var_slice == 0]
-                )
-
-        return expressions
-
-    def define_slicer(
-            self,
-            dims_items: List[List[str]],
-            item_to_slice: str,
-    ) -> tuple:
-
-        slicers = [slice(None) for _ in dims_items]
-
-        for dim_index, items in enumerate(dims_items):
-            if item_to_slice in items:
-                item_index = items.index(item_to_slice)
-                slicers[dim_index] = slice(item_index, item_index+1)
-                break
-
-        return tuple(slicers)
 
     def solve_problem(
             self,

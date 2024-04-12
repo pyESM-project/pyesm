@@ -143,7 +143,7 @@ class Database:
                     foreign_keys=table.foreign_keys,
                 )
 
-    def sets_data_to_vars_sql_tables(self) -> None:
+    def sets_data_to_sql_data_tables(self) -> None:
         self.logger.debug(
             "Adding sets information to sqlite variables tables in "
             f"'{self.settings['sqlite_database_file']}'.")

@@ -109,6 +109,13 @@ class Variable:
         return dim_items
 
     @property
+    def dims_labels_items(self) -> Dict[str, List[str]]:
+        return {
+            self.dims_labels[dim]: self.dims_items[dim]
+            for dim in [0, 1]
+        }
+
+    @property
     def dims_sets(self) -> Dict[str, str]:
         """Get the sets names corresponding to the rows and cols dimension of
         the variable. If a dimension has not a corrsponding set, it returns

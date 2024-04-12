@@ -560,6 +560,7 @@ def filter_dict_by_matching_value_content(
 def filter_dataframe(
         df_to_filter: pd.DataFrame,
         filter_dict: Dict[str, List[str]],
+        reorder_columns_as_dict_keys: bool = False,
 ) -> pd.DataFrame:
     """
     Filters a DataFrame based on a dictionary identifying dataframe columns 
@@ -570,6 +571,9 @@ def filter_dataframe(
         filter_dict (dict): A dictionary where keys are dataframe column names 
             and values are lists of strings that the filtered dictionary 
             columns will include.
+        reorder_columns_as_dict_keys (bool): If True, reorder the filtered
+            dataframe columns according to the order of parsed dictionary
+            keys. Default to False.
 
     Returns:
         pd.DataFrame: A DataFrame filtered based on the specified column 
@@ -583,7 +587,12 @@ def filter_dataframe(
             current_mask = df_to_filter[column].isin(values)
             combined_mask &= current_mask
 
-    return df_to_filter[combined_mask]
+    filtered_df = df_to_filter.loc[combined_mask]
+
+    if reorder_columns_as_dict_keys:
+        filtered_df = filtered_df[list(filter_dict.keys())]
+
+    return filtered_df
 
 
 def compare_dicts_ignoring_order(

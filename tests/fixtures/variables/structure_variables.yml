@@ -1,0 +1,50 @@
+# variables of the model
+
+# -----------------------------------------------------------------------------
+# exogenous variables
+
+ex:
+    name: flow by tech variable, exogenous
+    type: exogenous
+    coordinates: [case, years, technologies, flows]
+    variables_info:
+        ex_ft:
+            rows: 
+                set: flows
+            cols:
+                set: technologies
+        ex_yt:
+            rows: 
+                set: years
+            cols:
+                set: technologies
+        ex_fy:
+            rows: 
+                set: flows
+            cols:
+                set: years
+
+
+# -----------------------------------------------------------------------------
+# endogenous variables
+
+en:
+    name: flow by tech variable, endogenous
+    type: endogenous
+    coordinates: [case, years, technologies, flows]
+    variables_info:
+        en_ft:
+            rows: 
+                set: flows
+            cols:
+                set: technologies
+        en_yt:
+            rows: 
+                set: years
+            cols:
+                set: technologies
+        en_fy:
+            rows: 
+                set: flows
+            cols:
+                set: years

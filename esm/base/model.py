@@ -120,7 +120,6 @@ class Model:
         self.core.index.load_coordinates_to_data_index()
         self.core.index.load_coordinates_to_variables_index()
         self.core.index.map_vars_aggregated_dims()
-        self.core.index.identify_child_variables()
 
         if self.settings['sqlite_database_foreign_keys']:
             self.core.index.fetch_foreign_keys_to_data_tables()
@@ -160,7 +159,7 @@ class Model:
         self.core.database.create_blank_sqlite_database()
         self.core.database.load_sets_to_sqlite_database()
         self.core.database.generate_blank_sqlite_data_tables()
-        self.core.database.sets_data_to_vars_sql_tables()
+        self.core.database.sets_data_to_sql_data_tables()
         self.core.database.generate_blank_data_input_files()
 
     def load_exogenous_data_to_sqlite_database(
@@ -188,7 +187,7 @@ class Model:
 
     def run_model(
             self,
-            solver: str = 'GUROBI',
+            solver: str = 'SCIPY',
             verbose: bool = True,
             **kwargs: Any,
     ) -> None:
