@@ -8,16 +8,16 @@ ex:
     type: exogenous
     coordinates: [case, years, technologies, flows]
     variables_info:
-        ex_ft:
-            rows: 
-                set: flows
-            cols:
-                set: technologies
         ex_yt:
             rows: 
                 set: years
             cols:
                 set: technologies
+        ex_tf:
+            rows: 
+                set: technologies
+            cols:
+                set: flows
         ex_fy:
             rows: 
                 set: flows
@@ -33,16 +33,16 @@ en:
     type: endogenous
     coordinates: [case, years, technologies, flows]
     variables_info:
-        en_ft:
-            rows: 
-                set: flows
-            cols:
-                set: technologies
         en_yt:
             rows: 
                 set: years
             cols:
                 set: technologies
+        en_tf:
+            rows: 
+                set: technologies
+            cols:
+                set: flows
         en_fy:
             rows: 
                 set: flows

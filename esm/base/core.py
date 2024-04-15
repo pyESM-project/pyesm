@@ -70,8 +70,8 @@ class Core:
 
     def initialize_problems_variables(self) -> None:
         self.logger.debug(
-            "Initialize variables dataframes with "
-            "cvxpy objects and related filters dictionaries.")
+            "Generating data structures for endogenous data tables "
+            "(cvxpy objects, filters dict for data tables).")
 
         # generate dataframes and cvxpy var for whole endogenous data tables
         for data_table_key, data_table in self.index.data.items():
@@ -80,7 +80,7 @@ class Core:
             if data_table.type == 'endogenous':
 
                 self.logger.debug(
-                    "Generating variable dataframe and cvxpy variable for "
+                    "Generating variable dataframe and cvxpy variable "
                     f"for endogenous data table '{data_table_key}'.")
 
                 data_table.generate_coordinates_dataframe()
@@ -93,7 +93,7 @@ class Core:
         # generating variables dataframes with cvxpy var and filters dictionary
         # (endogenous vars are sliced from existing cvxpy var in data table
         self.logger.debug(
-            "Generating data structures for variables and constants.")
+            "Generating data structures for all variables and constants.")
 
         for var_key, variable in self.index.variables.items():
             variable: Variable
@@ -168,53 +168,6 @@ class Core:
                         cvxpy_var=variable.data[cvxpy_var_header][row],
                         data=pivoted_data
                     )
-
-    def cvxpy_endogenous_data_to_database_old(self, operation: str) -> None:
-        self.logger.debug(
-            "Exporting data from cvxpy endogenous variables "
-            f"to SQLite database '{self.settings['sqlite_database_file']}' ")
-
-        with db_handler(self.sqltools):
-            for var_key, variable in self.index.variables.items():
-
-                if not isinstance(variable, Variable):
-                    msg = "Passed item is not a 'Variable' class instance."
-                    self.logger.error(msg)
-                    raise TypeError(msg)
-
-                if variable.type != 'endogenous':
-                    continue
-
-                self.logger.debug(
-                    f"Exporting data from cvxpy variable '{var_key}' "
-                    f"to the related SQLite table '{variable.related_table}'.")
-
-                cvxpy_var_data = pd.DataFrame()
-
-                for row in variable.data.index:
-
-                    none_coord = variable.none_data_coordinates(row)
-
-                    if none_coord:
-                        self.logger.debug(
-                            f"SQLite table '{var_key}': "
-                            f"no data available for {none_coord}.")
-                        continue
-
-                    cvxpy_var_data = pd.concat(
-                        (cvxpy_var_data, variable.reshaping_variable_data(row))
-                    )
-
-                if cvxpy_var_data.empty:
-                    self.logger.warning(
-                        f"No data available in cvxpy variable '{var_key}'")
-                    continue
-
-                self.sqltools.dataframe_to_table(
-                    table_name=variable.related_table,
-                    dataframe=cvxpy_var_data,
-                    operation=operation,
-                )
 
     def cvxpy_endogenous_data_to_database(self, operation: str) -> None:
         self.logger.debug(

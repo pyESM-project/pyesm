@@ -169,8 +169,8 @@ class Variable:
     @property
     def sets_parsing_hierarchy(self) -> Dict[str, str]:
         return {
-            **self.coordinates_info['intra'],
             **self.coordinates_info['inter'],
+            **self.coordinates_info['intra'],
         }
 
     @property

@@ -70,33 +70,32 @@ class Problem:
             self,
             type: str,
             shape: List[int],
-            related_table: str,
+            related_table_key: str,
             var_filter: Dict[str, List[str]],
-    ) -> cp.Variable:
+    ) -> cp.Expression:
 
         if type != 'endogenous':
             msg = "Only endogenous variables can be sliced from DataTable."
             self.logger.error(msg)
             raise exc.SettingsError(msg)
 
-        related_table: DataTable = self.index.data[related_table]
+        related_table: DataTable = self.index.data[related_table_key]
         full_var_dataframe = related_table.coordinates_dataframe
         full_cvxpy_var = related_table.cvxpy_var
 
         filtered_var_dataframe = util.filter_dataframe(
             df_to_filter=full_var_dataframe,
             filter_dict=var_filter,
-            reorder_columns_as_dict_keys=True
+            reorder_columns_as_dict_keys=True,
+            reorder_rows_based_on_filter=True,
         )
 
         filtered_index = filtered_var_dataframe.index
         sliced_cvxpy_var = full_cvxpy_var[filtered_index]
-        sliced_cvxpy_var = cp.reshape(
-            expr=sliced_cvxpy_var,
-            shape=shape,
-        )
+        sliced_cvxpy_var_reshaped = sliced_cvxpy_var.reshape(
+            shape, order='C')
 
-        return sliced_cvxpy_var
+        return sliced_cvxpy_var_reshaped
 
     def data_to_cvxpy_variable(
             self,
@@ -151,7 +150,7 @@ class Problem:
         }
 
         self.logger.debug(
-            f"Generating dataframe for variable '{variable_name}' "
+            f"Generating dataframe for {variable.type} variable '{variable_name}' "
             "(cvxpy object, filter dictionary).")
 
         if variable.sets_parsing_hierarchy:
@@ -221,8 +220,8 @@ class Problem:
                     self.slice_cvxpy_variable(
                         type=variable.type,
                         shape=variable.shape_size,
-                        related_table=variable.related_table,
-                        var_filter=var_data.at[row, headers['filter']]
+                        related_table_key=variable.related_table,
+                        var_filter=var_data.at[row, headers['filter']],
                 )
 
         return var_data

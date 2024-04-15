@@ -9,10 +9,9 @@ objective function:
 
 constraints: 
 
-    # - ex_ft - en_ft == 0
-
+    - ex_fy - en_fy == 0
+    - ex_tf - en_tf == 0
     - ex_yt - en_yt == 0
 
-    # - ex_fy - en_fy == 0
 
 

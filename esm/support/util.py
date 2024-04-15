@@ -4,6 +4,7 @@ from pathlib import Path
 from typing import Dict, List, Any, Literal
 
 import itertools as it
+from numpy import sort
 import pandas as pd
 
 from esm import constants
@@ -561,6 +562,7 @@ def filter_dataframe(
         df_to_filter: pd.DataFrame,
         filter_dict: Dict[str, List[str]],
         reorder_columns_as_dict_keys: bool = False,
+        reorder_rows_based_on_filter: bool = False,
 ) -> pd.DataFrame:
     """
     Filters a DataFrame based on a dictionary identifying dataframe columns 
@@ -591,6 +593,17 @@ def filter_dataframe(
 
     if reorder_columns_as_dict_keys:
         filtered_df = filtered_df[list(filter_dict.keys())]
+
+    if reorder_rows_based_on_filter:
+        for column, order in filter_dict.items():
+            filtered_df[column] = pd.Categorical(
+                filtered_df[column],
+                categories=order,
+                ordered=True,
+            )
+            sort_columns = [
+                col for col in filter_dict if col in filtered_df.columns]
+            filtered_df = filtered_df.sort_values(by=sort_columns)
 
     return filtered_df
 
