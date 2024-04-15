@@ -215,7 +215,7 @@ Cap_new:
 E_tot:
     name: Emissions by technology, total
     type: endogenous
-    coordinates: [scenarios, years, technologies_supply]
+    coordinates: [scenarios, years, technologies_supply, emissions]
     variables_info:
         E:
             rows: 
