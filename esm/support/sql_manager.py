@@ -6,7 +6,7 @@ import sqlite3
 
 import pandas as pd
 
-from esm.log_exc.exceptions import *
+from esm.log_exc import exceptions as exc
 from esm.log_exc.logger import Logger
 from esm import constants
 from esm.support import util
@@ -148,11 +148,11 @@ class SQLManager:
 
         except sqlite3.OperationalError as op_error:
             self.logger.error(op_error)
-            raise OperationalError(op_error)
+            raise exc.OperationalError(op_error)
 
         except sqlite3.IntegrityError as int_error:
             self.logger.error(int_error)
-            raise IntegrityError(int_error)
+            raise exc.IntegrityError(int_error)
 
     @property
     def get_existing_tables_names(self) -> List[str]:
@@ -181,7 +181,7 @@ class SQLManager:
         if table_name not in self.get_existing_tables_names:
             msg = f"SQLite table '{table_name}' NOT found."
             self.logger.error(msg)
-            raise TableNotFoundError(msg)
+            raise exc.TableNotFoundError(msg)
 
     def get_primary_column_name(self, table_name: str) -> str:
         """Retrieve the name of the primary key column for a given SQLite table.
@@ -616,7 +616,7 @@ class SQLManager:
                 msg = "Sets of the passed dataframe and the SQLite " \
                     f"table '{table_name}' mismatch. SQLite table NOT updated."
                 self.logger.error(msg)
-                raise OperationalError(msg)
+                raise exc.OperationalError(msg)
 
             data = [
                 tuple([row[-1], *row[:-1]])
@@ -804,6 +804,76 @@ class SQLManager:
 
         column_values = result[child_column_name].tolist()
         return {child_column_name: column_values}
+
+    # to be completed and added to the test method.
+    def compare_with_other_database(
+            self,
+            other_cursor: sqlite3.Cursor,
+            level: str = 'data'
+    ) -> bool:
+        """Compares the current database with another SQLite database to check 
+        if they are identical.
+
+        Args:
+            other_cursor (sqlite3.Cursor): Cursor for the other SQLite database.
+            level (str): Level of comparison to perform:
+                'tables' - compares the presence of tables,
+                'schema' - compares the table structure (columns and types),
+                'data'   - compares the exact row data in the tables.
+
+        Returns:
+            bool: True if both databases are identical at the specified 
+                level, False otherwise.
+
+        Raises:
+            sqlite3.Error: If there is an error accessing the databases.
+        """
+        try:
+            # 1. Compare table presence
+            current_tables = self.get_existing_tables_names
+            other_cursor.execute(
+                "SELECT name FROM sqlite_master WHERE type='table'")
+            other_tables = [table[0] for table in other_cursor.fetchall()]
+
+            if set(current_tables) != set(other_tables):
+                self.logger.debug("Tables differ")
+                return False
+            if level == 'tables':
+                return True
+
+            # 2. Compare table structure (schema)
+            for table in current_tables:
+                self.cursor.execute(f"PRAGMA table_info({table})")
+                current_table_info = self.cursor.fetchall()
+
+                other_cursor.execute(f"PRAGMA table_info({table})")
+                other_table_info = other_cursor.fetchall()
+
+                if current_table_info != other_table_info:
+                    self.logger.debug(f"Table structure differs for {table}")
+                    return False
+            if level == 'schema':
+                return True
+
+            # 3. Compare table contents (data)
+            if level == 'data':
+                for table in current_tables:
+                    self.cursor.execute(f"SELECT * FROM {table}")
+                    current_rows = {tuple(row)
+                                    for row in self.cursor.fetchall()}
+
+                    other_cursor.execute(f"SELECT * FROM {table}")
+                    other_rows = {tuple(row)
+                                  for row in other_cursor.fetchall()}
+
+                    if current_rows != other_rows:
+                        self.logger.debug(f"Rows differ in table {table}")
+                        return False
+                return True
+
+        except sqlite3.Error as e:
+            self.logger.error("Database comparison failed:", e)
+            raise exc.NumericalProblemError
 
 
 @contextlib.contextmanager

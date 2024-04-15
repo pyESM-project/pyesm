@@ -48,4 +48,7 @@ class NumericalProblemError(Exception):
 
 
 class TableNotFoundError(Exception):
-    pass
+
+    def __init__(self, message='Table not found.'):
+        self.message = message
+        super().__init__(self.message)

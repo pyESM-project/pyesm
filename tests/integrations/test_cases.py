@@ -20,7 +20,6 @@ dft_cases = [
     '3_sut_multi_year_rcot_cap',
 ]
 
-
 params_unit_cases = [
     (name, unit_cases_dir_path, log_level)
     for name in unit_cases
