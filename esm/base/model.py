@@ -92,7 +92,7 @@ class Model:
         # modify to check if all necessary items are there in case of use existing data
         if self.files.dir_files_check(
             dir_path=self.paths['model_dir'],
-            files_names_list=constants._SETUP_FILES.values(),
+            files_names_list=list(constants._SETUP_FILES.values()),
         ):
             self.logger.info(
                 'Model directory and required setup files validated.')
@@ -169,8 +169,8 @@ class Model:
     ) -> None:
         self.logger.info('Loading input data to SQLite database.')
         self.core.database.load_data_input_files_to_database(
-            operation,
-            force_overwrite
+            operation=operation,
+            force_overwrite=force_overwrite,
         )
         # to be completed by automatically filling data
         self.core.database.empty_data_completion(operation)

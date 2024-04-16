@@ -1,9 +1,6 @@
 from typing import Any, Dict
 from pathlib import Path
 
-import cvxpy
-import pandas as pd
-
 from esm.base.data_table import DataTable
 from esm.base.database import Database
 from esm.base.index import Index, Variable
@@ -121,7 +118,7 @@ class Core:
 
     def solve_numerical_problems(
             self,
-            solver: str = None,
+            solver: str = "",
             verbose: bool = True,
             **kwargs: Any,
     ) -> None:

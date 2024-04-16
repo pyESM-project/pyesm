@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Dict, List
+from typing import Dict, List, Optional
 
 from esm.base.data_table import DataTable
 from esm.base.index import Index
@@ -185,7 +185,7 @@ class Database:
 
     def clear_database_tables(
         self,
-        table_names: List[str] | str = None,
+        table_names: Optional[List[str] | str] = None,
     ) -> None:
         """
         Clears the specified tables or all tables from the SQLite database.
@@ -220,9 +220,6 @@ class Database:
         self,
         file_extension: str = data_file_extension,
     ) -> None:
-        # note: a file/tab is generated for each data table (and not for each
-        # variable!)
-
         self.logger.debug(f"Generation of data input file/s.")
 
         if not Path(self.paths['input_data_dir']).exists():

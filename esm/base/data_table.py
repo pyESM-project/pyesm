@@ -1,4 +1,4 @@
-from typing import Any, Dict, Iterator, List, Tuple
+from typing import Any, Dict, Iterator, List, Optional, Tuple
 
 import cvxpy as cp
 import pandas as pd
@@ -21,16 +21,16 @@ class DataTable:
 
         self.logger = logger.getChild(__name__)
 
-        self.name: str = None
-        self.type: str = None
+        self.name: Optional[str] = None
+        self.type: Optional[str] = None
         self.coordinates: List[str] = []
         self.coordinates_headers: Dict[str, str] = {}
         self.coordinates_values: Dict[str, Any] = {}
-        self.coordinates_dataframe: pd.DataFrame = None
+        self.coordinates_dataframe: Optional[pd.DataFrame] = None
         self.table_headers: Dict[str, Any] = {}
         self.variables_info: Dict[str, Any] = {}
         self.foreign_keys: Dict[str, Any] = {}
-        self.cvxpy_var: cp.Variable = None
+        self.cvxpy_var: Optional[cp.Variable] = None
 
         for key, value in kwargs.items():
             setattr(self, key, value)

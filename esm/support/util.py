@@ -1,10 +1,8 @@
-from os import path
 import pprint as pp
 from pathlib import Path
-from typing import Dict, List, Any, Literal
+from typing import Dict, List, Any, Literal, Optional
 
 import itertools as it
-from numpy import sort
 import pandas as pd
 
 from esm import constants
@@ -12,13 +10,10 @@ from esm.support.file_manager import FileManager
 from esm.log_exc.logger import Logger
 
 
-default_dir_path = 'default'
-
-
 def create_model_dir(
     model_dir_name: str,
     main_dir_path: str,
-    default_model: str = None,
+    default_model: Optional[str] = None,
     force_overwrite: bool = False,
     export_tutorial: bool = False,
     default_files_prefix: str = 'template_'
@@ -55,7 +50,7 @@ def create_model_dir(
     if export_tutorial:
         file_name = constants._TUTORIAL_FILE_NAME
         files.copy_file_to_destination(
-            path_source=default_dir_path,
+            path_source=constants._DEFAULT_MODELS_DIR_PATH,
             path_destination=model_dir_path,
             file_name=default_files_prefix + file_name,
             file_new_name=file_name,
@@ -68,7 +63,7 @@ def create_model_dir(
         for file_name in constants._SETUP_FILES.values():
             files.copy_file_to_destination(
                 path_destination=model_dir_path,
-                path_source=default_dir_path,
+                path_source=constants._DEFAULT_MODELS_DIR_PATH,
                 file_name=default_files_prefix+file_name,
                 file_new_name=file_name,
                 force_overwrite=force_overwrite,
@@ -80,10 +75,11 @@ def create_model_dir(
             f"generated based on default model '{default_model}'.")
 
         validate_selection(
-            valid_selections=constants._TEMPLATE_MODELS,
+            valid_selections=list(constants._DEFAULT_MODELS_LIST),
             selection=default_model)
 
-        template_dir_path = Path(default_dir_path) / default_model
+        template_dir_path = \
+            Path(constants._DEFAULT_MODELS_DIR_PATH) / default_model
 
         files.copy_all_files_to_destination(
             path_source=template_dir_path,
@@ -211,7 +207,7 @@ def generate_dict_with_none_values(item: dict) -> dict:
 
 def pivot_dict(
         data_dict: Dict,
-        order_list: List = None,
+        order_list: Optional[List] = None,
 ) -> Dict:
     """Pivot a dictionary of lists (arbitrary number of keys and items in each 
     list), transforming it into a nested dictionary with keys equal to items of 
@@ -256,7 +252,7 @@ def pivot_dict(
 
 def unpivot_dict_to_dataframe(
         data_dict: Dict[str, List[str]],
-        key_order: List[str] = None,
+        key_order: Optional[List[str]] = None,
 ) -> pd.DataFrame:
     """Generates a Pandas DataFrame by unpivoting content of a dictionary of 
     lists with generic number of items. User can unpivot just a subset of 
@@ -365,7 +361,7 @@ def merge_series_to_dataframe(
 
 def check_dataframes_equality(
         df_list: List[pd.DataFrame],
-        skip_columns: List[str] = None,
+        skip_columns: Optional[List[str]] = None,
         rows_order_matters: bool = False,
 ) -> bool:
     """Check the equality of multiple DataFrames while optionally skipping 
@@ -402,7 +398,7 @@ def check_dataframes_equality(
 
 def check_dataframe_columns_equality(
     df_list: List[pd.DataFrame],
-    skip_columns: List[str] = None,
+    skip_columns: Optional[List[str]] = None,
 ) -> bool:
     """Check the equality of column headers in multiple DataFrames while 
     optionally skipping specified columns.
@@ -437,7 +433,7 @@ def add_column_to_dataframe(
         dataframe: pd.DataFrame,
         column_header: str,
         column_values: Any = None,
-        column_position: int = None,
+        column_position: Optional[int] = None,
 ) -> None:
     """Inserts a new column into the provided DataFrame at the specified 
     position or at the end if no position is specified.

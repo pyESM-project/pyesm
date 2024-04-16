@@ -12,6 +12,14 @@ _SETUP_FILES = {
 
 _TUTORIAL_FILE_NAME = 'tutorial.ipynb'
 
+_DEFAULT_MODELS_DIR_PATH = 'default'
+_DEFAULT_MODELS_LIST = [
+    '1_sut_multi_year',
+    '2_sut_multi_year_rcot',
+    '3_sut_multi_year_rcot_cap',
+    '4_sut_multi_year_rcot_cap_dis',
+]
+
 # headers for table related to sets and data
 _STD_TABLE_HEADER = 'name'
 _STD_CATEGORY_HEADER = 'category'
