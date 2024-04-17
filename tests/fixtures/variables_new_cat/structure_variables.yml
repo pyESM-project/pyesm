@@ -1,5 +1,17 @@
 # variables of the model
 
+# table_key:
+#     name: table_name
+#     type: table_type
+#     coordinates: [a, b, c, d]
+#     variables_info:
+#         var_key_1:
+#             rows:
+#                 set: a
+#                 filters: [a_1a, a_2b]
+#             cols:
+#                 set: b
+
 # -----------------------------------------------------------------------------
 # exogenous variables
 
@@ -8,28 +20,52 @@ ex:
     type: exogenous
     coordinates: [case, years, technologies, flows]
     variables_info:
-        ex_yt:
-            rows: 
-                set: years
-            cols:
-                set: technologies
+        # all values in the table
         ex_tf:
             rows: 
                 set: technologies
             cols:
                 set: flows
+        # selecting all techs and flows but for a sub set of years (intra-problem-set)
+        ex_tf_y:
+            intra:
+                set: years
+                filters: {0: warm-up}
+            rows: 
+                set: technologies
+            cols:
+                set: flows
+        # selecting one category for both rows and cols
+        ex_tf_1:
+            rows: 
+                set: technologies
+                filters: {0: Supply}
+            cols:
+                set: flows
+                filters: {0: Physical}
+        # filtering variable based on a double category
+        ex_tf_2:
+            rows: 
+                set: technologies
+                filters: {0: Supply, 1: [Non-Renewable, Elon-Musk-Approved]}
+            cols:
+                set: flows
+                filters: {0: Physical}
+
+ex_agg:
+    name: aggregated flow by tech variable, exogenous
+    type: exogenous
+    coordinates: [case, years, technologies, flows_agg]
+    variables_info:
+        # filtering variable with an aggregated set
         ex_tf_agg:
             rows: 
                 set: technologies
-                set_categories: ts
+                filters: {0: Supply, 1: [Non-Renewable, Elon-Musk-Approved]}
             cols:
-                set: flows
-                set_categories: fp
-        ex_fy:
-            rows: 
-                set: flows
-            cols:
-                set: years
+                set: flows_agg
+                filters: {0: Physical}
+        
 
 
 # -----------------------------------------------------------------------------
@@ -40,25 +76,49 @@ en:
     type: endogenous
     coordinates: [case, years, technologies, flows]
     variables_info:
-        en_yt:
-            rows: 
-                set: years
-            cols:
-                set: technologies
+        # all values in the table
         en_tf:
             rows: 
                 set: technologies
             cols:
                 set: flows
+        # selecting all techs and flows but for a sub set of years (intra-problem-set)
+        en_tf_y:
+            intra:
+                set: years
+                filters: {0: warm-up}
+            rows: 
+                set: technologies
+            cols:
+                set: flows
+        # selecting one category for both rows and cols
+        en_tf_1:
+            rows: 
+                set: technologies
+                filters: {0: Supply}
+            cols:
+                set: flows
+                filters: {0: Physical}
+        # filtering variable based on a double category
+        en_tf_2:
+            rows: 
+                set: technologies
+                filters: {0: Supply, 1: [Non-Renewable, Elon-Musk-Approved]}
+            cols:
+                set: flows
+                filters: {0: Physical}
+            
+
+en_agg:
+    name: aggregated flow by tech variable, exogenous
+    type: endogenous
+    coordinates: [case, years, technologies, flows_agg]
+    variables_info:
+        # filtering variable with an aggregated set
         en_tf_agg:
             rows: 
                 set: technologies
-                set_categories: ts
+                filters: {0: Supply, 1: [Non-Renewable, Elon-Musk-Approved]}
             cols:
-                set: flows
-                set_categories: fp
-        en_fy:
-            rows: 
-                set: flows
-            cols:
-                set: years
+                set: flows_agg
+                filters: {0: Physical}
