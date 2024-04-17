@@ -1,6 +1,7 @@
 from pathlib import Path
-from typing import Dict, List
+from typing import Dict, List, Type
 
+from _pytest.monkeypatch import V
 import pandas as pd
 
 from esm import constants
@@ -20,7 +21,7 @@ class Index:
             self,
             logger: Logger,
             files: FileManager,
-            paths: Dict[str, str],
+            paths: Dict[str, Path],
     ) -> None:
 
         self.logger = logger.getChild(__name__)
@@ -29,9 +30,9 @@ class Index:
         self.files = files
         self.paths = paths
 
-        self.sets: DotDict[str, SetTable] = self.load_sets_tables()
-        self.data: DotDict[str, DataTable] = self.load_data_tables()
-        self.variables: DotDict[str, Variable] = self.fetch_variables()
+        self.sets: Dict[str, SetTable] = self.load_sets_tables()
+        self.data: Dict[str, DataTable] = self.load_data_tables()
+        self.variables: Dict[str, Variable] = self.fetch_variables()
 
         self.fetch_vars_coordinates_info()
 
@@ -42,19 +43,16 @@ class Index:
         return f'{class_name}'
 
     @property
-    def sets_headers_in_other_tables(self) -> Dict[str, str]:
-        return {
-            key: value.table_headers[constants._STD_TABLE_HEADER][0]
-            for key, value in self.sets.items()
-        }
-
-    @property
     def sets_split_problem_list(self) -> Dict[str, str]:
-        sets_split_problem_list = {
-            key: value.table_headers[constants._STD_TABLE_HEADER][0]
-            for key, value in self.sets.items()
-            if getattr(value, 'split_problem', False)
-        }
+        sets_split_problem_list = {}
+        name_header = constants._STD_NAME_HEADER
+
+        for key, value in self.sets.items():
+            if getattr(value, 'split_problem', False):
+                headers = value.table_headers.get(name_header)
+
+                if headers is not None and len(headers) > 0:
+                    sets_split_problem_list[key] = headers[0]
 
         if not sets_split_problem_list:
             msg = "At least one Set must identify a problem. " \
@@ -79,8 +77,8 @@ class Index:
     def _load_and_validate(
             self,
             file_key: int,
-            validation_structure: dict,
-            object_class: SetTable | DataTable,
+            validation_structure: Dict,
+            object_class: Type[SetTable | DataTable],
     ) -> DotDict[str, SetTable | DataTable]:
 
         self.logger.debug(
@@ -109,14 +107,14 @@ class Index:
             self.logger.error(msg)
             raise exc.SettingsError(msg)
 
-    def load_sets_tables(self) -> DotDict[str, SetTable]:
+    def load_sets_tables(self) -> Dict[str, SetTable]:
         return self._load_and_validate(
             file_key=0,
             validation_structure=constants._SET_DEFAULT_STRUCTURE,
             object_class=SetTable,
         )
 
-    def load_data_tables(self) -> DotDict[str, DataTable]:
+    def load_data_tables(self) -> Dict[str, DataTable]:
         data_tables = self._load_and_validate(
             file_key=1,
             validation_structure=constants._DATA_TABLE_DEFAULT_STRUCTURE,
@@ -126,7 +124,7 @@ class Index:
         for table in data_tables.values():
             table: DataTable
 
-            set_headers_key = constants._STD_TABLE_HEADER
+            set_headers_key = constants._STD_NAME_HEADER
             table.table_headers = {
                 set_key: self.sets[set_key].table_headers[set_headers_key]
                 for set_key in table.coordinates
@@ -143,7 +141,7 @@ class Index:
 
         return data_tables
 
-    def fetch_variables(self) -> DotDict[str, Variable]:
+    def fetch_variables(self) -> Dict[str, Variable]:
         self.logger.debug(
             "Fetching and validating data, generating "
             f"'{Variable.__name__}' objects.")
@@ -191,21 +189,27 @@ class Index:
             rows, cols, intra, inter = {}, {}, {}, {}
 
             for key, value in related_table_headers.items():
-                header = value[0]
+                table_header = value[0]
 
                 if key not in constants._STD_ID_FIELD:
 
                     if key == variable.shape[0]:
-                        rows[key] = header
+                        rows[key] = table_header
 
                     if key == variable.shape[1]:
-                        cols[key] = header
+                        cols[key] = table_header
 
                     if key not in variable.shape:
                         if key not in self.sets_split_problem_list:
-                            intra[key] = header
+                            intra[key] = table_header
                         else:
-                            inter[key] = header
+                            inter[key] = table_header
+
+            if len(intra) > 1:
+                msg = "Only one intra-problem set allowed. Current " \
+                    f"intra-problem sets: '{intra}'."
+                self.logger.error(msg)
+                raise exc.ConceptualModelError(msg)
 
             variable.coordinates_info = {
                 'rows': rows,
@@ -255,11 +259,16 @@ class Index:
         )
 
         for set_instance in self.sets.values():
-            set_instance: SetTable
+            assert isinstance(set_instance, SetTable)
 
             table_name = set_instance.table_name
             if table_name in sets_values.keys():
                 set_instance.data = sets_values[table_name]
+            else:
+                msg = f"Table '{table_name}' from sets excel file not " \
+                    "inclued in the defined Sets."
+                self.logger.error(msg)
+                raise exc.SettingsError(msg)
 
     def load_coordinates_to_data_index(self) -> None:
         self.logger.debug("Loading variable coordinates to Index.data.")
@@ -268,58 +277,88 @@ class Index:
             table: DataTable
 
             table.coordinates_values.update({
-                set_header: self.sets[set_key].set_values
+                set_header: self.sets[set_key].set_items
                 for set_key, set_header in table.coordinates_headers.items()
             })
 
-    def load_coordinates_to_variables_index(self) -> None:
+    def load_all_coordinates_to_variables_index(self) -> None:
 
         self.logger.debug("Loading variable coordinates to Index.variables.")
 
         for var_key, variable in self.variables.items():
-            variable: Variable
+            assert isinstance(variable, Variable)
 
-            # replicate coordinates_info with inner values as None
+            # Replicate coordinates_info with inner values as None
             coordinates = {
-                key: {inner_key: None for inner_key in value}
-                for key, value in variable.coordinates_info.items()
+                category: {key: None for key in coord_values}
+                for category, coord_values in variable.coordinates_info.items()
             }
 
-            # parse coordinates and retrieve each related values
-            for coord_group_key, coord_group_value in coordinates.items():
-
-                var_filters = getattr(variable, coord_group_key, {}).copy()
-                var_filters.pop('set', None)
-
-                # if rows/cols, coordinates may be filtered
-                if coord_group_key in ['rows', 'cols'] and var_filters != {}:
-
-                    set_key = list(coord_group_value.keys())[0]
-                    set_value: SetTable = self.sets[set_key]
-
-                    if 'set_categories' in var_filters and \
-                            var_filters['set_categories']:
-
-                        name_header = set_value.table_headers[constants._STD_TABLE_HEADER][0]
-                        category_header = set_value.table_headers[constants._STD_CATEGORY_HEADER][0]
-                        category_filter_id = var_filters['set_categories']
-                        category_filter = set_value.set_categories[category_filter_id]
-
-                        set_filtered = set_value.data.query(
-                            f'{category_header} == "{category_filter}"'
-                        ).copy()
-
-                    coord_group_value.update(
-                        {set_key: list(set(set_filtered[name_header]))})
-
-                # for other coordinates sets, no aggregation nor filtering
-                else:
-                    coord_group_value.update({
-                        set_key: self.sets[set_key].set_values
-                        for set_key in coord_group_value
-                    })
+            # Populating the coordinates with actual set names and values
+            # from the index's sets
+            for category, coord_dict in coordinates.items():
+                for coord_key in coord_dict:
+                    try:
+                        coordinates: Dict
+                        coordinates[category][coord_key] = self.sets[coord_key].set_items
+                    except KeyError:
+                        msg = f"Set key '{coord_key}' not found in Index set for " \
+                            f"variable '{var_key}'."
+                        self.logger.error(msg)
+                        raise exc.SettingsError(msg)
 
             variable.coordinates = coordinates
+
+    def filter_coordinates_in_variables_index(self) -> None:
+
+        self.logger.debug(
+            "Filtering variables coordinates in Index.variables.")
+
+        for var_key, variable in self.variables.items():
+            assert isinstance(variable, Variable), \
+                f"Expected Variable type, got {type(variable)} instead."
+
+            for coord_category, coord_dict in variable.coordinates.items():
+                assert isinstance(coord_dict, dict), \
+                    f"Expected dict, got {type(coord_dict)} instead."
+
+                coord_key = next(iter(coord_dict), None)
+
+                if coord_key is None:
+                    continue
+
+                set_filters_headers = self.sets[coord_key].set_filters_headers
+
+                if not set_filters_headers:
+                    continue
+
+                var_coord_filter: Dict = getattr(
+                    variable, coord_category, {}
+                ).get('filters', {})
+
+                var_coord_filter = {
+                    set_filters_headers[num]: var_coord_filter[num]
+                    for num in set_filters_headers.keys()
+                    if num in var_coord_filter.keys()
+                }
+
+                # only rows, cols and intra problem sets can be filtered
+                if var_coord_filter and coord_category in ['rows', 'cols', 'intra']:
+                    set_data = self.sets[coord_key].data.copy()
+
+                    for column, conditions in var_coord_filter.items():
+                        if isinstance(conditions, list):
+                            set_data = set_data[
+                                set_data[column].isin(conditions)
+                            ]
+                        else:
+                            set_data = set_data[
+                                set_data[column] == conditions
+                            ]
+
+                    items_column_header = self.sets[coord_key].set_name_header
+                    variable.coordinates[coord_category][coord_key] = \
+                        list(set_data[items_column_header])
 
     def map_vars_aggregated_dims(self) -> None:
 
@@ -341,7 +380,7 @@ class Index:
                 if not dim_set:
                     break
 
-                key_name = constants._STD_TABLE_HEADER
+                key_name = constants._STD_NAME_HEADER
                 key_aggregation = constants._STD_AGGREGATION_HEADER
 
                 name_header_filter = dim_set.table_headers.get(

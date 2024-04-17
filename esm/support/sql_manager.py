@@ -255,7 +255,7 @@ class SQLManager:
             self,
             table_name: str,
             table_fields: Dict[str, List[str]],
-            foreign_keys: Dict[str, tuple] = None,
+            foreign_keys: Optional[Dict[str, tuple]] = None,
     ) -> None:
         """Create an SQLite table with the specified name, fields and foreign 
         keys (optional).

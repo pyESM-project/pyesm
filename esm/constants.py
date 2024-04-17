@@ -21,8 +21,8 @@ _DEFAULT_MODELS_LIST = [
 ]
 
 # headers for table related to sets and data
-_STD_TABLE_HEADER = 'name'
-_STD_CATEGORY_HEADER = 'category'
+_STD_NAME_HEADER = 'name'
+_STD_FILTERS_HEADERS = 'filters'
 _STD_AGGREGATION_HEADER = 'aggregation'
 
 # default column name-type for sets id and values fields
@@ -44,9 +44,8 @@ _PROBLEM_STATUS_HEADER = 'status'
 _SET_DEFAULT_STRUCTURE = {
     'symbol': str,
     'table_name': str,
-    'table_headers': dict,
-    'set_categories': dict,
     'split_problem': bool,
+    'table_structure': dict,
 }
 
 # default DataTable and Variable structures (for validation purpose)
@@ -57,6 +56,7 @@ _DATA_TABLE_DEFAULT_STRUCTURE = {
     'variables_info': dict,
 }
 _VARIABLE_DEFAULT_STRUCTURE = {
+    'intra': dict,
     'rows': dict,
     'cols': dict,
     'value': str,

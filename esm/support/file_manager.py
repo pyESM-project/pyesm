@@ -18,12 +18,15 @@ class FileManager:
     def __init__(
         self,
         logger: Logger,
-        xls_engine: str = 'openpyxl',
+        xls_engine: Optional[str] = None,
     ) -> None:
 
         self.logger = logger.getChild(__name__)
 
-        self.xls_engine = xls_engine
+        if not xls_engine:
+            self.xls_engine: str = 'openpyxl'
+        else:
+            self.xls_engine: str = xls_engine
 
         self.logger.debug(f"'{self}' object generated.")
 
@@ -220,7 +223,7 @@ class FileManager:
             path_destination: str | Path,
             path_source: str,
             file_name: str,
-            file_new_name: str = None,
+            file_new_name: Optional[str] = None,
             force_overwrite: bool = False,
     ) -> None:
         """
@@ -302,7 +305,7 @@ class FileManager:
 
     def dict_to_excel_headers(
             self,
-            dict_name: Dict[str, List[str]],
+            dict_name: Dict[str, Any],
             excel_dir_path: Path,
             excel_file_name: str,
             writer_engine: str = 'openpyxl',
@@ -404,9 +407,9 @@ class FileManager:
     def excel_to_dataframes_dict(
             self,
             excel_file_name: str,
-            excel_file_dir_path: Path,
+            excel_file_dir_path: Path | str,
             empty_data_fill: str = '',
-            dtype: Optional[str] = None,
+            dtype: Optional[type[str]] = None,
     ) -> Dict[str, pd.DataFrame]:
         """Reading an excel file composed by multiple tabs and returning
         a dictionary with keys as tabs and tables in each tab as Pandas 

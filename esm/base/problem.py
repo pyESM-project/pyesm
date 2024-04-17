@@ -1,3 +1,4 @@
+from pathlib import Path
 from typing import Any, Dict, List
 import re
 
@@ -23,7 +24,7 @@ class Problem:
             self,
             logger: Logger,
             files: FileManager,
-            paths: Dict[str, str],
+            paths: Dict[str, Path],
             settings: Dict[str, str],
             index: Index,
     ) -> None:

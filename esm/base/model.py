@@ -2,8 +2,8 @@ from pathlib import Path
 from typing import Any
 
 from esm import constants
+from esm.log_exc import exceptions as exc
 from esm.log_exc.logger import Logger
-from esm.log_exc.exceptions import *
 from esm.support.dotdict import DotDict
 from esm.support.file_manager import FileManager
 from esm.support.pbi_manager import PBIManager
@@ -115,10 +115,11 @@ class Model:
                 "missing. Set 'use_existing_data' to False to " \
                 "generate a new settings file."
             self.logger.error(msg)
-            raise SettingsError(msg)
+            raise exc.SettingsError(msg)
 
         self.core.index.load_coordinates_to_data_index()
-        self.core.index.load_coordinates_to_variables_index()
+        self.core.index.load_all_coordinates_to_variables_index()
+        self.core.index.filter_coordinates_in_variables_index()
         self.core.index.map_vars_aggregated_dims()
 
         if self.settings['sqlite_database_foreign_keys']:

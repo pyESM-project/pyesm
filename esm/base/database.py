@@ -75,7 +75,7 @@ class Database:
                 f"Generating new sets excel file '{sets_file_name}'.")
 
         dict_headers = {
-            set_value.table_name: set_value.excel_file_set_headers
+            set_value.table_name: set_value.set_excel_file_headers
             for set_value in self.index.sets.values()
         }
 
@@ -91,7 +91,8 @@ class Database:
 
         with db_handler(self.sqltools):
             for set_instance in self.index.sets.values():
-                set_instance: SetTable
+                assert isinstance(set_instance, SetTable), \
+                    f"Expected SetTable type, got {type(set_instance)} instead."
 
                 table_name = set_instance.table_name
                 table_fields = set_instance.table_headers
@@ -107,7 +108,8 @@ class Database:
 
         with db_handler(self.sqltools):
             for set_instance in self.index.sets.values():
-                set_instance: SetTable
+                assert isinstance(set_instance, SetTable), \
+                    f"Expected SetTable type, got {type(set_instance)} instead."
 
                 table_name = set_instance.table_name
                 dataframe = set_instance.data.copy()
