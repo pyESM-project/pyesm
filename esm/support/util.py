@@ -604,19 +604,6 @@ def filter_dataframe(
     return filtered_df
 
 
-def compare_dicts_ignoring_order_old(
-        dict1: Dict[str, List[Any]],
-        dict2: Dict[str, List[Any]],
-) -> bool:
-
-    if set(dict1.keys()) != set(dict2.keys()):
-        return False
-    for key in dict1:
-        if sorted(dict1[key]) != sorted(dict2[key]):
-            return False
-    return True
-
-
 def compare_dicts_ignoring_order(
         *dicts: Dict[str, List[Any]]
 ) -> bool:
