@@ -604,7 +604,7 @@ def filter_dataframe(
     return filtered_df
 
 
-def compare_dicts_ignoring_order(
+def compare_dicts_ignoring_order_old(
         dict1: Dict[str, List[Any]],
         dict2: Dict[str, List[Any]],
 ) -> bool:
@@ -614,4 +614,27 @@ def compare_dicts_ignoring_order(
     for key in dict1:
         if sorted(dict1[key]) != sorted(dict2[key]):
             return False
+    return True
+
+
+def compare_dicts_ignoring_order(
+        *dicts: Dict[str, List[Any]]
+) -> bool:
+    """
+    Compares any number of dictionaries to see if they are the same, ignoring 
+    the order of items in the lists which are the values of the dictionaries.
+    """
+    if len(dicts) < 2:
+        return True
+
+    reference = dicts[0]
+    ref_keys = set(reference.keys())
+
+    for d in dicts[1:]:
+        if set(d.keys()) != ref_keys:
+            return False
+        for key in ref_keys:
+            if sorted(d[key]) != sorted(reference[key]):
+                return False
+
     return True

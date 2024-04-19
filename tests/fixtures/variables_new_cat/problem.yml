@@ -9,10 +9,10 @@ objective function:
 
 constraints: 
 
-    # - ex_tf - en_tf == 0
-    # - ex_tf_y - en_tf_y == 0 check quante volte definisce le equazioni per intra problem set
-    # - ex_tf_1 - en_tf_1 == 0
-    # - ex_tf_2 - en_tf_2 == 0
+    - ex_tf - en_tf == 0
+    - ex_tf_y - en_tf_y == 0
+    - ex_tf_1 - en_tf_1 == 0
+    - ex_tf_2 - en_tf_2 == 0
     - ex_tf_agg - en_tf_agg == 0
 
 

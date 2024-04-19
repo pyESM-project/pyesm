@@ -305,7 +305,7 @@ class Problem:
 
     def find_common_sets_intra_problem(
         self,
-        variables_subset: DotDict[str, Variable],
+        variables_subset: DotDict,
         allow_none: bool = True,
     ) -> Dict[str, str]:
 
@@ -315,6 +315,7 @@ class Problem:
         }
 
         if allow_none:
+            # in this case, a variable is equal for all intra-problem set items
             vars_sets_intra_problem_list = [
                 value for value in vars_sets_intra_problem.values() if value
             ]
@@ -337,6 +338,25 @@ class Problem:
                 "'sets_intra_problem' is None."
             self.logger.error(msg)
             raise exc.ConceptualModelError(msg)
+
+    def fetch_common_vars_coords(
+        self,
+        variables_subset: DotDict,
+        coord_category: str,
+    ) -> Dict[str, List[str]] | None:
+
+        all_vars_coords = {
+            var_key: variable.coordinates[coord_category]
+            for var_key, variable in variables_subset.items()
+        }
+
+        if not util.compare_dicts_ignoring_order(all_vars_coords):
+            msg = "Passed variables are not defined with same coordinates "
+            f"for {coord_category}."
+            self.logger.error(msg)
+            raise exc.SettingsError(msg)
+
+        return next(iter(all_vars_coords.values()))
 
     def generate_problems_dataframe(
             self,
@@ -426,7 +446,7 @@ class Problem:
 
     def fetch_allowed_cvxpy_variables(
             self,
-            variables_set_dict: DotDict[str, Variable],
+            variables_set_dict: Dict[str, Variable],
             problem_filter: pd.DataFrame,
             set_intra_problem_header: str = None,
             set_intra_problem_value: str = None,
@@ -534,7 +554,6 @@ class Problem:
                 and variable.type == 'constant'
             })
 
-            # look for intra-problem set in variables
             # only one intra-problem set per expression allowed
             set_intra_problem = self.find_common_sets_intra_problem(
                 variables_subset=vars_subset,
@@ -545,8 +564,19 @@ class Problem:
                 set_header = list(set_intra_problem.values())[0]
                 set_data = self.index.sets[set_key].data
 
+                # check if there are filters (and if it is equal for all vars)
+                common_intra_coords = self.fetch_common_vars_coords(
+                    variables_subset=vars_subset,
+                    coord_category='intra',
+                )
+
                 # parse values in intra-problem-set
                 for value in set_data[set_header]:
+
+                    # define expression only for filtered intra-problem set values
+                    if common_intra_coords is None or \
+                            value not in common_intra_coords.get(set_key, []):
+                        continue
 
                     # fetch allowed cvxpy variables
                     allowed_variables = self.fetch_allowed_cvxpy_variables(
