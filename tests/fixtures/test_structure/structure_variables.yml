@@ -17,23 +17,23 @@ V:
         V_tfp:
             rows: 
                 set: technologies
-                set_categories: t.s
+                filters: {0: Supply technology}
             cols:
                 set: flows
-                set_categories: f.p
+                filters: {0: Product flow}
         V_tfc:
             rows: 
                 set: technologies
-                set_categories: t.s
+                filters: {0: Supply technology}
             cols:
                 set: flows
-                set_categories: f.c
+                filters: {0: Cost flow}
         V_yt:
             rows: 
                 set: time
             cols:
                 set: technologies 
-                set_categories: t.s
+                filters: {0: Supply technology}
 
 
 # -----------------------------------------------------------------------------
@@ -48,7 +48,7 @@ constants:
             value: sum_vector
             cols:
                 set: flows
-                set_categories: f.p
+                filters: {0: Product flow}
         T_yy:
             value: lower_triangular
             rows:
@@ -67,24 +67,24 @@ X:
         X_tfp:
             rows: 
                 set: technologies
-                set_categories: t.s
+                filters: {0: Supply technology}
             cols:
                 set: flows
-                set_categories: f.p
+                filters: {0: Product flow}
         X_tfc:
             rows: 
                 set: technologies
-                set_categories: t.s
+                filters: {0: Supply technology}
             cols:
                 set: flows
-                set_categories: f.c
+                filters: {0: Cost flow}
         X_yt:
             rows: 
                 set: time
             cols:
                 set: technologies 
-                set_categories: t.s
-        X_1f:
-            cols:
-                set: flows 
-                set_categories: f.p
+                filters: {0: Supply technology}
+        # X_1f:
+        #     cols:
+        #         set: flows 
+        #         filters: {0: Product flow}

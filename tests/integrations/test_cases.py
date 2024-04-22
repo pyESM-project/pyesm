@@ -10,9 +10,8 @@ dft_cases_dir_path = 'D:/git_repos/pyesm/default'
 
 unit_cases = [
     'constants',
-    'expressions',
     'test_structure',
-    'variables',
+    'variables_filtering',
 ]
 dft_cases = [
     '1_sut_multi_year',

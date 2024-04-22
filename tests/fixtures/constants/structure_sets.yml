@@ -3,27 +3,27 @@
 case:
     symbol: c
     table_name: _set_CASE
-    table_headers:
-        name: ['c_Name', 'TEXT']
     split_problem: True
+    table_structure:
+        name: ['c_Name', 'TEXT']
 
 flows:
     symbol: f
     table_name: _set_FLOWS
-    table_headers:
+    table_structure:
         name: ['f_Name', 'TEXT']
-        category: ['f_Category', 'TEXT']
         aggregation: ['f_Aggregation', 'TEXT']
-    set_categories:
-        f_hours: Hourly dispatched
-        f_annual: Annually dispatched
+        filters: 
+            0:
+                header: ['f_Category', 'TEXT']
+                values: ['Hourly dispatched', 'Yearly dispatched']
 
 flows_aggregated:
     symbol: f_agg
     table_name: _set_FLOWS_AGG
-    table_headers:
+    table_structure:
         name: ['f_agg_Name', 'TEXT']
-        category: ['f_Category', 'TEXT']
-    set_categories:
-        f_hours: Hourly dispatched
-        f_annual: Annually dispatched
+        filters: 
+            0:
+                header: ['f_Category', 'TEXT']
+                values: ['Hourly dispatched', 'Yearly dispatched']

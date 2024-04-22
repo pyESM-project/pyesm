@@ -7,8 +7,8 @@
 #     table_headers:
 #         name: [a_Names, TYPE] # header of set entries names in database set table
 #         aggregation: [a_Agg, TEXT] # (optional) header of set entries that are matching another set (aggregation)
-#         categories:
-#             0: # (int) index of the category in the set
+#         filters:
+#             0:  # (int) index of the category in the set
 #                 header: [a_Cat_1, TEXT] 
 #                 values: [a_1a, a_1b, a_1c]
 #             1: 
@@ -23,49 +23,49 @@ case:
     symbol: c
     table_name: _set_CASES
     split_problem: True
-    table_headers:
-        name: ['c_Name', 'TEXT']
+    table_structure:
+        name: [c_Name, TEXT]
 
 years:
     symbol: y
     table_name: _set_YEARS
-    table_headers:
-        name: ['y_Name', 'TEXT']
-        categories:
+    table_structure:
+        name: [y_Name, TEXT]
+        filters:
             0:
-                header: [y_Category_1, 'TEXT']
-                values: ['warm-up', 'run']
+                header: [y_Category_1, TEXT]
+                values: [warm-up, run]
     
 technologies:
     symbol: t
     table_name: _set_TECHNOLOGIES
-    table_headers:
-        name: ['t_Name', 'TEXT']
-        categories:
+    table_structure:
+        name: [t_Name, TEXT]
+        filters:
             0:
-                header: [t_Category_1, 'TEXT']
-                values: ['Supply', 'Demand']
+                header: [t_Category_1, TEXT]
+                values: [Supply, Demand]
             1:
-                header: [t_Category_2, 'TEXT']
-                values: ['Non-Renewable', 'Renewable']
+                header: [t_Category_2, TEXT]
+                values: [Non-Renewable, Renewable, Elon-Musk-Approved]
 
 flows:
     symbol: f
     table_name: _set_FLOWS
-    table_headers:
-        name: ['f_Name', 'TEXT']
-        aggregation: ['f_agg_Name', 'TEXT']
-        categories: 
+    table_structure:
+        name: [f_Name, TEXT]
+        aggregation: [f_agg_Name, TEXT]
+        filters: 
             0:
-                header: ['f_Category_1', 'TEXT']
-                values: ['Physical', 'Economic']
+                header: [f_Category_1, TEXT]
+                values: [Physical, Economic]
 
 flows_agg:
     symbol: f_agg
     table_name: _set_FLOWS_AGG
-    table_headers:
-        name: ['f_agg_Name', 'TEXT']
-        category: 
+    table_structure:
+        name: [f_agg_Name, TEXT]
+        filters: 
             0:
-                header: ['f_agg_Category', 'TEXT']
-                values: ['Physical', 'Economic']
+                header: [f_agg_Category, TEXT]
+                values: [Physical, Economic]

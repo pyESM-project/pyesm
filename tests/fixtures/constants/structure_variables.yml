@@ -14,7 +14,7 @@ Q:
         Q_h:
             cols: 
                 set: flows
-                set_categories: f_hours
+                filters: {0: Hourly dispatched}
 
 
 # -----------------------------------------------------------------------------
@@ -35,10 +35,10 @@ constants:
             value: identity_rcot
             rows:
                 set: flows_aggregated
-                set_categories: f_hours
+                filters: {0: Hourly dispatched}
             cols:
                 set: flows
-                set_categories: f_hours
+                filters: {0: Hourly dispatched}
         
 
 # -----------------------------------------------------------------------------
@@ -55,4 +55,4 @@ Q_agg:
         Q_agg_h:
             rows: 
                 set: flows_aggregated
-                set_categories: f_hours
+                filters: {0: Hourly dispatched}
