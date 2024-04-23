@@ -10,9 +10,19 @@ _SETUP_FILES = {
     2: 'problem.yml',
 }
 
+_TUTORIAL_FILE_NAME = 'tutorial.ipynb'
+
+_DEFAULT_MODELS_DIR_PATH = 'default'
+_DEFAULT_MODELS_LIST = [
+    '1_sut_multi_year',
+    '2_sut_multi_year_rcot',
+    '3_sut_multi_year_rcot_cap',
+    '4_sut_multi_year_rcot_cap_dis',
+]
+
 # headers for table related to sets and data
-_STD_TABLE_HEADER = 'name'
-_STD_CATEGORY_HEADER = 'category'
+_STD_NAME_HEADER = 'name'
+_STD_FILTERS_HEADERS = 'filters'
 _STD_AGGREGATION_HEADER = 'aggregation'
 
 # default column name-type for sets id and values fields
@@ -34,9 +44,8 @@ _PROBLEM_STATUS_HEADER = 'status'
 _SET_DEFAULT_STRUCTURE = {
     'symbol': str,
     'table_name': str,
-    'table_headers': dict,
-    'set_categories': dict,
     'split_problem': bool,
+    'table_structure': dict,
 }
 
 # default DataTable and Variable structures (for validation purpose)
@@ -47,6 +56,7 @@ _DATA_TABLE_DEFAULT_STRUCTURE = {
     'variables_info': dict,
 }
 _VARIABLE_DEFAULT_STRUCTURE = {
+    'intra': dict,
     'rows': dict,
     'cols': dict,
     'value': str,

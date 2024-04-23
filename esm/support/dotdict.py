@@ -1,7 +1,7 @@
-from typing import Any, Dict
+from typing import Any
 
 
-class DotDict(dict):
+class DotDict(dict[Any, Any]):
     """This class generates a dictionary where values can be accessed either
     by key (example: dict_instance['key']) and by dot notation (example:
     dict_instance.key). The class inherits all methods of standard dict.
