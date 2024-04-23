@@ -7,10 +7,10 @@ objective function:
 
 # definition of the constraints (vector expressions)
 
-constraints: 
+expressions: 
 
-    - X_tfp == V_tfp
-    - X_tfc == V_tfc
+    # - X_tfp == V_tfp
+    # - X_tfc == V_tfc
     - X_yt == T_yy @ V_yt
 
 

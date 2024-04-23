@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any, Dict, Iterable, List, Optional, Tuple
 import re
 
 import pandas as pd
@@ -50,9 +50,9 @@ class Problem:
     def create_cvxpy_variable(
         self,
         type: str,
-        shape: List[int],
-        name: str = None,
-        value: int | np.ndarray | np.matrix = None,
+        shape: Tuple[int],
+        name: Optional[str] = None,
+        value: Optional[int | np.ndarray | np.matrix] = None,
     ) -> cp.Variable | cp.Parameter | cp.Constant:
 
         if type == 'endogenous':
@@ -70,7 +70,7 @@ class Problem:
     def slice_cvxpy_variable(
             self,
             type: str,
-            shape: List[int],
+            shape: Tuple[int],
             related_table_key: str,
             var_filter: Dict[str, List[str]],
     ) -> cp.Expression:
@@ -81,18 +81,33 @@ class Problem:
             raise exc.SettingsError(msg)
 
         related_table: DataTable = self.index.data[related_table_key]
-        full_var_dataframe = related_table.coordinates_dataframe
-        full_cvxpy_var = related_table.cvxpy_var
+
+        if related_table.coordinates_dataframe is None or \
+                related_table.coordinates_dataframe.empty:
+            msg = f"Coordinates not defined for data table '{related_table_key}'."
+            self.logger.error(msg)
+            raise exc.MissingDataError(msg)
+
+        if not related_table.cvxpy_var:
+            msg = f"Variables not defined data table '{related_table_key}'."
+            self.logger.error(msg)
+            raise exc.MissingDataError(msg)
 
         filtered_var_dataframe = util.filter_dataframe(
-            df_to_filter=full_var_dataframe,
+            df_to_filter=related_table.coordinates_dataframe,
             filter_dict=var_filter,
             reorder_columns_as_dict_keys=True,
             reorder_rows_based_on_filter=True,
         )
 
+        if filtered_var_dataframe.empty:
+            msg = f"Variable sliced from '{related_table_key}' is empty. " \
+                "Check related variables filters."
+            self.logger.error(msg)
+            raise exc.SettingsError(msg)
+
         filtered_index = filtered_var_dataframe.index
-        sliced_cvxpy_var = full_cvxpy_var[filtered_index]
+        sliced_cvxpy_var = related_table.cvxpy_var[filtered_index]
         sliced_cvxpy_var_reshaped = sliced_cvxpy_var.reshape(
             shape, order='C')
 
@@ -105,18 +120,18 @@ class Problem:
     ) -> None:
 
         if not isinstance(cvxpy_var, cp.Parameter):
-            error = "Data can only be assigned to exogenous variables."
-            self.logger.error(error)
-            raise ValueError(error)
+            msg = "Data can only be assigned to exogenous variables."
+            self.logger.error(msg)
+            raise exc.ConceptualModelError(msg)
 
         if isinstance(data, pd.DataFrame):
             cvxpy_var.value = data.values
         elif isinstance(data, np.ndarray):
             cvxpy_var.value = data
         else:
-            error = "Supported data formats: pandas DataFrame or a numpy array."
-            self.logger.error(error)
-            raise ValueError(error)
+            msg = "Supported data formats: pandas DataFrame or a numpy array."
+            self.logger.error(msg)
+            raise ValueError(msg)
 
     def generate_constant_data(
             self,
@@ -124,17 +139,30 @@ class Problem:
             variable: Variable,
     ) -> cp.Constant:
 
+        if not variable.value or not variable.type:
+            msg = "Type of constant value or type not specified for variable " \
+                f"'{variable_name}'"
+            self.logger.error(msg)
+            raise exc.SettingsError(msg)
+
         self.logger.debug(
             f"Generating constant '{variable_name}' as '{variable.value}'.")
 
         var_value = variable.define_constant(variable.value)
 
-        return self.create_cvxpy_variable(
+        result = self.create_cvxpy_variable(
             type=variable.type,
             shape=variable.shape_size,
             name=variable_name + str(variable.shape),
             value=var_value,
         )
+
+        if isinstance(result, cp.Constant):
+            return result
+        else:
+            msg = f"Expected a cvxpy constant but got {type(result)}."
+            self.logger.error(msg)
+            raise TypeError(msg)
 
     def generate_vars_dataframe(
             self,
@@ -155,7 +183,8 @@ class Problem:
             "(cvxpy object, filter dictionary).")
 
         if variable.sets_parsing_hierarchy:
-            sets_parsing_hierarchy = variable.sets_parsing_hierarchy.values()
+            sets_parsing_hierarchy = list(
+                variable.sets_parsing_hierarchy.values())
         else:
             sets_parsing_hierarchy = None
 
@@ -258,7 +287,8 @@ class Problem:
     def parse_allowed_symbolic_vars(
             self,
             expression: str,
-            non_allowed_tokens: List[str] = allowed_operators.keys(),
+            non_allowed_tokens: Optional[List[str]] = list(
+                allowed_operators.keys()),
             standard_pattern: str = r'\b[a-zA-Z_][a-zA-Z0-9_]*\b'
     ) -> List[str]:
 
@@ -281,7 +311,7 @@ class Problem:
 
     def check_variables_attribute_equality(
             self,
-            variables_subset: DotDict[str, Variable],
+            variables_subset: DotDict,
             attribute: str,
     ) -> None:
 
@@ -421,18 +451,23 @@ class Problem:
             ]
 
             # define explicit problem constraints (user-defined constraints)
-            constraints = self.define_explicit_expressions(
+            constraints = self.define_expressions(
                 header_object=headers['constraints'],
                 problem_filter=problem_filter
             )
 
             # define problem objective
-            objective = sum(
-                self.define_explicit_expressions(
-                    header_object=headers['objective'],
-                    problem_filter=problem_filter
+            # if not defined in yml, a dummy objective is defined
+            if self.symbolic_problem and \
+                    self.symbolic_problem.get(headers['objective']):
+                objective = sum(
+                    self.define_expressions(
+                        header_object=headers['objective'],
+                        problem_filter=problem_filter
+                    )
                 )
-            )
+            else:
+                objective = cp.Minimize(1)
 
             problem = cp.Problem(objective, constraints)
 
@@ -530,7 +565,7 @@ class Problem:
 
         return local_vars['output']
 
-    def define_explicit_expressions(
+    def define_expressions(
             self,
             header_object: str,
             problem_filter: pd.DataFrame,

@@ -3,40 +3,40 @@
 scenarios:
     symbol: s
     table_name: _set_SCENARIOS
-    table_headers:
-        name: ['s_Name', 'TEXT']
     split_problem: True
+    table_structure:
+        name: ['s_Name', 'TEXT']
 
 sensitivity:
     symbol: e
     table_name: _set_SENSITIVITY
-    table_headers:
-        name: ['e_Name', 'TEXT']
     split_problem: True
+    table_structure:
+        name: ['e_Name', 'TEXT']
 
 time:
     symbol: y 
     table_name: _set_TIME
-    table_headers:
+    table_structure:
         name: ['y_Name', 'TEXT']
 
 technologies:
     symbol: t
     table_name: _set_TECHNOLOGIES
-    table_headers:
+    table_structure:
         name: ['t_Name', 'TEXT']
-        category: ['t_Category', 'TEXT']
-    set_categories:
-        t.s: Supply technology
-        t.d: Demand technology
+        filters: 
+            0: 
+                header: ['t_Category', 'TEXT']
+                values: ['Supply technology', 'Demand technology']
 
 flows:
     symbol: f
     table_name: _set_FLOWS
-    table_headers:
+    table_structure:
         name: ['f_Name', 'TEXT']
-        category: ['f_Category', 'TEXT']
         aggregation: ['f_Aggregation', 'TEXT']
-    set_categories:
-        f.p: Product flow
-        f.c: Cost flow
+        filters: 
+            0:
+                header: ['f_Category', 'TEXT']
+                values: ['Product flow', 'Cost flow']
