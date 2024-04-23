@@ -1,13 +1,6 @@
 # SYMBOLIC PROBLEM
 
-# definition of the objective function (scalar)
-
-objective function:
-    - Minimize(1) # dummy objective
-
-# definition of the constraints (vector expressions)
-
-constraints: 
+expressions: 
 
     # aggregating total demand by flow
     - Q_agg - I_ff @ tran(Q) == 0

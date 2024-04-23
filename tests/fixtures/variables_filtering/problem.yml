@@ -7,7 +7,7 @@ objective function:
 
 # definition of the constraints (vector expressions)
 
-constraints: 
+expressions: 
 
     - ex_tf - en_tf == 0
     - ex_tf_y - en_tf_y == 0

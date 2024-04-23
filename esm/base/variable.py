@@ -54,7 +54,7 @@ class Variable:
         return [rows_shape, cols_shape]
 
     @property
-    def shape_size(self) -> List[int]:
+    def shape_size(self) -> Tuple[int]:
         """Computes and returns the size of each dimension in the variable.
 
         Returns:
@@ -69,7 +69,7 @@ class Variable:
             else:
                 shape_size.append(1)
 
-        return shape_size
+        return tuple(shape_size)
 
     @property
     def dims_labels(self) -> List[str]:

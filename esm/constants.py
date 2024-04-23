@@ -35,7 +35,7 @@ _FILTER_DICT_HEADER = 'filter'
 
 # default headers for problem dataframe
 _OBJECTIVE_HEADER = 'objective function'
-_CONSTRAINTS_HEADER = 'constraints'
+_CONSTRAINTS_HEADER = 'expressions'
 _PROBLEM_HEADER = 'problem'
 _PROBLEM_INFO_HEADER = 'info'
 _PROBLEM_STATUS_HEADER = 'status'
