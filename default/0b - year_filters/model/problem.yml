@@ -1,19 +1,23 @@
 # SYMBOLIC PROBLEM
 
 # definition of the objective function (scalar)
-
 objective function:
-    - Minimize(sum(sum(C_tot)))
+    - Minimize(sum(C_om))
 
 # definition of the constraints (vector expressions)
-
 expressions: 
-
     - Q_agg == I_ff @ tran(Q)
-    - Q_agg - u @ tran(X) - f == 0
+
+    - Q_agg - Y == 0
     - tran(X) - d @ tran(Q) == 0
-    - C_tot == X @ diag(c)
-    - X <= X_max
+
+    - sum(E_urban) <= E_max_urban
+    - Q_urban_icev_we <= Q_max_urban_icev_we
+    - X_pub_strike <= X_max_pub_strike
+
+    - E == Q @ diag(e)
+    - C_om == X @ diag(c_om)
+
     - X >= 0
     - Q >= 0
 
