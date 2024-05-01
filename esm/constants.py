@@ -1,7 +1,7 @@
 import cvxpy as cp
 import numpy as np
 
-from esm.support import util_constants
+from esm.support import util_functions
 
 # essenstial model config files
 _SETUP_FILES = {
@@ -67,10 +67,12 @@ _VARIABLE_DEFAULT_STRUCTURE = {
 _ALLOWED_CONSTANTS = {
     'sum_vector': (np.ones, ),  # vector of 1s
     'identity': (np.eye, ),  # identity matrix
+    # vector/matrix with a range from 1 up to dimension size
+    'range': (util_functions.range, ),
     # lower triangular matrix of 1s(inc. diagonal)
-    'lower_triangular': (util_constants.tril, ),
+    'lower_triangular': (util_functions.tril, ),
     # special identity matrix for rcot problems
-    'identity_rcot': (util_constants.identity_rcot, ),
+    'identity_rcot': (util_functions.identity_rcot, ),
     # 'range_vector': (np.arange, ),  # vector given a range TBD
 }
 
@@ -90,7 +92,6 @@ _ALLOWED_OPERATORS = {
     'diag': cp.diag,
     'sum': cp.sum,
     'mult': cp.multiply,
-    'tweib': util_constants.tril_weibull,
-    'vweib': util_constants.vect_weibull,
+    'weib': util_functions.weibull_distribution,
     'Minimize': cp.Minimize,
 }
