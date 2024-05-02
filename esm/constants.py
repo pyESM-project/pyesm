@@ -68,7 +68,7 @@ _ALLOWED_CONSTANTS = {
     'sum_vector': (np.ones, ),  # vector of 1s
     'identity': (np.eye, ),  # identity matrix
     # vector/matrix with a range from 1 up to dimension size
-    'range': (util_functions.range, ),
+    'arange': (util_functions.arange, ),
     # lower triangular matrix of 1s(inc. diagonal)
     'lower_triangular': (util_functions.tril, ),
     # special identity matrix for rcot problems
