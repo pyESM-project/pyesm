@@ -351,7 +351,7 @@ class Variable:
                 msg = 'Summation vector must be a vector (one dimension). ' \
                     'Check variable shape.'
 
-        elif value_type == 'range':
+        elif value_type == 'arange':
             return factory_function(self.shape_size)
 
         elif value_type == 'lower_triangular':
