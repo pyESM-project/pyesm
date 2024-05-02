@@ -1,0 +1,41 @@
+# structure of sets
+
+scenarios:
+    symbol: s  # symbol of the set 
+    table_name: _set_scenario # name of the table of the set in the database
+    split_problem: True # (optional) if the items of the set defines separate problems 
+    table_structure:
+        name: [scenario_Names, TEXT] # header of set entries names in database set table
+
+techs:
+    symbol: techs  # symbol of the set 
+    table_name: _set_techs # name of the table of the set in the database
+    table_structure:
+        name: [techs_Names, TEXT] # header of set entries names in database set table
+        filters:
+            fuel:  # (int) index of the category in the set
+                header: [t_fuel, TEXT] 
+                values: [fossil, res]
+            capacity: 
+                header: [t_capacity, TEXT] 
+                values: [non cap, cap]
+            
+flows:
+    symbol: flows  # symbol of the set 
+    table_name: _set_flows # name of the table of the set in the database
+    table_structure:
+        name: [flows_Names, TEXT] # header of set entries names in database set table
+        aggregation: [flows_agg, TEXT] # (optional) header of set entries that are matching another set (aggregation)
+
+flows_agg:
+    symbol: flows_agg # symbol of the set 
+    table_name: _set_flows_agg # name of the table of the set in the database
+    table_structure:
+        name: [flows_agg_Names, TEXT] # header of set entries names in database set table
+
+years:
+    symbol: Y # symbol of the set 
+    table_name: _set_Y # name of the table of the set in the database
+    table_structure:
+        name: [Y, TEXT] # header of set entries names in database set table
+
