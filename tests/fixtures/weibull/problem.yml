@@ -12,10 +12,10 @@ expressions:
     - Cap_op == Cap_start + T_yy @ (Cap_new - Cap_dis_start - Cap_dis_new)
 
     # yearly disposal of initially avaialble capacity (with residual lifetime)
-    - Cap_dis_start == Cap_start * weib(lt_start, sf, y_range, 1)
+    - Cap_dis_start == mult(Cap_start, weib(lt_start, sf, y_range, 1))
 
     # yearly disposal of new capacity (with full lifetime)
-    - Cap_dis_new == Cap_new @ weib(lt, sf, y_range, 2)
+    - Cap_dis_new == weib(lt, sf, y_range, 2) @ Cap_new
 
 
 

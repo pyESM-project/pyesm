@@ -118,6 +118,6 @@ Constants:
             cols:
                 set: years
         y_range:
-            value: range
+            value: arange
             rows:
                 set: years
