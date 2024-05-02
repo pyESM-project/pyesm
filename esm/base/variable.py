@@ -332,7 +332,7 @@ class Variable:
                 suitable for creating the constant.
         """
         util.validate_selection(
-            valid_selections=constants._ALLOWED_CONSTANTS.keys(),
+            valid_selections=list(constants._ALLOWED_CONSTANTS.keys()),
             selection=value_type,
         )
 
@@ -350,6 +350,9 @@ class Variable:
             else:
                 msg = 'Summation vector must be a vector (one dimension). ' \
                     'Check variable shape.'
+
+        elif value_type == 'arange':
+            return factory_function(self.shape_size)
 
         elif value_type == 'lower_triangular':
             if self.is_square:

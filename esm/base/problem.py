@@ -594,6 +594,8 @@ class Problem:
                 variables_subset=vars_subset,
             )
 
+            cvxpy_expression = None
+
             if set_intra_problem:
                 set_key = list(set_intra_problem.keys())[0]
                 set_header = list(set_intra_problem.values())[0]
@@ -641,6 +643,12 @@ class Problem:
                 )
 
                 expressions.append(cvxpy_expression)
+
+            if cvxpy_expression is None:
+                msg = "CVXPY expression not generated for " \
+                    f"expression: '{expression}'"
+                self.logger.error(msg)
+                raise exc.NumericalProblemError(msg)
 
         return expressions
 
