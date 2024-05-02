@@ -1,4 +1,4 @@
-from typing import Any, Dict, Iterator, List, Tuple
+from typing import Any, Dict, Iterator, List, Optional, Tuple
 import pandas as pd
 
 from esm import constants
@@ -35,36 +35,108 @@ class SetTable:
     def __init__(
             self,
             logger: Logger,
-            data: pd.DataFrame = None,
+            data: Optional[pd.DataFrame] = None,
             **kwargs,
     ) -> None:
 
         self.logger = logger.getChild(__name__)
 
-        self.symbol: str = None
-        self.table_name: str = None
-        self.table_headers: Dict[str, Any] = None
-        self.set_categories: Dict[str, Any] = None
+        self.symbol: str
+        self.table_name: str
         self.split_problem: bool = False
-        self.data = data
+        self.table_structure: Dict[str, Any]
 
         for key, value in kwargs.items():
             setattr(self, key, value)
 
-    @property
-    def set_header(self) -> str:
-        return self.table_headers[constants._STD_TABLE_HEADER][0]
+        self.table_headers: Optional[Dict[str, Any]] = None
+        self.table_filters: Optional[Dict[int, Any]] = None
+        self.set_categories: Optional[Dict[str, Any]] = None
+        self.data = data
+
+        self.fetching_headers_and_filters()
 
     @property
-    def set_values(self) -> List[str]:
-        return list(self.data[self.set_header])
+    def set_name_header(self) -> str | None:
+        if self.table_headers is not None:
+            return self.table_headers[constants._STD_NAME_HEADER][0]
+        else:
+            return
 
     @property
-    def excel_file_set_headers(self) -> List[str]:
-        return [
-            table_headers[0] for table_headers
-            in self.table_headers.values()
-        ]
+    def set_aggregation_header(self) -> str | None:
+        if self.table_headers is not None:
+            aggregation_key = constants._STD_AGGREGATION_HEADER
+
+            if aggregation_key in self.table_headers:
+                return self.table_headers[aggregation_key][0]
+            else:
+                return
+        else:
+            return
+
+    @property
+    def set_excel_file_headers(self) -> List | None:
+        if self.table_headers is not None:
+            return [
+                item[0] for item in list(self.table_headers.values())
+            ]
+        else:
+            return
+
+    @property
+    def set_filters_dict(self) -> Dict[str, List[str]] | None:
+        if self.table_filters:
+            return {
+                filter_items['header'][0]: filter_items['values']
+                for filter_items in self.table_filters.values()
+            }
+        else:
+            return
+
+    @property
+    def set_filters_headers(self) -> Dict[int, str] | None:
+        if self.table_filters:
+            return {
+                key: value['header'][0]
+                for key, value in self.table_filters.items()
+            }
+        else:
+            return
+
+    @property
+    def set_items(self) -> List[str] | None:
+        if self.data is not None:
+            return list(self.data[self.set_name_header])
+        else:
+            return
+
+    def fetching_headers_and_filters(self) -> None:
+
+        name_key = constants._STD_NAME_HEADER
+        filters_key = constants._STD_FILTERS_HEADERS
+        aggregation_key = constants._STD_AGGREGATION_HEADER
+
+        # Fetching filters
+        self.table_filters = self.table_structure.get(filters_key, None)
+
+        # Fetching table headers
+        name_header = self.table_structure.get(name_key, None)
+        aggregation_header = self.table_structure.get(
+            aggregation_key, None)
+
+        filters_headers = {
+            'filter_' + str(key): value['header']
+            for key, value in self.table_structure.get(filters_key, {}).items()
+        }
+
+        self.table_headers = {
+            name_key: name_header,
+            **filters_headers
+        }
+
+        if aggregation_header:
+            self.table_headers[aggregation_key] = aggregation_header
 
     def __repr__(self) -> str:
         output = ''

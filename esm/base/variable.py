@@ -1,4 +1,4 @@
-from typing import Any, Dict, Iterator, List, Tuple
+from typing import Any, Dict, Iterator, List, Optional, Tuple
 import numpy as np
 
 import pandas as pd
@@ -23,18 +23,17 @@ class Variable:
 
         self.rows: Dict[str, Any] = {}
         self.cols: Dict[str, Any] = {}
-        self.value: str = None
-        self.related_table: str = None
-        self.related_dims_map: pd.DataFrame = None
-        self.type: str = None
+        self.value: Optional[str] = None
+        self.related_table: Optional[str] = None
+        self.related_dims_map: Optional[pd.DataFrame] = None
+        self.type: Optional[str] = None
 
         for key, value in kwargs.items():
             setattr(self, key, value)
 
         self.coordinates_info: Dict[str, Any] = {}
         self.coordinates: Dict[str, Any] = {}
-        self.sliced_from: str = None
-        self.data: pd.DataFrame = None
+        self.data: Optional[pd.DataFrame] = None
 
     def __repr__(self) -> str:
         output = ''
@@ -55,7 +54,7 @@ class Variable:
         return [rows_shape, cols_shape]
 
     @property
-    def shape_size(self) -> List[int]:
+    def shape_size(self) -> Tuple[int]:
         """Computes and returns the size of each dimension in the variable.
 
         Returns:
@@ -70,7 +69,7 @@ class Variable:
             else:
                 shape_size.append(1)
 
-        return shape_size
+        return tuple(shape_size)
 
     @property
     def dims_labels(self) -> List[str]:
@@ -107,6 +106,13 @@ class Variable:
                 dim_items.append(None)
 
         return dim_items
+
+    @property
+    def dims_labels_items(self) -> Dict[str, List[str]]:
+        return {
+            self.dims_labels[dim]: self.dims_items[dim]
+            for dim in [0, 1]
+        }
 
     @property
     def dims_sets(self) -> Dict[str, str]:
@@ -162,8 +168,8 @@ class Variable:
     @property
     def sets_parsing_hierarchy(self) -> Dict[str, str]:
         return {
-            **self.coordinates_info['intra'],
             **self.coordinates_info['inter'],
+            **self.coordinates_info['intra'],
         }
 
     @property
@@ -183,7 +189,7 @@ class Variable:
             all_coordinates.update(coordinates)
         return all_coordinates
 
-    def none_data_coordinates(self, row: int) -> Dict[str, Any]:
+    def none_data_coordinates(self, row: int) -> Dict[str, Any] | None:
         """Checks if there are None data values in cvxpy variables and returns
         the related coordinates (row in Variable.data and related hierarchy 
         coordinates).
@@ -326,7 +332,7 @@ class Variable:
                 suitable for creating the constant.
         """
         util.validate_selection(
-            valid_selections=constants._ALLOWED_CONSTANTS.keys(),
+            valid_selections=list(constants._ALLOWED_CONSTANTS.keys()),
             selection=value_type,
         )
 
@@ -344,6 +350,9 @@ class Variable:
             else:
                 msg = 'Summation vector must be a vector (one dimension). ' \
                     'Check variable shape.'
+
+        elif value_type == 'arange':
+            return factory_function(self.shape_size)
 
         elif value_type == 'lower_triangular':
             if self.is_square:

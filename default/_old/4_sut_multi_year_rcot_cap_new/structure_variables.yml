@@ -1,0 +1,93 @@
+# variables of the model
+
+# table_key:
+#     name: table_name
+#     type: table_type
+#     coordinates: [a, b, c, d]
+#     variables_info:
+#         var_key_1:
+#             rows:
+#                 set: a
+#                 set_categories: [a_1a, a_2b]
+#             cols:
+#                 set: b
+
+# -----------------------------------------------------------------------------
+# exogenous variables
+
+ex:
+    name: flow by tech variable, exogenous
+    type: exogenous
+    coordinates: [case, years, technologies, flows]
+    variables_info:
+        # all values in the table
+        ex_tf:
+            rows: 
+                set: technologies
+            cols:
+                set: flows
+        # selecting all techs and flows but for a sub set of years (intra-problem-set)
+        ex_tf_y:
+            intra:
+                set: years
+                set_categories: warm-up
+            rows: 
+                set: technologies
+            cols:
+                set: flows
+        # selecting one category for both rows and cols
+        ex_tf_1:
+            rows: 
+                set: technologies
+                set_categories: Supply
+            cols:
+                set: flows
+                set_categories: Physical
+        # filtering variable based on a double category
+        ex_tf_2:
+            rows: 
+                set: technologies
+                set_categories: [Supply, Non-Renewable]
+            cols:
+                set: flows
+        
+
+
+# -----------------------------------------------------------------------------
+# endogenous variables
+
+en:
+    name: flow by tech variable, endogenous
+    type: endogenous
+    coordinates: [case, years, technologies, flows]
+    variables_info:
+        # all values in the table
+        en_tf:
+            rows: 
+                set: technologies
+            cols:
+                set: flows
+        # selecting all techs and flows but for a sub set of years (intra-problem-set)
+        en_tf_y:
+            intra:
+                set: years
+                set_categories: warm-up
+            rows: 
+                set: technologies
+            cols:
+                set: flows
+        # selecting one category for both rows and cols
+        en_tf_1:
+            rows: 
+                set: technologies
+                set_categories: Supply
+            cols:
+                set: flows
+                set_categories: Physical
+        # filtering variable based on a double category
+        en_tf_2:
+            rows: 
+                set: technologies
+                set_categories: [Supply, Non-Renewable]
+            cols:
+                set: flows

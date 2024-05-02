@@ -10,6 +10,7 @@ import pandas as pd
 
 from esm.log_exc import exceptions as exc
 from esm.log_exc.logger import Logger
+from esm.support import util
 
 
 class FileManager:
@@ -17,14 +18,17 @@ class FileManager:
     def __init__(
         self,
         logger: Logger,
-        xls_engine: str = 'openpyxl',
+        xls_engine: Optional[str] = None,
     ) -> None:
 
         self.logger = logger.getChild(__name__)
 
-        self.xls_engine = xls_engine
+        if not xls_engine:
+            self.xls_engine: str = 'openpyxl'
+        else:
+            self.xls_engine: str = xls_engine
 
-        self.logger.info(f"'{self}' object generated.")
+        self.logger.debug(f"'{self}' object generated.")
 
     def __repr__(self):
         class_name = type(self).__name__
@@ -69,10 +73,12 @@ class FileManager:
             dir_path: Path,
             force_erase: bool = False,
     ) -> bool:
-        """This method erases a folder and its content in a given path.
+        """This method erases a directory and its content in a given path.
 
         Args:
-            folder_path (str): path of the folder to be deleted.
+            dir_path (str): path of the directory to be deleted.
+            force_erase (bool, optional): Forcefully erase the file without
+                asking. Defaults to False.
         """
         if os.path.exists(dir_path):
             dir_name = str(dir_path).rsplit('\\', maxsplit=1)[-1]
@@ -94,7 +100,7 @@ class FileManager:
                 self.logger.error(f"Error: '{dir_name}' : {error.strerror}")
                 return False
             else:
-                self.logger.info(f"Folder '{dir_name}' have been erased.")
+                self.logger.info(f"Directory '{dir_name}' have been erased.")
                 return True
 
         else:
@@ -113,8 +119,8 @@ class FileManager:
         Args:
             file_name (str): file name to be loaded.
             file_type (str): file type (only .json or .yaml allowed)
-            dir_path (str, optional): The path to the folder where the file 
-                is located. If None, the default path of the FileManager 
+            dir_path (str, optional): The path to the folder where the file
+                is located. If None, the default path of the FileManager
                 instance is used.
 
         Raises:
@@ -146,6 +152,48 @@ class FileManager:
                 f"Could not load file '{file_name}': {str(error)}")
             return {}
 
+    def erase_file(
+            self,
+            dir_path: Path | str,
+            file_name: str,
+            force_erase: bool = False,
+            confirm: bool = True,
+    ) -> bool:
+        """Erase a file in a given path with an option to confirm before erasing.
+
+        Args:
+            dir_path (Path or str): Path of the directory of the file.
+            file_name (str): Name of the file to be erased.
+            force_erase (bool, optional): Forcefully erase the file without
+                asking. Defaults to False.
+            confirm (bool, optional): Ask for user confirmation before erasing.
+                Defaults to True.
+
+        Returns:
+            bool: True if the file was successfully erased, False otherwise.
+        """
+        file_path = Path(dir_path) / file_name
+
+        if not os.path.exists(file_path):
+            self.logger.warning(
+                f"File '{file_name}' does not exist. The file cannot be erased.")
+            return False
+
+        if confirm and not force_erase:
+            if not util.confirm_action(
+                    f"Do you really want to erase file '{file_name}'? "
+            ):
+                self.logger.debug(f"File '{file_name}' not erased.")
+                return False
+
+        try:
+            os.remove(file_path)
+            self.logger.debug(f"File '{file_name}' have been erased.")
+            return True
+        except OSError as error:
+            self.logger.error(f"Error: '{file_name}' : {error.strerror}")
+            return False
+
     def dir_files_check(
             self,
             dir_path: str | Path,
@@ -175,7 +223,7 @@ class FileManager:
             path_destination: str | Path,
             path_source: str,
             file_name: str,
-            file_new_name: str = None,
+            file_new_name: Optional[str] = None,
             force_overwrite: bool = False,
     ) -> None:
         """
@@ -257,7 +305,7 @@ class FileManager:
 
     def dict_to_excel_headers(
             self,
-            dict_name: Dict[str, List[str]],
+            dict_name: Dict[str, Any],
             excel_dir_path: Path,
             excel_file_name: str,
             writer_engine: str = 'openpyxl',
@@ -359,9 +407,9 @@ class FileManager:
     def excel_to_dataframes_dict(
             self,
             excel_file_name: str,
-            excel_file_dir_path: Path,
+            excel_file_dir_path: Path | str,
             empty_data_fill: str = '',
-            dtype: Optional[str] = None,
+            dtype: Optional[type[str]] = None,
     ) -> Dict[str, pd.DataFrame]:
         """Reading an excel file composed by multiple tabs and returning
         a dictionary with keys as tabs and tables in each tab as Pandas 

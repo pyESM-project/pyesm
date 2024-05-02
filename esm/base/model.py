@@ -2,8 +2,8 @@ from pathlib import Path
 from typing import Any
 
 from esm import constants
+from esm.log_exc import exceptions as exc
 from esm.log_exc.logger import Logger
-from esm.log_exc.exceptions import *
 from esm.support.dotdict import DotDict
 from esm.support.file_manager import FileManager
 from esm.support.pbi_manager import PBIManager
@@ -18,7 +18,7 @@ class Model:
             main_dir_path: str,
             use_existing_data: bool = False,
             multiple_input_files: bool = False,
-            log_level: str = 'debug',
+            log_level: str = 'info',
             log_format: str = 'minimal',
             sets_xlsx_file: str = 'sets.xlsx',
             input_data_dir: str = 'input_data',
@@ -34,11 +34,12 @@ class Model:
             log_format=log_format,
         )
 
-        self.logger.info(f"'{self}' object initialization...")
+        self.logger.debug(f"'{self}' object initialization...")
+        self.logger.info(
+            f"Generating '{model_dir_name}' pyESM model instance.")
 
         self.files = FileManager(logger=self.logger)
 
-        self.logger.info('Defining settings from model arguments.')
         self.settings = DotDict({
             'model_name': model_dir_name,
             'use_existing_data': use_existing_data,
@@ -48,11 +49,10 @@ class Model:
             'input_data_file': input_data_file,
             'sqlite_database_file': sqlite_database_file,
             'sqlite_database_foreign_keys': sqlite_database_foreign_keys,
+            'powerbi_report_file': powerbi_report_file,
         })
 
-        self.logger.info('Defining paths from model arguments.')
         model_dir_path = Path(main_dir_path) / model_dir_name
-
         self.paths = DotDict({
             'model_dir': model_dir_path,
             'input_data_dir': model_dir_path / input_data_dir,
@@ -77,9 +77,10 @@ class Model:
         self.pbi_tools = PBIManager(
             logger=self.logger,
             settings=self.settings,
+            paths=self.paths,
         )
 
-        self.logger.info(f"'{self}' object initialized.")
+        self.logger.debug(f"'{self}' object initialized.")
 
     def __repr__(self):
         class_name = type(self).__name__
@@ -88,9 +89,10 @@ class Model:
     def validate_model_dir(self) -> None:
         """Check if model directory and all the required setup files exist.
         """
+        # modify to check if all necessary items are there in case of use existing data
         if self.files.dir_files_check(
             dir_path=self.paths['model_dir'],
-            files_names_list=constants._SETUP_FILES.values(),
+            files_names_list=list(constants._SETUP_FILES.values()),
         ):
             self.logger.info(
                 'Model directory and required setup files validated.')
@@ -99,10 +101,10 @@ class Model:
 
         if self.settings['use_existing_data']:
             self.logger.info(
-                'Loading existing sets data and variable coordinates.')
+                'Loading existing sets data and variable coordinates to Index.')
         else:
             self.logger.info(
-                'Loading new sets data and variable coordinates.')
+                'Loading new sets data and variable coordinates to Index.')
 
         try:
             self.core.index.load_sets_data_to_index(
@@ -113,56 +115,80 @@ class Model:
                 "missing. Set 'use_existing_data' to False to " \
                 "generate a new settings file."
             self.logger.error(msg)
-            raise SettingsError(msg)
+            raise exc.SettingsError(msg)
 
         self.core.index.load_coordinates_to_data_index()
-        self.core.index.load_coordinates_to_variables_index()
+        self.core.index.load_all_coordinates_to_variables_index()
+        self.core.index.filter_coordinates_in_variables_index()
         self.core.index.map_vars_aggregated_dims()
-        self.core.index.identify_child_variables()
 
         if self.settings['sqlite_database_foreign_keys']:
             self.core.index.fetch_foreign_keys_to_data_tables()
 
-    def initialize_blank_database(self) -> None:
+    def initialize_blank_data_structure(self) -> None:
+        sqlite_db_name = self.settings['sqlite_database_file']
+
         if self.settings['use_existing_data']:
             self.logger.info(
-                "Relying on existing SQL database "
-                f"'{self.settings['sqlite_database_file']}'.")
+                "Relying on existing SQLite database and input excel file/s.")
             return
 
-        self.logger.info(
-            'Generating blank SQLite database and excel input files.')
+        if Path(self.paths['sqlite_database']).exists():
+            self.logger.info(f"Database '{sqlite_db_name}' already exists.")
 
-        self.core.database.load_sets_to_database()
-        self.core.database.generate_blank_data_sql_tables()
-        self.core.database.sets_data_to_vars_sql_tables()
+            erased = self.files.erase_file(
+                dir_path=self.paths['model_dir'],
+                file_name=sqlite_db_name,
+                force_erase=False,
+                confirm=True,
+            )
+
+            if erased:
+                self.logger.info(
+                    f"Erasing SQLite database '{sqlite_db_name}'. Generating "
+                    "new database and excel input file/s.")
+            else:
+                self.logger.info(
+                    f"Relying on existing SQLite database '{sqlite_db_name}' "
+                    "and on existing input excel file/s.")
+                return
+        else:
+            self.logger.info(
+                f"Generating new SQLite database '{sqlite_db_name}' and "
+                "input excel file/s.")
+
+        self.core.database.create_blank_sqlite_database()
+        self.core.database.load_sets_to_sqlite_database()
+        self.core.database.generate_blank_sqlite_data_tables()
+        self.core.database.sets_data_to_sql_data_tables()
         self.core.database.generate_blank_data_input_files()
 
-    def load_data_files_to_database(
+    def load_exogenous_data_to_sqlite_database(
             self,
             operation: str = 'update',
             force_overwrite: bool = False,
     ) -> None:
         self.logger.info('Loading input data to SQLite database.')
         self.core.database.load_data_input_files_to_database(
-            operation,
-            force_overwrite
+            operation=operation,
+            force_overwrite=force_overwrite,
         )
-        # to be completed
+        # to be completed by automatically filling data
         self.core.database.empty_data_completion(operation)
 
     def initialize_problems(
             self,
             force_overwrite: bool = False,
     ) -> None:
-        self.logger.info('Initializing numerical problems.')
+        self.logger.info(
+            'Loading symbolic problem, initializing numerical problems.')
         self.core.initialize_problems_variables()
         self.core.data_to_cvxpy_exogenous_vars()
         self.core.define_numerical_problems(force_overwrite)
 
     def run_model(
             self,
-            solver: str = 'GUROBI',
+            solver: str = 'SCIPY',
             verbose: bool = True,
             **kwargs: Any,
     ) -> None:
@@ -187,12 +213,14 @@ class Model:
             force_overwrite: bool = False,
     ) -> None:
         self.logger.info(f"Updating SQLite database and initialize problems.")
-        self.load_data_files_to_database(operation, force_overwrite)
+        self.load_exogenous_data_to_sqlite_database(operation, force_overwrite)
         self.initialize_problems(force_overwrite)
 
-    def generate_pbi_report(self, file_name: str = 'dataset.pbix') -> None:
-        self.logger.info('Generating PowerBI report.')
-        self.pbi_tools.generate_powerbi_report(file_name)
+    def generate_pbi_report(self) -> None:
+        self.logger.info(
+            "Generating PowerBI report "
+            f"'{self.settings['powerbi_report_file']}'.")
+        self.pbi_tools.generate_powerbi_report()
 
     def erase_model(self) -> None:
         self.logger.warning(f"Erasing model {self.settings['model_name']}.")

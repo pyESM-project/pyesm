@@ -1,6 +1,6 @@
 import pprint as pp
 from pathlib import Path
-from typing import Dict, List, Any, Literal
+from typing import Dict, List, Any, Literal, Optional
 
 import itertools as it
 import pandas as pd
@@ -10,14 +10,13 @@ from esm.support.file_manager import FileManager
 from esm.log_exc.logger import Logger
 
 
-default_models_path = 'default'
-
-
 def create_model_dir(
     model_dir_name: str,
     main_dir_path: str,
-    default_model: str = None,
+    default_model: Optional[str] = None,
     force_overwrite: bool = False,
+    export_tutorial: bool = False,
+    default_files_prefix: str = 'template_'
 ):
     """
     Create a directory structure for the generation of Model instances. 
@@ -32,6 +31,9 @@ def create_model_dir(
             Defaults to None.
         force_overwrite (bool, optional): if True, avoid asking permission to 
             overwrite existing files/directories. Defaults to False.
+        export_tutorial (bool, optional): if True, exports the tutorial jupyter 
+            notebook with guidance for generating and solving pyesm models. 
+            Default to False.
     """
 
     files = FileManager(Logger())
@@ -45,34 +47,45 @@ def create_model_dir(
 
     files.create_dir(model_dir_path, force_overwrite)
 
+    if export_tutorial:
+        file_name = constants._TUTORIAL_FILE_NAME
+        files.copy_file_to_destination(
+            path_source=constants._DEFAULT_MODELS_DIR_PATH,
+            path_destination=model_dir_path,
+            file_name=default_files_prefix + file_name,
+            file_new_name=file_name,
+            force_overwrite=True,
+        )
+
     if default_model is None:
+        files.logger.info(f"Generating model '{model_dir_name}' directory.")
+
         for file_name in constants._SETUP_FILES.values():
             files.copy_file_to_destination(
                 path_destination=model_dir_path,
-                path_source=default_models_path,
-                file_name='dft_'+file_name,
+                path_source=constants._DEFAULT_MODELS_DIR_PATH,
+                file_name=default_files_prefix+file_name,
                 file_new_name=file_name,
                 force_overwrite=force_overwrite,
             )
 
-        files.logger.info(f"Directory of model '{model_dir_name}' generated.")
-
     else:
+        files.logger.info(
+            f"Directory of model '{model_dir_name}' "
+            f"generated based on default model '{default_model}'.")
+
         validate_selection(
-            valid_selections=constants._TEMPLATE_MODELS,
+            valid_selections=list(constants._DEFAULT_MODELS_LIST),
             selection=default_model)
 
-        template_dir_path = Path(default_models_path) / default_model
+        template_dir_path = \
+            Path(constants._DEFAULT_MODELS_DIR_PATH) / default_model
 
         files.copy_all_files_to_destination(
             path_source=template_dir_path,
             path_destination=model_dir_path,
             force_overwrite=force_overwrite,
         )
-
-        files.logger.info(
-            f"Directory of model '{model_dir_name}' "
-            f"generated based on default model '{default_model}'.")
 
 
 def prettify(item: dict) -> None:
@@ -142,6 +155,19 @@ def validate_dict_structure(
     return True
 
 
+def confirm_action(message: str) -> bool:
+    """Ask the user to confirm an action.
+
+    Args:
+        message (str): Confirmation message to display.
+
+    Returns:
+        bool: True if the user confirms, False otherwise.
+    """
+    response = input(f"{message} (y/[n]): ").lower()
+    return response == 'y'
+
+
 def find_dict_depth(item: dict) -> int:
     """Find and return the depth of a generic dictionary
 
@@ -181,7 +207,7 @@ def generate_dict_with_none_values(item: dict) -> dict:
 
 def pivot_dict(
         data_dict: Dict,
-        order_list: List = None,
+        order_list: Optional[List] = None,
 ) -> Dict:
     """Pivot a dictionary of lists (arbitrary number of keys and items in each 
     list), transforming it into a nested dictionary with keys equal to items of 
@@ -226,7 +252,7 @@ def pivot_dict(
 
 def unpivot_dict_to_dataframe(
         data_dict: Dict[str, List[str]],
-        key_order: List[str] = None,
+        key_order: Optional[List[str]] = None,
 ) -> pd.DataFrame:
     """Generates a Pandas DataFrame by unpivoting content of a dictionary of 
     lists with generic number of items. User can unpivot just a subset of 
@@ -335,7 +361,7 @@ def merge_series_to_dataframe(
 
 def check_dataframes_equality(
         df_list: List[pd.DataFrame],
-        skip_columns: List[str] = None,
+        skip_columns: Optional[List[str]] = None,
         rows_order_matters: bool = False,
 ) -> bool:
     """Check the equality of multiple DataFrames while optionally skipping 
@@ -372,7 +398,7 @@ def check_dataframes_equality(
 
 def check_dataframe_columns_equality(
     df_list: List[pd.DataFrame],
-    skip_columns: List[str] = None,
+    skip_columns: Optional[List[str]] = None,
 ) -> bool:
     """Check the equality of column headers in multiple DataFrames while 
     optionally skipping specified columns.
@@ -407,7 +433,7 @@ def add_column_to_dataframe(
         dataframe: pd.DataFrame,
         column_header: str,
         column_values: Any = None,
-        column_position: int = None,
+        column_position: Optional[int] = None,
 ) -> None:
     """Inserts a new column into the provided DataFrame at the specified 
     position or at the end if no position is specified.
@@ -528,14 +554,74 @@ def filter_dict_by_matching_value_content(
     return result_dict
 
 
-def compare_dicts_ignoring_order(
-        dict1: Dict[str, List[Any]],
-        dict2: Dict[str, List[Any]],
-) -> bool:
+def filter_dataframe(
+        df_to_filter: pd.DataFrame,
+        filter_dict: Dict[str, List[str]],
+        reorder_columns_as_dict_keys: bool = False,
+        reorder_rows_based_on_filter: bool = False,
+) -> pd.DataFrame:
+    """
+    Filters a DataFrame based on a dictionary identifying dataframe columns 
+    and the related items to be filtered.
 
-    if set(dict1.keys()) != set(dict2.keys()):
-        return False
-    for key in dict1:
-        if sorted(dict1[key]) != sorted(dict2[key]):
+    Args:
+        df_to_filter (pd.DataFrame): The DataFrame to filter.
+        filter_dict (dict): A dictionary where keys are dataframe column names 
+            and values are lists of strings that the filtered dictionary 
+            columns will include.
+        reorder_columns_as_dict_keys (bool): If True, reorder the filtered
+            dataframe columns according to the order of parsed dictionary
+            keys. Default to False.
+
+    Returns:
+        pd.DataFrame: A DataFrame filtered based on the specified column 
+            criteria.
+    """
+    combined_mask = pd.Series([True] * len(df_to_filter))
+
+    for column, values in filter_dict.items():
+
+        if column in df_to_filter.columns:
+            current_mask = df_to_filter[column].isin(values)
+            combined_mask &= current_mask
+
+    filtered_df = df_to_filter.loc[combined_mask]
+
+    if reorder_columns_as_dict_keys:
+        filtered_df = filtered_df[list(filter_dict.keys())]
+
+    if reorder_rows_based_on_filter:
+        for column, order in filter_dict.items():
+            filtered_df[column] = pd.Categorical(
+                filtered_df[column],
+                categories=order,
+                ordered=True,
+            )
+            sort_columns = [
+                col for col in filter_dict if col in filtered_df.columns]
+            filtered_df = filtered_df.sort_values(by=sort_columns)
+
+    return filtered_df
+
+
+def compare_dicts_ignoring_order(
+        *dicts: Dict[str, List[Any]]
+) -> bool:
+    """
+    Compares any number of dictionaries to see if they are the same, ignoring 
+    the order of items in the lists which are the values of the dictionaries.
+    """
+    if len(dicts) < 2:
+        return True
+
+    reference = dicts[0]
+    ref_keys = set(reference.keys())
+
+    for d in dicts[1:]:
+        if set(d.keys()) != ref_keys:
             return False
+        for key in ref_keys:
+            if sorted(d[key]) != sorted(reference[key]):
+                return False
+
     return True

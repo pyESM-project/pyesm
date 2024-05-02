@@ -1,15 +1,16 @@
 from typing import Any, Dict
 from pathlib import Path
 
-import pandas as pd
-
+from esm.base.data_table import DataTable
 from esm.base.database import Database
 from esm.base.index import Index, Variable
 from esm.base.problem import Problem
 from esm.log_exc.logger import Logger
+from esm.log_exc import exceptions as exc
 from esm import constants
+from esm.support import util
 from esm.support.file_manager import FileManager
-from esm.support.sql_manager import SQLManager, connection
+from esm.support.sql_manager import SQLManager, db_handler
 
 
 class Core:
@@ -23,7 +24,7 @@ class Core:
     ) -> None:
 
         self.logger = logger.getChild(__name__)
-        self.logger.info(f"'{self}' object initialization...")
+        self.logger.debug(f"'{self}' object initialization...")
 
         self.files = files
         self.settings = settings
@@ -58,43 +59,58 @@ class Core:
             index=self.index
         )
 
-        self.logger.info(f"'{self}' initialized.")
+        self.logger.debug(f"'{self}' initialized.")
 
     def __repr__(self):
         class_name = type(self).__name__
         return f'{class_name}'
 
     def initialize_problems_variables(self) -> None:
-        self.logger.info(
-            "Initialize variables dataframes "
-            "(cvxpy objects, filters dictionaries).")
+        self.logger.debug(
+            "Generating data structures for endogenous data tables "
+            "(cvxpy objects, filters dict for data tables).")
 
-        for var_name, variable in self.index.variables.items():
+        # generate dataframes and cvxpy var for whole endogenous data tables
+        for data_table_key, data_table in self.index.data.items():
+            data_table: DataTable
+
+            if data_table.type == 'endogenous':
+
+                self.logger.debug(
+                    "Generating variable dataframe and cvxpy variable "
+                    f"for endogenous data table '{data_table_key}'.")
+
+                data_table.generate_coordinates_dataframe()
+                data_table.cvxpy_var = self.problem.create_cvxpy_variable(
+                    type=data_table.type,
+                    shape=[data_table.table_length, 1],
+                    name=data_table_key,
+                )
+
+        # generating variables dataframes with cvxpy var and filters dictionary
+        # (endogenous vars are sliced from existing cvxpy var in data table
+        self.logger.debug(
+            "Generating data structures for all variables and constants.")
+
+        for var_key, variable in self.index.variables.items():
             variable: Variable
 
             if variable.type == 'constant':
                 variable.data = self.problem.generate_constant_data(
-                    variable_name=var_name,
+                    variable_name=var_key,
                     variable=variable
                 )
             else:
                 variable.data = self.problem.generate_vars_dataframe(
-                    variable_name=var_name,
+                    variable_name=var_key,
                     variable=variable
                 )
-
-        # way 1: avoid defining cvxpy var for sliced endogenous variables
-        # for var_name, variable in self.index.variables.items():
-        #     variable: Variable
-        #     if variable.type == 'endogenous' and \
-        #             variable.sliced_from:
-        #         pass
 
     def define_numerical_problems(
             self,
             force_overwrite: bool = False,
     ) -> None:
-        self.logger.info(
+        self.logger.debug(
             "Load symbolic problem, initialize dataframes with cvxpy problems ")
 
         self.problem.load_symbolic_problem_from_file(force_overwrite)
@@ -102,7 +118,7 @@ class Core:
 
     def solve_numerical_problems(
             self,
-            solver: str = None,
+            solver: str = "",
             verbose: bool = True,
             **kwargs: Any,
     ) -> None:
@@ -112,15 +128,22 @@ class Core:
             **kwargs
         )
 
-    @connection
     def data_to_cvxpy_exogenous_vars(self) -> None:
-        self.logger.info(
+        self.logger.debug(
             f"Fetching data from '{self.settings['sqlite_database_file']}' "
             "to cvxpy exogenous variables.")
 
-        for var_key, variable in self.index.variables.items():
+        with db_handler(self.sqltools):
+            for var_key, variable in self.index.variables.items():
 
-            if isinstance(variable, Variable) and variable.type == 'exogenous':
+                if not isinstance(variable, Variable):
+                    msg = "Passed item is not a 'Variable' class instance."
+                    self.logger.error(msg)
+                    raise TypeError(msg)
+
+                if variable.type != 'exogenous':
+                    continue
+
                 self.logger.debug(
                     f"Fetching data from table '{var_key}' "
                     "to cvxpy exogenous variable.")
@@ -143,43 +166,45 @@ class Core:
                         data=pivoted_data
                     )
 
-    @connection
     def cvxpy_endogenous_data_to_database(self, operation: str) -> None:
-        self.logger.info(
-            "Exporting data from cvxpy endogenous variables "
+        self.logger.debug(
+            "Exporting data from cvxpy endogenous variable (in data table) "
             f"to SQLite database '{self.settings['sqlite_database_file']}' ")
 
-        for var_key, variable in self.index.variables.items():
+        with db_handler(self.sqltools):
+            for data_table_key, data_table in self.index.data.items():
+                data_table: DataTable
 
-            if isinstance(variable, Variable) and variable.type == 'endogenous':
-                self.logger.debug(
-                    f"Exporting data from cvxpy variable '{var_key}' "
-                    f"to the related SQLite table '{variable.related_table}'.")
+                if not isinstance(data_table, DataTable):
+                    msg = "Passed item is not a 'DataTable' class instance."
+                    self.logger.error(msg)
+                    raise TypeError(msg)
 
-                cvxpy_var_data = pd.DataFrame()
-
-                for row in variable.data.index:
-
-                    none_coord = variable.none_data_coordinates(row)
-
-                    if none_coord:
-                        self.logger.debug(
-                            f"SQLite table '{var_key}': "
-                            f"no data available for {none_coord}.")
-                        continue
-
-                    cvxpy_var_data = pd.concat(
-                        (cvxpy_var_data, variable.reshaping_variable_data(row))
-                    )
-
-                if cvxpy_var_data.empty:
-                    self.logger.warning(
-                        "No data available in cvxpy variable "
-                        f"'{var_key}'")
+                if data_table.type != 'endogenous':
                     continue
 
+                self.logger.debug(
+                    "Exporting data from cvxpy variable to the related "
+                    f"data table '{data_table_key}'. ")
+
+                data_table_dataframe = data_table.coordinates_dataframe
+                values_headers = constants._STD_VALUES_FIELD['values'][0]
+                util.add_column_to_dataframe(
+                    dataframe=data_table_dataframe,
+                    column_header=values_headers,
+                )
+
+                cvxpy_var_data = data_table.cvxpy_var.value
+
+                if cvxpy_var_data is None or len(cvxpy_var_data) == 0:
+                    self.logger.warning(
+                        f"No data available in cvxpy variable '{data_table_key}'")
+                    continue
+
+                data_table_dataframe[values_headers] = cvxpy_var_data
+
                 self.sqltools.dataframe_to_table(
-                    table_name=variable.related_table,
-                    dataframe=cvxpy_var_data,
+                    table_name=data_table_key,
+                    dataframe=data_table_dataframe,
                     operation=operation,
                 )

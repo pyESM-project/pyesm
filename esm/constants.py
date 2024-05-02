@@ -1,7 +1,7 @@
 import cvxpy as cp
 import numpy as np
 
-from esm.support import util_constants
+from esm.support import util_functions
 
 # essenstial model config files
 _SETUP_FILES = {
@@ -10,9 +10,19 @@ _SETUP_FILES = {
     2: 'problem.yml',
 }
 
+_TUTORIAL_FILE_NAME = 'tutorial.ipynb'
+
+_DEFAULT_MODELS_DIR_PATH = 'default'
+_DEFAULT_MODELS_LIST = [
+    '1_sut_multi_year',
+    '2_sut_multi_year_rcot',
+    '3_sut_multi_year_rcot_cap',
+    '4_sut_multi_year_rcot_cap_dis',
+]
+
 # headers for table related to sets and data
-_STD_TABLE_HEADER = 'name'
-_STD_CATEGORY_HEADER = 'category'
+_STD_NAME_HEADER = 'name'
+_STD_FILTERS_HEADERS = 'filters'
 _STD_AGGREGATION_HEADER = 'aggregation'
 
 # default column name-type for sets id and values fields
@@ -25,7 +35,7 @@ _FILTER_DICT_HEADER = 'filter'
 
 # default headers for problem dataframe
 _OBJECTIVE_HEADER = 'objective function'
-_CONSTRAINTS_HEADER = 'constraints'
+_CONSTRAINTS_HEADER = 'expressions'
 _PROBLEM_HEADER = 'problem'
 _PROBLEM_INFO_HEADER = 'info'
 _PROBLEM_STATUS_HEADER = 'status'
@@ -34,9 +44,8 @@ _PROBLEM_STATUS_HEADER = 'status'
 _SET_DEFAULT_STRUCTURE = {
     'symbol': str,
     'table_name': str,
-    'table_headers': dict,
-    'set_categories': dict,
     'split_problem': bool,
+    'table_structure': dict,
 }
 
 # default DataTable and Variable structures (for validation purpose)
@@ -47,6 +56,7 @@ _DATA_TABLE_DEFAULT_STRUCTURE = {
     'variables_info': dict,
 }
 _VARIABLE_DEFAULT_STRUCTURE = {
+    'intra': dict,
     'rows': dict,
     'cols': dict,
     'value': str,
@@ -57,10 +67,12 @@ _VARIABLE_DEFAULT_STRUCTURE = {
 _ALLOWED_CONSTANTS = {
     'sum_vector': (np.ones, ),  # vector of 1s
     'identity': (np.eye, ),  # identity matrix
+    # vector/matrix with a range from 1 up to dimension size
+    'arange': (util_functions.arange, ),
     # lower triangular matrix of 1s(inc. diagonal)
-    'lower_triangular': (util_constants.tril, ),
+    'lower_triangular': (util_functions.tril, ),
     # special identity matrix for rcot problems
-    'identity_rcot': (util_constants.identity_rcot, ),
+    'identity_rcot': (util_functions.identity_rcot, ),
     # 'range_vector': (np.arange, ),  # vector given a range TBD
 }
 
@@ -80,7 +92,6 @@ _ALLOWED_OPERATORS = {
     'diag': cp.diag,
     'sum': cp.sum,
     'mult': cp.multiply,
-    'tweib': util_constants.tril_weibull,
-    'vweib': util_constants.vect_weibull,
+    'weib': util_functions.weibull_distribution,
     'Minimize': cp.Minimize,
 }
