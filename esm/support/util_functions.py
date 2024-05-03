@@ -56,7 +56,7 @@ def identity_rcot(related_dims_map: pd.DataFrame) -> np.ndarray:
 
 
 def arange(
-        shape_size: Tuple[int],
+        shape_size: Tuple[int, ...],
         start_from: int = 1,
         order: str = 'F',
 ) -> np.ndarray:
@@ -65,7 +65,7 @@ def arange(
     `start_from + total_elements`.
 
     Parameters:
-        shape_size (Tuple[int]): The shape of the output array.
+        shape_size (Tuple[int, ...]): The shape of the output array.
         start_from (int, optional): The starting value for the range. 
             Defaults to 1.
         order (str, optional): The order of the reshaped array. 
@@ -78,9 +78,46 @@ def arange(
 
     total_elements = np.prod(shape_size)
     values = np.arange(start_from, start_from+total_elements)
-    reshaped_array = values.reshape(shape_size, order=order)
+    reshaped_array = np.reshape(a=values, newshape=shape_size, order=order)
 
     return reshaped_array
+
+
+def matrix_inverse(matrix: cp.Parameter | cp.Expression) -> cp.Parameter:
+    """
+    Calculates the inverse of a square matrix.
+
+    Args:
+        matrix (cp.Parameter | cp.Expression): The matrix to calculate the 
+        inverse of.
+
+    Returns:
+        cp.Parameter: The inverse of the input matrix.
+
+    Raises:
+        ValueError: If the passed matrix values are None, or if the passed 
+            item is not a matrix, or if the passed item is not a square 
+            matrix, or if the passed matrix is singular and cannot be inverted.
+    """
+    matrix_val = matrix.value
+
+    if matrix_val is not None:
+        matrix_shape = np.shape(matrix_val)
+    else:
+        raise ValueError("Passed matrix values cannot be None.")
+
+    if len(matrix_shape) != 2:
+        raise ValueError("Passed item is not a matrix")
+
+    if matrix_shape[0] != matrix_shape[1]:
+        raise ValueError("Passed item is not a square matrix")
+
+    try:
+        inverse = np.linalg.inv(matrix_val)
+    except np.linalg.LinAlgError:
+        raise ValueError("Passed matrix is singular and cannot be inverted.")
+
+    return cp.Parameter(shape=matrix_shape, value=inverse)
 
 
 def weibull_distribution(
@@ -130,7 +167,8 @@ def weibull_distribution(
         >>> scale_param = cp.Parameter(value=np.array([1.5]))
         >>> shape_param = cp.Parameter(value=np.array([2.0]))
         >>> range_vals = cp.Constant(value=np.array([0, 1, 2, 3, 4, 5]))
-        >>> weib_dist = weibull_distribution(scale_param, shape_param, range_vals, 1)
+        >>> weib_dist = weibull_distribution(scale_param, shape_param, 
+                range_vals, 1)
         >>> print(weib_dist.value)
         [[0.  , 0.25, 0.49, 0.69, 0.84, 0.94]]
     """
