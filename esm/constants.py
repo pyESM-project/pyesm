@@ -88,6 +88,7 @@ _ALLOWED_OPERATORS = {
     '(': '(',
     ')': ')',
     ',': ',',
+    '**': '**',
     'tran': cp.transpose,
     'diag': cp.diag,
     'sum': cp.sum,
