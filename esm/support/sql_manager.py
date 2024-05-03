@@ -1,5 +1,18 @@
-from functools import wraps
-from typing import List, Dict, Any, Optional, Tuple
+"""
+sql_manager.py
+
+@author: Matteo V. Rocco
+@institution: Politecnico di Milano
+
+This module contains the SQLManager class, which is designed to manage SQLite 
+database interactions for the package relying on the built-in sqlite3 functions. 
+It handles database connections, executes SQLite queries, and exports data to 
+Excel files using specified engines. The class provides methods to open and close 
+database connections, execute queries with various options, and perform Excel 
+exports.
+"""
+
+from typing import List, Dict, Any, Literal, Optional, Tuple
 from pathlib import Path
 import contextlib
 import sqlite3
@@ -8,18 +21,98 @@ import pandas as pd
 
 from esm.log_exc import exceptions as exc
 from esm.log_exc.logger import Logger
-from esm import constants
+from esm.constants import Constants
 from esm.support import util
 
 
 class SQLManager:
+    """
+    A class designed to manage SQLite database interactions and facilitate data 
+    export to Excel files.     
+    This class handles all database operations including opening and closing 
+    connections, executing SQL queries, and managing database transactions. 
+    It also provides methods for exporting data directly to Excel using specified 
+    Excel writing engines.
+
+    Attributes:
+        logger (Logger): An instance of a logging class used to log messages 
+            in different severity levels.
+        database_sql_path (Path): The file system path to the SQLite database file.
+        database_name (str): A human-readable identifier for the database used 
+            in logging.
+        xls_engine (Literal['openpyxl', 'xlsxwriter']): The engine to use for 
+            exporting data to Excel. Currently supports 'openpyxl' and 'xlsxwriter'.
+        connection (Optional[sqlite3.Connection]): The SQLite database connection 
+            object, which is None until the database is connected.
+        cursor (Optional[sqlite3.Cursor]): The cursor object for executing SQL 
+            queries, None if the database is not connected.
+        foreign_keys_enabled (Optional[bool]): Indicates whether SQLite foreign 
+            key constraints are actively enforced in the database session.
+
+    Methods:
+        open_connection(): Opens a connection to the SQLite database and 
+            initializes a cursor.
+        close_connection(): Closes the existing database connection and 
+            nullifies the cursor.
+        execute_query(query, params, many, fetch, commit): Executes a SQL query 
+            using the provided parameters.
+        check_table_exists(table_name): Checks if the specified table exists 
+            in the database.
+        get_existing_tables_names(): Retrieves a list of table names existing 
+            in the database.
+        table_to_excel(excel_filename, excel_dir_path, table_name): Exports the 
+            contents of a database table to an Excel file.
+        get_primary_column_name(table_name): Retrieves the primary key column 
+            name from the specified table.
+        drop_table(table_name): Deletes the specified table from the database.
+        get_table_fields(table_name): Fetches and returns the fields and their 
+            data types of the specified table.
+        create_table(table_name, table_fields, foreign_keys): Creates a new 
+            table with the given specifications.
+        switch_foreign_keys(switch): Enables or disables foreign key enforcement 
+            in the database.
+        add_table_column(table_name, column_name, column_type, default_value, 
+            commit): Adds a new column to an existing table.
+        count_table_data_entries(table_name): Counts and returns the number of 
+            entries in the specified table.
+        delete_all_table_entries(table_name, force_operation): Deletes all 
+            entries from the specified table.
+        validate_table_dataframe_headers(table_name, dataframe, check_id_field): 
+            Validates that DataFrame headers match the table schema.
+        add_primary_keys_from_table(table_name, dataframe): Adds primary key 
+            values from a table to a DataFrame.
+        table_to_dataframe(table_name): Converts the entire contents of a 
+            table into a pandas DataFrame.
+        dataframe_to_table(table_name, dataframe, operation, force_operation): 
+            Inserts or updates data from a DataFrame into a table.
+        filtered_table_to_dataframe(table_name, filters_dict): Returns a DataFrame 
+            based on filtered data from a table.
+        get_related_table_keys(child_column_name, parent_table_name, 
+            parent_table_fields): Retrieves related keys from a child table 
+            based on parent table filters.
+        compare_with_other_database(): Compare two SQLite databases.
+
+    Examples:
+        To use this class, instantiate it with a logger and database details, 
+        then use its methods to manage database operations:
+        >>> logger = Logger()
+        >>> sql_manager = SQLManager(logger, Path('/path/to/database.db'), 
+                'MyDatabase', 'openpyxl')
+        >>> sql_manager.open_connection()
+        >>> sql_manager.execute_query("SELECT * FROM my_table")
+        >>> sql_manager.close_connection()
+
+    Note:
+        This class assumes that a valid SQLite database path is provided and 
+        that the database file is accessible and correctly formatted.
+    """
 
     def __init__(
         self,
         logger: Logger,
         database_path: Path,
         database_name: str,
-        xls_engine: str = 'openpyxl',
+        xls_engine: Literal['openpyxl', 'xlswriter'] = 'openpyxl',
     ) -> None:
         """Initialize the SQLManager.
 
@@ -33,12 +126,12 @@ class SQLManager:
         self.logger = logger.getChild(__name__)
         self.logger.debug(f"'{self}' object generation.")
 
-        self.database_sql_path = database_path
-        self.database_name = database_name
+        self.database_sql_path: Path = database_path
+        self.database_name: str = database_name
         self.xls_engine = xls_engine
 
-        self.connection = None
-        self.cursor = None
+        self.connection: Optional[sqlite3.Connection] = None
+        self.cursor: Optional[sqlite3.Cursor] = None
         self.foreign_keys_enabled = None
 
     def __repr__(self):
@@ -65,7 +158,7 @@ class SQLManager:
                 self.cursor = self.connection.cursor()
                 self.logger.debug(
                     f"Connection to '{self.database_name}' opened.")
-            except sqlite3.Error as error:
+            except sqlite3.Error:
                 self.logger.error(
                     f"Error opening connection to '{self.database_name}'")
                 raise
@@ -93,7 +186,7 @@ class SQLManager:
                 self.connection = None
                 self.logger.debug(
                     f"Connection to '{self.database_name}' closed.")
-            except sqlite3.Error as error:
+            except sqlite3.Error:
                 self.logger.error(
                     f"Error closing connection to '{self.database_name}'")
                 raise
@@ -106,7 +199,7 @@ class SQLManager:
     def execute_query(
             self,
             query: str,
-            params: tuple = (),
+            params: tuple | List[tuple] = (),
             many: bool = False,
             fetch: bool = False,
             commit: bool = True,
@@ -132,6 +225,12 @@ class SQLManager:
             OperationalError: If there is an operational error during query execution.
             IntegrityError: If there is an integrity error during query execution.
         """
+
+        if self.connection is None or self.cursor is None:
+            msg = "Database connection or cursor not initialized."
+            self.logger.error(msg)
+            raise exc.OperationalError(msg)
+
         try:
             if many:
                 self.cursor.executemany(query, params)
@@ -143,16 +242,16 @@ class SQLManager:
 
             if fetch:
                 return self.cursor.fetchall()
-            else:
-                return None
 
         except sqlite3.OperationalError as op_error:
-            self.logger.error(op_error)
-            raise exc.OperationalError(op_error)
+            msg = str(op_error)
+            self.logger.error(msg)
+            raise exc.OperationalError(msg)
 
         except sqlite3.IntegrityError as int_error:
-            self.logger.error(int_error)
-            raise exc.IntegrityError(int_error)
+            msg = str(int_error)
+            self.logger.error(msg)
+            raise exc.IntegrityError(msg)
 
     @property
     def get_existing_tables_names(self) -> List[str]:
@@ -164,7 +263,9 @@ class SQLManager:
         """
         query = "SELECT name FROM sqlite_master WHERE type='table'"
         self.execute_query(query)
-        tables = self.cursor.fetchall()
+
+        if self.cursor:
+            tables = self.cursor.fetchall()
 
         return [table[0] for table in tables]
 
@@ -197,7 +298,9 @@ class SQLManager:
         """
         query = f"PRAGMA table_info({table_name})"
         self.execute_query(query)
-        table_info = self.cursor.fetchall()
+
+        if self.cursor:
+            table_info = self.cursor.fetchall()
 
         primary_key_columns = [
             column[1] for column in table_info if column[5] == 1
@@ -245,9 +348,14 @@ class SQLManager:
         query = f"PRAGMA table_info('{table_name}')"
         result = self.execute_query(query, fetch=True)
 
-        table_fields = {}
-        table_fields['labels'] = [row[1] for row in result]
-        table_fields['types'] = [row[2] for row in result]
+        if result is not None:
+            table_fields = {}
+            table_fields['labels'] = [row[1] for row in result]
+            table_fields['types'] = [row[2] for row in result]
+        else:
+            msg = f"Table fields missing in table '{table_name}'"
+            self.logger.warning(msg)
+            raise exc.MissingDataError(msg)
 
         return table_fields
 
@@ -374,7 +482,7 @@ class SQLManager:
             self.logger.debug(
                 f"SQLite table '{table_name}' - column '{column_name}' added.")
 
-        except Exception as msg:
+        except sqlite3.Error as msg:
             self.logger.error(f"Error adding column to table: {msg}")
 
     def count_table_data_entries(self, table_name: str) -> int:
@@ -388,7 +496,13 @@ class SQLManager:
         """
         query = f'SELECT COUNT(*) FROM {table_name}'
         self.execute_query(query)
-        return self.cursor.fetchone()[0]
+
+        if self.cursor:
+            return self.cursor.fetchone()[0]
+
+        msg = "Database cursor not initialized."
+        self.logger.error(msg)
+        raise exc.OperationalError(msg)
 
     def delete_all_table_entries(
             self,
@@ -484,7 +598,7 @@ class SQLManager:
 
         table_df = self.table_to_dataframe(table_name)
         primary_key_field = self.get_primary_column_name(table_name)
-        values_field = constants._STD_VALUES_FIELD['values'][0]
+        values_field = Constants.get('_STD_VALUES_FIELD')['values'][0]
         cols_common = [
             col for col in table_df.columns
             if col not in [primary_key_field, values_field]
@@ -518,11 +632,12 @@ class SQLManager:
         """
         self.check_table_exists(table_name)
         table_fields = self.get_table_fields(table_name)
+        table_columns_labels = list(table_fields['labels'])
 
         query = f"SELECT * FROM {table_name}"
         table = self.execute_query(query, fetch=True)
 
-        return pd.DataFrame(data=table, columns=table_fields['labels'])
+        return pd.DataFrame(data=table, columns=table_columns_labels)
 
     def dataframe_to_table(
         self,
@@ -591,7 +706,7 @@ class SQLManager:
             data = [tuple(row) for row in dataframe.values.tolist()]
             placeholders = ', '.join(['?'] * len(table_fields))
             query = f"INSERT INTO {table_name} VALUES ({placeholders})"
-            self.execute_query(query, data, many=True)
+            self.execute_query(query=query, params=data, many=True)
 
             self.logger.debug(
                 f"SQLite table '{table_name}' - table overwritten and "
@@ -599,8 +714,8 @@ class SQLManager:
 
         elif operation == 'update' and num_entries > 0:
 
-            values_field = constants._STD_VALUES_FIELD['values'][0]
-            id_field = constants._STD_ID_FIELD['id'][0]
+            values_field = Constants.get('_STD_VALUES_FIELD')['values'][0]
+            id_field = Constants.get('_STD_ID_FIELD')['id'][0]
 
             dataframe_to_update = self.table_to_dataframe(table_name)
 
@@ -742,7 +857,7 @@ class SQLManager:
                 params=flattened_values
             )
         except Exception as error:
-            self.logger.error(error)
+            self.logger.error(str(error))
             raise
 
         if result.empty:
@@ -799,7 +914,7 @@ class SQLManager:
                 params=flattened_values
             )
         except Exception as error:
-            self.logger.error(error)
+            self.logger.error(str(error))
             raise
 
         column_values = result[child_column_name].tolist()
@@ -828,6 +943,11 @@ class SQLManager:
         Raises:
             sqlite3.Error: If there is an error accessing the databases.
         """
+        if self.connection is None or self.cursor is None:
+            msg = "Database connection or cursor not initialized."
+            self.logger.error(msg)
+            raise exc.OperationalError(msg)
+
         try:
             # 1. Compare table presence
             current_tables = self.get_existing_tables_names
@@ -872,25 +992,34 @@ class SQLManager:
                 return True
 
         except sqlite3.Error as e:
-            self.logger.error("Database comparison failed:", e)
+            self.logger.error(f"Database comparison failed: {e}")
             raise exc.NumericalProblemError
+
+        return False
 
 
 @contextlib.contextmanager
 def db_handler(sql_manager: SQLManager):
     """
-    A context manager for handling database connections using a SQLManager 
-    object.
+    A context manager for handling database connections and providing a cursor 
+    for database operations using a SQLManager object.
 
     Args:
         sql_manager (SQLManager): The SQLManager object used for managing 
-            the database connection.
+            the database connection and operations.
+
+    Yields:
+        cursor (sqlite3.Cursor): A cursor for executing SQL commands.
 
     Raises:
-        Any exceptions raised by the SQLManager.open_connection() method.
+        sqlite3.Error: Any exceptions raised during connection management or 
+        during SQL operations are logged and re-raised to be handled externally.
     """
     try:
         sql_manager.open_connection()
-        yield
+        yield sql_manager.cursor
+    except sqlite3.Error as e:
+        sql_manager.logger.error(f"Database error: {e}")
+        raise
     finally:
         sql_manager.close_connection()

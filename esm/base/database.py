@@ -5,7 +5,7 @@ from esm.base.data_table import DataTable
 from esm.base.index import Index
 from esm.base.set_table import SetTable
 from esm.log_exc.logger import Logger
-from esm import constants
+from esm.constants import Constants
 from esm.support import util
 from esm.support.file_manager import FileManager
 from esm.support.sql_manager import SQLManager, db_handler
@@ -97,8 +97,9 @@ class Database:
                 table_name = set_instance.table_name
                 table_fields = set_instance.table_headers
 
-                if constants._STD_ID_FIELD['id'] not in table_fields.values():
-                    table_fields = {**constants._STD_ID_FIELD, **table_fields}
+                if Constants.get('_STD_ID_FIELD')['id'] not in table_fields.values():
+                    table_fields = {
+                        **Constants.get('_STD_ID_FIELD'), **table_fields}
 
                 self.sqltools.create_table(table_name, table_fields)
 
@@ -114,12 +115,12 @@ class Database:
                 table_name = set_instance.table_name
                 dataframe = set_instance.data.copy()
 
-                if constants._STD_ID_FIELD['id'] not in \
+                if Constants.get('_STD_ID_FIELD')['id'] not in \
                         getattr(set_instance, 'table_headers').values():
 
                     util.add_column_to_dataframe(
                         dataframe=dataframe,
-                        column_header=constants._STD_ID_FIELD['id'][0],
+                        column_header=Constants.get('_STD_ID_FIELD')['id'][0],
                         column_position=0,
                         column_values=None,
                     )
@@ -181,8 +182,10 @@ class Database:
 
                 self.sqltools.add_table_column(
                     table_name=table_key,
-                    column_name=constants._STD_VALUES_FIELD['values'][0],
-                    column_type=constants._STD_VALUES_FIELD['values'][1],
+                    column_name=Constants.get('_STD_VALUES_FIELD')[
+                        'values'][0],
+                    column_type=Constants.get('_STD_VALUES_FIELD')[
+                        'values'][1],
                 )
 
     def clear_database_tables(

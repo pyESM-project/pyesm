@@ -1,7 +1,7 @@
 from typing import Any, Dict, Iterator, List, Optional, Tuple
 import pandas as pd
 
-from esm import constants
+from esm.constants import Constants
 from esm.log_exc.logger import Logger
 
 
@@ -59,14 +59,14 @@ class SetTable:
     @property
     def set_name_header(self) -> str | None:
         if self.table_headers is not None:
-            return self.table_headers[constants._STD_NAME_HEADER][0]
+            return self.table_headers[Constants.get('_STD_NAME_HEADER')][0]
         else:
             return
 
     @property
     def set_aggregation_header(self) -> str | None:
         if self.table_headers is not None:
-            aggregation_key = constants._STD_AGGREGATION_HEADER
+            aggregation_key = Constants.get('_STD_AGGREGATION_HEADER')
 
             if aggregation_key in self.table_headers:
                 return self.table_headers[aggregation_key][0]
@@ -113,9 +113,9 @@ class SetTable:
 
     def fetching_headers_and_filters(self) -> None:
 
-        name_key = constants._STD_NAME_HEADER
-        filters_key = constants._STD_FILTERS_HEADERS
-        aggregation_key = constants._STD_AGGREGATION_HEADER
+        name_key = Constants.get('_STD_NAME_HEADER')
+        filters_key = Constants.get('_STD_FILTERS_HEADERS')
+        aggregation_key = Constants.get('_STD_AGGREGATION_HEADER')
 
         # Fetching filters
         self.table_filters = self.table_structure.get(filters_key, None)

@@ -1,12 +1,12 @@
 from pathlib import Path
-from typing import Any, Dict, Iterable, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 import re
 
 import pandas as pd
 import numpy as np
 import cvxpy as cp
 
-from esm import constants
+from esm.constants import Constants
 from esm.base.data_table import DataTable
 from esm.log_exc import exceptions as exc
 from esm.log_exc.logger import Logger
@@ -18,7 +18,7 @@ from esm.base.index import Index, Variable
 
 class Problem:
 
-    allowed_operators = constants._ALLOWED_OPERATORS
+    allowed_operators = Constants.get('_ALLOWED_OPERATORS')
 
     def __init__(
             self,
@@ -50,7 +50,7 @@ class Problem:
     def create_cvxpy_variable(
         self,
         type: str,
-        shape: Tuple[int],
+        shape: Tuple[int, ...],
         name: Optional[str] = None,
         value: Optional[int | np.ndarray | np.matrix] = None,
     ) -> cp.Variable | cp.Parameter | cp.Constant:
@@ -174,8 +174,8 @@ class Problem:
         filter the sql table for fetching data.
         """
         headers = {
-            'cvxpy': constants._CVXPY_VAR_HEADER,
-            'filter': constants._FILTER_DICT_HEADER,
+            'cvxpy': Constants.get('_CVXPY_VAR_HEADER'),
+            'filter': Constants.get('_FILTER_DICT_HEADER'),
         }
 
         self.logger.debug(
@@ -261,7 +261,7 @@ class Problem:
             force_overwrite: bool = False,
     ) -> None:
 
-        problem_file_name = constants._SETUP_FILES[2]
+        problem_file_name = Constants.get('_SETUP_FILES')[2]
 
         if self.symbolic_problem is not None:
             if not force_overwrite:
@@ -408,11 +408,11 @@ class Problem:
                 "Defining numeric problems based on symbolic problem.")
 
         headers = {
-            'info': constants._PROBLEM_INFO_HEADER,
-            'objective': constants._OBJECTIVE_HEADER,
-            'constraints': constants._CONSTRAINTS_HEADER,
-            'problem': constants._PROBLEM_HEADER,
-            'status': constants._PROBLEM_STATUS_HEADER,
+            'info': Constants.get('_PROBLEM_INFO_HEADER'),
+            'objective': Constants.get('_OBJECTIVE_HEADER'),
+            'constraints': Constants.get('_CONSTRAINTS_HEADER'),
+            'problem': Constants.get('_PROBLEM_HEADER'),
+            'status': Constants.get('_PROBLEM_STATUS_HEADER'),
         }
 
         dict_to_unpivot = {}
@@ -488,7 +488,7 @@ class Problem:
     ) -> Dict[str, cp.Parameter | cp.Variable]:
 
         allowed_variables = {}
-        cvxpy_var_header = constants._CVXPY_VAR_HEADER
+        cvxpy_var_header = Constants.get('_CVXPY_VAR_HEADER')
 
         for var_key, variable in variables_set_dict.items():
             variable: Variable
@@ -541,7 +541,8 @@ class Problem:
             self,
             expression: str,
             allowed_variables: Dict[str, cp.Parameter | cp.Variable],
-            allowed_operators: Dict[str, str] = constants._ALLOWED_OPERATORS,
+            allowed_operators: Dict[str, str] = Constants.get(
+                '_ALLOWED_OPERATORS'),
     ) -> Any:
 
         local_vars = {}
@@ -675,7 +676,7 @@ class Problem:
     ) -> None:
 
         if self.numeric_problems is None or \
-                self.numeric_problems[constants._PROBLEM_HEADER].isna().all():
+                self.numeric_problems[Constants.get('_PROBLEM_HEADER')].isna().all():
             msg = "Numeric problems have to be defined first"
             self.logger.warning(msg)
             raise exc.OperationalError(msg)
@@ -696,12 +697,12 @@ class Problem:
         for problem_num in self.numeric_problems.index:
 
             problem_info = self.numeric_problems.at[
-                problem_num, constants._PROBLEM_INFO_HEADER]
+                problem_num, Constants.get('_PROBLEM_INFO_HEADER')]
 
             self.logger.info(f"Solving problem: {problem_info}.")
 
             problem = self.numeric_problems.at[
-                problem_num, constants._PROBLEM_HEADER]
+                problem_num, Constants.get('_PROBLEM_HEADER')]
 
             self.solve_problem(
                 problem=problem,
@@ -713,7 +714,7 @@ class Problem:
             problem_status = getattr(problem, 'status', None)
             self.numeric_problems.at[
                 problem_num,
-                constants._PROBLEM_STATUS_HEADER] = problem_status
+                Constants.get('_PROBLEM_STATUS_HEADER')] = problem_status
 
             self.logger.info(f"Problem status: '{problem_status}'")
 

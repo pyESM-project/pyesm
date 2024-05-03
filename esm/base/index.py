@@ -1,10 +1,9 @@
 from pathlib import Path
 from typing import Dict, List, Type
 
-from _pytest.monkeypatch import V
 import pandas as pd
 
-from esm import constants
+from esm.constants import Constants
 from esm.base.data_table import DataTable
 from esm.base.set_table import SetTable
 from esm.base.variable import Variable
@@ -25,7 +24,7 @@ class Index:
     ) -> None:
 
         self.logger = logger.getChild(__name__)
-        self.logger.debug(f"Object initialization...")
+        self.logger.debug("Object initialization...")
 
         self.files = files
         self.paths = paths
@@ -36,7 +35,7 @@ class Index:
 
         self.fetch_vars_coordinates_info()
 
-        self.logger.debug(f"Object initialized.")
+        self.logger.debug("Object initialized.")
 
     def __repr__(self):
         class_name = type(self).__name__
@@ -45,7 +44,7 @@ class Index:
     @property
     def sets_split_problem_list(self) -> Dict[str, str]:
         sets_split_problem_list = {}
-        name_header = constants._STD_NAME_HEADER
+        name_header = Constants.get('_STD_NAME_HEADER')
 
         for key, value in self.sets.items():
             if getattr(value, 'split_problem', False):
@@ -86,7 +85,7 @@ class Index:
             f"generating '{object_class.__name__}' objects.")
 
         data = self.files.load_file(
-            file_name=constants._SETUP_FILES[file_key],
+            file_name=Constants.get('_SETUP_FILES')[file_key],
             dir_path=self.paths['model_dir']
         )
 
@@ -103,35 +102,36 @@ class Index:
         else:
             msg = f"'{object_class.__name__}' data validation not successful: " \
                 f"input data must comply with default structure. " \
-                f"Check setup file: '{constants._SETUP_FILES[file_key]}'"
+                f"Check setup file: '{Constants.get('_SETUP_FILES')[file_key]}'"
             self.logger.error(msg)
             raise exc.SettingsError(msg)
 
     def load_sets_tables(self) -> Dict[str, SetTable]:
         return self._load_and_validate(
             file_key=0,
-            validation_structure=constants._SET_DEFAULT_STRUCTURE,
+            validation_structure=Constants.get('_SET_DEFAULT_STRUCTURE'),
             object_class=SetTable,
         )
 
     def load_data_tables(self) -> Dict[str, DataTable]:
         data_tables = self._load_and_validate(
             file_key=1,
-            validation_structure=constants._DATA_TABLE_DEFAULT_STRUCTURE,
+            validation_structure=Constants.get(
+                '_DATA_TABLE_DEFAULT_STRUCTURE'),
             object_class=DataTable,
         )
 
         for table in data_tables.values():
             table: DataTable
 
-            set_headers_key = constants._STD_NAME_HEADER
+            set_headers_key = Constants.get('_STD_NAME_HEADER')
             table.table_headers = {
                 set_key: self.sets[set_key].table_headers[set_headers_key]
                 for set_key in table.coordinates
             }
             table.table_headers = util.add_item_to_dict(
                 dictionary=table.table_headers,
-                item=constants._STD_ID_FIELD,
+                item=Constants.get('_STD_ID_FIELD'),
                 position=0,
             )
             table.coordinates_headers = {
@@ -154,7 +154,8 @@ class Index:
             if not all([
                 util.validate_dict_structure(
                     dictionary=var_info,
-                    validation_structure=constants._VARIABLE_DEFAULT_STRUCTURE)
+                    validation_structure=Constants.get('_VARIABLE_DEFAULT_STRUCTURE'))
+
                 for var_info in data_table.variables_info.values()
                 if var_info is not None
             ]):
@@ -191,7 +192,7 @@ class Index:
             for key, value in related_table_headers.items():
                 table_header = value[0]
 
-                if key not in constants._STD_ID_FIELD:
+                if key not in Constants.get('_STD_ID_FIELD'):
 
                     if key == variable.shape[0]:
                         rows[key] = table_header
@@ -380,8 +381,8 @@ class Index:
                 if not dim_set:
                     break
 
-                key_name = constants._STD_NAME_HEADER
-                key_aggregation = constants._STD_AGGREGATION_HEADER
+                key_name = Constants.get('_STD_NAME_HEADER')
+                key_aggregation = Constants.get('_STD_AGGREGATION_HEADER')
 
                 name_header_filter = dim_set.table_headers.get(
                     key_name, [None])[0]

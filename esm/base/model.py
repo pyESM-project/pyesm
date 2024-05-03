@@ -1,6 +1,8 @@
 """
 model.py 
-@author: Matteo V. Rocco, Politecnico di Milano
+
+@author: Matteo V. Rocco
+@institution: Politecnico di Milano
 
 This module defines the Model class, a comprehensive framework designed to 
 facilitate the management of complex data processing and optimization tasks 

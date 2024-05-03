@@ -1,3 +1,17 @@
+"""
+file_manager.py 
+
+@author: Matteo V. Rocco
+@institution: Politecnico di Milano
+
+This module provides a FileManager class designed to handle file and directory 
+operations such as creating and erasing directories, copying files, and handling 
+different types of data files like JSON, YAML, and Excel within a model management 
+system. The FileManager facilitates robust management of file operations required 
+in model setups, ensuring data integrity and ease of data manipulation across 
+various components of the application.
+"""
+
 from typing import List, Dict, Any, Optional
 from pathlib import Path
 
@@ -14,13 +28,45 @@ from esm.support import util
 
 
 class FileManager:
+    """
+    A class to manage file operations, providing methods to handle directories 
+    and file interactions including creating, deleting, loading, and copying 
+    files across directories. This class simplifies managing file operations 
+    required in various parts of a modeling application, ensuring that file
+    manipulations are handled efficiently and reliably.
+
+    Attributes:
+        logger (Logger): A logger object for logging information and errors.
+        xls_engine (str, optional): The default Excel engine to use. Defaults 
+            to 'openpyxl'.
+
+    Methods:
+        create_dir: Creates a directory with an option to overwrite.
+        erase_dir: Removes a directory and its contents.
+        load_file: Loads a file from a specified directory.
+        erase_file: Deletes a specific file.
+        copy_file_to_destination: Copies a file from one directory to another.
+        copy_all_files_to_destination: Copies all files from one directory to 
+            another.
+        dataframe_to_excel: Exports a DataFrame to an Excel file.
+        excel_to_dataframes_dict: Converts an Excel file with multiple sheets 
+            to a dictionary of DataFrames.
+    """
 
     def __init__(
         self,
         logger: Logger,
         xls_engine: Optional[str] = None,
     ) -> None:
+        """
+        Initializes the FileManager object with a specified logger and an 
+        optional Excel engine.
 
+        Args:
+            logger (Logger): The logger object used to log messages in the FileManager.
+            xls_engine (str, optional): The Excel engine to use for reading 
+                and writing Excel files. Defaults to 'openpyxl'.
+        """
         self.logger = logger.getChild(__name__)
 
         if not xls_engine:
@@ -39,14 +85,18 @@ class FileManager:
             dir_path: Path,
             force_overwrite: bool = False,
     ) -> None:
-        """This method receives a folder path and generates the folder in case
-        it does not exist.
+        """
+        Creates a directory at the specified path. Optionally overwrites the 
+        existing directory.
 
         Args:
-            dir_path (str): path of the folder to be generated.
+            dir_path (Path): The path where the directory will be created.
+            force_overwrite (bool): If True, the existing directory will be 
+                overwritten without confirmation.
 
         Returns:
-            bool: True if the directory was erased, False otherwise.
+            None: The method creates the directory or logs a message if it 
+                already exists.
         """
 
         dir_name = dir_path.name
@@ -73,16 +123,21 @@ class FileManager:
             dir_path: Path,
             force_erase: bool = False,
     ) -> bool:
-        """This method erases a directory and its content in a given path.
+        """
+        Erases the directory specified by the path.
 
         Args:
-            dir_path (str): path of the directory to be deleted.
-            force_erase (bool, optional): Forcefully erase the file without
-                asking. Defaults to False.
-        """
-        if os.path.exists(dir_path):
-            dir_name = str(dir_path).rsplit('\\', maxsplit=1)[-1]
+            dir_path (Path): The path of the directory to erase.
+            force_erase (bool): If True, the directory will be erased without 
+                confirmation.
 
+        Returns:
+            bool: True if the directory was erased, False otherwise.
+        """
+
+        dir_name = str(dir_path).rsplit('\\', maxsplit=1)[-1]
+
+        if os.path.exists(dir_path):
             if not force_erase:
                 response = input(
                     'Do you really want to erase the directory '
@@ -114,21 +169,16 @@ class FileManager:
             dir_path: Path,
             file_type: str = 'yml',
     ) -> Dict[str, Any]:
-        """Loads JSON or YAML file and returns a dictionary with its content.
+        """
+        Loads a JSON or YAML file from the specified directory into a dictionary.
 
         Args:
-            file_name (str): file name to be loaded.
-            file_type (str): file type (only .json or .yaml allowed)
-            dir_path (str, optional): The path to the folder where the file
-                is located. If None, the default path of the FileManager
-                instance is used.
-
-        Raises:
-            ValueError: If the file_type argument is not 'json' or 'yaml'.
-            ValueError: If the file format is incorrect or the file cannot be loaded.
+            file_name (str): The name of the file to load.
+            dir_path (Path): The path to the directory containing the file.
+            file_type (str): The format of the file ('json' or 'yaml').
 
         Returns:
-            dict: a dictionary containing the data from the file.
+            Dict[str, Any]: The contents of the file loaded into a dictionary.
         """
 
         if file_type == 'json':
@@ -159,15 +209,14 @@ class FileManager:
             force_erase: bool = False,
             confirm: bool = True,
     ) -> bool:
-        """Erase a file in a given path with an option to confirm before erasing.
+        """
+        Erases a specified file from a directory.
 
         Args:
-            dir_path (Path or str): Path of the directory of the file.
-            file_name (str): Name of the file to be erased.
-            force_erase (bool, optional): Forcefully erase the file without
-                asking. Defaults to False.
-            confirm (bool, optional): Ask for user confirmation before erasing.
-                Defaults to True.
+            dir_path (Path): The directory from which the file will be erased.
+            file_name (str): The name of the file to erase.
+            force_erase (bool): If True, erases the file without confirmation.
+            confirm (bool): If True, prompts for user confirmation before erasing the file.
 
         Returns:
             bool: True if the file was successfully erased, False otherwise.
@@ -199,6 +248,22 @@ class FileManager:
             dir_path: str | Path,
             files_names_list: List[str],
     ) -> bool:
+        """
+        Checks if the specified directory exists and all listed files are 
+        present in it.
+
+        Args:
+            dir_path (str | Path): The directory path to check.
+            files_names_list (List[str]): A list of file names to check for 
+                existence within the directory.
+
+        Returns:
+            bool: True if the directory and all files exist, False otherwise.
+
+        Raises:
+            ModelFolderError: If the directory does not exist or any file is 
+                missing.
+        """
 
         msg = ''
 
@@ -227,20 +292,22 @@ class FileManager:
             force_overwrite: bool = False,
     ) -> None:
         """
-        Copy a file from the specified package folder to a specified 
-        destination path, with an optional new file name.
+    Copies a file from the source path to the destination path, with an option 
+    to rename and overwrite.
 
-        Args:
-            destination_path (str or Path): The path where the file will 
-                be copied.
-            file_position (str): The package folder position.
-            file_name (str): The name of the file to be copied.
-            new_file_name (str, optional): The new name for the file. 
-                Defaults to None.
+    Args:
+        path_destination (str | Path): The destination path where the file will 
+            be copied.
+        path_source (str): The source path from which the file will be copied.
+        file_name (str): The name of the file to be copied.
+        file_new_name (Optional[str]): Optional new name for the file at the 
+            destination.
+        force_overwrite (bool): If True, existing file at the destination will 
+            be overwritten without prompt.
 
-        Raises:
-            FileNotFoundError: If the source file is not found.
-        """
+    Raises:
+        FileNotFoundError: If the source file does not exist.
+    """
         source_path = Path(path_source) / file_name
         destination_file_name = file_new_name or source_path.name
         destination_file_path = Path(path_destination) / destination_file_name
@@ -266,6 +333,24 @@ class FileManager:
             path_destination: str | Path,
             force_overwrite: bool = False,
     ) -> None:
+        """
+        Copies all files and directories from the source path to the destination 
+        path, with an option to overwrite.
+
+        Args:
+            path_source (str | Path): The path of the directory whose contents 
+                are to be copied.
+            path_destination (str | Path): The destination path where the 
+                contents will be copied.
+            force_overwrite (bool): If True, existing content at the 
+                destination will be overwritten without prompt.
+
+        Raises:
+            ModelFolderError: If the source path does not exist or is not a directory.
+        """
+
+        path_source = Path(path_source)
+        path_destination = Path(path_destination)
 
         if not path_source.exists():
             msg = "The passed source path does not exists."
@@ -300,7 +385,7 @@ class FileManager:
             self.logger.debug(
                 f"Directory '{os.path.basename(path_source)}' and all its "
                 "content successfully copied.")
-        except Exception as msg:
+        except shutil.Error as msg:
             self.logger.error(f"Error copying items: {msg}")
 
     def dict_to_excel_headers(
@@ -310,11 +395,22 @@ class FileManager:
             excel_file_name: str,
             writer_engine: str = 'openpyxl',
     ) -> None:
-        """Generates an excel file with headers provided by a dictionary in a 
-        specified dictionary depth. In case the headers key item is a list, 
-        select the list_item to be used.
         """
+        Generates an Excel file with sheets named according to dictionary keys 
+        and headers as specified in the dictionary values.
 
+        Args:
+            dict_name (Dict[str, Any]): Dictionary with sheet names as keys and 
+                a list of column headers as values.
+            excel_dir_path (Path): The directory path where the Excel file will 
+                be saved.
+            excel_file_name (str): The filename for the Excel file to be created.
+            writer_engine (str): The Excel writing engine to use.
+
+        Raises:
+            TypeError: If dict_name is not a dictionary.
+            SettingsError: If any sheet headers list is invalid.
+        """
         if not isinstance(dict_name, Dict):
             error_msg = f"{dict_name} is not a dictionary."
             self.logger.error(error_msg)
@@ -372,9 +468,23 @@ class FileManager:
             dataframe: pd.DataFrame,
             excel_filename: str,
             excel_dir_path: str,
-            sheet_name: str = None,
+            sheet_name: Optional[str] = None,
     ) -> None:
+        """
+        Exports a DataFrame to an Excel file, optionally allowing for 
+        overwriting an existing file.
 
+        Args:
+            dataframe (pd.DataFrame): The DataFrame to export.
+            excel_filename (str): The name of the Excel file to create.
+            excel_dir_path (str): The directory path where the Excel file will 
+                be saved.
+            sheet_name (str, optional): The name of the sheet in which to save 
+                the DataFrame. Defaults to DataFrame name if None.
+
+        Raises:
+            Warning: If the file already exists and the user opts not to overwrite.
+        """
         excel_file_path = Path(excel_dir_path, excel_filename)
 
         if excel_file_path.exists():
@@ -411,9 +521,26 @@ class FileManager:
             empty_data_fill: str = '',
             dtype: Optional[type[str]] = None,
     ) -> Dict[str, pd.DataFrame]:
-        """Reading an excel file composed by multiple tabs and returning
-        a dictionary with keys as tabs and tables in each tab as Pandas 
-        DataFrames.
+        """
+        Reads an Excel file composed of multiple tabs and returns a dictionary 
+        with keys representing each tab's name and values as Pandas DataFrames 
+        containing the data from each tab.
+
+        Args:
+            excel_file_name (str): The name of the Excel file to read.
+            excel_file_dir_path (Path | str): The directory path where the 
+                Excel file is located.
+            empty_data_fill (str, optional): Value to fill empty cells with 
+                in the DataFrames. Defaults to ''.
+            dtype (Optional[type[str]], optional): Data type to force for the 
+                DataFrame columns. Defaults to None.
+
+        Returns:
+            Dict[str, pd.DataFrame]: A dictionary containing DataFrames for 
+                each sheet in the Excel file.
+
+        Raises:
+            FileNotFoundError: If the specified Excel file does not exist.
         """
 
         file_path = Path(excel_file_dir_path, excel_file_name)

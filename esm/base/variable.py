@@ -1,8 +1,24 @@
+"""
+variable.py 
+
+@author: Matteo V. Rocco
+@institution: Politecnico di Milano
+
+This module defines the Variable class which manages the characteristics and 
+behaviors of variables used in optimization models. It facilitates operations 
+such as defining constants, reshaping data, and interfacing with SQL database 
+tables for data manipulation.
+
+The class incorporates functionality to handle complex variable structures 
+that may include dimensions, mapping of related tables, and operations that 
+convert SQL data to formats usable by optimization tools like CVXPY.
+"""
+
 from typing import Any, Dict, Iterator, List, Optional, Tuple
 import numpy as np
 
 import pandas as pd
-from esm import constants
+from esm.constants import Constants
 from esm.log_exc import exceptions as exc
 from esm.log_exc.logger import Logger
 from esm.support import util
@@ -10,7 +26,61 @@ from esm.support import util
 
 class Variable:
     """
-    tbd
+    Manages the definition and operations of variables used in optimization models.
+
+    This class supports handling different aspects of a variable, including 
+    its dimensions, related database table, type, and the transformation of its 
+    data from database formats to structures suitable for optimization calculations.
+
+    Attributes:
+        logger (Logger): Logger object for logging messages.
+        rows (Dict[str, Any]): Information about the rows dimension of the 
+            variable.
+        cols (Dict[str, Any]): Information about the columns dimension of the 
+            variable.
+        value (Optional[str]): The specific value or type of the variable.
+        related_table (Optional[str]): The database table associated with the 
+            variable.
+        related_dims_map (Optional[pd.DataFrame]): Mapping for dimensions if 
+            required for complex variables.
+        type (Optional[str]): The type of the variable, such as 'endogenous' 
+            or 'exogenous'.
+        coordinates_info (Dict[str, Any]): Information about the coordinates of 
+            the variable.
+        coordinates (Dict[str, Any]): Specific coordinates data for the variable.
+        data (Optional[pd.DataFrame]): Data associated with the variable, 
+            typically fetched from a database.
+        cvxpy_var (Optional[Union[cp.Variable, cp.Parameter, cp.Constant]]): 
+            The CVXPY object associated with the variable.
+
+    Methods:
+        shape: Property that returns the number of dimensions of the variable.
+        shape_size: Property that computes the size of each dimension of the 
+            variable.
+        dims_labels: Property that retrieves the labels for each dimension of 
+            the variable.
+        dims_items: Property that retrieves the items for each dimension of 
+            the variable.
+        dims_labels_items: Property that combines labels and items for each 
+            dimension.
+        dims_sets: Property that retrieves set names for each dimension if 
+            available.
+        is_square: Property that checks if the variable's matrix is square.
+        is_vector: Property that checks if the variable is a vector.
+        sets_parsing_hierarchy: Property that retrieves the parsing hierarchy 
+            for sets.
+        sets_parsing_hierarchy_values: Property that retrieves values based on 
+            the parsing hierarchy.
+        all_coordinates: Property that retrieves all coordinates associated 
+            with the variable.
+        none_data_coordinates: Checks for None data values in CVXPY variables 
+            and returns related coordinates.
+        reshaping_sqlite_table_data: Reshapes data fetched from SQLite to the 
+            required format for CVXPY.
+        reshaping_variable_data: Adjusts CVXPY variable data to match SQLite 
+            table format.
+        define_constant: Defines a constant based on the specified type and 
+            validates it against allowed types.
     """
 
     def __init__(
@@ -18,7 +88,20 @@ class Variable:
             logger: Logger,
             **kwargs,
     ) -> None:
+        """
+        Initializes a new instance of the Variable class with optional settings 
+        for various attributes.
 
+        Args:
+            logger (Logger): Logger object for logging operations within the class.
+            **kwargs: Arbitrary keyword arguments that set attributes such as 
+                rows, cols, value, etc.
+
+        The **kwargs parameter allows for dynamic attribute assignment, which 
+        means any property of the class can be initialized via keywords, making 
+        the class flexible in handling different types of variables for 
+        optimization models.
+        """
         self.logger = logger.getChild(__name__)
 
         self.rows: Dict[str, Any] = {}
@@ -49,17 +132,26 @@ class Variable:
 
     @property
     def shape(self) -> List[str | int]:
+        """
+        Determines the shape of the variable in terms of rows and columns dimensions.
+
+        Returns:
+            List[Union[str, int]]: A list containing dimension identifiers or 
+                sizes, such as ['set1', 1].
+        """
         rows_shape = self.rows['set'] if 'set' in self.rows else 1
         cols_shape = self.cols['set'] if 'set' in self.cols else 1
         return [rows_shape, cols_shape]
 
     @property
     def shape_size(self) -> Tuple[int]:
-        """Computes and returns the size of each dimension in the variable.
+        """
+        Computes and returns the size of each dimension in the variable. 
+        This is useful for determining the dimensionality of the data associated 
+        with the variable.
 
         Returns:
-            List[int]: A list containing the size of each dimension in 
-                the shape.
+            Tuple[int]: A tuple containing the size of each dimension.
         """
         shape_size = []
 
@@ -73,10 +165,12 @@ class Variable:
 
     @property
     def dims_labels(self) -> List[str]:
-        """Retrieves the labels for each dimension of the variable.
+        """
+        Retrieves the labels for each dimension of the variable, typically used 
+        for identifying matrix dimensions.
 
         Returns:
-            List[str]: A list containing the labels for each dimension.
+            List[str]: A list containing labels for each dimension of the variable.
         """
         dim_labels = []
 
@@ -91,10 +185,12 @@ class Variable:
 
     @property
     def dims_items(self) -> List[List[str]]:
-        """Retrieves the items for each variable dimension.
+        """
+        Retrieves the items for each dimension of the variable, which are the 
+        specific values that define the dimension.
 
         Returns:
-            List[List[str]]: A list containing the items for each dimension.
+            List[List[str]]: Lists of items for each dimension.
         """
         dim_items = []
 
@@ -109,6 +205,14 @@ class Variable:
 
     @property
     def dims_labels_items(self) -> Dict[str, List[str]]:
+        """
+        Combines the labels and items for each dimension of the variable into 
+        a dictionary.
+
+        Returns:
+            Dict[str, List[str]]: Dictionary with dimension labels as keys and 
+            the corresponding items as values.
+        """
         return {
             self.dims_labels[dim]: self.dims_items[dim]
             for dim in [0, 1]
@@ -169,6 +273,13 @@ class Variable:
 
     @property
     def sets_parsing_hierarchy(self) -> Dict[str, str]:
+        """
+        Retrieves the hierarchical structure of sets parsing for the variable.
+        Specifically, it returns inter-problem and intra-problem sets.
+
+        Returns:
+            Dict[str, str]: Dictionary representing the hierarchy of sets parsing.
+        """
         return {
             **self.coordinates_info['inter'],
             **self.coordinates_info['intra'],
@@ -176,6 +287,13 @@ class Variable:
 
     @property
     def sets_parsing_hierarchy_values(self) -> Dict[str, str]:
+        """
+        Retrieves the set values based on the hierarchical parsing of sets for the 
+        variable.
+
+        Returns:
+            Dict[str, str]: Dictionary with parsing hierarchy values.
+        """
         return {
             **self.coordinates['intra'],
             **self.coordinates['inter'],
@@ -183,6 +301,13 @@ class Variable:
 
     @property
     def all_coordinates(self) -> Dict[str, List[str] | None]:
+        """
+        Compiles all coordinates related to the variable into a single dictionary.
+
+        Returns:
+            Dict[str, List[str] | None]: Dictionary containing all coordinate 
+                values, grouped by dimension.
+        """
         # attention: in case a variable has same coordinates in different
         # dimensions, only one of them is reported (rare case of a variable
         # with same rows and cols).
@@ -192,29 +317,32 @@ class Variable:
         return all_coordinates
 
     def none_data_coordinates(self, row: int) -> Dict[str, Any] | None:
-        """Checks if there are None data values in cvxpy variables and returns
-        the related coordinates (row in Variable.data and related hierarchy 
-        coordinates).
+        """
+        Checks if there are any None data values in the CVXPY variables and 
+        returns the related coordinates (row in Variable.data and related 
+        hierarchy coordinates).
 
         Args:
-            row (int): identifies the row of Variable.data item (i.e. one 
-            specific cvxpy variable).
+            row (int): Identifies the row of Variable.data item (i.e., one 
+                specific CVXPY variable).
 
         Returns:
-            Dict: 
-                keys: are rows where cvxpy variables values are None.
-                values: the names of the sets that identify the variable.
+            Optional[Dict[str, Any]]: Dictionary with keys being the rows where 
+                CVXPY variable values are None and values being the names of 
+                the sets that identify the variable. Returns None if all data 
+                is present.
 
         Raises:
-            KeyError: in case passed row is less than zero or exceeds number of
-                rows of variable.data.
+            KeyError: If the passed row number is out of bounds.
         """
-        cvxpy_var_header = constants._CVXPY_VAR_HEADER
-        data_table = self.data[cvxpy_var_header]
+        cvxpy_var_header = Constants.get('_CVXPY_VAR_HEADER')
+
+        if self.data is not None:
+            data_table = self.data[cvxpy_var_header]
 
         if row < 0 or row > len(data_table):
             msg = f"Passed row number must be between 0 and the rows of " \
-                f"variable table '{self.symbol}' ({len(data_table)})."
+                f"variable table '{self.related_table}' ({len(data_table)})."
             self.logger.error(msg)
             raise KeyError(msg)
 
@@ -238,7 +366,7 @@ class Variable:
         Returns:
             pd.DataFrame: data reshaped and pivoted to be used as cvxpy values.
         """
-        values_header = constants._STD_VALUES_FIELD['values'][0]
+        values_header = Constants.get('_STD_VALUES_FIELD')['values'][0]
 
         # case of a scalar with no rows/cols labels (scalars)
         if all(item is None for item in self.dims_labels):
@@ -277,8 +405,8 @@ class Variable:
             pd.DataFrame: data variable shaped as the variable SQLite table.
         """
 
-        values_header = constants._STD_VALUES_FIELD['values'][0]
-        cvxpy_var_header = constants._CVXPY_VAR_HEADER
+        values_header = Constants.get('_STD_VALUES_FIELD')['values'][0]
+        cvxpy_var_header = Constants.get('_CVXPY_VAR_HEADER')
 
         unpivoted_data = pd.DataFrame(
             data=self.data[cvxpy_var_header][row].value,
@@ -334,11 +462,12 @@ class Variable:
                 suitable for creating the constant.
         """
         util.validate_selection(
-            valid_selections=list(constants._ALLOWED_CONSTANTS.keys()),
+            valid_selections=list(Constants.get('_ALLOWED_CONSTANTS').keys()),
             selection=value_type,
         )
 
-        factory_function, *args = constants._ALLOWED_CONSTANTS[value_type]
+        factory_function, * \
+            args = Constants.get('_ALLOWED_CONSTANTS')[value_type]
 
         if value_type == 'identity':
             if self.is_square:
@@ -375,7 +504,7 @@ class Variable:
 
         else:
             msg = f"Variable 'value': '{value_type}' not supported. " \
-                f"Supported value types: {constants._ALLOWED_CONSTANTS.keys()}"
+                f"Supported value types: {Constants.get('_ALLOWED_CONSTANTS').keys()}"
             self.logger.error(msg)
             raise exc.SettingsError(msg)
 

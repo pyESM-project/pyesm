@@ -1,6 +1,7 @@
 """ 
 constants.py
-@author: Matteo V. Rocco, Politecnico di Milano
+@author: Matteo V. Rocco
+@institution: Politecnico di Milano
 
 This module collects all the fundamental constants of the package, necessary 
 for simplifying renaming package labels and for validation purposes.
@@ -65,6 +66,7 @@ class Constants:
     Raises:
         AttributeError: If the specified constant name does not exist within the class.
     """
+
     _SETUP_FILES = {
         0: 'structure_sets.yml',
         1: 'structure_variables.yml',
