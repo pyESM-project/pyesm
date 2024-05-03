@@ -1,0 +1,7 @@
+# SYMBOLIC PROBLEM
+
+# definition of the constraints (vector expressions)
+
+expressions: 
+
+    - L == minv(I-A)

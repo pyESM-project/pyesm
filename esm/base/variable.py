@@ -147,7 +147,9 @@ class Variable:
 
         if len(self.shape) != 2:
             return False
-        if self.shape_size[0] == self.shape_size[1]:
+
+        if len(self.shape_size) == 2 and \
+                self.shape_size[0] == self.shape_size[1]:
             return True
         else:
             return False

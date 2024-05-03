@@ -92,6 +92,7 @@ _ALLOWED_OPERATORS = {
     'diag': cp.diag,
     'sum': cp.sum,
     'mult': cp.multiply,
+    'minv': util_functions.matrix_inverse,
     'weib': util_functions.weibull_distribution,
     'Minimize': cp.Minimize,
 }
