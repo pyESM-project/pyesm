@@ -12,7 +12,7 @@ in model setups, ensuring data integrity and ease of data manipulation across
 various components of the application.
 """
 
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any, Literal, Optional
 from pathlib import Path
 
 import os
@@ -56,7 +56,7 @@ class FileManager:
     def __init__(
         self,
         logger: Logger,
-        xls_engine: Optional[str] = None,
+        xls_engine: Literal['openpyxl', 'xlsxwriter', None] = None,
     ) -> None:
         """
         Initializes the FileManager object with a specified logger and an 
@@ -64,15 +64,16 @@ class FileManager:
 
         Args:
             logger (Logger): The logger object used to log messages in the FileManager.
-            xls_engine (str, optional): The Excel engine to use for reading 
-                and writing Excel files. Defaults to 'openpyxl'.
+            xls_engine (Literal['openpyxl', 'xlsxwriter', None], optional): 
+                The Excel engine to use for reading and writing Excel files. 
+                Defaults to 'openpyxl'.
         """
         self.logger = logger.getChild(__name__)
 
-        if not xls_engine:
-            self.xls_engine: str = 'openpyxl'
+        if xls_engine is None:
+            self.xls_engine: Literal['openpyxl', 'xlsxwriter'] = 'openpyxl'
         else:
-            self.xls_engine: str = xls_engine
+            self.xls_engine: Literal['openpyxl', 'xlsxwriter'] = xls_engine
 
         self.logger.debug(f"'{self}' object generated.")
 
@@ -393,7 +394,7 @@ class FileManager:
             dict_name: Dict[str, Any],
             excel_dir_path: Path,
             excel_file_name: str,
-            writer_engine: str = 'openpyxl',
+            writer_engine: Optional[Literal['openpyxl', 'xlsxwriter']] = None,
     ) -> None:
         """
         Generates an Excel file with sheets named according to dictionary keys 
@@ -405,12 +406,17 @@ class FileManager:
             excel_dir_path (Path): The directory path where the Excel file will 
                 be saved.
             excel_file_name (str): The filename for the Excel file to be created.
-            writer_engine (str): The Excel writing engine to use.
+            writer_engine (Literal['openpyxl', 'xlsxwriter'], optional): 
+                The Excel writing engine to use. If None, uses the engine 
+                defined in __init__.
 
         Raises:
             TypeError: If dict_name is not a dictionary.
             SettingsError: If any sheet headers list is invalid.
         """
+        if writer_engine is None:
+            writer_engine = self.xls_engine
+
         if not isinstance(dict_name, Dict):
             error_msg = f"{dict_name} is not a dictionary."
             self.logger.error(error_msg)
@@ -421,7 +427,10 @@ class FileManager:
                 dict_name: Dict[str, Any]
         ) -> None:
             """Support function to generate excel"""
-            with pd.ExcelWriter(excel_file_path, engine=writer_engine) as writer:
+            with pd.ExcelWriter(
+                excel_file_path,
+                engine=writer_engine,
+            ) as writer:
                 for sheet_name, headers_list in dict_name.items():
                     if not isinstance(headers_list, List):
                         msg = f"Invalid headers list for table '{sheet_name}'."
@@ -469,6 +478,7 @@ class FileManager:
             excel_filename: str,
             excel_dir_path: str,
             sheet_name: Optional[str] = None,
+            writer_engine: Optional[Literal['openpyxl', 'xlsxwriter']] = None,
     ) -> None:
         """
         Exports a DataFrame to an Excel file, optionally allowing for 
@@ -481,10 +491,16 @@ class FileManager:
                 be saved.
             sheet_name (str, optional): The name of the sheet in which to save 
                 the DataFrame. Defaults to DataFrame name if None.
+            writer_engine (Literal['openpyxl', 'xlsxwriter'], optional): 
+                The Excel writing engine to use. If None, uses the engine 
+                defined in __init__.
 
         Raises:
             Warning: If the file already exists and the user opts not to overwrite.
         """
+        if writer_engine is None:
+            writer_engine = self.xls_engine
+
         excel_file_path = Path(excel_dir_path, excel_filename)
 
         if excel_file_path.exists():
@@ -508,7 +524,7 @@ class FileManager:
 
         with pd.ExcelWriter(
             excel_file_path,
-            engine=self.xls_engine,
+            engine=writer_engine,
             mode=mode,
             if_sheet_exists=if_sheet_exists,
         ) as writer:

@@ -17,7 +17,9 @@ convert SQL data to formats usable by optimization tools like CVXPY.
 from typing import Any, Dict, Iterator, List, Optional, Tuple
 import numpy as np
 
+import cvxpy as cp
 import pandas as pd
+
 from esm.constants import Constants
 from esm.log_exc import exceptions as exc
 from esm.log_exc.logger import Logger
@@ -337,16 +339,24 @@ class Variable:
         """
         cvxpy_var_header = Constants.get('_CVXPY_VAR_HEADER')
 
-        if self.data is not None:
-            data_table = self.data[cvxpy_var_header]
+        if self.data is None \
+                or not isinstance(self.data, pd.DataFrame) \
+                or cvxpy_var_header not in self.data.columns:
+            msg = "Data is not initialized correctly or CVXPY variable header is missing."
+            self.logger.error(msg)
+            raise ValueError(msg)
 
-        if row < 0 or row > len(data_table):
-            msg = f"Passed row number must be between 0 and the rows of " \
-                f"variable table '{self.related_table}' ({len(data_table)})."
+        if row < 0 or row > len(self.data):
+            msg = f"Passed row number out of bound for variable " \
+                f"table '{self.related_table}'. Valid rows between " \
+                f"0 and {len(self.data)}."
             self.logger.error(msg)
             raise KeyError(msg)
 
-        if data_table[row].value is None:
+        cvxpy_var: cp.Variable | cp.Parameter | cp.Constant = \
+            self.data.at[row, cvxpy_var_header]
+
+        if cvxpy_var.value is None:
             return {
                 key: self.data.loc[row, value]
                 for key, value in self.sets_parsing_hierarchy.items()
@@ -392,52 +402,10 @@ class Variable:
 
         return pivoted_data
 
-    def reshaping_variable_data(self, row: int) -> pd.DataFrame:
-        """Takes values in a cvxpy variable identified by a row in 
-        Variable.data, then pivots and adjust it to return data in the same 
-        shape of SQLite database variable (except for the 'id' column).
-
-        Args:
-            row (int): identifies the row of Variable.data item (i.e. one 
-            specific cvxpy variable).
-
-        Returns:
-            pd.DataFrame: data variable shaped as the variable SQLite table.
-        """
-
-        values_header = Constants.get('_STD_VALUES_FIELD')['values'][0]
-        cvxpy_var_header = Constants.get('_CVXPY_VAR_HEADER')
-
-        unpivoted_data = pd.DataFrame(
-            data=self.data[cvxpy_var_header][row].value,
-            index=self.dims_items[0],
-            columns=self.dims_items[1],
-        ).stack().reset_index()
-
-        unpivoted_data.columns = [*self.dims_labels, values_header]
-
-        columns_to_drop = [
-            col for col in unpivoted_data.columns if col == None]
-
-        unpivoted_data = unpivoted_data.drop(
-            columns=columns_to_drop,
-            errors='ignore'
-        )
-
-        completion_data = self.data.loc[
-            row, self.sets_parsing_hierarchy.values()]
-
-        tabled_data = util.merge_series_to_dataframe(
-            series=completion_data,
-            dataframe=unpivoted_data
-        )
-
-        return tabled_data
-
     def define_constant(
             self,
             value_type: str,
-    ) -> int | np.ndarray | np.matrix:
+    ) -> None:
         """Defines a constant of a specific type. This method validates the 
         provided value type against a set of allowed values. Depending on the 
         value type, it either creates a variable type or raises an error if 
@@ -453,8 +421,7 @@ class Variable:
         value_type (str): The type of the constant to be created. 
 
         Returns:
-        int | np.ndarray | np.matrix: The created constant. It could be 
-            an integer, a numpy array, or a numpy matrix.
+            None.
 
         Raises:
             - exc.SettingsError: If the provided value type is not supported.

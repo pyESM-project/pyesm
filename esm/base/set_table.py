@@ -1,3 +1,16 @@
+"""
+set_table.py 
+
+@author: Matteo V. Rocco
+@institution: Politecnico di Milano
+
+This module provides the SetTable class for handling and manipulating data sets 
+in a structured format. It allows for managing data sets with detailed logging 
+and interaction with a SQLite database. The SetTable class integrates with 
+pandas for data manipulation, providing tools to fetch, update, and manage 
+data efficiently.
+"""
+
 from typing import Any, Dict, Iterator, List, Optional, Tuple
 import pandas as pd
 
@@ -7,29 +20,47 @@ from esm.log_exc.logger import Logger
 
 class SetTable:
     """
-    Represents a set with associated attributes and methods.
+    A class to represent and manipulate data sets with specific attributes and 
+    methods. This class encapsulates operations related to data sets such as 
+    fetching headers, filters, and maintaining data integrity. It interfaces 
+    with a logger to log activities and a DataFrame to handle the data.
 
     Args:
-        logger (Logger): An instance of the Logger class for logging purposes.
-        data (pd.DataFrame, optional): DataFrame containing set data. 
-            Defaults to None.
-        **kwargs: Additional keyword arguments representing attributes of 
-            the set.
+        logger (Logger): An instance of the Logger class used for logging 
+            activities.
+        data (pd.DataFrame, optional): A pandas DataFrame containing the initial 
+            set data. Defaults to None.
+        **kwargs: Arbitrary keyword arguments defining attributes of the set like 
+            symbols, table names, etc.
 
     Attributes:
-        logger (Logger): A Logger instance for logging.
-        symbol (str): Symbol representing the set.
-        table_name (str): Name of the SQLite table associated with the set.
-        table_headers (Dict[str, Any]): Headers of the SQLite table associated 
-            with the set.
-        set_categories (Dict[str, Any]): Categories of the set.
-        split_problem (bool): If True, the set is defining multiple numerical 
-            problems.
-        data (pd.DataFrame): DataFrame containing set data.
+        logger (Logger): An instance for logging.
+        symbol (str): The symbol representing the set.
+        table_name (str): The name of the associated SQLite table.
+        table_structure (Dict[str, Any]): Structure of the SQLite table used 
+            for data handling.
+        table_headers (Dict[str, Any]): Headers of the SQLite table, fetched 
+            based on the table structure.
+        table_filters (Dict[int, Any]): Filters applicable to the table, 
+            derived from the table structure.
+        set_categories (Dict[str, Any]): Categories applicable to the set.
+        split_problem (bool): Indicates whether the set defines multiple 
+            numerical problems. Defaults to False.
+        data (pd.DataFrame): The DataFrame containing the set's data.
 
     Methods:
-        __repr__: Representation of the Set instance.
-        __iter__: Iterator over the Set instance.
+        set_name_header: Returns the standard name header from the table headers.
+        set_aggregation_header: Returns the aggregation header from the table 
+            headers.
+        set_excel_file_headers: List of headers formatted for Excel files.
+        set_filters_dict: Dictionary representing filters with headers as keys 
+            and filter values as lists.
+        set_filters_headers: Dictionary of filter indices and their corresponding 
+            headers.
+        set_items: List of items in the set from the DataFrame based on the name 
+            header.
+        fetching_headers_and_filters: Fetches and constructs headers and filters 
+            from the table structure.
     """
 
     def __init__(
@@ -58,61 +89,105 @@ class SetTable:
 
     @property
     def set_name_header(self) -> str | None:
+        """
+        Retrieves the standard name header from the table headers based on the 
+        configuration constants.
+
+        Returns:
+            str | None: The standard name header if available, otherwise None.
+        """
         if self.table_headers is not None:
             return self.table_headers[Constants.get('_STD_NAME_HEADER')][0]
-        else:
-            return
 
     @property
     def set_aggregation_header(self) -> str | None:
+        """
+        Retrieves the aggregation header from the table headers, used for data 
+        aggregation operations.
+
+        Returns:
+            str | None: The aggregation header if defined in the table headers, 
+                otherwise None.
+        """
         if self.table_headers is not None:
             aggregation_key = Constants.get('_STD_AGGREGATION_HEADER')
 
             if aggregation_key in self.table_headers:
                 return self.table_headers[aggregation_key][0]
-            else:
-                return
-        else:
-            return
 
     @property
     def set_excel_file_headers(self) -> List | None:
+        """
+        Provides a list of headers formatted for use in Excel files. This list 
+        includes only the primary header from each table header set.
+
+        Returns:
+            List[str] | None: A list of headers suitable for Excel, or None if 
+                no headers are defined.
+        """
         if self.table_headers is not None:
             return [
                 item[0] for item in list(self.table_headers.values())
             ]
-        else:
-            return
 
     @property
     def set_filters_dict(self) -> Dict[str, List[str]] | None:
+        """
+        Constructs a dictionary of filter headers with their corresponding 
+        filter values. Each entry represents a filterable attribute of the data.
+
+        Returns:
+            Dict[str, List[str]] | None: A dictionary where keys are filter 
+                headers and values are lists of filter criteria, or None if 
+                no filters are set.
+        """
         if self.table_filters:
             return {
                 filter_items['header'][0]: filter_items['values']
                 for filter_items in self.table_filters.values()
             }
-        else:
-            return
 
     @property
     def set_filters_headers(self) -> Dict[int, str] | None:
+        """
+        Provides a mapping from filter index to their corresponding headers. 
+        Useful for identifying filters by index.
+
+        Returns:
+            Dict[int, str] | None: A dictionary mapping filter indices to their 
+                headers, or None if no filters are defined.
+        """
         if self.table_filters:
             return {
                 key: value['header'][0]
                 for key, value in self.table_filters.items()
             }
-        else:
-            return
 
     @property
     def set_items(self) -> List[str] | None:
+        """
+        Generates a list of items in the data set based on the standard name 
+        header.
+
+        Returns:
+            List[str] | None: A list of item names from the data set, or None 
+                if the data is empty or the name header is undefined.
+        """
         if self.data is not None:
             return list(self.data[self.set_name_header])
-        else:
-            return
 
     def fetching_headers_and_filters(self) -> None:
+        """
+        Fetches and initializes the table headers and filters based on the 
+        predefined table structure. This method updates the instance's 
+        table_headers and table_filters attributes based on constants.
+        This setup process includes extracting specific headers for name, 
+        filters, and aggregation from the table's structural definition, and 
+        setting them up for easy access throughout the class's methods.
 
+        Side Effects:
+            Modifies the table_headers and table_filters attributes of the instance.
+        """
         name_key = Constants.get('_STD_NAME_HEADER')
         filters_key = Constants.get('_STD_FILTERS_HEADERS')
         aggregation_key = Constants.get('_STD_AGGREGATION_HEADER')

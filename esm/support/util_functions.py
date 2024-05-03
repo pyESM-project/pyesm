@@ -1,3 +1,15 @@
+"""
+util_functions.py 
+
+@author: Matteo V. Rocco
+@institution: Politecnico di Milano
+
+This module provides various utility functions that are defined to support 
+complex calculations in symbolic problems and generation of constants values,
+such as generating special matrices, reshaping arrays, and calculating matrix 
+inverses.
+"""
+
 from typing import Tuple
 import numpy as np
 import pandas as pd
@@ -114,8 +126,9 @@ def matrix_inverse(matrix: cp.Parameter | cp.Expression) -> cp.Parameter:
 
     try:
         inverse = np.linalg.inv(matrix_val)
-    except np.linalg.LinAlgError:
-        raise ValueError("Passed matrix is singular and cannot be inverted.")
+    except np.linalg.LinAlgError as exc:
+        raise ValueError(
+            "Passed matrix is singular and cannot be inverted.") from exc
 
     return cp.Parameter(shape=matrix_shape, value=inverse)
 
@@ -200,7 +213,7 @@ def weibull_distribution(
             "Output of Weibull distribution must be '1' (vector) "
             f"or 2 (matrix). Passed value: '{dimensions}'")
 
-    if err_msg != []:
+    if err_msg:
         raise ValueError("\n".join(err_msg))
 
     # defining Weibull function range
