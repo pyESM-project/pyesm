@@ -1,6 +1,6 @@
 """
 model.py 
-@author: Matteo V. Rocco
+@author: Matteo V. Rocco, Politecnico di Milano
 
 This module defines the Model class, a comprehensive framework designed to 
 facilitate the management of complex data processing and optimization tasks 
@@ -23,9 +23,9 @@ based on user-defined settings.
 """
 
 from pathlib import Path
-from typing import Any
+from typing import Any, Dict
 
-from esm import constants
+from esm.constants import Constants
 from esm.log_exc import exceptions as exc
 from esm.log_exc.logger import Logger
 from esm.support.dotdict import DotDict
@@ -171,10 +171,12 @@ class Model:
         Returns:
             None
         """
+        setup_files: Dict[int, str] = Constants.get('_SETUP_FILES')
+
         # modify to check if all necessary items are there in case of use existing data
         if self.files.dir_files_check(
             dir_path=self.paths['model_dir'],
-            files_names_list=list(constants._SETUP_FILES.values()),
+            files_names_list=list(setup_files.values()),
         ):
             self.logger.info(
                 'Model directory and required setup files validated.')
@@ -206,11 +208,11 @@ class Model:
             self.core.index.load_sets_data_to_index(
                 excel_file_name=self.settings['sets_xlsx_file'],
                 excel_file_dir_path=self.paths['model_dir'])
-        except FileNotFoundError:
+        except FileNotFoundError as e:
             msg = f"'{self.settings['sets_xlsx_file']}' file missing. " \
                 "Set 'use_existing_data' to False to generate a new settings file."
             self.logger.error(msg)
-            raise exc.SettingsError(msg)
+            raise exc.SettingsError(msg) from e
 
         self.core.index.load_coordinates_to_data_index()
         self.core.index.load_all_coordinates_to_variables_index()
@@ -382,7 +384,9 @@ class Model:
         Returns:
             None
         """
-        self.logger.info(f"Updating SQLite database and initialize problems.")
+        self.logger.info(
+            f"Updating SQLite database '{self.settings['sqlite_database_file']}' "
+            "and initialize problems.")
 
         self.load_exogenous_data_to_sqlite_database(operation, force_overwrite)
         self.initialize_problems(force_overwrite)
