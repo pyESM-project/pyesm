@@ -13,6 +13,7 @@ unit_cases = [
     'test_structure',
     'variables_filtering',
     'weibull',
+    'sets_mirror',
 ]
 dft_cases = [
     '1_sut_multi_year',
