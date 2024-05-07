@@ -498,13 +498,16 @@ class Problem:
                 allowed_variables[var_key] = variable.data
                 continue
 
-            # filter variable data based on problem filter
-            variable_data = pd.merge(
-                left=variable.data,
-                right=problem_filter,
-                on=list(problem_filter.columns),
-                how='inner'
-            )
+            if problem_filter.empty:
+                variable_data = variable.data
+            else:
+                # filter variable data based on problem filter
+                variable_data = pd.merge(
+                    left=variable.data,
+                    right=problem_filter,
+                    on=list(problem_filter.columns),
+                    how='inner'
+                )
 
             # if no sets intra-probles are defined for the variable, the cvxpy
             # variable is fetched for the current ploblem. cvxpy variable must
