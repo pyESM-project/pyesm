@@ -209,7 +209,8 @@ class Model:
         try:
             self.core.index.load_sets_data_to_index(
                 excel_file_name=self.settings['sets_xlsx_file'],
-                excel_file_dir_path=self.paths['model_dir'])
+                excel_file_dir_path=self.paths['model_dir']
+            )
         except FileNotFoundError as e:
             msg = f"'{self.settings['sets_xlsx_file']}' file missing. " \
                 "Set 'use_existing_data' to False to generate a new settings file."

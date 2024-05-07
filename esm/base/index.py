@@ -53,12 +53,6 @@ class Index:
                 if headers is not None and len(headers) > 0:
                     sets_split_problem_list[key] = headers[0]
 
-        if not sets_split_problem_list:
-            msg = "At least one Set must identify a problem. " \
-                f"Check 'split_problem' properties in 'sets_structure.yml'"
-            self.logger.error(msg)
-            raise exc.NumericalProblemError(msg)
-
         return sets_split_problem_list
 
     @property
@@ -252,22 +246,43 @@ class Index:
             else:
                 self.logger.info("Overwriting Sets in Index.")
 
-        sets_values = self.files.excel_to_dataframes_dict(
+        sets_excel_data = self.files.excel_to_dataframes_dict(
             excel_file_name=excel_file_name,
             excel_file_dir_path=excel_file_dir_path,
             empty_data_fill=empty_data_fill,
             dtype=str
         )
 
+        sets_excel_keys = sets_excel_data.keys()
+
         for set_instance in self.sets.values():
             assert isinstance(set_instance, SetTable)
 
-            table_name = set_instance.table_name
-            if table_name in sets_values.keys():
-                set_instance.data = sets_values[table_name]
+            if set_instance.table_name in sets_excel_keys:
+                set_instance.data = sets_excel_data[set_instance.table_name]
+                continue
+
+            if not set_instance.copy_from:
+                msg = f"Table '{set_instance.table_name}' not included in " \
+                    "the excel sets file, nor defined as a copy of another " \
+                    "existing set. Check sets definition."
+                self.logger.error(msg)
+                raise exc.SettingsError(msg)
+
+            set_to_be_copied = set_instance.copy_from
+            if set_to_be_copied in self.sets and \
+                    self.sets[set_to_be_copied].data is not None:
+
+                table_headers = [
+                    header[0]
+                    for header in set_instance.table_headers.values()
+                ]
+                set_instance.data = self.sets[set_to_be_copied].data.copy()
+                set_instance.data.columns = table_headers
+
             else:
-                msg = f"Table '{table_name}' from sets excel file not " \
-                    "inclued in the defined Sets."
+                msg = f"Table '{set_to_be_copied}' not included in " \
+                    "the defined Sets. Check set name."
                 self.logger.error(msg)
                 raise exc.SettingsError(msg)
 
@@ -275,8 +290,6 @@ class Index:
         self.logger.debug("Loading variable coordinates to Index.data.")
 
         for table in self.data.values():
-            table: DataTable
-
             table.coordinates_values.update({
                 set_header: self.sets[set_key].set_items
                 for set_key, set_header in table.coordinates_headers.items()

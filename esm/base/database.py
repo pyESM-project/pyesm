@@ -77,6 +77,7 @@ class Database:
         dict_headers = {
             set_value.table_name: set_value.set_excel_file_headers
             for set_value in self.index.sets.values()
+            if getattr(set_value, 'copy_from', None) is None
         }
 
         self.files.dict_to_excel_headers(

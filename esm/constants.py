@@ -103,6 +103,7 @@ class Constants:
         'symbol': str,
         'table_name': str,
         'split_problem': bool,
+        'copy_from': str,
         'table_structure': dict,
     }
 

@@ -37,6 +37,9 @@ class SetTable:
         logger (Logger): An instance for logging.
         symbol (str): The symbol representing the set.
         table_name (str): The name of the associated SQLite table.
+        copy_from (str): The name of the set table the values of which are 
+            copied from (this avoid replicating identical set tables in excel 
+            input files).
         table_structure (Dict[str, Any]): Structure of the SQLite table used 
             for data handling.
         table_headers (Dict[str, Any]): Headers of the SQLite table, fetched 
@@ -74,6 +77,7 @@ class SetTable:
 
         self.symbol: str
         self.table_name: str
+        self.copy_from: str
         self.split_problem: bool = False
         self.table_structure: Dict[str, Any]
 
