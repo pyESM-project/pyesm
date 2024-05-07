@@ -35,7 +35,6 @@ V:
                 set: technologies 
                 filters: {0: Supply technology}
 
-
 # -----------------------------------------------------------------------------
 # constants
 
