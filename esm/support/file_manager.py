@@ -68,7 +68,7 @@ class FileManager:
                 The Excel engine to use for reading and writing Excel files. 
                 Defaults to 'openpyxl'.
         """
-        self.logger = logger.getChild(__name__)
+        self.logger = logger.get_child(__name__)
 
         if xls_engine is None:
             self.xls_engine: Literal['openpyxl', 'xlsxwriter'] = 'openpyxl'

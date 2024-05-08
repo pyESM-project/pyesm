@@ -73,7 +73,7 @@ class SetTable:
             **kwargs,
     ) -> None:
 
-        self.logger = logger.getChild(__name__)
+        self.logger = logger.get_child(__name__)
 
         self.symbol: str
         self.table_name: str
@@ -84,7 +84,7 @@ class SetTable:
         for key, value in kwargs.items():
             setattr(self, key, value)
 
-        self.table_headers: Optional[Dict[str, Any]] = None
+        self.table_headers: Optional[Dict[str, List[str]]] = None
         self.table_filters: Optional[Dict[int, Any]] = None
         self.set_categories: Optional[Dict[str, Any]] = None
         self.data = data
@@ -102,6 +102,7 @@ class SetTable:
         """
         if self.table_headers is not None:
             return self.table_headers[Constants.get('_STD_NAME_HEADER')][0]
+        return None
 
     @property
     def set_aggregation_header(self) -> str | None:
@@ -118,6 +119,7 @@ class SetTable:
 
             if aggregation_key in self.table_headers:
                 return self.table_headers[aggregation_key][0]
+        return None
 
     @property
     def set_excel_file_headers(self) -> List | None:
@@ -133,6 +135,7 @@ class SetTable:
             return [
                 item[0] for item in list(self.table_headers.values())
             ]
+        return None
 
     @property
     def set_filters_dict(self) -> Dict[str, List[str]] | None:
@@ -150,6 +153,7 @@ class SetTable:
                 filter_items['header'][0]: filter_items['values']
                 for filter_items in self.table_filters.values()
             }
+        return None
 
     @property
     def set_filters_headers(self) -> Dict[int, str] | None:
@@ -166,6 +170,7 @@ class SetTable:
                 key: value['header'][0]
                 for key, value in self.table_filters.items()
             }
+        return None
 
     @property
     def set_items(self) -> List[str] | None:
@@ -179,6 +184,7 @@ class SetTable:
         """
         if self.data is not None:
             return list(self.data[self.set_name_header])
+        return None
 
     def fetching_headers_and_filters(self) -> None:
         """

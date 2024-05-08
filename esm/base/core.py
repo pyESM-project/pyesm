@@ -58,7 +58,7 @@ class Core:
             paths: Dict[str, Path],
     ) -> None:
 
-        self.logger = logger.getChild(__name__)
+        self.logger = logger.get_child(__name__)
         self.logger.debug(f"'{self}' object initialization...")
 
         self.files = files
@@ -123,7 +123,7 @@ class Core:
 
                 data_table.generate_coordinates_dataframe()
                 data_table.cvxpy_var = self.problem.create_cvxpy_variable(
-                    type=data_table.type,
+                    var_type=data_table.type,
                     shape=(data_table.table_length, 1),
                     name=data_table_key,
                 )

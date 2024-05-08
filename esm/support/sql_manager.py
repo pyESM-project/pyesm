@@ -123,7 +123,7 @@ class SQLManager:
             xls_engine (str, optional): Engine to use for Excel writing. 
                 Defaults to 'openpyxl'.
         """
-        self.logger = logger.getChild(__name__)
+        self.logger = logger.get_child(__name__)
         self.logger.debug(f"'{self}' object generation.")
 
         self.database_sql_path: Path = database_path

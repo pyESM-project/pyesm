@@ -15,7 +15,6 @@ convert SQL data to formats usable by optimization tools like CVXPY.
 """
 
 from typing import Any, Dict, Iterator, List, Optional, Tuple
-import numpy as np
 
 import cvxpy as cp
 import pandas as pd
@@ -104,7 +103,7 @@ class Variable:
         the class flexible in handling different types of variables for 
         optimization models.
         """
-        self.logger = logger.getChild(__name__)
+        self.logger = logger.get_child(__name__)
 
         self.rows: Dict[str, Any] = {}
         self.cols: Dict[str, Any] = {}
@@ -270,8 +269,7 @@ class Variable:
 
         if len(self.shape_size) == 1 or 1 in self.shape_size:
             return True
-        else:
-            return False
+        return False
 
     @property
     def sets_parsing_hierarchy(self) -> Dict[str, str]:

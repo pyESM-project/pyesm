@@ -67,7 +67,7 @@ class DataTable:
             **kwargs: Arbitrary keyword arguments that can set any attribute 
                 of the class.
         """
-        self.logger = logger.getChild(__name__)
+        self.logger = logger.get_child(__name__)
 
         self.name: Optional[str] = None
         self.type: Optional[str] = None

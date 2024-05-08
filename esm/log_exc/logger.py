@@ -1,8 +1,43 @@
+"""
+logging.py 
+
+@author: Matteo V. Rocco
+@institution: Politecnico di Milano
+
+This module defines the Logger class, which is used for logging throughout the 
+package. It supports multiple formats and custom configurations specific to 
+the needs of the application.
+
+The Logger class provides a simplified interface for creating and managing 
+logs at various levels (INFO, DEBUG, WARNING, ERROR, CRITICAL). It includes a 
+method to generate child loggers that inherit properties from a parent logger, 
+ensuring consistent log behavior across different modules of the package.
+"""
+
 import logging
 
 
 class Logger:
-    """Class defined for logging Model class and subclasses."""
+    """
+    A customizable logging class for creating and managing logs in the application.
+
+    The Logger provides facilities for logging messages with different importance 
+    levels, ranging from debug messages to critical system messages. It is 
+    designed to be easy to configure and use within a package, supporting 
+    structured logging practices.
+
+    Attributes:
+        log_format (str): The format of the log messages. Choices are 'minimal' 
+            or 'standard'.
+        str_format (str): The string representation of the log format.
+        logger (logging.Logger): The underlying logger instance from Python's 
+            logging module.
+
+    Args:
+        logger_name (str): The name of the logger, defaults to 'default_logger'.
+        log_level (str): The threshold for the logger, defaults to 'INFO'.
+        log_format (str): The format used for log messages, defaults to 'minimal'.
+    """
 
     def __init__(
             self,
@@ -30,18 +65,17 @@ class Logger:
             stream_handler.propagate = False
             self.logger.addHandler(stream_handler)
 
-    def getChild(self, name: str) -> 'Logger':
-        """Return a child Logger class with the specified name, inheriting
-        properties of parent Logger class.
+    def get_child(self, name: str) -> 'Logger':
+        """
+        Creates and returns a child Logger with a specified name, inheriting 
+        properties from this Logger instance.
 
         Args:
-            name (str): module __name__ where logger is generated. Notice that
-                only last part of the module name is taken to display 
-                consistent module path in log messages.
+            name (str): The name identifier for the child logger, typically 
+                __name__ from the module where the logger is used.
 
         Returns:
-            Logger: instance of the child Logger class with same log_level, 
-                log_file_path and settings of the parent Logger.
+            Logger: A new Logger instance configured as a child of this one.
         """
         child_logger = self.logger.getChild(name.split('.')[-1])
 
@@ -67,41 +101,21 @@ class Logger:
         self.logger.log(msg=message, level=level)
 
     def info(self, message: str):
-        """INFO log message
-
-        Args:
-            message (str): message to be displayed.
-        """
+        """INFO log message."""
         self.logger.log(msg=message, level=logging.INFO)
 
     def debug(self, message: str):
-        """DEBUG log message
-
-        Args:
-            message (str): message to be displayed.
-        """
+        """DEBUG log message."""
         self.logger.log(msg=message, level=logging.DEBUG)
 
     def warning(self, message: str):
-        """WARNING log message
-
-        Args:
-            message (str): message to be displayed.
-        """
+        """WARNING log message."""
         self.logger.log(msg=message, level=logging.WARNING)
 
     def error(self, message: str):
-        """ERROR log message
-
-        Args:
-            message (str): message to be displayed.
-        """
+        """ERROR log message."""
         self.logger.log(msg=message, level=logging.ERROR)
 
     def critical(self, message: str):
-        """CRITICAL log message
-
-        Args:
-            message (str): message to be displayed.
-        """
+        """CRITICAL log message."""
         self.logger.log(msg=message, level=logging.CRITICAL)
