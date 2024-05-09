@@ -66,11 +66,9 @@ I:
     coordinates: [scenarios,sensitivities,flows_from,flows_to] 
     variables_info:
         I: 
-            value: identity_rcot
+            value: identity
             rows: 
                 set: flows_from
-            cols: 
-                set: flows_to
 
 # -----------------------------------------------------------------------------
 # endogenous variables

@@ -43,7 +43,6 @@ flows_from:
     table_name: _set_FLOWS_FROM 
     table_structure:
         name: [ff_Names, TEXT] 
-        aggregation: [flows_to, TEXT]
 
 flows_to:
     symbol: flows_to   
