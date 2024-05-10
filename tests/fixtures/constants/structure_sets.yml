@@ -1,12 +1,5 @@
 # structure of sets
 
-case:
-    symbol: c
-    table_name: _set_CASE
-    split_problem: True
-    table_structure:
-        name: ['c_Name', 'TEXT']
-
 flows:
     symbol: f
     table_name: _set_FLOWS

@@ -1,6 +1,6 @@
 # SYMBOLIC PROBLEM
 
-# definition of the objective function (scalar)
+# definition of the objective function (scalar, optional)
 
 objective function:
     - Minimize(1)

@@ -177,6 +177,7 @@ class Variable:
 
         for dimension in ['rows', 'cols']:
             if self.coordinates_info[dimension]:
+                self.coordinates_info: Dict[str, Dict]
                 dim_labels.append(
                     list(self.coordinates_info[dimension].values())[0])
             else:
@@ -197,6 +198,7 @@ class Variable:
 
         for dimension in ['rows', 'cols']:
             if self.coordinates[dimension]:
+                self.coordinates: Dict[str, Dict]
                 dim_items.append(
                     list(*self.coordinates[dimension].values()))
             else:
@@ -363,7 +365,8 @@ class Variable:
         return None
 
     def reshaping_sqlite_table_data(self, data: pd.DataFrame) -> pd.DataFrame:
-        """It takes a dataframe with data fetched from SQLite database variable
+        """
+        It takes a dataframe with data fetched from SQLite database variable
         table, in the form of a Pandas DataFrame, and elaborate it to get 
         the shape required by the cvxpy variable (two-dimensions matrix).
 
@@ -404,7 +407,8 @@ class Variable:
             self,
             value_type: str,
     ) -> None:
-        """Defines a constant of a specific type. This method validates the 
+        """
+        Defines a constant of a specific type. This method validates the 
         provided value type against a set of allowed values. Depending on the 
         value type, it either creates a variable type or raises an error if 
         the value type is not supported.

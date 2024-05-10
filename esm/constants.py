@@ -130,7 +130,6 @@ class Constants:
         'lower_triangular': (util_functions.tril, ),
         # special identity matrix for rcot problems
         'identity_rcot': (util_functions.identity_rcot, ),
-        # 'range_vector': (np.arange, ),  # vector given a range TBD
     }
 
     _ALLOWED_OPERATORS = {

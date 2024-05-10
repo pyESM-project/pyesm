@@ -1,5 +1,3 @@
-from pathlib import Path
-
 from esm.log_exc.logger import Logger
 from esm.support.dotdict import DotDict
 
