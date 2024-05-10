@@ -1,3 +1,21 @@
+"""
+util.py 
+
+@author: Matteo V. Rocco
+@institution: Politecnico di Milano
+
+This module contains a collection of utility functions designed to assist with 
+managing and manipulating data within the context of model generation and 
+operation in the package. These functions include file management, data 
+validation, dataframe manipulation, dictionary operations, and specific support 
+functions that enhance the interoperability of data structures used throughout 
+the application.
+
+These utilities are critical in handling the data integrity and consistency 
+required for successful model operation, providing robust tools for data 
+manipulation and validation.
+"""
+
 import pprint as pp
 from pathlib import Path
 from typing import Dict, List, Any, Literal, Optional
@@ -5,9 +23,9 @@ from typing import Dict, List, Any, Literal, Optional
 import itertools as it
 import pandas as pd
 
-from esm import constants
-from esm.support.file_manager import FileManager
+from esm.constants import Constants
 from esm.log_exc.logger import Logger
+from esm.support.file_manager import FileManager
 
 
 def create_model_dir(
@@ -19,21 +37,25 @@ def create_model_dir(
     default_files_prefix: str = 'template_'
 ):
     """
-    Create a directory structure for the generation of Model instances. 
-    If no default_model is indicated, only basic setup files are generated.
+    Creates a directory structure for a new model instance, optionally using a 
+    default model as a template, and can include a tutorial notebook if specified.
 
     Args:
-        model_dir_name (str): Name of the model directory.
-        main_dir_path (str): Path to the main directory where the model 
-            directory will be created.
-        default_model (str, optional): Name of the default modle to use as a
-            template. List of available templates in /src/constants.py.
-            Defaults to None.
-        force_overwrite (bool, optional): if True, avoid asking permission to 
-            overwrite existing files/directories. Defaults to False.
-        export_tutorial (bool, optional): if True, exports the tutorial jupyter 
-            notebook with guidance for generating and solving pyesm models. 
-            Default to False.
+        model_dir_name (str): The name for the new model directory.
+        main_dir_path (str): The directory path where the new model directory 
+            will be created.
+        default_model (Optional[str]): The template model name from which to 
+            copy files.
+        force_overwrite (bool): If True, existing files or directories will be 
+            overwritten without confirmation.
+        export_tutorial (bool): If True, includes a Jupyter notebook tutorial 
+            in the model directory.
+        default_files_prefix (str): Prefix for files to be copied from the 
+            template, defaults to 'template_'.
+
+    Returns:
+        None: The function creates directories and copies files but does not 
+            return any value.
     """
 
     files = FileManager(Logger())
@@ -48,9 +70,9 @@ def create_model_dir(
     files.create_dir(model_dir_path, force_overwrite)
 
     if export_tutorial:
-        file_name = constants._TUTORIAL_FILE_NAME
+        file_name = Constants.get('_TUTORIAL_FILE_NAME')
         files.copy_file_to_destination(
-            path_source=constants._DEFAULT_MODELS_DIR_PATH,
+            path_source=Constants.get('_DEFAULT_MODELS_DIR_PATH'),
             path_destination=model_dir_path,
             file_name=default_files_prefix + file_name,
             file_new_name=file_name,
@@ -60,10 +82,10 @@ def create_model_dir(
     if default_model is None:
         files.logger.info(f"Generating model '{model_dir_name}' directory.")
 
-        for file_name in constants._SETUP_FILES.values():
+        for file_name in Constants.get('_SETUP_FILES').values():
             files.copy_file_to_destination(
                 path_destination=model_dir_path,
-                path_source=constants._DEFAULT_MODELS_DIR_PATH,
+                path_source=Constants.get('_DEFAULT_MODELS_DIR_PATH'),
                 file_name=default_files_prefix+file_name,
                 file_new_name=file_name,
                 force_overwrite=force_overwrite,
@@ -75,11 +97,11 @@ def create_model_dir(
             f"generated based on default model '{default_model}'.")
 
         validate_selection(
-            valid_selections=list(constants._DEFAULT_MODELS_LIST),
+            valid_selections=list(Constants.get('_DEFAULT_MODELS_LIST')),
             selection=default_model)
 
         template_dir_path = \
-            Path(constants._DEFAULT_MODELS_DIR_PATH) / default_model
+            Path(Constants.get('_DEFAULT_MODELS_DIR_PATH')) / default_model
 
         files.copy_all_files_to_destination(
             path_source=template_dir_path,
@@ -89,13 +111,18 @@ def create_model_dir(
 
 
 def prettify(item: dict) -> None:
-    """Print a dictionary in a human-readable format in the terminal
+    """
+    Prints a dictionary in a human-readable format.
 
     Args:
-        item (dict): a generic dictionary
+        item (dict): The dictionary to be printed.
 
     Raises:
-        TypeError: If the argument is not a dictionary.
+        TypeError: If 'item' is not a dictionary.
+
+    Returns:
+        None: This function only prints the dictionary to the console and 
+            does not return any value.
     """
     if not isinstance(item, dict):
         raise TypeError('Function argument should be a dictionary.')
@@ -106,21 +133,18 @@ def validate_selection(
         valid_selections: List[str],
         selection: str,
 ) -> None:
-    """Validates if the given selection is in the list of valid selections.
+    """
+    Validates if a provided selection is within a list of valid selections.
 
     Args:
-        valid_selections (List[str]): A list of valid selections.
-        selection (str): The user's selection to be validated.
+        valid_selections (List[str]): A list containing all valid selections.
+        selection (str): The selection to validate.
 
     Raises:
-        ValueError: If the provided selection is not a valid selection.
+        ValueError: If the selection is not found within the list of valid selections.
 
-    Example:
-    >>> valid_selections = ['option1', 'option2', 'option3']
-    >>> validate_selection(valid_selections, 'option2')  # No exception raised
-    >>> validate_selection(valid_selections, 'invalid_option')
-    ValueError: Invalid selection. Please choose one of: option1, option2, 
-        option3.
+    Returns:
+        None: This function only performs validation and does not return any value.
     """
     if not valid_selections:
         raise ValueError("No valid selections are available.")
@@ -136,16 +160,15 @@ def validate_dict_structure(
         validation_structure: Dict[str, Any],
 ) -> bool:
     """
-    Validate the structure of a dictionary against a validation structure.
-    Only the first level of the dictionary hierarchy is validated.
+    Validates the structure of a dictionary against a predefined schema.
 
     Args:
         dictionary (Dict[str, Any]): The dictionary to be validated.
-        validation_structure (Dict[str, Any]): The structure to validate against.
+        validation_structure (Dict[str, Any]): A schema dictionary where 
+            each key corresponds to expected data types.
 
     Returns:
-        bool: True if the dictionary matches the validation structure, 
-            False otherwise.
+        bool: True if the dictionary matches the schema, False otherwise.
     """
     for key, value in dictionary.items():
         if key not in validation_structure:
@@ -156,26 +179,28 @@ def validate_dict_structure(
 
 
 def confirm_action(message: str) -> bool:
-    """Ask the user to confirm an action.
+    """
+    Prompts the user to confirm an action via command line input.
 
     Args:
-        message (str): Confirmation message to display.
+        message (str): The message to display to the user.
 
     Returns:
-        bool: True if the user confirms, False otherwise.
+        bool: True if the user confirms the action, False otherwise.
     """
     response = input(f"{message} (y/[n]): ").lower()
     return response == 'y'
 
 
 def find_dict_depth(item: dict) -> int:
-    """Find and return the depth of a generic dictionary
+    """
+    Determines the depth of a nested dictionary.
 
     Args:
-        item (dict): a generic dictionary
+        item (dict): The dictionary for which the depth is calculated.
 
     Returns:
-        int: depth of the dictionary
+        int: The maximum depth of the dictionary.
     """
     if not isinstance(item, dict) or not item:
         return 0
@@ -184,15 +209,15 @@ def find_dict_depth(item: dict) -> int:
 
 
 def generate_dict_with_none_values(item: dict) -> dict:
-    """Recursively converts a nested dictionary to a dictionary where each key 
-    has a corresponding value of None.
+    """
+    Converts all values in a nested dictionary to None, maintaining the structure 
+    of the dictionary.
 
     Args:
-        item (dict): The input dictionary to be converted.
+        item (dict): The dictionary to be converted.
 
     Returns:
-        dict: The resulting dictionary with the same keys as the input, and 
-        each key having a value of None.
+        dict: A new dictionary with the same keys but all values set to None.
     """
     dict_keys = {}
 
@@ -209,16 +234,18 @@ def pivot_dict(
         data_dict: Dict,
         order_list: Optional[List] = None,
 ) -> Dict:
-    """Pivot a dictionary of lists (arbitrary number of keys and items in each 
-    list), transforming it into a nested dictionary with keys equal to items of 
-    the lists. Order of parsing keys can be changed.
+    """
+    Converts a dictionary of lists into a nested dictionary, optionally 
+    ordering keys.
 
     Args:
-        data_dict (Dict): dictionary to be converted
-        order_list (List, optional): order of parsing keys. Defaults to None.
+        data_dict (Dict): The dictionary to be pivoted.
+        order_list (Optional[List]): An optional list specifying the order of 
+            keys for pivoting.
 
     Returns:
-        Dict: dictionary of nested dictionaries with last level = None
+        Dict: A nested dictionary with keys from the original dictionary and 
+            values as dictionaries.
 
     Example:
     >>> data = {
@@ -254,19 +281,18 @@ def unpivot_dict_to_dataframe(
         data_dict: Dict[str, List[str]],
         key_order: Optional[List[str]] = None,
 ) -> pd.DataFrame:
-    """Generates a Pandas DataFrame by unpivoting content of a dictionary of 
-    lists with generic number of items. User can unpivot just a subset of 
-    entries of the dictionary with the desired order of keys.
+    """
+    Converts a nested dictionary into a DataFrame by performing a cartesian 
+    product of dictionary values.
 
     Args:
-        data_dict (Dict[str, List[str]]): dictionary to be unpivoted. 
-        key_order (List, optional): final index of the dictionary. Defaults: None.
+        data_dict (Dict[str, List[str]]): The dictionary to be unpivoted.
+        key_order (Optional[List[str]]): Order of keys for the resulting DataFrame.
 
     Returns:
-        pd.DataFrame: Pandas DataFrame resulting from the cartesian product of 
-        dictionary values.
+        pd.DataFrame: A DataFrame resulting from the cartesian product of 
+            dictionary values.
     """
-
     if key_order and all([isinstance(item, List) for item in key_order]):
         key_order = [item[0] for item in key_order]
 
@@ -314,7 +340,7 @@ def add_item_to_dict(
         OrderedDict: _description_
     """
 
-    if not (-len(dictionary) <= position <= len(dictionary)):
+    if not -len(dictionary) <= position <= len(dictionary):
         raise ValueError(
             "Invalid position. Position must be "
             f"within {-len(dictionary)} and {len(dictionary)}")
@@ -434,9 +460,10 @@ def add_column_to_dataframe(
         column_header: str,
         column_values: Any = None,
         column_position: Optional[int] = None,
-) -> None:
+) -> bool:
     """Inserts a new column into the provided DataFrame at the specified 
-    position or at the end if no position is specified.
+    position or at the end if no position is specified, only if the column
+    does not already exist.
 
     Args:
         dataframe (pd.DataFrame): The pandas DataFrame to which the column 
@@ -450,11 +477,15 @@ def add_column_to_dataframe(
             inserted at the end.
 
     Returns:
-        None
+        bool: True if the column was added, False if the column already exists.
 
     Raises:
-        None
+        ValueError: If the column_position is greater than the current number 
+            of columns.
     """
+    if column_header in dataframe.columns:
+        return False
+
     if column_position is None:
         column_position = len(dataframe.columns)
 
@@ -463,6 +494,8 @@ def add_column_to_dataframe(
         column=column_header,
         value=column_values,
     )
+
+    return True
 
 
 def substitute_keys(

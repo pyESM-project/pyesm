@@ -1,36 +1,25 @@
 import pytest
-from unittest.mock import patch
+import tests.tests_settings as settings
 
 from esm import Model
 
-log_level = 'info'
-
-unit_cases_dir_path = 'D:/git_repos/pyesm/tests/fixtures'
-dft_cases_dir_path = 'D:/git_repos/pyesm/default'
-
-unit_cases = [
-    'constants',
-    'test_structure',
-    'variables_filtering',
-    'weibull',
-]
-dft_cases = [
-    '1_sut_multi_year',
-    '2_sut_multi_year_rcot',
-    '3_sut_multi_year_rcot_cap',
-]
+log_level = settings.log_level
+unit_models_dir_path = settings.unit_models_dir_path
+default_models_dir_path = settings.default_models_dir_path
+unit_models = settings.unit_models
+default_models = settings.default_models
 
 params_unit_cases = [
-    (name, unit_cases_dir_path, log_level)
-    for name in unit_cases
+    (name, unit_models_dir_path, log_level)
+    for name in unit_models
 ]
 params_dft_cases = [
-    (name, dft_cases_dir_path, log_level)
-    for name in dft_cases
+    (name, default_models_dir_path, log_level)
+    for name in default_models
 ]
 
-ids_unit_cases = ["unit_" + name for name in unit_cases]
-ids_dft_cases = ["default_" + name for name in dft_cases]
+ids_unit_cases = ["unit_" + name for name in unit_models]
+ids_dft_cases = ["default_" + name for name in default_models]
 
 test_methods = {
     'update_database_and_problem': {'force_overwrite': True},

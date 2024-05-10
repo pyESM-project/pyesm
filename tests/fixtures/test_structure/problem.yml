@@ -1,17 +1,11 @@
 # SYMBOLIC PROBLEM
 
-# definition of the objective function (scalar)
-
-objective function:
-    - Minimize(1) # dummy objective
-
-# definition of the constraints (vector expressions)
-
 expressions: 
 
-    # - X_tfp == V_tfp
-    # - X_tfc == V_tfc
-    - X_yt == T_yy @ V_yt
+    - X_tfp == V_tfp
+    - X_tfc == V_tfc
+    # - X_yt == T_yy @ V_yt
+
 
 
     

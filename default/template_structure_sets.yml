@@ -4,6 +4,7 @@
 #     symbol: a  # symbol of the set 
 #     table_name: _set_a # name of the table of the set in the database
 #     split_problem: False # (optional) if the items of the set defines separate problems 
+#     copy_from: another_set_key # (optional) key of another set to copy the data from (table_headers must be filled anyway)
 #     table_headers:
 #         name: [a_Names, TYPE] # header of set entries names in database set table
 #         aggregation: [a_Agg, TEXT] # (optional) header of set entries that are matching another set (aggregation)
