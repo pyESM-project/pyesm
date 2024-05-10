@@ -1,0 +1,17 @@
+# SYMBOLIC PROBLEM
+
+# definition of the constraints (vector expressions)
+
+expressions: 
+
+    - Lff == minv(I - (u @ s))
+
+    - Q == Lff @ Y
+    - X == s @ Q
+
+    - f == (e @ s) @ Lff
+
+    - E == e @ diag(X)
+
+
+

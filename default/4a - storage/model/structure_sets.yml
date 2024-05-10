@@ -1,0 +1,65 @@
+# structure of sets
+
+# set_key:
+#     symbol: a  # symbol of the set 
+#     table_name: _set_a # name of the table of the set in the database
+#     split_problem: False # (optional) if the items of the set defines separate problems 
+#     table_headers:
+#         name: [a_Names, TYPE] # header of set entries names in database set table
+#         aggregation: [a_Agg, TEXT] # (optional) header of set entries that are matching another set (aggregation)
+#         filters:
+#             0:  # (int) index of the category in the set
+#                 header: [a_Cat_1, TEXT] 
+#                 values: [a_1a, a_1b, a_1c]
+#             1: 
+#                 header: [a_Cat_2, TEXT] 
+#                 values: [a_2a, a_2b]
+
+
+# -----------------------------------------------------------------------------
+# sets
+scenarios:
+    symbol: scen  # symbol of the set 
+    table_name: _set_SCENARIOS # name of the table of the set in the database
+    split_problem: True # (optional) if the items of the set defines separate problems 
+    table_structure:
+        name: [scen_Names, TEXT] # header of set entries names in database set table
+
+techs_supply:
+    symbol: supply techs  
+    table_name: _set_TECHS_SUPPLY 
+    table_structure:
+        name: [ts_Names, TEXT] 
+        filters:
+            storage: 
+                header: [ts_Storage, TEXT] 
+                values: [y, n]
+
+techs_demand:
+    symbol: demand techs  
+    table_name: _set_TECHS_DEMAND 
+    table_structure:
+        name: [td_Names, TEXT] 
+
+flows:
+    symbol: flows   
+    table_name: _set_FLOWS 
+    table_structure:
+        name: [ff_Names, TEXT] 
+        aggregation: [flows_agg, TEXT]
+
+flows_agg:
+    symbol: flows_agg   
+    table_name: _set_FLOWS_AGG 
+    table_structure:
+        name: [fa_Names, TEXT] 
+
+hours:
+    symbol: hours  
+    table_name: _set_HOURS 
+    table_structure:
+        name: [h_Names, TEXT]
+        filters:
+            extremes:
+                header: [h_Extremes, TEXT] 
+                values: [start, end]  # test if need for "middle" or not
