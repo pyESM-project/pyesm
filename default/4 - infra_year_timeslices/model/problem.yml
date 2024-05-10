@@ -3,7 +3,7 @@
 # definition of the objective function (scalar)
 
 objective function:
-    - Minimize(sum(sum(C_om_y)))
+    - Minimize(sum(C_om_y))
 
 # definition of the constraints (vector expressions)
 
@@ -16,11 +16,17 @@ expressions:
 
     - C_om_y == mult(X_y, c_om) 
 
-    - X_y == mult(sum(X_h, axis=1), n_periods)
-    - Q_y == mult(sum(Q_h, axis=1), n_periods)
-    - Q_agg_y == mult(sum(Q_h, axis=0), n_periods)
+    # - X_y == mult(sum(X_h, axis=1), n_periods)
+    # - Q_y == mult(sum(Q_h, axis=1), n_periods)
+    # - Q_agg_y == mult(sum(Q_h, axis=0), n_periods)
+    - X_y_y ==  sum(X_h, 0, True) * 365
+    # - Q_y == mult(sum(Q_h, axis=1), n_periods)
+    # - Q_agg_y == mult(sum(Q_h, axis=0), n_periods)
+
+    - X_max == mult(lf_max, cap_year_y) / 1095
+
 
     - X_h <= X_max
-    - X_h >= X_min
+    - X_h >= 0
 
     - Q_h >= 0

@@ -23,7 +23,7 @@
 u:
     name: use matrix # description or full name of the table
     type: exogenous 
-    coordinates: [scenarios, techs, flows_agg] # list of coordinates with set_key symbols
+    coordinates: [scenarios, techs, flows_agg, years] # list of coordinates with set_key symbols
     variables_info:
         u: # variable name
             rows: # rows of the variable
@@ -33,7 +33,7 @@ u:
 d:
     name: make matrix # description or full name of the table
     type: exogenous 
-    coordinates: [scenarios,techs, flows] # list of coordinates with set_key symbols
+    coordinates: [scenarios,techs, flows, years] # list of coordinates with set_key symbols
     variables_info:
         d: # variable name
             rows: # rows of the variable
@@ -178,7 +178,12 @@ X_y:
     type: endogenous 
     coordinates: [scenarios,techs,  years] # list of coordinates with set_key symbols
     variables_info:
-        Q_y: # variable name
+        X_y_y: # variable name
+            # rows: # columns of the variable
+            #     set: years # set_key symbol
+            cols: # columns of the variable
+                set: techs # set_key symbol
+        X_y: # variable name
             rows: # columns of the variable
                 set: years # set_key symbol
             cols: # columns of the variable
@@ -212,6 +217,7 @@ X_max:
     type: endogenous 
     coordinates: [scenarios,techs, hours, years] # list of coordinates with set_key symbols
     variables_info:
+
         X_max: # variable name
             rows: # columns of the variable
                 set: hours # set_key symbol
