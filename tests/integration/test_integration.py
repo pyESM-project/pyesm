@@ -15,16 +15,6 @@ if not tests_settings.exists():
 with open(tests_settings, 'r') as file:
     settings = yaml.safe_load(file)
 
-log_level = settings['log_level']
-
-units_dir_path = root_path / settings['paths']['units']
-models_dir_path = root_path / settings['paths']['models']
-
-unit_models = settings['fixtures']['units']
-default_models = settings['fixtures']['models']
-
-test_methods = settings['test_methods']
-
 
 def create_test_function(
         models: Dict,
@@ -48,14 +38,26 @@ def create_test_function(
                     f"Method '{method}' failed for "
                     f"'{model.settings['model_name']}': {str(e)}"
                 )
+
     return test_model
 
+
+log_level = settings['log_level']
+test_methods = settings['test_methods']
+
+# testing units
+units_dir_path = root_path / settings['paths']['units']
+unit_models = settings['fixtures']['units']
 
 test_units = create_test_function(
     models=unit_models,
     models_dir_path=units_dir_path,
     methods=test_methods,
 )
+
+# testing models
+models_dir_path = root_path / settings['paths']['models']
+default_models = settings['fixtures']['models']
 
 test_models = create_test_function(
     models=default_models,

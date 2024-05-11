@@ -301,3 +301,25 @@ class Core:
                     dataframe=data_table_dataframe,
                     operation=operation,
                 )
+
+    def check_results_as_expected(self) -> None:
+        """
+        Checks if the results of the current database match the expected results.
+        This method uses the 'check_databases_equality' method to compare the 
+        current database with a test database. The test database is specified 
+        by the 'sqlite_database_file_test' setting and is located in the model 
+        directory.
+
+        Raises:
+            OperationalError: If the connection or cursor of the database to be 
+                checked are not initialized.
+            ModelFolderError: If the test database does not exist or is not 
+                correctly named.
+            ResultsError: If the databases are not identical in terms of table 
+                presence, structure, or contents.
+        """
+        with db_handler(self.sqltools):
+            self.sqltools.check_databases_equality(
+                other_db_dir_path=self.paths['model_dir'],
+                other_db_name=self.settings['sqlite_database_file_test'],
+            )

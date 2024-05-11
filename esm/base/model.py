@@ -102,6 +102,7 @@ class Model:
             input_data_dir: str = 'input_data',
             input_data_file: str = 'input_data.xlsx',
             sqlite_database_file: str = 'database.db',
+            sqlite_database_file_test: str = 'database_expected.db',
             sqlite_database_foreign_keys: bool = True,
             powerbi_report_file: str = 'dataset.pbix',
     ) -> None:
@@ -126,6 +127,7 @@ class Model:
             'input_data_dir': input_data_dir,
             'input_data_file': input_data_file,
             'sqlite_database_file': sqlite_database_file,
+            'sqlite_database_file_test': sqlite_database_file_test,
             'sqlite_database_foreign_keys': sqlite_database_foreign_keys,
             'powerbi_report_file': powerbi_report_file,
         })
@@ -407,6 +409,26 @@ class Model:
             f"'{self.settings['powerbi_report_file']}'.")
 
         self.pbi_tools.generate_powerbi_report()
+
+    def check_model_results(self) -> None:
+        """
+        Checks the results of the model's computations. This is mainly called
+        for testing purpose.
+
+        This method uses the 'check_results_as_expected' method to compare the 
+        results of the current model's computations with the expected results. 
+        The expected results are stored in a test database specified by the 
+        'sqlite_database_file_test' setting and located in the model directory.
+
+        Raises:
+            OperationalError: If the connection or cursor of the database to be 
+                checked are not initialized.
+            ModelFolderError: If the test database does not exist or is not 
+                correctly named.
+            ResultsError: If the databases are not identical in terms of table 
+                presence, structure, or contents.
+        """
+        self.core.check_results_as_expected()
 
     def erase_model(self) -> None:
         """

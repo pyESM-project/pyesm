@@ -1188,10 +1188,13 @@ class Problem:
 
         for problem_num in self.numeric_problems.index:
 
-            problem_info = self.numeric_problems.at[
+            problem_info: pd.DataFrame = self.numeric_problems.at[
                 problem_num, Constants.get('_PROBLEM_INFO_HEADER')]
 
-            self.logger.info(f"Solving problem: {problem_info}.")
+            if problem_info:
+                self.logger.info(f"Solving numerical problem: {problem_info}.")
+            else:
+                self.logger.info(f"Solving numerical problem.")
 
             problem = self.numeric_problems.at[
                 problem_num, Constants.get('_PROBLEM_HEADER')]

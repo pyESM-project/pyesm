@@ -4,11 +4,11 @@ sql_manager.py
 @author: Matteo V. Rocco
 @institution: Politecnico di Milano
 
-This module contains the SQLManager class, which is designed to manage SQLite 
-database interactions for the package relying on the built-in sqlite3 functions. 
-It handles database connections, executes SQLite queries, and exports data to 
-Excel files using specified engines. The class provides methods to open and close 
-database connections, execute queries with various options, and perform Excel 
+This module contains the SQLManager class, which is designed to manage SQLite
+database interactions for the package relying on the built-in sqlite3 functions.
+It handles database connections, executes SQLite queries, and exports data to
+Excel files using specified engines. The class provides methods to open and close
+database connections, execute queries with various options, and perform Excel
 exports.
 """
 
@@ -27,83 +27,83 @@ from esm.support import util
 
 class SQLManager:
     """
-    A class designed to manage SQLite database interactions and facilitate data 
-    export to Excel files.     
-    This class handles all database operations including opening and closing 
-    connections, executing SQL queries, and managing database transactions. 
-    It also provides methods for exporting data directly to Excel using specified 
+    A class designed to manage SQLite database interactions and facilitate data
+    export to Excel files.
+    This class handles all database operations including opening and closing
+    connections, executing SQL queries, and managing database transactions.
+    It also provides methods for exporting data directly to Excel using specified
     Excel writing engines.
 
     Attributes:
-        logger (Logger): An instance of a logging class used to log messages 
+        logger (Logger): An instance of a logging class used to log messages
             in different severity levels.
         database_sql_path (Path): The file system path to the SQLite database file.
-        database_name (str): A human-readable identifier for the database used 
+        database_name (str): A human-readable identifier for the database used
             in logging.
-        xls_engine (Literal['openpyxl', 'xlsxwriter']): The engine to use for 
+        xls_engine (Literal['openpyxl', 'xlsxwriter']): The engine to use for
             exporting data to Excel. Currently supports 'openpyxl' and 'xlsxwriter'.
-        connection (Optional[sqlite3.Connection]): The SQLite database connection 
+        connection (Optional[sqlite3.Connection]): The SQLite database connection
             object, which is None until the database is connected.
-        cursor (Optional[sqlite3.Cursor]): The cursor object for executing SQL 
+        cursor (Optional[sqlite3.Cursor]): The cursor object for executing SQL
             queries, None if the database is not connected.
-        foreign_keys_enabled (Optional[bool]): Indicates whether SQLite foreign 
+        foreign_keys_enabled (Optional[bool]): Indicates whether SQLite foreign
             key constraints are actively enforced in the database session.
 
     Methods:
-        open_connection(): Opens a connection to the SQLite database and 
+        open_connection(): Opens a connection to the SQLite database and
             initializes a cursor.
-        close_connection(): Closes the existing database connection and 
+        close_connection(): Closes the existing database connection and
             nullifies the cursor.
-        execute_query(query, params, many, fetch, commit): Executes a SQL query 
+        execute_query(query, params, many, fetch, commit): Executes a SQL query
             using the provided parameters.
-        check_table_exists(table_name): Checks if the specified table exists 
+        check_table_exists(table_name): Checks if the specified table exists
             in the database.
-        get_existing_tables_names(): Retrieves a list of table names existing 
+        get_existing_tables_names(): Retrieves a list of table names existing
             in the database.
-        table_to_excel(excel_filename, excel_dir_path, table_name): Exports the 
+        table_to_excel(excel_filename, excel_dir_path, table_name): Exports the
             contents of a database table to an Excel file.
-        get_primary_column_name(table_name): Retrieves the primary key column 
+        get_primary_column_name(table_name): Retrieves the primary key column
             name from the specified table.
         drop_table(table_name): Deletes the specified table from the database.
-        get_table_fields(table_name): Fetches and returns the fields and their 
+        get_table_fields(table_name): Fetches and returns the fields and their
             data types of the specified table.
-        create_table(table_name, table_fields, foreign_keys): Creates a new 
+        create_table(table_name, table_fields, foreign_keys): Creates a new
             table with the given specifications.
-        switch_foreign_keys(switch): Enables or disables foreign key enforcement 
+        switch_foreign_keys(switch): Enables or disables foreign key enforcement
             in the database.
-        add_table_column(table_name, column_name, column_type, default_value, 
+        add_table_column(table_name, column_name, column_type, default_value,
             commit): Adds a new column to an existing table.
-        count_table_data_entries(table_name): Counts and returns the number of 
+        count_table_data_entries(table_name): Counts and returns the number of
             entries in the specified table.
-        delete_all_table_entries(table_name, force_operation): Deletes all 
+        delete_all_table_entries(table_name, force_operation): Deletes all
             entries from the specified table.
-        validate_table_dataframe_headers(table_name, dataframe, check_id_field): 
+        validate_table_dataframe_headers(table_name, dataframe, check_id_field):
             Validates that DataFrame headers match the table schema.
-        add_primary_keys_from_table(table_name, dataframe): Adds primary key 
+        add_primary_keys_from_table(table_name, dataframe): Adds primary key
             values from a table to a DataFrame.
-        table_to_dataframe(table_name): Converts the entire contents of a 
+        table_to_dataframe(table_name): Converts the entire contents of a
             table into a pandas DataFrame.
-        dataframe_to_table(table_name, dataframe, operation, force_operation): 
+        dataframe_to_table(table_name, dataframe, operation, force_operation):
             Inserts or updates data from a DataFrame into a table.
-        filtered_table_to_dataframe(table_name, filters_dict): Returns a DataFrame 
+        filtered_table_to_dataframe(table_name, filters_dict): Returns a DataFrame
             based on filtered data from a table.
-        get_related_table_keys(child_column_name, parent_table_name, 
-            parent_table_fields): Retrieves related keys from a child table 
+        get_related_table_keys(child_column_name, parent_table_name,
+            parent_table_fields): Retrieves related keys from a child table
             based on parent table filters.
         compare_with_other_database(): Compare two SQLite databases.
 
     Examples:
-        To use this class, instantiate it with a logger and database details, 
+        To use this class, instantiate it with a logger and database details,
         then use its methods to manage database operations:
         >>> logger = Logger()
-        >>> sql_manager = SQLManager(logger, Path('/path/to/database.db'), 
+        >>> sql_manager = SQLManager(logger, Path('/path/to/database.db'),
                 'MyDatabase', 'openpyxl')
         >>> sql_manager.open_connection()
         >>> sql_manager.execute_query("SELECT * FROM my_table")
         >>> sql_manager.close_connection()
 
     Note:
-        This class assumes that a valid SQLite database path is provided and 
+        This class assumes that a valid SQLite database path is provided and
         that the database file is accessible and correctly formatted.
     """
 
@@ -120,7 +120,7 @@ class SQLManager:
             logger (Logger): Logger object.
             database_path (Path): Path to the SQLite database.
             database_name (str): Name of the SQLite database.
-            xls_engine (str, optional): Engine to use for Excel writing. 
+            xls_engine (str, optional): Engine to use for Excel writing.
                 Defaults to 'openpyxl'.
         """
         self.logger = logger.get_child(__name__)
@@ -140,16 +140,16 @@ class SQLManager:
 
     def open_connection(self) -> None:
         """Opens a connection to the SQLite database.
-        If the connection is not already established, it creates a new 
-        connection to the specified SQLite database file. It also initializes a 
-        cursor for executing SQL queries. If there is an error during the 
+        If the connection is not already established, it creates a new
+        connection to the specified SQLite database file. It also initializes a
+        cursor for executing SQL queries. If there is an error during the
         connection process, it logs the error and raises the caught exception.
 
         Returns:
             None
 
         Raises:
-            sqlite3.Error: If there is an error in establishing the database 
+            sqlite3.Error: If there is an error in establishing the database
             connection.
         """
         if self.connection is None:
@@ -177,7 +177,7 @@ class SQLManager:
             None
 
         Raises:
-            sqlite3.Error: If there is an error in closing the database 
+            sqlite3.Error: If there is an error in closing the database
             connection.
         """
         if self.connection:
@@ -208,17 +208,17 @@ class SQLManager:
 
         Args:
             query (str): The SQL query to be executed.
-            params (tuple, optional): Parameters to be used in the query. 
+            params (tuple, optional): Parameters to be used in the query.
                 Default is an empty tuple.
-            many (bool, optional): Set to True if executing a many-parameter 
+            many (bool, optional): Set to True if executing a many-parameter
                 query. Default is False.
-            fetch (bool, optional): Set to True if the query returns data that 
+            fetch (bool, optional): Set to True if the query returns data that
             needs to be fetched. Default is False.
-            commit (bool, optional): Set to False to skip changes commit, 
+            commit (bool, optional): Set to False to skip changes commit,
                 True otherwise. Default is True.
 
         Returns:
-            Optional[List[Tuple]]: A list of tuples containing the fetched data 
+            Optional[List[Tuple]]: A list of tuples containing the fetched data
             if fetch is True, None otherwise.
 
         Raises:
@@ -258,7 +258,7 @@ class SQLManager:
         """Retrieve a list of existing table names in the SQLite database.
 
         Returns:
-            List[str]: A list containing the names of existing tables in the 
+            List[str]: A list containing the names of existing tables in the
             database.
         """
         query = "SELECT name FROM sqlite_master WHERE type='table'"
@@ -276,7 +276,7 @@ class SQLManager:
             table_name (str): The name of the table to check.
 
         Raises:
-            TableNotFoundError: If the specified table does not exist in 
+            TableNotFoundError: If the specified table does not exist in
             the database.
         """
         if table_name not in self.get_existing_tables_names:
@@ -326,7 +326,7 @@ class SQLManager:
             None
 
         Raises:
-            OperationalError: If there is an operational error during table 
+            OperationalError: If there is an operational error during table
             dropping.
         """
         query = f"DROP TABLE {table_name}"
@@ -334,7 +334,7 @@ class SQLManager:
         self.logger.debug(f"SQLite '{table_name}' - deleted.")
 
     def get_table_fields(self, table_name: str) -> Dict[str, str]:
-        """Retrieve the fields and their corresponding types for a given 
+        """Retrieve the fields and their corresponding types for a given
         SQLite table.
 
         Args:
@@ -365,24 +365,24 @@ class SQLManager:
             table_fields: Dict[str, List[str]],
             foreign_keys: Optional[Dict[str, tuple]] = None,
     ) -> None:
-        """Create an SQLite table with the specified name, fields and foreign 
+        """Create an SQLite table with the specified name, fields and foreign
         keys (optional).
 
         Args:
             table_name (str): The name of the SQLite table.
-            table_fields (Dict[str, List[str]]): A dictionary containing 
+            table_fields (Dict[str, List[str]]): A dictionary containing
             two lists:
                 - 'labels': List of field names.
                 - 'types': List of corresponding field types.
-            foreign_keys (Dict[str, tuple], optional): A dictionary 
-                representing foreign key constraints. Keys are field names, 
+            foreign_keys (Dict[str, tuple], optional): A dictionary
+                representing foreign key constraints. Keys are field names,
                 and values are tuples (referencing_field, referenced_table).
 
         Returns:
             None
 
         Raises:
-            OperationalError: If there is an operational error during 
+            OperationalError: If there is an operational error during
             table creation.
         """
         if table_name in self.get_existing_tables_names:
@@ -458,9 +458,9 @@ class SQLManager:
             table_name (str): The name of the SQLite table.
             column_name (str): The name of the column to be added.
             column_type (str): The SQLite data type of the new column.
-            default_value (Any, optional): The default value for the new column. 
+            default_value (Any, optional): The default value for the new column.
                 Default is None.
-            commit (bool, optional): Set to True to commit the changes, 
+            commit (bool, optional): Set to True to commit the changes,
                 False otherwise. Default is True.
 
         Returns:
@@ -471,7 +471,7 @@ class SQLManager:
         """
         try:
             query = f"""
-                ALTER TABLE {table_name} 
+                ALTER TABLE {table_name}
                 ADD COLUMN "{column_name}" {column_type}
             """
 
@@ -513,7 +513,7 @@ class SQLManager:
 
         Args:
         table_name (str): The name of the SQLite table.
-        force_operation (bool, optional): If True, avoid asking user 
+        force_operation (bool, optional): If True, avoid asking user
             confirmation to execute the operation. Defaults to False.
 
         Returns:
@@ -545,17 +545,17 @@ class SQLManager:
             dataframe: pd.DataFrame,
             check_id_field: bool = False,
     ) -> None:
-        """Validate that the headers of a DataFrame match the headers of an 
+        """Validate that the headers of a DataFrame match the headers of an
         SQLite table.
 
         Args:
             table_name (str): The name of the SQLite table.
             dataframe (pd.DataFrame): The DataFrame to be validated.
-            check_id_field (bool, optional): Set to True to exclude the 
+            check_id_field (bool, optional): Set to True to exclude the
                 primary key field from the check. Default is False.
 
         Raises:
-            ValueError: If the headers of the DataFrame and the SQLite table 
+            ValueError: If the headers of the DataFrame and the SQLite table
                 mismatch.
         """
         field_id = self.get_primary_column_name(table_name)
@@ -579,7 +579,7 @@ class SQLManager:
 
         Args:
             table_name (str): The name of the SQLite table.
-            dataframe (pd.DataFrame): The DataFrame to which primary keys 
+            dataframe (pd.DataFrame): The DataFrame to which primary keys
                 will be added.
 
         Returns:
@@ -646,16 +646,16 @@ class SQLManager:
         operation: str = 'overwrite',
         force_operation: bool = False,
     ) -> None:
-        """Add or update a SQLite table based on data provided by a Pandas 
+        """Add or update a SQLite table based on data provided by a Pandas
         DataFrame.
 
         Args:
             table_name (str): The name of the target SQLite table.
-            dataframe (pd.DataFrame): The Pandas DataFrame to be written to 
+            dataframe (pd.DataFrame): The Pandas DataFrame to be written to
                 the table.
             operation (str, optional): The operation to perform (see below).
                 Defaults to 'overwrite'.
-            force_operation (bool, optional): If True, avoid asking user 
+            force_operation (bool, optional): If True, avoid asking user
                 confirmation to execute the operation. Defaults to False.
 
         Returns:
@@ -670,7 +670,7 @@ class SQLManager:
         Valid 'operation' modes:
             - overwrite: deletes all table entries and writes the new data.
             - update: common entries (except for values) will be updated, while
-                other entries (if present) are unchanged. 
+                other entries (if present) are unchanged.
 
         """
         valid_operations = ['overwrite', 'update', ]
@@ -739,10 +739,10 @@ class SQLManager:
             ]
 
             query = f"""
-                UPDATE {table_name} SET "{values_field}" = ? 
+                UPDATE {table_name} SET "{values_field}" = ?
                 WHERE {' AND '.join([
-                    f'"{col}" = ?' 
-                    for col in 
+                    f'"{col}" = ?'
+                    for col in
                     dataframe.drop(columns=[id_field, values_field]).columns
                 ])}
             """
@@ -762,7 +762,7 @@ class SQLManager:
 
         Args:
             excel_filename (str): The name of the Excel file.
-            excel_dir_path (Path): The directory path where the Excel file will 
+            excel_dir_path (Path): The directory path where the Excel file will
                 be saved. If it does not exist, it will be created.
             table_name (str): The name of the SQLite table.
 
@@ -809,23 +809,23 @@ class SQLManager:
             table_name: str,
             filters_dict: Dict[str, List[str]],
     ) -> pd.DataFrame:
-        """Filters a SQL table based on the provided filters and returns the 
+        """Filters a SQL table based on the provided filters and returns the
         result as a pandas DataFrame.
 
         Args:
             table_name (str): The name of the SQL table to be filtered.
-            filters_dict (Dict[str, List[str]]): A dictionary where the keys are 
+            filters_dict (Dict[str, List[str]]): A dictionary where the keys are
                 the column names and the values are lists of values to filter by.
 
         Returns:
-            pd.DataFrame: A DataFrame containing the filtered results. 
-                If no results are found, an empty DataFrame is returned 
+            pd.DataFrame: A DataFrame containing the filtered results.
+                If no results are found, an empty DataFrame is returned
                 and a warning is logged.
 
         Raises:
             ValueError: If the table_name is not found in the database.
-            TypeError: If the filters_dict is not a dictionary or if the keys 
-                of the dictionary are not strings or if the values of the 
+            TypeError: If the filters_dict is not a dictionary or if the keys
+                of the dictionary are not strings or if the values of the
                 dictionary are not lists of strings.
             Exception: If there is an error during query execution.
         """
@@ -872,20 +872,20 @@ class SQLManager:
             parent_table_name: str,
             parent_table_fields: Dict[str, List[str]],
     ) -> Dict[str, List[str]]:
-        """Retrieves related keys from a child table based on specified 
-        conditions in the parent table. The related keys are meant to be used 
-        as 'filter_dict' parameter in 'filtered_table_to_dataframe' method. 
+        """Retrieves related keys from a child table based on specified
+        conditions in the parent table. The related keys are meant to be used
+        as 'filter_dict' parameter in 'filtered_table_to_dataframe' method.
 
         Args:
-            child_column_name (str): The column in the child table from which 
+            child_column_name (str): The column in the child table from which
                 to retrieve related keys.
             parent_table_name (str): The name of the parent table.
-            parent_table_fields (Dict[str, List[str]]): A dictionary where the 
-                keys are the column names, and the values are lists of values 
+            parent_table_fields (Dict[str, List[str]]): A dictionary where the
+                keys are the column names, and the values are lists of values
                 to filter by.
 
         Returns:
-            Dict[str, List[str]]: A dictionary containing the related keys from 
+            Dict[str, List[str]]: A dictionary containing the related keys from
                 the child table.
 
         Raises:
@@ -902,8 +902,8 @@ class SQLManager:
                 flattened_values.append(value)
 
         query = f"""
-            SELECT {child_column_name} 
-            FROM {parent_table_name} 
+            SELECT {child_column_name}
+            FROM {parent_table_name}
             WHERE {conditions}
         """
 
@@ -920,99 +920,134 @@ class SQLManager:
         column_values = result[child_column_name].tolist()
         return {child_column_name: column_values}
 
-    # to be completed and added to the test method.
-    def compare_with_other_database(
+    def check_databases_equality(
             self,
-            other_cursor: sqlite3.Cursor,
-            level: str = 'data'
-    ) -> bool:
-        """Compares the current database with another SQLite database to check 
+            other_db_dir_path: Path | str,
+            other_db_name: str,
+    ) -> None:
+        """
+        Compares the current database with another SQLite database to check
         if they are identical.
 
-        Args:
-            other_cursor (sqlite3.Cursor): Cursor for the other SQLite database.
-            level (str): Level of comparison to perform:
-                'tables' - compares the presence of tables,
-                'schema' - compares the table structure (columns and types),
-                'data'   - compares the exact row data in the tables.
+        This method checks for the following:
+        1. Existence of tables in the source database.
+        2. Structure of the tables (schema).
+        3. Contents of the tables (data).
 
-        Returns:
-            bool: True if both databases are identical at the specified 
-                level, False otherwise.
+        If any of these checks fail, the method raises a ResultsError and logs the 
+        details of the failure. If all checks pass, the method logs a success message.
+
+        Args:
+            other_db_dir_path (Path | str): Directory path of the other SQLite
+                database.
+            other_db_name (str): Name of the other SQLite database.
 
         Raises:
-            sqlite3.Error: If there is an error accessing the databases.
+            OperationalError: If the connection or cursor of the database to be 
+                checked are not initialized.
+            ModelFolderError: If the other database does not exist or is not correctly named.
+            ResultsError: If the databases are not identical in terms of table 
+                presence, structure, or contents.
         """
+
         if self.connection is None or self.cursor is None:
-            msg = "Database connection or cursor not initialized."
+            msg = "Connection or cursor of the database to be checked are " \
+                "not initialized."
             self.logger.error(msg)
             raise exc.OperationalError(msg)
 
+        other_db_path = Path(other_db_dir_path) / other_db_name
+
+        if not other_db_path.exists():
+            msg = "Database with expected results not found or not correctly named."
+            self.logger.error(msg)
+            raise exc.ModelFolderError(msg)
+
+        other_db_connection = sqlite3.connect(other_db_path)
+        other_db_cursor = other_db_connection.cursor()
+
         try:
-            # 1. Compare table presence
+            # 1. Check existance of tables in source
             current_tables = self.get_existing_tables_names
-            other_cursor.execute(
+            other_db_cursor.execute(
                 "SELECT name FROM sqlite_master WHERE type='table'")
-            other_tables = [table[0] for table in other_cursor.fetchall()]
+            other_tables = [table[0] for table in other_db_cursor.fetchall()]
 
-            if set(current_tables) != set(other_tables):
-                self.logger.debug("Tables differ")
-                return False
-            if level == 'tables':
-                return True
+            tables_not_expected = set(current_tables) - set(other_tables)
+            tables_missing = set(other_tables) - set(current_tables)
 
-            # 2. Compare table structure (schema)
+            if tables_not_expected:
+                msg = "Source database has more tables than " \
+                    f"expected: {tables_not_expected}."
+                self.logger.error(msg)
+                raise exc.ResultsError(msg)
+
+            if tables_missing:
+                msg = "Source database has less tables than " \
+                    f"expected: {tables_missing}."
+                self.logger.error(msg)
+                raise exc.ResultsError(msg)
+
+            # 2. Compare tables structure (schema)
+            tables_wrong_structures = []
+
             for table in current_tables:
                 self.cursor.execute(f"PRAGMA table_info({table})")
                 current_table_info = self.cursor.fetchall()
 
-                other_cursor.execute(f"PRAGMA table_info({table})")
-                other_table_info = other_cursor.fetchall()
+                other_db_cursor.execute(f"PRAGMA table_info({table})")
+                other_table_info = other_db_cursor.fetchall()
 
                 if current_table_info != other_table_info:
-                    self.logger.debug(f"Table structure differs for {table}")
-                    return False
-            if level == 'schema':
-                return True
+                    tables_wrong_structures.append(table)
+
+            if tables_wrong_structures:
+                msg = f"Wrong structures for tables: {tables_wrong_structures}."
+                self.logger.error(msg)
+                raise exc.ResultsError(msg)
 
             # 3. Compare table contents (data)
-            if level == 'data':
-                for table in current_tables:
-                    self.cursor.execute(f"SELECT * FROM {table}")
-                    current_rows = {tuple(row)
-                                    for row in self.cursor.fetchall()}
+            tables_wrong_data = []
 
-                    other_cursor.execute(f"SELECT * FROM {table}")
-                    other_rows = {tuple(row)
-                                  for row in other_cursor.fetchall()}
+            for table in current_tables:
+                self.cursor.execute(f"SELECT * FROM {table}")
+                current_rows = {
+                    tuple(row) for row in self.cursor.fetchall()}
 
-                    if current_rows != other_rows:
-                        self.logger.debug(f"Rows differ in table {table}")
-                        return False
-                return True
+                other_db_cursor.execute(f"SELECT * FROM {table}")
+                other_rows = {
+                    tuple(row) for row in other_db_cursor.fetchall()}
 
-        except sqlite3.Error as e:
-            self.logger.error(f"Database comparison failed: {e}")
-            raise exc.NumericalProblemError
+                if current_rows != other_rows:
+                    tables_wrong_data.append(table)
 
-        return False
+            if tables_wrong_data:
+                msg = "Source and expected data not matching for " \
+                    f"tables: {tables_wrong_data}."
+                self.logger.error(msg)
+                raise exc.ResultsError(msg)
+
+            self.logger.info("Passed SQLite databases are equal.")
+
+        finally:
+            other_db_connection.close()
 
 
-@contextlib.contextmanager
+@ contextlib.contextmanager
 def db_handler(sql_manager: SQLManager):
     """
-    A context manager for handling database connections and providing a cursor 
+    A context manager for handling database connections and providing a cursor
     for database operations using a SQLManager object.
 
     Args:
-        sql_manager (SQLManager): The SQLManager object used for managing 
+        sql_manager (SQLManager): The SQLManager object used for managing
             the database connection and operations.
 
     Yields:
         cursor (sqlite3.Cursor): A cursor for executing SQL commands.
 
     Raises:
-        sqlite3.Error: Any exceptions raised during connection management or 
+        sqlite3.Error: Any exceptions raised during connection management or
         during SQL operations are logged and re-raised to be handled externally.
     """
     try:
