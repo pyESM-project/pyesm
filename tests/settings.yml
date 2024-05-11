@@ -11,6 +11,7 @@ fixtures:
         - weibull
         - test_structure
         - sets_mirror
+        - inverse
 
     models: 
         - 0a - tech_filters
@@ -25,6 +26,6 @@ fixtures:
 test_methods:
     update_database_and_problem: {force_overwrite: True}
     initialize_problems: {force_overwrite: True}
-    run_model: {}
+    run_model: {verbose: False, solver: 'SCIPY'}
     load_results_to_database: {}
     check_model_results: {}
