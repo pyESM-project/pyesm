@@ -33,6 +33,11 @@ techs:
     table_name: _set_techs # name of the table of the set in the database
     table_structure:
         name: [techs_Names, TEXT] # header of set entries names in database set table
+        filters:
+            time_resolution:  # (int) index of the category in the set
+                header: [time_resoultion, TEXT] 
+                values: [hourly, yearly]
+
 
 flows:
     symbol: flows  # symbol of the set 
@@ -40,6 +45,10 @@ flows:
     table_structure:
         name: [flows_Names, TEXT] # header of set entries names in database set table
         aggregation: [flows_agg, TEXT] # (optional) header of set entries that are matching another set (aggregation)
+        filters:
+            time_resolution:  # (int) index of the category in the set
+                header: [time_resoultion, TEXT] 
+                values: [hourly, yearly]
 
 
 flows_agg:
@@ -47,6 +56,10 @@ flows_agg:
     table_name: _set_flows_agg # name of the table of the set in the database
     table_structure:
         name: [flows_agg_Names, TEXT] # header of set entries names in database set table
+        filters:
+            time_resolution:  # (int) index of the category in the set
+                header: [time_resoultion, TEXT] 
+                values: [hourly, yearly]
 
 years:
     symbol: years # symbol of the set 
