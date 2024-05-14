@@ -21,7 +21,7 @@ Q:
 # constants
 
 special_identity: 
-    name: constant values
+    name: special identity matrix
     type: constant
     coordinates: [flows, flows_aggregated]
     variables_info:
@@ -39,13 +39,42 @@ special_identity:
             cols:
                 set: flows
                 filters: {0: Hourly dispatched}
-        
+
+lower_triangular_matrix:
+    name: lower triangular matrix
+    type: constant
+    coordinates: [flows]
+    variables_info:
+        T_ff:
+            value: lower_triangular
+            rows:
+                set: flows
+            cols:
+                set: flows
+        T_ff_h:
+            value: lower_triangular
+            rows:
+                set: flows
+                filters: {0: Hourly dispatched}
+            cols:
+                set: flows
+                filters: {0: Hourly dispatched}
+
+summation_vector:
+    name: sum vector
+    type: constant
+    coordinates: [flows]
+    variables_info:
+        i_f:
+            value: sum_vector
+            rows:
+                set: flows
 
 # -----------------------------------------------------------------------------
 # endogenous variables
 
 I_ff_exp:
-    name: special identity matrix
+    name: special identity matrix, expected
     type: endogenous
     coordinates: [flows, flows_aggregated]
     variables_info:
@@ -61,6 +90,15 @@ I_ff_exp:
             cols: 
                 set: flows
                 filters: {0: Hourly dispatched}
+
+T_sum:
+    name: sum of lower triangular matrix
+    type: endogenous
+    coordinates: [flows]
+    variables_info:
+        T_sum:
+            rows: 
+                set: flows
 
 Q_agg:
     name: demand by flow

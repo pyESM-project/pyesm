@@ -18,7 +18,7 @@ manipulation and validation.
 
 import pprint as pp
 from pathlib import Path
-from typing import Dict, List, Any, Literal, Optional, Tuple
+from typing import Dict, List, Any, Literal, Optional, Tuple, Type
 
 import itertools as it
 import pandas as pd
@@ -232,7 +232,7 @@ def generate_dict_with_none_values(item: dict) -> dict:
 
 def pivot_dict(
         data_dict: Dict,
-        order_list: Optional[List] = None,
+        keys_order: Optional[List] = None,
 ) -> Dict:
     """
     Converts a dictionary of lists into a nested dictionary, optionally 
@@ -246,19 +246,11 @@ def pivot_dict(
     Returns:
         Dict: A nested dictionary with keys from the original dictionary and 
             values as dictionaries.
-
-    Example:
-    >>> data = {
-    >>>     'key_1': ['item_1', 'item_2', 'item_3'], 
-    >>>     'key_2': [10, 20, 30]
-    >>> }
-    >>> data_pivoted = pivot_dict(data)
-
-    data_pivoted = {
-        item_1: {10: None, 20: None, 30: None},
-        item_2: {10: None, 20: None, 30: None},
-    }
     """
+
+    if not isinstance(data_dict, dict):
+        raise TypeError("Argument 'data_dict' must be a dictionary.")
+
     def pivot_recursive(keys, values):
         if not keys:
             return {value: None for value in values}
@@ -268,8 +260,15 @@ def pivot_dict(
             return {item: pivot_recursive(remaining_keys, values)
                     for item in data_dict[key]}
 
-    if order_list:
-        keys = order_list
+    if keys_order:
+        if not isinstance(keys_order, list):
+            raise TypeError("Argument 'keys_order' must be a list.")
+        if not set(keys_order) == set(data_dict.keys()):
+            raise ValueError(
+                "Items in keys_order do not correspond to keys of "
+                "passed dictionary.")
+
+        keys = keys_order
     else:
         keys = list(data_dict.keys())
 
@@ -324,21 +323,32 @@ def add_item_to_dict(
         item: dict,
         position: int = -1,
 ) -> dict:
-    """Add an given item to a defined position in a dictionary. 
+    """
+    Add a given item to a specific position in a dictionary.
 
     Args:
-        dictionary (dict): dictionary to be modified.
-        item (dict): dictionary item to be added.
-        position (int, default: -1): position in the original dictionary where 
-        add the item. If not indicated, the function add the item at the end of
-        the original dictionary.
+        dictionary (dict): The dictionary to be modified.
+        item (dict): The dictionary item to be added.
+        position (int, optional): The position in the original dictionary where 
+        the item should be added. If not provided, the function adds the item 
+        at the end of the original dictionary. Default is -1.
 
     Raises:
-        ValueError: this function works with Python >= 3.7
+        TypeError: If either 'dictionary' or 'item' is not of 'dict' type.
+        ValueError: If 'position' is not within the range of -len(dictionary) to 
+            len(dictionary).
 
     Returns:
-        OrderedDict: _description_
+        dict: A new dictionary with the item inserted at the specified position. 
+            The order of the items is preserved.
+
+    Note:
+        This function requires Python 3.7 or later, as it relies on the fact that 
+        dictionaries preserve insertion order as of this version.
     """
+
+    if not all(isinstance(arg, dict) for arg in [dictionary, item]):
+        raise TypeError("Passed argument/s not of 'dict' type.")
 
     if not -len(dictionary) <= position <= len(dictionary):
         raise ValueError(
@@ -356,7 +366,8 @@ def merge_series_to_dataframe(
         dataframe: pd.DataFrame,
         position: Literal[0, -1] = 0,
 ) -> pd.DataFrame:
-    """Merge a given 'series' with a 'dataframe' at the specified position.
+    """
+    Merge a given 'series' with a 'dataframe' at the specified position.
     It repeats all values of series for all rows of the dataframe.
 
     Args:
