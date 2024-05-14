@@ -14,6 +14,8 @@ the modeling environment.
 from typing import Any, Dict
 from pathlib import Path
 
+import numpy as np
+
 from esm.base.data_table import DataTable
 from esm.base.database import Database
 from esm.base.index import Index, Variable
@@ -220,23 +222,55 @@ class Core:
 
                 filter_header = Constants.get('_FILTER_DICT_HEADER')
                 cvxpy_var_header = Constants.get('_CVXPY_VAR_HEADER')
+                values_header = Constants.get('_STD_VALUES_FIELD')['values'][0]
+                id_header = Constants.get('_STD_ID_FIELD')['id'][0]
+                allowed_values_types = Constants.get('_ALLOWED_VALUES_TYPES')
 
-                if variable.data is not None and \
-                        variable.related_table is not None:
+                err_msg = []
 
-                    for row in variable.data.index:
-                        raw_data = self.database.sqltools.filtered_table_to_dataframe(
-                            table_name=variable.related_table,
-                            filters_dict=variable.data[filter_header][row])
+                if variable.data is None:
+                    err_msg.append(
+                        f"No data defined for variable '{var_key}'.")
 
-                        pivoted_data = variable.reshaping_sqlite_table_data(
-                            data=raw_data
-                        )
+                if variable.related_table is None:
+                    err_msg.append(
+                        f"No related table defined for variable '{var_key}'.")
 
-                        self.problem.data_to_cvxpy_variable(
-                            cvxpy_var=variable.data[cvxpy_var_header][row],
-                            data=pivoted_data
-                        )
+                if err_msg:
+                    self.logger.error("\n".join(err_msg))
+                    raise exc.MissingDataError("\n".join(err_msg))
+
+                for row in variable.data.index:
+                    # get raw data from database
+                    raw_data = self.database.sqltools.filtered_table_to_dataframe(
+                        table_name=variable.related_table,
+                        filters_dict=variable.data[filter_header][row])
+
+                    # check if variable data are int or float
+                    non_numeric_ids = util.find_non_allowed_types(
+                        dataframe=raw_data,
+                        allowed_types=allowed_values_types,
+                        target_col_header=values_header,
+                        return_col_header=id_header,
+                    )
+
+                    if non_numeric_ids:
+                        msg = f"Data for variable '{var_key}' in table " \
+                            f"'{variable.related_table}' contains " \
+                            f"non-allowed values types in rows: " \
+                            f"{non_numeric_ids}."
+                        self.logger.error(msg)
+                        raise exc.MissingDataError(msg)
+
+                    # pivoting and reshaping data to fit variables
+                    pivoted_data = variable.reshaping_sqlite_table_data(
+                        data=raw_data
+                    )
+
+                    self.problem.data_to_cvxpy_variable(
+                        cvxpy_var=variable.data[cvxpy_var_header][row],
+                        data=pivoted_data
+                    )
 
     def cvxpy_endogenous_data_to_database(self, operation: str) -> None:
         """

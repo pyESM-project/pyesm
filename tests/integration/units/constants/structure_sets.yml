@@ -18,5 +18,5 @@ flows_aggregated:
         name: ['f_agg_Name', 'TEXT']
         filters: 
             0:
-                header: ['f_Category', 'TEXT']
+                header: ['f_agg_Category', 'TEXT']
                 values: ['Hourly dispatched', 'Yearly dispatched']

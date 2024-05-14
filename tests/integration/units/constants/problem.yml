@@ -2,12 +2,37 @@
 
 expressions: 
 
+    # sum vector
+    # --------------
+
+
+
+    # identity
+    # --------------
+
+
+
+    # arange
+    # --------------
+
+
+    # lower triangular matrix
+    # --------------    
+
+
+
+    # identity rcot
+    # --------------
+
+    # correct definition and filtering
+    - I_ff == I_ff_exp
+    - I_ff_h == I_ff_h_exp
+
     # aggregating total demand by flow
     - Q_agg - I_ff @ tran(Q) == 0
 
     # aggregating total demand by hourly flow
     - Q_agg_h - I_ff_h @ tran(Q_h) == 0
 
-    # equality 
 
     

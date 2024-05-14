@@ -297,7 +297,7 @@ class Model:
             force_overwrite=force_overwrite,
         )
         # TO BE COMPLETED (automatically filling blank data)
-        self.core.database.empty_data_completion(operation)
+        # self.core.database.empty_data_completion(operation)
 
     def initialize_problems(
             self,
