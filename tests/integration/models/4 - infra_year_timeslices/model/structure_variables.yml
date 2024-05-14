@@ -30,17 +30,38 @@ u:
                 set: flows_agg # set_key symbol
             cols: # columns of the variable
                 set: techs # set_key symbol
+        u_h: # variable name
+            rows: # rows of the variable
+                set: flows_agg # set_key symbol
+                filters: {time_resolution: hourly}
+            cols: # columns of the variable
+                set: techs # set_key symbol
+                filters: {time_resolution: hourly}
+        u_y: # variable name
+            rows: # rows of the variable
+                set: flows_agg # set_key symbol
+                filters: {time_resolution: hourly}
+            cols: # columns of the variable
+                set: techs # set_key symbol
+                filters: {time_resolution: yearly}
+
 d:
     name: make matrix # description or full name of the table
     type: exogenous 
     coordinates: [scenarios,techs, flows, years] # list of coordinates with set_key symbols
     variables_info:
+        d_h: # variable name
+            rows: # rows of the variable
+                set: techs # set_key symbol
+                filters: {time_resolution: hourly}
+            cols: # columns of the variable
+                set: flows # set_key symbol
+                filters: {time_resolution: hourly}
         d: # variable name
             rows: # rows of the variable
                 set: techs # set_key symbol
             cols: # columns of the variable
                 set: flows # set_key symbol
-
 c_om:
     name: operational_costs # description or full name of the table
     type: exogenous 
@@ -58,31 +79,59 @@ Y_y:
         Y_y: # variable name
             rows: # columns of the variable
                 set: flows_agg # set_key symbol
-            # cols: # columns of the variable
-            #     set: years # set_key symbol
-lf_max:
+            cols: # columns of the variable
+                set: years # set_key symbol
+        Y_y_h: # variable name
+            rows: # columns of the variable
+                set: flows_agg # set_key symbol
+                filters: {time_resolution: hourly}
+
+
+lf_max_h:
     name: lf maximum # description or full name of the table
     type: exogenous 
     coordinates: [scenarios,techs, hours, years] # list of coordinates with set_key symbols
     variables_info:
-        lf_max: # variable name
+        lf_max_h: # variable name
             rows: # columns of the variable
                 set: hours # set_key symbol
             cols: # columns of the variable
                 set: techs # set_key symbol
+                filters: {time_resolution: hourly}
 
-lf_min:
+lf_min_h:
     name: lf minimum # description or full name of the table
     type: exogenous 
     coordinates: [scenarios,techs, hours, years] # list of coordinates with set_key symbols
     variables_info:
-        lf_min: # variable name
+        lf_min_h: # variable name
             rows: # columns of the variable
                 set: hours # set_key symbol
             cols: # columns of the variable
-                set: techs # set_key symbol      
+                set: techs # set_key symbol
+                filters: {time_resolution: hourly}
 
-cap_year_y:
+lf_max:
+    name: lf maximum # description or full name of the table
+    type: exogenous 
+    coordinates: [scenarios,techs, years] # list of coordinates with set_key symbols
+    variables_info:
+        lf_max: # variable name
+            cols: # columns of the variable
+                set: techs # set_key symbol
+                filters: {time_resolution: yearly}
+
+lf_min:
+    name: lf minimum # description or full name of the table
+    type: exogenous 
+    coordinates: [scenarios,techs, years] # list of coordinates with set_key symbols
+    variables_info:
+        lf_min: # variable name
+            cols: # columns of the variable
+                set: techs # set_key symbol
+                filters: {time_resolution: yearly}
+
+cap_year:
     name:  installed capacity of the year # description or full name of the table
     type: exogenous 
     coordinates: [scenarios,techs, years] # list of coordinates with set_key symbols
@@ -90,7 +139,11 @@ cap_year_y:
         cap_year_y: # variable name
             cols: # columns of the variable
                 set: techs # set_key symbol 
-
+                filters: {time_resolution: yearly}
+        cap_year_h: # variable name
+            cols: # columns of the variable
+                set: techs # set_key symbol 
+                filters: {time_resolution: hourly}
 dp:
     name:  demand profiles # description or full name of the table
     type: exogenous 
@@ -99,15 +152,23 @@ dp:
         dp: # variable name
             rows: # columns of the variable
                 set: flows_agg # set_key symbol
+                filters: {time_resolution: hourly}
             cols: # columns of the variable
                 set: hours # set_key symbol 
 
 n_periods:
-    name: scalars
+    name: scalar 1
     type: exogenous
     coordinates: [scenarios]
     variables_info:
         n_periods:
+
+n_slices:
+    name: scalar 2
+    type: exogenous
+    coordinates: [scenarios]
+    variables_info:
+        n_slices:
 
                                                          
 # -----------------------------------------------------------------------------
@@ -123,6 +184,7 @@ Q_h:
                 set: hours # set_key symbol
             cols: # columns of the variable
                 set: flows # set_key symbol
+                filters: {time_resolution: hourly}
 
 
 Q_y:
@@ -135,7 +197,12 @@ Q_y:
                 set: years # set_key symbol
             cols: # columns of the variable
                 set: flows # set_key symbol
+        Q_y_h: # variable name
+            cols: # columns of the variable
+                set: flows # set_key symbol
+                filters: {time_resolution: hourly}
 
+               
 Q_agg_h:
     name: Q_agg by hour # description or full name of the table
     type: endogenous 
@@ -144,6 +211,7 @@ Q_agg_h:
         Q_agg_h: # variable name
             rows: # columns of the variable
                 set: flows_agg # set_key symbol
+                filters: {time_resolution: hourly}                
             cols: # columns of the variable
                 set: hours # set_key symbol
 
@@ -161,6 +229,7 @@ Q_agg_y:
 
 
 
+
 X_h:
     name: X by hour # description or full name of the table
     type: endogenous 
@@ -171,6 +240,7 @@ X_h:
                 set: hours # set_key symbol
             cols: # columns of the variable
                 set: techs # set_key symbol
+                filters: {time_resolution: hourly}
 
 
 X_y:
@@ -178,20 +248,23 @@ X_y:
     type: endogenous 
     coordinates: [scenarios,techs,  years] # list of coordinates with set_key symbols
     variables_info:
-        X_y_y: # variable name
-            # rows: # columns of the variable
-            #     set: years # set_key symbol
-            cols: # columns of the variable
-                set: techs # set_key symbol
         X_y: # variable name
             rows: # columns of the variable
                 set: years # set_key symbol
             cols: # columns of the variable
+                set: techs # set_key symbol               
+        X_y_h: # variable name
+            cols: # columns of the variable
                 set: techs # set_key symbol
+                filters: {time_resolution: hourly}
+        X_y_y: # variable name
+            cols: # columns of the variable
+                set: techs # set_key symbol
+                filters: {time_resolution: yearly}
 
 
 C_om_y: 
-    name: C_tot # description or full name of the table
+    name: total om costs # description or full name of the table
     type: endogenous 
     coordinates: [scenarios,techs, years] # list of coordinates with set_key symbols
     variables_info:
@@ -209,36 +282,59 @@ Y_h:
         Y_h: # variable name
             rows: # columns of the variable
                 set: flows_agg # set_key symbol
+                filters: {time_resolution: hourly}
             cols: # columns of the variable
                 set: hours # set_key symbol
 
-X_max:
+X_max_h:
     name: X max by hour # description or full name of the table
     type: endogenous 
     coordinates: [scenarios,techs, hours, years] # list of coordinates with set_key symbols
     variables_info:
 
-        X_max: # variable name
+        X_max_h: # variable name
             rows: # columns of the variable
                 set: hours # set_key symbol
             cols: # columns of the variable
                 set: techs # set_key symbol
+                filters: {time_resolution: hourly}
 
-X_min:
+X_min_h:
     name: X min by hour # description or full name of the table
     type: endogenous 
     coordinates: [scenarios,techs, hours, years] # list of coordinates with set_key symbols
     variables_info:
-        X_min: # variable name
+        X_min_h: # variable name
             rows: # columns of the variable
                 set: hours # set_key symbol
             cols: # columns of the variable
                 set: techs # set_key symbol
+                filters: {time_resolution: hourly}
+
+X_max_y:
+    name: X max by year # description or full name of the table
+    type: endogenous 
+    coordinates: [scenarios,techs, years] # list of coordinates with set_key symbols
+    variables_info:
+        X_max_y: # variable name
+            cols: # columns of the variable
+                set: techs # set_key symbol
+                filters: {time_resolution: yearly}
+
+X_min_y:
+    name: X min by year # description or full name of the table
+    type: endogenous 
+    coordinates: [scenarios,techs, years] # list of coordinates with set_key symbols
+    variables_info:
+        X_min_y: # variable name
+            cols: # columns of the variable
+                set: techs # set_key symbol
+                filters: {time_resolution: yearly}
 
 # -----------------------------------------------------------------------------
 # constants variables
 
-constants: 
+I_ff: 
     name: constant values
     type: constant
     coordinates: [scenarios, flows, flows_agg]
@@ -250,7 +346,26 @@ constants:
             cols:
                 set: flows
 
+I_ff_h: 
+    name: constant values
+    type: constant
+    coordinates: [scenarios, flows, flows_agg, years]
+    variables_info:
+        I_ff_h:
+            value: identity_rcot
+            rows: 
+                set: flows_agg
+                filters: {time_resolution: hourly}
+            cols:
+                set: flows
+                filters: {time_resolution: hourly}
+sum_vect_h: 
+    name: constant values repeated by year techs 
+    type: constant
+    coordinates: [scenarios, hours, years]
+    variables_info:
+        sum_vect_h:
+            value: sum_vector
+            cols:
+                set: hours
 
-
-        
-            
