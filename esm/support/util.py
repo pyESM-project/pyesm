@@ -638,7 +638,7 @@ def filter_dataframe(
 
 
 def compare_dicts_ignoring_order(
-        *dicts: Dict[str, List[Any]]
+        dicts: Dict[str, Dict[str, List[Any]]]
 ) -> bool:
     """
     Compares any number of dictionaries to see if they are the same, ignoring 
@@ -651,6 +651,7 @@ def compare_dicts_ignoring_order(
     ref_keys = set(reference.keys())
 
     for d in dicts[1:]:
+        d: Dict
         if set(d.keys()) != ref_keys:
             return False
         for key in ref_keys:

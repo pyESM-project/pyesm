@@ -688,11 +688,12 @@ class Problem:
             SettingsError: If the coordinates for the specified category are 
                 not the same across all variables in the subset.
         """
-        all_vars_coords = {}
-        for key, variable in variables_subset.items():
+        all_vars_coords = []
+        for variable in variables_subset.values():
             variable: Variable
-            all_vars_coords[key] = \
+            all_vars_coords.append(
                 variable.coordinates.get(coord_category)
+            )
 
         if not util.compare_dicts_ignoring_order(all_vars_coords):
             msg = "Passed variables are not defined with same coordinates " \
@@ -700,7 +701,7 @@ class Problem:
             self.logger.error(msg)
             raise exc.SettingsError(msg)
 
-        return next(iter(all_vars_coords.values()))
+        return all_vars_coords[0]
 
     def generate_problems_dataframe(
             self,
