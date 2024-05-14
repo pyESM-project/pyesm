@@ -24,19 +24,21 @@ expressions:
     - Q_y_h - mult(sum_vect_h @ Q_h, 365) == 0 
     - Y_h == mult(diag(Y_y_h) @ dp, 1/n_periods)
 
-
-
-
     #costs
     - C_om_y == mult(X_y, c_om) 
 
     #production limits
 
-    # - X_max_h == mult(lf_max_h, mult(cap_year_y, 1/mult(n_slices, n_periods)))
+    - X_max_h == mult(lf_max_h, mult(cap_year_h, 1/mult(n_slices, n_periods)))
+    - X_min_h == mult(lf_min_h, mult(cap_year_h, 1/mult(n_slices, n_periods)))
 
-    #production constraints
+    - X_max_y == mult(lf_max, cap_year_y)
+    - X_min_y == mult(lf_min, cap_year_y)
 
-    - X_y >= 0
-    - Q_y >= 0
-    - X_h >= 0
-    - Q_h >= 0
+    # #production constraints
+
+    - X_h <= X_max_h
+    - X_h >= X_min_h
+
+    - X_y_y <= X_max_y
+    - X_y_y >= X_min_y

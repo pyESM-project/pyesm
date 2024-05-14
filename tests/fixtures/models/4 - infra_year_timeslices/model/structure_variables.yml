@@ -87,63 +87,63 @@ Y_y:
                 filters: {time_resolution: hourly}
 
 
-# lf_max_h:
-#     name: lf maximum # description or full name of the table
-#     type: exogenous 
-#     coordinates: [scenarios,techs, hours, years] # list of coordinates with set_key symbols
-#     variables_info:
-#         lf_max_h: # variable name
-#             rows: # columns of the variable
-#                 set: hours # set_key symbol
-#             rows: # columns of the variable
-#                 set: techs # set_key symbol
-#                 filters: {time_resolution: hourly}
+lf_max_h:
+    name: lf maximum # description or full name of the table
+    type: exogenous 
+    coordinates: [scenarios,techs, hours, years] # list of coordinates with set_key symbols
+    variables_info:
+        lf_max_h: # variable name
+            rows: # columns of the variable
+                set: hours # set_key symbol
+            cols: # columns of the variable
+                set: techs # set_key symbol
+                filters: {time_resolution: hourly}
 
-# lf_min_h:
-#     name: lf minimum # description or full name of the table
-#     type: exogenous 
-#     coordinates: [scenarios,techs, hours, years] # list of coordinates with set_key symbols
-#     variables_info:
-#         lf_min: # variable name
-#             rows: # columns of the variable
-#                 set: hours # set_key symbol
-#             cols: # columns of the variable
-#                 set: techs # set_key symbol
-#                 filters: {time_resolution: hourly}
+lf_min_h:
+    name: lf minimum # description or full name of the table
+    type: exogenous 
+    coordinates: [scenarios,techs, hours, years] # list of coordinates with set_key symbols
+    variables_info:
+        lf_min_h: # variable name
+            rows: # columns of the variable
+                set: hours # set_key symbol
+            cols: # columns of the variable
+                set: techs # set_key symbol
+                filters: {time_resolution: hourly}
 
-# lf_max:
-#     name: lf maximum # description or full name of the table
-#     type: exogenous 
-#     coordinates: [scenarios,techs, years] # list of coordinates with set_key symbols
-#     variables_info:
-#         lf_max: # variable name
-#             rows: # columns of the variable
-#                 set: years # set_key symbol
-#             cols: # columns of the variable
-#                 set: techs # set_key symbol
-#                 filters: {time_resolution: yearly}
+lf_max:
+    name: lf maximum # description or full name of the table
+    type: exogenous 
+    coordinates: [scenarios,techs, years] # list of coordinates with set_key symbols
+    variables_info:
+        lf_max: # variable name
+            cols: # columns of the variable
+                set: techs # set_key symbol
+                filters: {time_resolution: yearly}
 
-# lf_min:
-#     name: lf minimum # description or full name of the table
-#     type: exogenous 
-#     coordinates: [scenarios,techs, years] # list of coordinates with set_key symbols
-#     variables_info:
-#         lf_min: # variable name
-#             rows: # columns of the variable
-#                 set: years # set_key symbol
-#             cols: # columns of the variable
-#                 set: techs # set_key symbol
-#                 filters: {time_resolution: yearly}
+lf_min:
+    name: lf minimum # description or full name of the table
+    type: exogenous 
+    coordinates: [scenarios,techs, years] # list of coordinates with set_key symbols
+    variables_info:
+        lf_min: # variable name
+            cols: # columns of the variable
+                set: techs # set_key symbol
+                filters: {time_resolution: yearly}
 
-# cap_year_y:
-#     name:  installed capacity of the year # description or full name of the table
-#     type: exogenous 
-#     coordinates: [scenarios,techs, years] # list of coordinates with set_key symbols
-#     variables_info:
-#         cap_year_y: # variable name
-#             cols: # columns of the variable
-#                 set: techs # set_key symbol 
-
+cap_year:
+    name:  installed capacity of the year # description or full name of the table
+    type: exogenous 
+    coordinates: [scenarios,techs, years] # list of coordinates with set_key symbols
+    variables_info:
+        cap_year_y: # variable name
+            cols: # columns of the variable
+                set: techs # set_key symbol 
+                filters: {time_resolution: yearly}
+        cap_year_h: # variable name
+            cols: # columns of the variable
+                set: techs # set_key symbol 
+                filters: {time_resolution: hourly}
 dp:
     name:  demand profiles # description or full name of the table
     type: exogenous 
@@ -286,55 +286,50 @@ Y_h:
             cols: # columns of the variable
                 set: hours # set_key symbol
 
-# X_max_h:
-#     name: X max by hour # description or full name of the table
-#     type: endogenous 
-#     coordinates: [scenarios,techs, hours, years] # list of coordinates with set_key symbols
-#     variables_info:
+X_max_h:
+    name: X max by hour # description or full name of the table
+    type: endogenous 
+    coordinates: [scenarios,techs, hours, years] # list of coordinates with set_key symbols
+    variables_info:
 
-#         X_max_h: # variable name
-#             rows: # columns of the variable
-#                 set: hours # set_key symbol
-#             cols: # columns of the variable
-#                 set: techs # set_key symbol
-#                 filters: {time_resolution: hourly}
+        X_max_h: # variable name
+            rows: # columns of the variable
+                set: hours # set_key symbol
+            cols: # columns of the variable
+                set: techs # set_key symbol
+                filters: {time_resolution: hourly}
 
-# X_min_h:
-#     name: X min by hour # description or full name of the table
-#     type: endogenous 
-#     coordinates: [scenarios,techs, hours, years] # list of coordinates with set_key symbols
-#     variables_info:
-#         X_min_h: # variable name
-#             rows: # columns of the variable
-#                 set: hours # set_key symbol
-#             cols: # columns of the variable
-#                 set: techs # set_key symbol
-#                 filters: {time_resolution: hourly}
+X_min_h:
+    name: X min by hour # description or full name of the table
+    type: endogenous 
+    coordinates: [scenarios,techs, hours, years] # list of coordinates with set_key symbols
+    variables_info:
+        X_min_h: # variable name
+            rows: # columns of the variable
+                set: hours # set_key symbol
+            cols: # columns of the variable
+                set: techs # set_key symbol
+                filters: {time_resolution: hourly}
 
-# X_max_y:
-#     name: X max by year # description or full name of the table
-#     type: endogenous 
-#     coordinates: [scenarios,techs, hours, years] # list of coordinates with set_key symbols
-#     variables_info:
+X_max_y:
+    name: X max by year # description or full name of the table
+    type: endogenous 
+    coordinates: [scenarios,techs, years] # list of coordinates with set_key symbols
+    variables_info:
+        X_max_y: # variable name
+            cols: # columns of the variable
+                set: techs # set_key symbol
+                filters: {time_resolution: yearly}
 
-#         X_max_h: # variable name
-#             rows: # columns of the variable
-#                 set: hours # set_key symbol
-#             cols: # columns of the variable
-#                 set: techs # set_key symbol
-#                 filters: {time_resolution: yearly}
-
-# X_min_y:
-#     name: X min by year # description or full name of the table
-#     type: endogenous 
-#     coordinates: [scenarios,techs, hours, years] # list of coordinates with set_key symbols
-#     variables_info:
-#         X_min_h: # variable name
-#             rows: # columns of the variable
-#                 set: hours # set_key symbol
-#             cols: # columns of the variable
-#                 set: techs # set_key symbol
-#                 filters: {time_resolution: yearly}
+X_min_y:
+    name: X min by year # description or full name of the table
+    type: endogenous 
+    coordinates: [scenarios,techs, years] # list of coordinates with set_key symbols
+    variables_info:
+        X_min_y: # variable name
+            cols: # columns of the variable
+                set: techs # set_key symbol
+                filters: {time_resolution: yearly}
 
 # -----------------------------------------------------------------------------
 # constants variables
