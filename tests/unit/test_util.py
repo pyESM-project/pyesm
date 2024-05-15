@@ -1,5 +1,6 @@
 import pytest
 import pprint
+
 from esm.support.util import *
 
 
@@ -97,6 +98,27 @@ def test_validate_dict_structure():
             dictionary=test_items[key],
             validation_structure=validation_structures[key]
         ) == expected_outputs[key]
+
+
+def test_confirm_action(monkeypatch):
+    """
+    Test the function 'confirm_action'.
+    This test function checks the following scenarios:
+    1. A valid case where the user confirms the action by entering 'y'.
+    2. A valid case where the user denies the action by entering 'n'.
+
+    The 'monkeypatch' fixture is used to simulate user input.
+
+    Raises
+    ------
+    AssertionError
+        If the output of 'confirm_action' doesn't match the expected output.
+    """
+    monkeypatch.setattr('builtins.input', lambda _: 'y')
+    assert confirm_action("Confirm?") == True
+
+    monkeypatch.setattr('builtins.input', lambda _: 'n')
+    assert confirm_action("Confirm?") == False
 
 
 def test_find_dict_depth():
@@ -279,4 +301,328 @@ def test_add_item_to_dict():
 
 
 def test_merge_series_to_dataframe():
-    pass
+
+    # valid inputs, default position
+    series = pd.Series([1, 2, 3], index=['A', 'A1', 'A2'], name='A')
+    dataframe = pd.DataFrame({'B': [4, 5, 6], 'C': [7, 8, 9]})
+    result = merge_series_to_dataframe(series, dataframe)
+    expected_result = pd.DataFrame(
+        {'A': [1, 1, 1], 'A1': [2, 2, 2], 'A2': [3, 3, 3], 'B': [4, 5, 6], 'C': [7, 8, 9]})
+    pd.testing.assert_frame_equal(result, expected_result)
+
+    # valid inputs, position -1
+    result = merge_series_to_dataframe(series, dataframe, -1)
+    expected_result = pd.DataFrame(
+        {'B': [4, 5, 6], 'C': [7, 8, 9], 'A': [1, 1, 1], 'A1': [2, 2, 2], 'A2': [3, 3, 3]})
+    pd.testing.assert_frame_equal(result, expected_result)
+
+    # empty series
+    with pytest.raises(ValueError):
+        merge_series_to_dataframe(pd.Series(), dataframe)
+
+    # empty dataframe
+    with pytest.raises(ValueError):
+        merge_series_to_dataframe(series, pd.DataFrame())
+
+
+def test_check_dataframes_equality():
+    """
+    Test the check_dataframes_equality function.
+    This function creates several pairs of pandas DataFrames with different 
+    characteristics (identical, same shape and headers but different values, 
+    different column order, different row order, different headers, different 
+    shapes) and checks if the check_dataframes_equality function correctly 
+    identifies whether they are equal considering the specified conditions.
+    """
+    # identical dataframes
+    df1 = pd.DataFrame({'A': [1, 2, 3], 'B': [4, 5, 6]})
+    df2 = pd.DataFrame({'A': [1, 2, 3], 'B': [4, 5, 6]})
+    assert check_dataframes_equality([df1, df2]) == True
+
+    # dataframes with same shape and headers but different values
+    df3 = pd.DataFrame({'A': [1, 2, 3], 'B': [7, 8, 9]})
+    assert check_dataframes_equality([df1, df3]) == False
+
+    # identical dataframes but different column order
+    df4 = pd.DataFrame({'B': [4, 5, 6], 'A': [1, 2, 3]})
+    assert check_dataframes_equality(
+        [df1, df4], cols_order_matters=False) == True
+    assert check_dataframes_equality(
+        [df1, df4], cols_order_matters=True) == False
+
+    # identical dataframes but different row order
+    df5 = pd.DataFrame({'A': [3, 2, 1], 'B': [6, 5, 4]})
+    assert check_dataframes_equality(
+        [df1, df5], rows_order_matters=False) == True
+    assert check_dataframes_equality(
+        [df1, df5], rows_order_matters=True) == False
+
+    # identical dataframe except for one column (skipped)
+    df6 = pd.DataFrame({'A': [1, 2, 3], 'B': [4, 5, 6], 'C': [7, 8, 9]})
+    assert check_dataframes_equality([df1, df6], skip_columns=['C']) == True
+
+    # dataframes with different headers
+    df7 = pd.DataFrame({'D': [1, 2, 3], 'E': [4, 5, 6]})
+    with pytest.raises(ValueError):
+        check_dataframes_equality([df1, df7])
+
+    # dataframes with different shapes
+    with pytest.raises(ValueError):
+        check_dataframes_equality([df1, df6], skip_columns=['A'])
+
+
+def test_check_dataframe_columns_equality():
+    """
+    Test the check_dataframe_columns_equality function.
+    This function creates several pairs of pandas DataFrames with different 
+    column headers and checks if the check_dataframe_columns_equality function 
+    correctly identifies whether they have the same set of columns. It also 
+    tests the function's ability to ignore specified columns.
+    """
+    df1 = pd.DataFrame({'A': [1, 2], 'B': [3, 4]})
+    df2 = pd.DataFrame({'A': [5, 6], 'B': [7, 8]})
+    df3 = pd.DataFrame({'A': [9, 10], 'C': [11, 12]})
+    df4 = 'not_a_dataframe'
+    df5 = pd.DataFrame()
+
+    assert check_dataframe_columns_equality([df1, df2]) == True
+    assert check_dataframe_columns_equality([df1, df3]) == False
+    assert check_dataframe_columns_equality([df1, df2, df3]) == False
+    assert check_dataframe_columns_equality(
+        [df1, df2], skip_columns=['B']) == True
+    assert check_dataframe_columns_equality(
+        [df1, df3], skip_columns=['B', 'C']) == True
+
+    with pytest.raises(TypeError):
+        check_dataframe_columns_equality(
+            [df1, df4], skip_columns=['B', 'C'])
+
+    with pytest.raises(ValueError):
+        check_dataframe_columns_equality([])
+
+    with pytest.raises(ValueError):
+        check_dataframe_columns_equality([df1, df5])
+
+
+def test_add_column_to_dataframe():
+    """
+    Test the add_column_to_dataframe function.
+    This function creates a pandas DataFrame and tests the add_column_to_dataframe 
+    function by adding a new column to the DataFrame. It checks if the function 
+    correctly adds the column, handles invalid input, and correctly returns 
+    whether the column was added.
+    """
+    df = pd.DataFrame({'A': [1, 2, 3], 'B': [4, 5, 6]})
+
+    # adding a new column with values
+    assert add_column_to_dataframe(df, 'C', [7, 8, 9]) == True
+    pd.testing.assert_frame_equal(
+        df, pd.DataFrame({'A': [1, 2, 3], 'B': [4, 5, 6], 'C': [7, 8, 9]}))
+
+    # adding a column header that already exists
+    df = pd.DataFrame({'A': [1, 2, 3], 'B': [4, 5, 6]})
+    assert add_column_to_dataframe(df, 'A') == False
+
+    # adding a new column with no values
+    df = pd.DataFrame({'A': [1, 2, 3], 'B': [4, 5, 6]})
+    assert add_column_to_dataframe(df, 'C', None) == True
+    pd.testing.assert_frame_equal(
+        df, pd.DataFrame({'A': [1, 2, 3], 'B': [4, 5, 6], 'C': None}))
+
+    # Test adding a column with invalid column_header
+    with pytest.raises(TypeError):
+        add_column_to_dataframe(df, 123)
+
+    # Test adding a column with invalid dataframe
+    with pytest.raises(TypeError):
+        add_column_to_dataframe("not a dataframe", 'D')
+
+    # Test adding a column with invalid column_position
+    with pytest.raises(ValueError):
+        add_column_to_dataframe(df, 'D', column_position=10)
+
+    # Test adding a column with invalid number of values
+    with pytest.raises(ValueError):
+        add_column_to_dataframe(df, 'E', [1, 4])
+
+
+def test_substitute_dict_keys():
+    """
+    Test the substitute_dict_keys function.
+    This function tests the substitute_keys function with valid and invalid 
+    input, and checks if the function correctly substitutes the keys, handles 
+    invalid input, and raises the correct errors.
+    """
+    # valid input
+    source_dict = {'A': 1, 'B': 2, 'C': 3}
+    key_mapping_dict = {'A': 'X', 'B': 'Y', 'C': 'Z'}
+    expected_dict = {'X': 1, 'Y': 2, 'Z': 3}
+    assert substitute_dict_keys(source_dict, key_mapping_dict) == expected_dict
+
+    # key that does not exist in source_dict
+    source_dict = {'A': 1, 'B': 2, 'C': 3}
+    with pytest.raises(ValueError):
+        substitute_dict_keys(source_dict, {'D': 'W'})
+
+    # not all keys exist in source_dict
+    source_dict = {'A': 1, 'B': 2, 'C': 3}
+    with pytest.raises(ValueError):
+        substitute_dict_keys(source_dict, {'A': 'X', 'D': 'W'})
+
+    # keys with invalid source_dict
+    with pytest.raises(TypeError):
+        substitute_dict_keys("not a dictionary", key_mapping_dict)
+
+    # keys with invalid key_mapping_dict
+    with pytest.raises(TypeError):
+        substitute_dict_keys(source_dict, "not a dictionary")
+
+
+def test_filter_dataframe():
+    """
+    Test the filter_dataframe function.
+    This function tests the filter_dataframe function with valid and invalid 
+    input, and checks if the function correctly filters the DataFrame, handles 
+    invalid input, and raises the correct errors.
+    """
+    df = pd.DataFrame({
+        'A': ['apple', 'banana', 'cherry', 'date', 'elderberry'],
+        'B': ['fruit', 'fruit', 'fruit', 'fruit', 'fruit'],
+        'C': [1, 2, 3, 4, 5]
+    })
+
+    # filtering DataFrame with valid input
+    filter_dict = {'A': ['apple', 'banana', 'cherry']}
+    expected_df = pd.DataFrame({
+        'A': ['apple', 'banana', 'cherry'],
+        'B': ['fruit', 'fruit', 'fruit'],
+        'C': [1, 2, 3]
+    })
+    pd.testing.assert_frame_equal(
+        filter_dataframe(df, filter_dict), expected_df)
+
+    # filtering DataFrame with reorder_columns_as_dict_keys=True
+    filter_dict = {'B': ['fruit'], 'A': ['apple', 'banana', 'cherry']}
+    expected_df = pd.DataFrame({
+        'B': ['fruit', 'fruit', 'fruit'],
+        'A': ['apple', 'banana', 'cherry'],
+    })
+    pd.testing.assert_frame_equal(
+        filter_dataframe(df, filter_dict, reorder_columns_as_dict_keys=True),
+        expected_df)
+
+    # filtering DataFrame with reorder_rows_based_on_filter=True
+    filter_dict = {'A': ['cherry', 'banana', 'apple']}
+    expected_df = pd.DataFrame({
+        'A': ['cherry', 'banana', 'apple'],
+        'B': ['fruit', 'fruit', 'fruit'],
+        'C': [3, 2, 1]
+    })
+    pd.testing.assert_frame_equal(
+        filter_dataframe(df, filter_dict, reorder_rows_based_on_filter=True),
+        expected_df)
+
+    # filtering DataFrame with invalid filter_dict
+    with pytest.raises(ValueError):
+        filter_dataframe(df, {'D': ['apple', 'banana', 'cherry']})
+
+    # filtering DataFrame with invalid df_to_filter
+    with pytest.raises(ValueError):
+        filter_dataframe("not a dataframe", filter_dict)
+
+
+def test_compare_dicts_ignoring_order():
+    """
+    Test the compare_dicts_ignoring_order function.
+    This function tests the compare_dicts_ignoring_order function with valid and 
+    invalid input, and checks if the function correctly compares dictionaries, 
+    handles invalid input, and raises the correct errors.
+    """
+    # comparing dictionaries with the same keys and values, but different order
+    iterable = [
+        {'A': [1, 2, 3], 'B': ['a', 'b', 'c']},
+        {'A': [3, 2, 1], 'B': ['c', 'b', 'a']},
+    ]
+    assert compare_dicts_ignoring_order(iterable) == True
+
+    # comparing dictionaries with different keys
+    iterable = [
+        {'A': [1, 2, 3], 'B': ['a', 'b', 'c']},
+        {'A': [1, 2, 3], 'C': ['a', 'b', 'c'], 'D': [5, 5, 5, 7]},
+    ]
+    assert compare_dicts_ignoring_order(iterable) == False
+
+    # comparing dictionaries with different values
+    iterable = [
+        {'A': [1, 2, 3], 'B': ['a', 'b', 'c']},
+        {'A': [4, 5, 6], 'B': ['d', 'e', 'f']},
+    ]
+    assert compare_dicts_ignoring_order(iterable) == False
+
+    # comparing dictionaries with invalid input
+    with pytest.raises(ValueError):
+        compare_dicts_ignoring_order(['not a dictionary', {}])
+
+    with pytest.raises(ValueError):
+        compare_dicts_ignoring_order('not a dictionary')
+
+
+def test_find_non_allowed_types():
+    """
+    Test the find_non_allowed_types function.
+    This function tests the find_non_allowed_types function with valid and 
+    invalid input, and checks if the function correctly identifies rows with 
+    non-allowed types, handles invalid input, and raises the correct errors.
+    """
+    # Test with valid input
+    df = pd.DataFrame({'A': [1, 2, '3', 4], 'B': ['a', 'b', 'c', 'd']})
+    assert find_non_allowed_types(
+        dataframe=df,
+        allowed_types=(int,),
+        target_col_header='A',
+        return_col_header='B'
+    ) == ['c']
+
+    # Test with no non-allowed types
+    df = pd.DataFrame({'A': [1, 2, 3, 4], 'B': ['a', 'b', 'c', 'd']})
+    assert find_non_allowed_types(
+        dataframe=df,
+        allowed_types=(int,),
+        target_col_header='A',
+        return_col_header='B'
+    ) == []
+
+    # Test with return_col_header=None
+    df = pd.DataFrame({'A': [1, 2, '3', 4], 'B': ['a', 'b', 'c', 'd']})
+    assert find_non_allowed_types(
+        dataframe=df,
+        allowed_types=(int,),
+        target_col_header='A',
+    ) == ['3']
+
+    # Test with invalid input
+    with pytest.raises(ValueError):
+        find_non_allowed_types(
+            dataframe='not a dataframe',
+            allowed_types=(int,),
+            target_col_header='A',
+        )
+    with pytest.raises(ValueError):
+        find_non_allowed_types(
+            dataframe=df,
+            allowed_types='not a tuple',
+            target_col_header='A',
+        )
+    with pytest.raises(ValueError):
+        find_non_allowed_types(
+            dataframe=df,
+            allowed_types=(int,),
+            target_col_header='not a column',
+        )
+    with pytest.raises(ValueError):
+        find_non_allowed_types(
+            dataframe=df,
+            allowed_types=(int,),
+            target_col_header='A',
+            return_col_header='not a column',
+        )

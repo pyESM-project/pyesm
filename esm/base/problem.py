@@ -392,7 +392,7 @@ class Problem:
         else:
             sets_parsing_hierarchy = None
 
-        coordinates_dict_with_headers = util.substitute_keys(
+        coordinates_dict_with_headers = util.substitute_dict_keys(
             source_dict=variable.sets_parsing_hierarchy_values,
             key_mapping_dict=variable.sets_parsing_hierarchy,
         )
