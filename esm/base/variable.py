@@ -410,24 +410,26 @@ class Variable:
         """
         Defines a constant of a specific type. This method validates the 
         provided value type against a set of allowed values. Depending on the 
-        value type, it either creates a variable type or raises an error if 
-        the value type is not supported.
+        value type, it either creates a constant of the specified type or raises 
+        an error if the value type is not supported.
 
         Constants allowed:
-            - 'identity': identity matrix.
-            - 'sum_vector': summation vector (vector of 1s).
-            - 'lower_triangular': lower triangular matrix of 1s(inc. diagonal)
-            - 'identity_rcot': special identity matrix for rcot problems
+            'identity': identity matrix.
+            'sum_vector': summation vector (vector of 1s).
+            'lower_triangular': lower triangular matrix of 1s(inc. diagonal)
+            'identity_rcot': special identity matrix for rcot problems
+            'arange_0': vector/matrix with a range from 0 up to dimension size
+            'arange_1': vector/matrix with a range from 1 up to dimension size
 
-        Parameters:
-        value_type (str): The type of the constant to be created. 
+        Args:
+            value_type (str): The type of the constant to be created. 
 
         Returns:
-            None.
+            None. The method modifies the state of the object.
 
         Raises:
-            - exc.SettingsError: If the provided value type is not supported.
-            - exc.ConceptualModelError: If the shape of the variable is not 
+            exc.SettingsError: If the provided value type is not supported.
+            exc.ConceptualModelError: If the shape of the variable is not 
                 suitable for creating the constant.
         """
         util.validate_selection(
@@ -435,28 +437,28 @@ class Variable:
             selection=value_type,
         )
 
-        factory_function, * \
-            args = Constants.get('_ALLOWED_CONSTANTS')[value_type]
+        factory_function, args = \
+            Constants.get('_ALLOWED_CONSTANTS')[value_type]
 
         if value_type == 'identity':
             if self.is_square:
-                return factory_function(self.shape_size[0])
+                return factory_function(self.shape_size[0], **args)
             else:
                 msg = 'Identity matrix must be square. Check variable shape.'
 
         elif value_type == 'sum_vector':
             if self.is_vector:
-                return factory_function(self.shape_size)
+                return factory_function(self.shape_size, **args)
             else:
                 msg = 'Summation vector must be a vector (one dimension). ' \
                     'Check variable shape.'
 
-        elif value_type == 'arange':
-            return factory_function(self.shape_size)
+        elif value_type in ['arange_0', 'arange_1']:
+            return factory_function(self.shape_size, **args)
 
         elif value_type == 'lower_triangular':
             if self.is_square:
-                return factory_function(self.shape_size[0])
+                return factory_function(self.shape_size[0], **args)
             else:
                 msg = 'Lower triangular matrix must be square. ' \
                     'Check variable shape.'
@@ -464,7 +466,7 @@ class Variable:
         elif value_type == 'identity_rcot':
             if self.related_dims_map is not None and \
                     not self.related_dims_map.empty:
-                return factory_function(self.related_dims_map)
+                return factory_function(self.related_dims_map, **args)
             else:
                 msg = 'Identity_rcot matrix supported only for variables ' \
                     'with dimensions defined by the same set, or when one set ' \
