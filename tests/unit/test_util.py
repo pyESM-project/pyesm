@@ -1,3 +1,13 @@
+"""
+test_util.py 
+
+@author: Matteo V. Rocco
+@institution: Politecnico di Milano
+
+This module contains tests for the functions in the 'esm.support.util' module.
+"""
+
+
 import pytest
 import pprint
 
