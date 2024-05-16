@@ -665,6 +665,7 @@ class Problem:
         self,
         variables_subset: DotDict,
         coord_category: str,
+        allow_empty_coord: bool,
     ) -> Dict[str, List[str]] | None:
         """
         Retrieves and verifies that a specific coordinate category is uniformly 
@@ -695,9 +696,16 @@ class Problem:
                 variable.coordinates.get(coord_category)
             )
 
+        # avoid check empty dictionaries
+        if allow_empty_coord:
+            all_vars_coords = [
+                item for item in all_vars_coords
+                if item != {}
+            ]
+
         if not util.compare_dicts_ignoring_order(all_vars_coords):
             msg = "Passed variables are not defined with same coordinates " \
-                f"for {coord_category}."
+                f"for category '{coord_category}'."
             self.logger.error(msg)
             raise exc.SettingsError(msg)
 
@@ -1056,6 +1064,7 @@ class Problem:
                 common_intra_coords = self.fetch_common_vars_coords(
                     variables_subset=vars_subset,
                     coord_category='intra',
+                    allow_empty_coord=True,
                 )
 
                 # parse values in intra-problem-set
