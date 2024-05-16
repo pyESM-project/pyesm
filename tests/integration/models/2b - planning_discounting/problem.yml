@@ -16,15 +16,15 @@ expressions:
     - X_max == mult(Cap_op, lf_max)
 
     - X >= X_min
-    - X <= X_max
+    - X == X_max
 
     - Cap_op == C_start + Tyy @ Cap_new
 
     - C_inv == mult(Cap_new, ci)
     - C_om == mult(X, com)
 
-    - mult(C_inv_d, ((1+d_rate)**(y_range))) == C_inv_y
-    - mult(C_om_d, ((1+d_rate)**(y_range))) == C_om_y
+    - mult(C_inv_d, pow(1+d_rate, y_range)) == C_inv_y
+    - mult(C_om_d, pow(1+d_rate, y_range)) == C_om_y
 
     - Q >= 0
     - X >= 0

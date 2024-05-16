@@ -245,3 +245,5 @@ y_range:
     variables_info:
         y_range:
             value: arange_0
+            rows: 
+                set: years
