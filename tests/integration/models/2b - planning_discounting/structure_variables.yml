@@ -182,6 +182,8 @@ C_inv:
             cols:
                 set: techs
         C_inv_y:
+            rows:
+                set: years
             cols:
                 set: techs
 C_inv_d:
@@ -189,7 +191,9 @@ C_inv_d:
     type: endogenous 
     coordinates: [scenarios,techs,years] 
     variables_info:
-        C_inv_d: 
+        C_inv_d:
+            rows:
+                set: years
             cols:
                 set: techs
 
@@ -204,6 +208,8 @@ C_om:
             cols:
                 set: techs
         C_om_y: 
+            rows:
+                set: years
             cols:
                 set: techs
 
@@ -213,6 +219,8 @@ C_om_d:
     coordinates: [scenarios,techs,years] 
     variables_info:
         C_om_d: 
+            rows:
+                set: years
             cols:
                 set: techs
 
@@ -236,4 +244,4 @@ y_range:
     coordinates: [years] 
     variables_info:
         y_range:
-            value: arange
+            value: arange_0
