@@ -143,6 +143,38 @@ def test_arange():
         arange((2, 3), 1, 'not C or F')
 
 
+def test_power():
+    # scalar base and exponent
+    base = cp.Parameter(shape=(1,), value=np.array([2]))
+    exponent = cp.Parameter(shape=(1,), value=np.array([3]))
+    result = power(base, exponent)
+    assert np.allclose(result.value, np.array([8]))
+
+    # scalar base and vector exponent
+    base = cp.Parameter(shape=(1,), value=np.array([2]))
+    exponent = cp.Parameter(shape=(3,), value=np.array([1, 2, 3]))
+    result = power(base, exponent)
+    assert np.allclose(result.value, np.array([2, 4, 8]))
+
+    # vector base and scalar exponent
+    base = cp.Parameter(shape=(3,), value=np.array([1, 2, 3]))
+    exponent = cp.Parameter(shape=(1,), value=np.array([2]))
+    result = power(base, exponent)
+    assert np.allclose(result.value, np.array([1, 4, 9]))
+
+    # vector base and exponent
+    base = cp.Parameter(shape=(1, 3), value=np.array([[1, 2, 3]]))
+    exponent = cp.Parameter(shape=(1, 3), value=np.array([[1, 2, 3]]))
+    result = power(base, exponent)
+    assert np.allclose(result.value, np.array([1, 4, 27]))
+
+    # mismatched shapes
+    base = cp.Parameter(shape=(1, 3), value=np.array([[1, 2, 3]]))
+    exponent = cp.Parameter(shape=(1, 2), value=np.array([[1, 2]]))
+    with pytest.raises(ValueError):
+        power(base, exponent)
+
+
 def test_matrix_inverse():
     """
     Test the matrix_inverse function.
