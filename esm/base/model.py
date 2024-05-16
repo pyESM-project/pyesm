@@ -325,7 +325,7 @@ class Model:
 
     def run_model(
         self,
-        solver: str = 'SCIPY',
+        solver: str = 'CLARABEL',
         verbose: bool = True,
         **kwargs: Any,
     ) -> None:
