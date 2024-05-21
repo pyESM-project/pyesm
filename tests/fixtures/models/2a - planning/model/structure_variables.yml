@@ -1,0 +1,296 @@
+# variables of the model
+
+# table_key:
+#     name: table_name # description or full name of the table
+#     type: table_type # endogenous, exogenous, or constant
+#     coordinates: [a, b, c, d] # list of coordinates with set_key symbols
+#     variables_info:
+#         var_key_1: # variable name
+#             intra: # optional, if variable is filtered within intra-problem set
+#                 set: years # set_key symbol
+#                 filters: {0: warm-up} # filters for the intra-problem set
+#             rows: # rows of the variable
+#                 set: a # set_key symbol
+#                 filters: {0: Supply} # optional, filters for the rows
+#             cols: # columns of the variable
+#                 set: b # set_key symbol
+#                 filters: {0: Physical} # optional, filters for the columns
+
+# -----------------------------------------------------------------------------
+# exogenous variables
+d:
+    name: supply coefficients matrix # description or full name of the table
+    type: exogenous # type of the variable
+    coordinates: [scenarios,techs,flows] # list of coordinates with set_key symbols
+    variables_info:
+        d: # variable name
+            rows: # rows of the variable
+                set: techs # set_key symbol
+            cols: # columns of the variable
+                set: flows # set_key symbol
+
+u:
+    name: use coefficients matrix 
+    type: exogenous 
+    coordinates: [scenarios,techs,flows_agg] 
+    variables_info:
+        u: 
+            rows: 
+                set: flows_agg 
+            cols: 
+                set: techs 
+
+Y:
+    name: final demand matrix 
+    type: exogenous 
+    coordinates: [scenarios,years,flows_agg] 
+    variables_info:
+        Y: 
+            rows: 
+                set: flows_agg 
+            cols: 
+                set: years 
+
+c:
+    name: specific costs coefficients matrix 
+    type: exogenous 
+    coordinates: [scenarios,costs,techs] 
+    variables_info:
+        ci: 
+            rows: 
+                set: costs
+                filters: {item: inv} 
+            cols: 
+                set: techs 
+        com: 
+            rows: 
+                set: costs
+                filters: {item: om} 
+            cols: 
+                set: techs 
+
+lf:
+    name: load factors 
+    type: exogenous 
+    coordinates: [scenarios,load_factors,techs] 
+    variables_info:
+        lf_min: 
+            rows: 
+                set: load_factors
+                filters: {range: min} 
+            cols: 
+                set: techs 
+        lf_max: 
+            rows: 
+                set: load_factors
+                filters: {range: max} 
+            cols: 
+                set: techs 
+
+lt:
+    name: lifetime of technologies 
+    type: exogenous 
+    coordinates: [scenarios,techs] 
+    variables_info:
+        lt_t: 
+        lt: 
+            cols: 
+                set: techs
+
+sf:
+    name: Weibull shape factor
+    type: exogenous 
+    coordinates: [scenarios,techs] 
+    variables_info:
+        sf_t: 
+        sf: 
+            cols: 
+                set: techs
+                
+res_lt:
+    name: residual lifetime of technologies 
+    type: exogenous 
+    coordinates: [scenarios,techs] 
+    variables_info:
+        res_lt: 
+            cols: 
+                set: techs
+  
+C_start:
+    name: initial capacity 
+    type: exogenous 
+    coordinates: [scenarios,techs] 
+    variables_info:
+        C_start_t: 
+        C_start: 
+            cols:
+                set: techs
+
+
+# -----------------------------------------------------------------------------
+# endogenous variables
+Q:
+    name: total production by flows 
+    type: endogenous 
+    coordinates: [scenarios,flows,years] 
+    variables_info:
+        Q: 
+            rows: 
+                set: years
+            cols: 
+                set: flows
+
+Q_agg:
+    name: total production by flows_agg 
+    type: endogenous 
+    coordinates: [scenarios,flows_agg,years] 
+    variables_info:
+        Q_agg: 
+            rows: 
+                set: flows_agg
+            cols: 
+                set: years
+
+X:
+    name: total production by techs 
+    type: endogenous 
+    coordinates: [scenarios,techs,years] 
+    variables_info:
+        X: 
+            rows: 
+                set: years
+            cols: 
+                set: techs
+
+Cap_new:
+    name: new installed capacity 
+    type: endogenous 
+    coordinates: [scenarios,techs,years] 
+    variables_info:
+        Cap_new: 
+            rows: 
+                set: years
+            cols: 
+                set: techs
+        Cap_new_t:
+            rows: 
+                set: years
+
+Cap_disp_new:
+    name: new capacity disposed 
+    type: endogenous 
+    coordinates: [scenarios,techs,years] 
+    variables_info:
+        Cap_disp_new: 
+            rows: 
+                set: years
+            cols:
+                set: techs
+        Cap_disp_new_t: 
+            rows: 
+                set: years
+
+Cap_disp_start:
+    name: initial capacity disposed 
+    type: endogenous 
+    coordinates: [scenarios,techs,years] 
+    variables_info:
+        Cap_disp_start: 
+            rows: 
+                set: years
+            cols:
+                set: techs
+        Cap_disp_start_t: 
+            rows: 
+                set: years
+
+Cap_op:
+    name: operative capacity 
+    type: endogenous 
+    coordinates: [scenarios,techs,years] 
+    variables_info:
+        Cap_op: 
+            rows: 
+                set: years
+            cols:
+                set: techs
+
+X_min:
+    name: production range of techs 
+    type: endogenous 
+    coordinates: [scenarios,techs,years] 
+    variables_info:
+        X_min: 
+            rows: 
+                set: years
+            cols: 
+                set: techs
+
+X_max:
+    name: production range of techs 
+    type: endogenous 
+    coordinates: [scenarios,techs,years] 
+    variables_info:
+        X_max: 
+            rows: 
+                set: years
+            cols: 
+                set: techs
+
+C_inv:
+    name: total investment costs 
+    type: endogenous 
+    coordinates: [scenarios,techs,years] 
+    variables_info:
+        C_inv: 
+            rows: 
+                set: years
+            cols:
+                set: techs
+
+C_om:
+    name: total operation costs 
+    type: endogenous 
+    coordinates: [scenarios,techs,years] 
+    variables_info:
+        C_om: 
+            rows: 
+                set: years
+            cols:
+                set: techs
+
+# -----------------------------------------------------------------------------
+# constants variables
+I_ff:
+    name: special identity matrix for flows aggregation 
+    type: constant 
+    coordinates: [flows,flows_agg] 
+    variables_info:
+        I_ff: 
+            value: identity_rcot
+            rows: 
+                set: flows_agg
+            cols:
+                set: flows
+
+Tyy:
+    name: lower triangular matrix 
+    type: constant 
+    coordinates: [years] 
+    variables_info:
+        Tyy: 
+            value: lower_triangular
+            rows: 
+                set: years
+            cols:
+                set: years
+
+y_range:
+    name: range of years
+    type: constant 
+    coordinates: [years] 
+    variables_info:
+        y_range:
+            value: arange
+            rows:
+                set: years
