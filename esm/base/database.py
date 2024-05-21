@@ -198,7 +198,6 @@ class Database:
 
                 self.sqltools.dataframe_to_table(table_name, dataframe)
 
-    # MODIFY HERE TO PUT ALSO CONSTANTS IN DB
     def generate_blank_sqlite_data_tables(self) -> None:
         """
         Generates empty data tables in the SQLite database for endogenous and

@@ -502,7 +502,7 @@ class Problem:
                 dir_path=self.paths['model_dir'],
             )
             self.symbolic_problem = DotDict(symbolic_problem)
-            self.logger.debug("Symbolic problem loaded successfully.")
+            self.logger.info("Symbolic problem loaded successfully.")
 
         except Exception as e:
             msg = f"Failed to load symbolic problem from file: {e}"
@@ -774,9 +774,12 @@ class Problem:
                 for set_name in list_sets_split_problem
             ]
 
-            self.logger.debug(
-                "Defining numeric problem for combination "
-                f"of sets: {problem_info}.")
+            if not problem_info:
+                self.logger.debug("Defining numeric problem.")
+            else:
+                self.logger.debug(
+                    "Defining numeric problem for combination "
+                    f"of sets: {problem_info}.")
 
             problem_filter = problems_data.loc[
                 [problem_num],
@@ -1188,10 +1191,13 @@ class Problem:
 
         for problem_num in self.numeric_problems.index:
 
-            problem_info = self.numeric_problems.at[
+            problem_info: pd.DataFrame = self.numeric_problems.at[
                 problem_num, Constants.get('_PROBLEM_INFO_HEADER')]
 
-            self.logger.info(f"Solving problem: {problem_info}.")
+            if problem_info:
+                self.logger.info(f"Solving numerical problem: {problem_info}.")
+            else:
+                self.logger.info(f"Solving numerical problem.")
 
             problem = self.numeric_problems.at[
                 problem_num, Constants.get('_PROBLEM_HEADER')]

@@ -6,7 +6,7 @@
 Q:
     name: demand by flow
     type: exogenous
-    coordinates: [case, flows]
+    coordinates: [flows]
     variables_info:
         Q:
             cols: 
@@ -20,7 +20,7 @@ Q:
 # -----------------------------------------------------------------------------
 # constants
 
-constants: 
+special_identity: 
     name: constant values
     type: constant
     coordinates: [flows, flows_aggregated]
@@ -44,10 +44,28 @@ constants:
 # -----------------------------------------------------------------------------
 # endogenous variables
 
+I_ff_exp:
+    name: special identity matrix
+    type: endogenous
+    coordinates: [flows, flows_aggregated]
+    variables_info:
+        I_ff_exp:
+            rows: 
+                set: flows_aggregated
+            cols: 
+                set: flows
+        I_ff_h_exp:
+            rows: 
+                set: flows_aggregated
+                filters: {0: Hourly dispatched}
+            cols: 
+                set: flows
+                filters: {0: Hourly dispatched}
+
 Q_agg:
     name: demand by flow
     type: endogenous
-    coordinates: [case, flows_aggregated]
+    coordinates: [flows_aggregated]
     variables_info:
         Q_agg:
             rows: 

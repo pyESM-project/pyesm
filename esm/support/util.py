@@ -18,7 +18,7 @@ manipulation and validation.
 
 import pprint as pp
 from pathlib import Path
-from typing import Dict, List, Any, Literal, Optional
+from typing import Dict, List, Any, Literal, Optional, Tuple
 
 import itertools as it
 import pandas as pd
@@ -658,3 +658,21 @@ def compare_dicts_ignoring_order(
                 return False
 
     return True
+
+
+def find_non_allowed_types(
+        dataframe: pd.DataFrame,
+        allowed_types: Tuple,
+        target_col_header: str,
+        return_col_header: Optional[str] = None,
+) -> List:
+
+    non_allowed_rows = dataframe.apply(
+        lambda row: not isinstance(
+            row[target_col_header], allowed_types),
+        axis=1)
+
+    if return_col_header:
+        return dataframe.loc[non_allowed_rows, return_col_header].tolist()
+
+    return non_allowed_rows

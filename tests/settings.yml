@@ -1,0 +1,31 @@
+log_level: 'info'
+
+paths: 
+    units: integration/units
+    models: integration/models
+
+fixtures:
+    units: 
+        - constants
+        - variables_filtering
+        - weibull
+        - test_structure
+        - sets_mirror
+        - inverse
+
+    models: 
+        - 0a - tech_filters
+        - 0b - year_filters
+        - 1 - operation
+        - 2a - planning
+        - 2b - planning_discounting
+        - 3 - lca
+        - 4 - infra_year_timeslice
+        - 4a - storage
+
+test_methods:
+    update_database_and_problem: {force_overwrite: True}
+    initialize_problems: {force_overwrite: True}
+    run_model: {verbose: False, solver: 'SCIPY'}
+    load_results_to_database: {}
+    check_model_results: {}

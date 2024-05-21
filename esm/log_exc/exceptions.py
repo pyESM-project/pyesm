@@ -114,3 +114,17 @@ class TableNotFoundError(Exception):
     def __init__(self, message='Table not found.'):
         self.message = message
         super().__init__(self.message)
+
+
+class ResultsError(Exception):
+    """
+    Exception raised when there is an issue with the model results (e.g.
+    results do not match expected values.)
+
+    Attributes:
+        message (str): Explanation of the error.
+    """
+
+    def __init__(self, message='Results error.'):
+        self.message = message
+        super().__init__(self.message)
