@@ -1,0 +1,37 @@
+# SYMBOLIC PROBLEM
+
+
+# definition of the objective function (scalar, optional)
+
+objective function:
+ - Minimize(sum(C_e_tot))
+
+# definition of the constraints (vector expressions)
+
+expressions: 
+
+#balances
+
+ - Q - u @ tran(X) - Y == 0
+ - I_ff @ tran(X) - d @ tran(Q) == 0
+ - sum(sum(E_int_tot)) + sum(E_y_tot) <= CO2_cap 
+
+ - U_tot == u @ diag(X)
+ - D_tot == d @ diag(Q)
+
+ - C_e_tot == c_e @ diag(X)
+  
+ - E_emitted_tot == mult(mult(U_tot, tran(e_f)), e_filters ) 
+ - E_captured_tot == mult(mult( U_tot , tran(e_f)), e_cap)
+ - E_int_tot == E_captured_tot + E_emitted_tot
+ - E_y_tot == Y * e_f
+
+
+
+ - X >= 0
+ - Q >= 0
+
+
+
+
+
