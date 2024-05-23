@@ -20,6 +20,7 @@ fixtures:
         - 2a - planning
         - 2b - planning_discounting
         - 3 - lca
+        - 3a - lca_it_pt
         - 4 - infra_year_timeslice
         - 4a - storage
 

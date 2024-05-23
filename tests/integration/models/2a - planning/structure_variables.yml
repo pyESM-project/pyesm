@@ -291,6 +291,6 @@ y_range:
     coordinates: [years] 
     variables_info:
         y_range:
-            value: arange
+            value: arange_1
             rows:
                 set: years

@@ -1,0 +1,61 @@
+# structure of sets
+
+# set_key:
+#     symbol: a  # symbol of the set 
+#     table_name: _set_a # name of the table of the set in the database
+#     split_problem: False # (optional) if the items of the set defines separate problems 
+#     copy_from: another_set_key # (optional) key of another set to copy the data from (table_headers must be filled anyway)
+#     table_structure:
+#         name: [a_Names, TYPE] # header of set entries names in database set table
+#         aggregation: [a_Agg, TEXT] # (optional) header of set entries that are matching another set (aggregation)
+#         filters:
+#             0:  # (int) index of the category in the set
+#                 header: [a_Cat_1, TEXT] 
+#                 values: [a_1a, a_1b, a_1c]
+#             1: 
+#                 header: [a_Cat_2, TEXT] 
+#                 values: [a_2a, a_2b]
+
+
+# -----------------------------------------------------------------------------
+# sets
+
+# technology_mix:
+#     symbol: tm  # symbol of the set 
+#     table_name: _set_TECHS_MIX # name of the table of the set in the database
+#     split_problem: True # (optional) if the items of the set defines separate problems 
+#     table_structure:
+#         name: [tm_Names, TYPE] # header of set entries names in database set table
+
+technologies:
+    symbol: t  # symbol of the set 
+    table_name: _set_TECHNOLOGIES # name of the table of the set in the database
+    table_structure:
+        name: [t_Names, TYPE] # header of set entries names in database set table
+        filters:
+            0:  # (int) index of the category in the set
+                header: [t_Technology_Assumption, TEXT] 
+                values: [industry-technology, product-technology]
+            1: 
+                header: [t_Mix, TEXT] 
+                values: [electricity]
+
+products:
+    symbol: p  # symbol of the set 
+    table_name: _set_PRODUCTS # name of the table of the set in the database
+    table_structure:
+        name: [p_Names, TYPE] # header of set entries names in database set table
+        filters:
+            0:  # (int) index of the category in the set
+                header: [p_Technology_Assumption, TEXT] 
+                values: [industry-technology, product-technology]
+            1: 
+                header: [p_Mix, TEXT] 
+                values: [electricity]
+
+emissions:
+    symbol: e  # symbol of the set 
+    table_name: _set_AIR_EMISSIONS # name of the table of the set in the database
+    table_structure:
+        name: [e_Names, TYPE] # header of set entries names in database set table
+        
