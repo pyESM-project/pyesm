@@ -56,8 +56,8 @@ class Problem:
             from configuration files.
         numeric_problems (pd.DataFrame | None): DataFrame containing defined 
             numerical problems ready to solve.
-        model_run (bool | None): Indicates if the model has been run after the 
-            last configuration.
+        model_solved (bool | None): Indicates if the model has been solved.
+        status: Indicates the status of the model (from cvxpy.Problem.status)
 
     Methods:
         create_cvxpy_variable: Creates a CVXPY variable, parameter, or constant 
@@ -113,7 +113,8 @@ class Problem:
 
         self.symbolic_problem = None
         self.numeric_problems = None
-        self.model_run = None
+        self.model_solved = None
+        self.status = None
 
         self.logger.debug(f"'{self}' object initialized.")
 
@@ -233,11 +234,6 @@ class Problem:
         if filtered_var_dataframe.empty:
             msg = f"Variable sliced from '{related_table_key}' is empty. " \
                 "Check related variables filters."
-            self.logger.error(msg)
-            raise exc.MissingDataError(msg)
-
-        if related_table.cvxpy_var is None:
-            msg = f"Variables not defined for data table '{related_table_key}'."
             self.logger.error(msg)
             raise exc.MissingDataError(msg)
 
@@ -502,7 +498,7 @@ class Problem:
                 dir_path=self.paths['model_dir'],
             )
             self.symbolic_problem = DotDict(symbolic_problem)
-            self.logger.info("Symbolic problem loaded successfully.")
+            self.logger.debug("Symbolic problem loaded successfully.")
 
         except Exception as e:
             msg = f"Failed to load symbolic problem from file: {e}"
@@ -1186,9 +1182,9 @@ class Problem:
             self.logger.warning(msg)
             raise exc.OperationalError(msg)
 
-        if self.model_run:
+        if self.model_solved:
             if not force_overwrite:
-                self.logger.warning("Numeric problems already run.")
+                self.logger.warning("Numeric problems already solved.")
                 user_input = input("Solve again numeric problems? (y/[n]): ")
 
                 if user_input.lower() != 'y':
@@ -1219,11 +1215,12 @@ class Problem:
                 **kwargs,
             )
 
-            problem_status = getattr(problem, 'status', None)
+            self.status = getattr(problem, 'status', None)
             self.numeric_problems.at[
                 problem_num,
-                Constants.get('_PROBLEM_STATUS_HEADER')] = problem_status
+                Constants.get('_PROBLEM_STATUS_HEADER')] = self.status
 
-            self.logger.info(f"Problem status: '{problem_status}'")
+            self.logger.info(f"Problem status: '{self.status}'")
 
-        self.model_run = True
+        if self.status == 'optimal':
+            self.model_solved = True

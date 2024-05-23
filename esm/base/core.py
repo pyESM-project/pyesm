@@ -336,13 +336,20 @@ class Core:
                     operation=operation,
                 )
 
-    def check_results_as_expected(self) -> None:
+    def check_results_as_expected(
+            self,
+            values_relative_diff_tolerance: float,
+    ) -> None:
         """
         Checks if the results of the current database match the expected results.
         This method uses the 'check_databases_equality' method to compare the 
         current database with a test database. The test database is specified 
         by the 'sqlite_database_file_test' setting and is located in the model 
         directory.
+
+        Args:
+            values_relative_diff_tolerance (float): The relative difference 
+                tolerance (%) to use when comparing the databases. 
 
         Raises:
             OperationalError: If the connection or cursor of the database to be 
@@ -356,4 +363,5 @@ class Core:
             self.sqltools.check_databases_equality(
                 other_db_dir_path=self.paths['model_dir'],
                 other_db_name=self.settings['sqlite_database_file_test'],
+                tolerance_percentage=values_relative_diff_tolerance,
             )

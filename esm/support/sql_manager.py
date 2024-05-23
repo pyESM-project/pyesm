@@ -924,6 +924,7 @@ class SQLManager:
             self,
             other_db_dir_path: Path | str,
             other_db_name: str,
+            tolerance_percentage: float,
     ) -> None:
         """
         Compares the current database with another SQLite database to check
@@ -932,7 +933,8 @@ class SQLManager:
         This method checks for the following:
         1. Existence of tables in the source database.
         2. Structure of the tables (schema).
-        3. Contents of the tables (data).
+        3. Contents of the tables (coordinates).
+        4. Numerical values in the 'values' column with a specified tolerance.
 
         If any of these checks fail, the method raises a ResultsError and logs the 
         details of the failure. If all checks pass, the method logs a success message.
@@ -941,6 +943,8 @@ class SQLManager:
             other_db_dir_path (Path | str): Directory path of the other SQLite
                 database.
             other_db_name (str): Name of the other SQLite database.
+            tolerance_percentage (float): The percentage tolerance for numerical
+                values tables column.
 
         Raises:
             OperationalError: If the connection or cursor of the database to be 
@@ -1006,24 +1010,66 @@ class SQLManager:
                 self.logger.error(msg)
                 raise exc.ResultsError(msg)
 
-            # 3. Compare table contents (data)
-            tables_wrong_data = []
+            # 3. Compare table contents (except "values" column)
+            tables_wrong_coordinates = []
+            values_header = Constants.get('_STD_VALUES_FIELD')['values'][0]
 
             for table in current_tables:
-                self.cursor.execute(f"SELECT * FROM {table}")
-                current_rows = {
-                    tuple(row) for row in self.cursor.fetchall()}
+                self.cursor.execute(f"PRAGMA table_info({table})")
+                coords_columns = [
+                    info[1]
+                    for info in self.cursor.fetchall()
+                    if info[1] != values_header
+                ]
+                columns = ', '.join(coords_columns) if coords_columns else '*'
+                query = f"SELECT {columns} FROM {table}"
 
-                other_db_cursor.execute(f"SELECT * FROM {table}")
-                other_rows = {
-                    tuple(row) for row in other_db_cursor.fetchall()}
+                self.cursor.execute(query)
+                current_rows = [tuple(row) for row in self.cursor.fetchall()]
+
+                other_db_cursor.execute(query)
+                other_rows = [tuple(row) for row in other_db_cursor.fetchall()]
 
                 if current_rows != other_rows:
-                    tables_wrong_data.append(table)
+                    tables_wrong_coordinates.append(table)
 
-            if tables_wrong_data:
-                msg = "Source and expected data not matching for " \
-                    f"tables: {tables_wrong_data}."
+            if tables_wrong_coordinates:
+                msg = "Source and expected coordinates not matching for " \
+                    f"tables: {tables_wrong_coordinates}."
+                self.logger.error(msg)
+                raise exc.ResultsError(msg)
+
+            # 4. Compare "values" column with numerical tolerance
+            tables_wrong_values = []
+
+            for table in current_tables:
+                self.cursor.execute(f"PRAGMA table_info({table})")
+                columns = [info[1] for info in self.cursor.fetchall()]
+
+                if values_header not in columns:
+                    continue
+
+                query = f"SELECT \"{values_header}\" FROM \"{table}\""
+
+                self.cursor.execute(query)
+                current_values = [row[0] for row in self.cursor.fetchall()]
+
+                other_db_cursor.execute(query)
+                other_values = [row[0] for row in other_db_cursor.fetchall()]
+
+                # extract method in util.py
+                for cv, ov in zip(current_values, other_values):
+                    if ov == 0:
+                        if cv != 0:
+                            tables_wrong_values.append(table)
+                    else:
+                        relative_error = abs(cv - ov) / abs(ov) * 100
+                        if relative_error > tolerance_percentage:
+                            tables_wrong_values.append(table)
+
+            if tables_wrong_values:
+                msg = "Numerical differences in 'values' column exceeding " \
+                    f"tolerance for tables: {tables_wrong_values}."
                 self.logger.error(msg)
                 raise exc.ResultsError(msg)
 

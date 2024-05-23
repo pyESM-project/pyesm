@@ -410,7 +410,10 @@ class Model:
 
         self.pbi_tools.generate_powerbi_report()
 
-    def check_model_results(self) -> None:
+    def check_model_results(
+            self,
+            numerical_tolerance: float = 3,
+    ) -> None:
         """
         Checks the results of the model's computations. This is mainly called
         for testing purpose.
@@ -420,6 +423,11 @@ class Model:
         The expected results are stored in a test database specified by the 
         'sqlite_database_file_test' setting and located in the model directory.
 
+        Args:
+            numerical_tolerance (float, optional): The relative difference (%) 
+                tolerance for comparing numerical values in different databases. 
+                Defaults to 3%.
+
         Raises:
             OperationalError: If the connection or cursor of the database to be 
                 checked are not initialized.
@@ -428,7 +436,8 @@ class Model:
             ResultsError: If the databases are not identical in terms of table 
                 presence, structure, or contents.
         """
-        self.core.check_results_as_expected()
+        self.core.check_results_as_expected(
+            values_relative_diff_tolerance=numerical_tolerance)
 
     def erase_model(self) -> None:
         """
