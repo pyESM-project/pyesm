@@ -1059,6 +1059,9 @@ class SQLManager:
 
                 # extract method in util.py
                 for cv, ov in zip(current_values, other_values):
+                    if isinstance(cv, str) and isinstance(ov, str):
+                        continue
+
                     if ov == 0:
                         if cv != 0:
                             tables_wrong_values.append(table)

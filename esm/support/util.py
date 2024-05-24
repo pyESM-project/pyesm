@@ -289,6 +289,7 @@ def unpivot_dict_to_dataframe(
     Args:
         data_dict (Dict[str, List[str]]): The dictionary to be unpivoted.
         key_order (Optional[List[str]]): Order of keys for the resulting DataFrame.
+            default is None, so the order of keys in the dictionary is used.
 
     Returns:
         pd.DataFrame: A DataFrame resulting from the cartesian product of 
@@ -599,7 +600,8 @@ def substitute_dict_keys(
 def filter_dataframe(
         df_to_filter: pd.DataFrame,
         filter_dict: Dict[str, List[str]],
-        reorder_columns_as_dict_keys: bool = False,
+        reset_index: bool = True,
+        reorder_cols_based_on_filter: bool = False,
         reorder_rows_based_on_filter: bool = False,
 ) -> pd.DataFrame:
     """
@@ -611,10 +613,12 @@ def filter_dataframe(
         filter_dict (dict): A dictionary where keys are dataframe column names 
             and values are lists of strings that the filtered dictionary 
             columns will include.
-        reorder_columns_as_dict_keys (bool): If True, reorder the filtered
+        reset_index (bool, Optional): If True, resets the index of the filtered 
+            DataFrame. Default to True.
+        reorder_cols_based_on_filter (bool, Optional): If True, reorder the filtered
             dataframe columns according to the order of parsed dictionary
             keys. Default to False.
-        reorder_rows_based_on_filter (bool): If True, reorder the filtered
+        reorder_rows_based_on_filter (bool, Optional): If True, reorder the filtered
             dataframe rows according to the order of parsed dictionary
             values. Default to False.
 
@@ -636,31 +640,41 @@ def filter_dataframe(
     for key in filter_dict.keys():
         if key not in df_to_filter.columns:
             raise ValueError(
-                f"Key '{key}' in filter_dict is not a column of df_to_filter.")
+                f"Key '{key}' in filter_dict is not a DataFrame column.")
 
-    combined_mask = pd.Series([True] * len(df_to_filter))
+    # filter dataframe based on filter_dict
+    mask = pd.Series([True] * len(df_to_filter))
 
     for column, values in filter_dict.items():
+        mask = mask & df_to_filter[column].isin(values)
 
-        if column in df_to_filter.columns:
-            current_mask = df_to_filter[column].isin(values)
-            combined_mask &= current_mask
+    filtered_df = df_to_filter[mask].copy()
 
-    filtered_df = df_to_filter.loc[combined_mask]
+    # optionally reorder columns based on filter_dict keys
+    if reorder_cols_based_on_filter:
+        filter_keys = list(filter_dict.keys())
+        other_keys = [
+            col
+            for col in df_to_filter.columns
+            if col not in filter_keys
+        ]
+        new_columns_order = filter_keys + other_keys
+        filtered_df = filtered_df[new_columns_order]
 
-    if reorder_columns_as_dict_keys:
-        filtered_df = filtered_df[list(filter_dict.keys())]
-
+    # optionally reorder rows based on filter_dict values
     if reorder_rows_based_on_filter:
-        for column, order in filter_dict.items():
-            filtered_df[column] = pd.Categorical(
-                filtered_df[column],
-                categories=order,
-                ordered=True,
-            )
-            filtered_df.sort_values(by=column, inplace=True)
-            filtered_df[column] = filtered_df[column].astype('object')
+        df_order = unpivot_dict_to_dataframe(filter_dict)
+        sort_key = pd.Series(
+            range(len(df_order)),
+            index=pd.MultiIndex.from_frame(df_order)
+        )
+        filtered_df['sort_key'] = filtered_df.set_index(
+            list(filter_dict.keys())
+        ).index.map(sort_key.get)
+        filtered_df.sort_values('sort_key', inplace=True)
+        filtered_df.drop(columns='sort_key', inplace=True)
 
+    if reset_index:
         filtered_df.reset_index(drop=True, inplace=True)
 
     return filtered_df

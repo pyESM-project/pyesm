@@ -227,7 +227,8 @@ class Problem:
         filtered_var_dataframe = util.filter_dataframe(
             df_to_filter=related_table.coordinates_dataframe,
             filter_dict=var_filter,
-            reorder_columns_as_dict_keys=True,
+            reset_index=False,
+            reorder_cols_based_on_filter=True,
             reorder_rows_based_on_filter=True,
         )
 
@@ -239,8 +240,11 @@ class Problem:
 
         filtered_index = filtered_var_dataframe.index
         sliced_cvxpy_var = related_table.cvxpy_var[filtered_index]
-        sliced_cvxpy_var_reshaped = sliced_cvxpy_var.reshape(
-            shape, order='C')
+        sliced_cvxpy_var_reshaped = cp.reshape(
+            sliced_cvxpy_var,
+            shape=shape,
+            order='C'
+        )
 
         return sliced_cvxpy_var_reshaped
 

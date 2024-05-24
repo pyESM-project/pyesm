@@ -70,7 +70,7 @@ r:
 # -----------------------------------------------------------------------------
 # endogenous variables
 
-v:
+v_split:
     name: supply coefficients # description or full name of the table
     type: endogenous # endogenous, exogenous, or constant
     coordinates: [technologies, products] # list of coordinates with set_key symbols

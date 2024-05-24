@@ -496,41 +496,109 @@ def test_filter_dataframe():
     invalid input, and raises the correct errors.
     """
     df = pd.DataFrame({
-        'A': ['apple', 'banana', 'cherry', 'date', 'elderberry'],
-        'B': ['fruit', 'fruit', 'fruit', 'fruit', 'fruit'],
-        'C': [1, 2, 3, 4, 5]
+        'items': ['item_1', 'item_2', 'item_3', 'item_1', 'item_2', 'item_3'],
+        'techs': ['tech_1', 'tech_1', 'tech_1', 'tech_2', 'tech_2', 'tech_2'],
+        'values': [1, 2, 3, 4, 5, 6]
     })
 
     # filtering DataFrame with valid input
-    filter_dict = {'A': ['apple', 'banana', 'cherry']}
+    filter_dict = {'items': ['item_1', 'item_2']}
+    filtered_df = filter_dataframe(df, filter_dict)
     expected_df = pd.DataFrame({
-        'A': ['apple', 'banana', 'cherry'],
-        'B': ['fruit', 'fruit', 'fruit'],
-        'C': [1, 2, 3]
+        'items': ['item_1', 'item_2', 'item_1', 'item_2'],
+        'techs': ['tech_1', 'tech_1', 'tech_2', 'tech_2'],
+        'values': [1, 2, 4, 5]
     })
-    pd.testing.assert_frame_equal(
-        filter_dataframe(df, filter_dict), expected_df)
+    pd.testing.assert_frame_equal(filtered_df, expected_df)
 
-    # filtering DataFrame with reorder_columns_as_dict_keys=True
-    filter_dict = {'B': ['fruit'], 'A': ['apple', 'banana', 'cherry']}
+    # filtering DataFrame with different column order not preserving cols order
+    filter_dict = {'techs': ['tech_1'], 'items': ['item_1', 'item_2']}
+    filtered_df = filter_dataframe(df, filter_dict)
     expected_df = pd.DataFrame({
-        'B': ['fruit', 'fruit', 'fruit'],
-        'A': ['apple', 'banana', 'cherry'],
+        'items': ['item_1', 'item_2'],
+        'techs': ['tech_1', 'tech_1'],
+        'values': [1, 2]
     })
-    pd.testing.assert_frame_equal(
-        filter_dataframe(df, filter_dict, reorder_columns_as_dict_keys=True),
-        expected_df)
+    pd.testing.assert_frame_equal(filtered_df, expected_df)
 
-    # filtering DataFrame with reorder_rows_based_on_filter=True
-    filter_dict = {'A': ['cherry', 'banana', 'apple']}
+    # filtering DataFrame with different column order cols preserving order
+    filter_dict = {'techs': ['tech_2'], 'items': ['item_1', 'item_2']}
+    filtered_df = filter_dataframe(
+        df,
+        filter_dict,
+        reorder_cols_based_on_filter=True,
+    )
     expected_df = pd.DataFrame({
-        'A': ['cherry', 'banana', 'apple'],
-        'B': ['fruit', 'fruit', 'fruit'],
-        'C': [3, 2, 1]
+        'techs': ['tech_2', 'tech_2'],
+        'items': ['item_1', 'item_2'],
+        'values': [4, 5]
     })
-    pd.testing.assert_frame_equal(
-        filter_dataframe(df, filter_dict, reorder_rows_based_on_filter=True),
-        expected_df)
+    pd.testing.assert_frame_equal(filtered_df, expected_df)
+
+    # filtering DataFrame with different column order cols preserving order
+    # and keeping the original dataframe index
+    filter_dict = {'techs': ['tech_2'], 'items': ['item_1', 'item_2']}
+    filtered_df = filter_dataframe(
+        df,
+        filter_dict,
+        reset_index=False,
+        reorder_cols_based_on_filter=True,
+    )
+    expected_df = pd.DataFrame({
+        'techs': ['tech_2', 'tech_2'],
+        'items': ['item_1', 'item_2'],
+        'values': [4, 5]
+    })
+    expected_df.index = [3, 4]
+    pd.testing.assert_frame_equal(filtered_df, expected_df)
+
+    # filtering DataFrame with different rows order NOT preserving rows order
+    filter_dict = {'items': ['item_2', 'item_1']}
+    filtered_df = filter_dataframe(df, filter_dict)
+    expected_df = pd.DataFrame({
+        'items': ['item_1', 'item_2', 'item_1', 'item_2'],
+        'techs': ['tech_1', 'tech_1', 'tech_2', 'tech_2'],
+        'values': [1, 2, 4, 5]
+    })
+    pd.testing.assert_frame_equal(filtered_df, expected_df)
+
+    # filtering DataFrame with different rows order preserving rows order
+    filter_dict = {
+        'items': ['item_2', 'item_1'],
+        'techs': ['tech_2', 'tech_1']
+    }
+    filtered_df = filter_dataframe(
+        df,
+        filter_dict,
+        reorder_rows_based_on_filter=True,
+    )
+    expected_df = pd.DataFrame({
+        'items': ['item_2', 'item_2', 'item_1', 'item_1'],
+        'techs': ['tech_2', 'tech_1', 'tech_2', 'tech_1'],
+        'values': [5, 2, 4, 1]
+    })
+    pd.testing.assert_frame_equal(filtered_df, expected_df)
+
+    # filtering DataFrame with different cols/rows order preserving filter
+    # order and index
+    filter_dict = {
+        'techs': ['tech_2', 'tech_1'],
+        'items': ['item_3', 'item_1'],
+    }
+    filtered_df = filter_dataframe(
+        df,
+        filter_dict,
+        reset_index=False,
+        reorder_rows_based_on_filter=True,
+        reorder_cols_based_on_filter=True,
+    )
+    expected_df = pd.DataFrame({
+        'techs': ['tech_2', 'tech_2', 'tech_1', 'tech_1'],
+        'items': ['item_3', 'item_1', 'item_3', 'item_1'],
+        'values': [6, 4, 3, 1]
+    })
+    expected_df.index = [5, 3, 2, 0]
+    pd.testing.assert_frame_equal(filtered_df, expected_df)
 
     # filtering DataFrame with invalid filter_dict
     with pytest.raises(ValueError):
