@@ -30,32 +30,6 @@ u:
             cols: # columns of the variable
                 set: technologies # set_key symbol
 
-c:
-    name: product mix # description or full name of the table
-    type: exogenous # endogenous, exogenous, or constant
-    coordinates: [products, technologies] # list of coordinates with set_key symbols
-    variables_info:
-        c: # variable name
-            rows: # rows of the variable
-                set: products # set_key symbol
-                filters: {0: product-technology} # optional, filters for the rows
-            cols: # columns of the variable
-                set: technologies # set_key symbol
-                filters: {0: product-technology} # optional, filters for the columns
-
-d:  
-    name: market shares # description or full name of the table
-    type: exogenous # endogenous, exogenous, or constant
-    coordinates: [technologies, products] # list of coordinates with set_key symbols
-    variables_info:
-        d: # variable name
-            rows: # rows of the variable
-                set: technologies # set_key symbol
-                filters: {0: industry-technology} # optional, filters for the rows
-            cols: # columns of the variable
-                set: products # set_key symbol
-                filters: {0: industry-technology} # optional, filters for the columns
-
 r:
     name: environmental transactions coefficients # description or full name of the table
     type: exogenous # endogenous, exogenous, or constant
@@ -67,12 +41,9 @@ r:
             cols: # columns of the variable
                 set: technologies # set_key symbol
 
-# -----------------------------------------------------------------------------
-# endogenous variables
-
-v_split:
+v:
     name: supply coefficients # description or full name of the table
-    type: endogenous # endogenous, exogenous, or constant
+    type: exogenous # endogenous, exogenous, or constant
     coordinates: [technologies, products] # list of coordinates with set_key symbols
     variables_info:
         v: # variable name
@@ -80,20 +51,9 @@ v_split:
                 set: technologies # set_key symbol
             cols: # columns of the variable
                 set: products # set_key symbol
-        v_c:
-            rows:
-                set: technologies
-                filters: {0: product-technology}
-            cols:
-                set: products
-                filters: {0: product-technology}
-        v_d:
-            rows:
-                set: technologies
-                filters: {0: industry-technology}
-            cols:
-                set: products
-                filters: {0: industry-technology} 
+
+# -----------------------------------------------------------------------------
+# endogenous variables
 
 r_e_p:
     name: footprint by product # description or full name of the table
