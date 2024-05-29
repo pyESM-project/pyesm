@@ -180,6 +180,23 @@ def validate_dict_structure(
     return True
 
 
+def items_in_list(
+        items: List,
+        list_to_check: List,
+) -> bool:
+    """
+    Checks if all items in a list are present in another list.
+
+    Args:
+        items (List): The list of items to check.
+        list_to_check (List): The list to check against.
+
+    Returns:
+        bool: True if all items are present in the list to check, False otherwise.
+    """
+    return all(item in list_to_check for item in items)
+
+
 def confirm_action(message: str) -> bool:
     """
     Prompts the user to confirm an action via command line input.
