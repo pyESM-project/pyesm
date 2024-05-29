@@ -486,6 +486,9 @@ class Problem:
                 system's constants configuration. The file should contain a 
                 dictionary with keys matching the constants '_OBJECTIVE_HEADER' 
                 and '_CONSTRAINTS_HEADER'.
+
+        Raises:
+            SettingsError: If the symbolic problem structure is invalid.
         """
         problem_file_name = Constants.get('_SETUP_FILES')[2]
         problem_keys = [

@@ -23,6 +23,7 @@ fixtures:
         - 3a - lca_it_pt
         - 4 - infra_year_timeslice
         - 4a - storage
+        - 5 - coupled_model
 
 test_methods:
     update_database_and_problem: {force_overwrite: True}
