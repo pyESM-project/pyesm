@@ -1,16 +1,16 @@
-""" 
+"""
 problem.py
 
 @author: Matteo V. Rocco
 @institution: Politecnico di Milano
 
-This module defines the Problem class which is responsible for handling and solving 
-mathematical optimization problems using the CVXPY framework. It includes functionalities 
-for creating CVXPY variables and parameters, filtering and mapping variables to their 
-corresponding data, and constructing and solving optimization problems based on symbolic 
+This module defines the Problem class which is responsible for handling and solving
+mathematical optimization problems using the CVXPY framework. It includes functionalities
+for creating CVXPY variables and parameters, filtering and mapping variables to their
+corresponding data, and constructing and solving optimization problems based on symbolic
 representations.
-The Problem class interacts with various components of the system such as data tables, 
-variables, and settings, leveraging the Index class for accessing and managing structured 
+The Problem class interacts with various components of the system such as data tables,
+variables, and settings, leveraging the Index class for accessing and managing structured
 data related to the optimization models.
 
 Key functionalities include:
@@ -38,56 +38,56 @@ from esm.base.index import Index, Variable
 class Problem:
     """
     Manages the creation, configuration, and solving of optimization problems.
-    This class uses CVXPY to define and solve optimization problems. It provides 
-    methods to create CVXPY variables, parameters, and constants, map data to 
-    these variables, and apply filtering based on the model's requirements. 
-    It is capable of handling multiple types of variables including endogenous, 
+    This class uses CVXPY to define and solve optimization problems. It provides
+    methods to create CVXPY variables, parameters, and constants, map data to
+    these variables, and apply filtering based on the model's requirements.
+    It is capable of handling multiple types of variables including endogenous,
     exogenous, and constants, each associated with specific data handling needs.
 
     Attributes:
         logger (Logger): Logger object for logging information and errors.
         files (FileManager): FileManager object for handling file operations.
-        settings (Dict[str, str]): Configuration settings for optimization and 
+        settings (Dict[str, str]): Configuration settings for optimization and
             model handling.
         index (Index): Index object providing access to data tables and variables.
-        paths (Dict[str, Path]): Dictionary containing paths used across the model 
+        paths (Dict[str, Path]): Dictionary containing paths used across the model
             for file handling.
-        symbolic_problem (DotDict | None): Symbolically defined problem loaded 
+        symbolic_problem (DotDict | None): Symbolically defined problem loaded
             from configuration files.
-        numeric_problems (pd.DataFrame | None): DataFrame containing defined 
+        numeric_problems (pd.DataFrame | None): DataFrame containing defined
             numerical problems ready to solve.
         model_solved (bool | None): Indicates if the model has been solved.
         status: Indicates the status of the model (from cvxpy.Problem.status)
 
     Methods:
-        create_cvxpy_variable: Creates a CVXPY variable, parameter, or constant 
+        create_cvxpy_variable: Creates a CVXPY variable, parameter, or constant
             based on specified attributes.
-        slice_cvxpy_variable: Slices variables from data tables based on 
+        slice_cvxpy_variable: Slices variables from data tables based on
             filtering conditions.
-        data_to_cvxpy_variable: Assigns data to CVXPY parameters for use in 
+        data_to_cvxpy_variable: Assigns data to CVXPY parameters for use in
             model calculations.
-        generate_constant_data: Generates constant data for use in the 
+        generate_constant_data: Generates constant data for use in the
             optimization problem.
-        generate_vars_dataframe: Constructs a DataFrame for variables with 
+        generate_vars_dataframe: Constructs a DataFrame for variables with
             necessary CVXPY objects and filtering information.
-        load_symbolic_problem_from_file: Loads symbolic problem definitions 
+        load_symbolic_problem_from_file: Loads symbolic problem definitions
             from a specified file.
-        parse_allowed_symbolic_vars: Extracts and validates variable names from 
+        parse_allowed_symbolic_vars: Extracts and validates variable names from
             symbolic expressions.
-        check_variables_attribute_equality: Checks if a specified attribute is 
+        check_variables_attribute_equality: Checks if a specified attribute is
             equal across a subset of variables.
-        find_common_sets_intra_problem: Identifies common sets for intra-problem 
+        find_common_sets_intra_problem: Identifies common sets for intra-problem
             use from a subset of variables.
-        fetch_common_vars_coords: Retrieves common coordinates for a specified 
+        fetch_common_vars_coords: Retrieves common coordinates for a specified
             category from a subset of variables.
-        generate_problems_dataframe: Defines and constructs a DataFrame for 
+        generate_problems_dataframe: Defines and constructs a DataFrame for
             managing multiple optimization problems.
-        fetch_allowed_cvxpy_variables: Fetches and constructs a dictionary of 
+        fetch_allowed_cvxpy_variables: Fetches and constructs a dictionary of
             allowed CVXPY variables for problem solving.
         execute_cvxpy_code: Executes CVXPY expressions dynamically using exec.
-        define_expressions: Defines and constructs optimization expressions from 
+        define_expressions: Defines and constructs optimization expressions from
             symbolic definitions.
-        solve_problem: Solves an individual CVXPY problem using specified solver 
+        solve_problem: Solves an individual CVXPY problem using specified solver
             options.
         solve_all_problems: Solves all defined problems and updates their status.
     """
@@ -130,17 +130,17 @@ class Problem:
         value: Optional[int | np.ndarray | np.matrix] = None,
     ) -> cp.Variable | cp.Parameter | cp.Constant:
         """
-        Creates a CVXPY object based on the specified type. The type of object 
+        Creates a CVXPY object based on the specified type. The type of object
         created (Variable, Parameter, or Constant) depends on the 'var_type' argument.
 
         Args:
-            var_type (str): The type of the CVXPY object to create. Valid 
+            var_type (str): The type of the CVXPY object to create. Valid
                 values are 'endogenous', 'exogenous', or 'constant'.
-            shape (Tuple[int, ...]): The shape of the Variable or Parameter to 
+            shape (Tuple[int, ...]): The shape of the Variable or Parameter to
                 be created.
-            name (Optional[str]): The name assigned to the Variable or Parameter. 
+            name (Optional[str]): The name assigned to the Variable or Parameter.
                 This is not used for Constants.
-            value (Optional[int | np.ndarray | np.matrix]): The numeric value 
+            value (Optional[int | np.ndarray | np.matrix]): The numeric value
                 for a Constant. This is ignored for Variable or Parameter types.
 
         Returns:
@@ -176,29 +176,29 @@ class Problem:
             var_filter: Dict[str, List[str]],
     ) -> cp.Expression:
         """
-        Slices a part of a CVXPY variable based on specified filtering criteria, 
+        Slices a part of a CVXPY variable based on specified filtering criteria,
         applying only to endogenous variables.
-        This method filters data in a specified DataTable using provided filtering 
-        criteria and slices the corresponding CVXPY variable to match the filtered 
-        data subset. The resulting variable slice is reshaped according to the 
+        This method filters data in a specified DataTable using provided filtering
+        criteria and slices the corresponding CVXPY variable to match the filtered
+        data subset. The resulting variable slice is reshaped according to the
         specified dimensions.
 
         Args:
-            var_type (str): The type of the variable, which must be 'endogenous' 
+            var_type (str): The type of the variable, which must be 'endogenous'
                 for slicing.
             shape (Tuple[int]): The target shape for the reshaped sliced variable.
-            related_table_key (str): Key to identify the DataTable containing the 
+            related_table_key (str): Key to identify the DataTable containing the
                 variable to slice.
-            var_filter (Dict[str, List[str]]): Dictionary specifying the filtering 
+            var_filter (Dict[str, List[str]]): Dictionary specifying the filtering
                 criteria to apply to the DataTable.
 
         Returns:
             cp.Expression: The reshaped sliced CVXPY variable.
 
         Raises:
-            SettingsError: If an attempt is made to slice a non-endogenous variable 
+            SettingsError: If an attempt is made to slice a non-endogenous variable
                 or other slicing-related issues occur.
-            MissingDataError: If the DataTable is missing necessary configurations 
+            MissingDataError: If the DataTable is missing necessary configurations
                 or the data is undefined.
         """
         if var_type != 'endogenous':
@@ -255,13 +255,13 @@ class Problem:
     ) -> None:
         """
         Assigns data to a CVXPY Parameter from a pandas DataFrame or numpy ndarray.
-        This method is specifically for populating exogenous variables with data 
-        prior to solving an optimization problem. It validates that the provided 
+        This method is specifically for populating exogenous variables with data
+        prior to solving an optimization problem. It validates that the provided
         CVXPY variable is indeed a Parameter and that the data format is supported.
 
         Args:
             cvxpy_var (cp.Parameter): The CVXPY Parameter to which data will be assigned.
-            data (pd.DataFrame | np.ndarray): The data to assign to the CVXPY Parameter. 
+            data (pd.DataFrame | np.ndarray): The data to assign to the CVXPY Parameter.
                 Must be either a pandas DataFrame or a numpy ndarray.
 
         Raises:
@@ -299,19 +299,19 @@ class Problem:
             variable: Variable,
     ) -> cp.Constant:
         """
-        Generates a CVXPY Constant object for a given variable. 
-        This method ensures that the variable's value and type are correctly 
-        specified before creating the constant. The constant is created using 
+        Generates a CVXPY Constant object for a given variable.
+        This method ensures that the variable's value and type are correctly
+        specified before creating the constant. The constant is created using
         predefined specifications in the Variable object.
 
         Args:
-            variable_name (str): The name of the variable for which the constant 
+            variable_name (str): The name of the variable for which the constant
                 is to be generated.
-            variable (Variable): The Variable object containing the necessary 
+            variable (Variable): The Variable object containing the necessary
                 specifications to create the constant.
 
         Returns:
-            cp.Constant: The CVXPY Constant object created from the Variable 
+            cp.Constant: The CVXPY Constant object created from the Variable
                 specifications.
 
         Raises:
@@ -354,26 +354,26 @@ class Problem:
             variable: Variable,
     ) -> pd.DataFrame:
         """
-        Generates a DataFrame containing information necessary to handle and process 
-        a Variable object for optimization tasks. This includes the hierarchy 
-        structure of the variable, associated CVXPY objects, and a dictionary 
+        Generates a DataFrame containing information necessary to handle and process
+        a Variable object for optimization tasks. This includes the hierarchy
+        structure of the variable, associated CVXPY objects, and a dictionary
         for SQL filtering.
-        This DataFrame organizes the variable's data, which is crucial for 
-        creating CVXPY variables and specifying filtering conditions for database 
+        This DataFrame organizes the variable's data, which is crucial for
+        creating CVXPY variables and specifying filtering conditions for database
         queries based on the variable's properties.
 
         Args:
-            variable_name (str): The name of the variable for which the DataFrame 
+            variable_name (str): The name of the variable for which the DataFrame
                 is generated.
-            variable (Variable): The Variable object containing all required data 
+            variable (Variable): The Variable object containing all required data
                 and specifications.
 
         Returns:
-            pd.DataFrame: A DataFrame with columns corresponding to CVXPY objects 
+            pd.DataFrame: A DataFrame with columns corresponding to CVXPY objects
                 and SQL filters.
 
         Raises:
-            ValueError: If there is a mismatch in expected DataFrame headers and 
+            ValueError: If there is a mismatch in expected DataFrame headers and
                 the variable's data structure.
         """
 
@@ -465,22 +465,33 @@ class Problem:
             force_overwrite: bool = False,
     ) -> None:
         """
-        Loads a symbolic problem from a specified file into the system. This 
-        problem defines the mathematical expressions and conditions for the 
-        optimization tasks.
-        If the symbolic problem is already loaded, the user is prompted to confirm
-        whether to overwrite it. The problem is only reloaded from the file if 
-        explicitly confirmed by the user or if force_overwrite is True.
+        Loads a symbolic problem from a specified file into the system. The 
+        symbolic problem defines the mathematical expressions and constraints 
+        for the linear programming CVXPY model.
+        If a symbolic problem is already loaded, the method will prompt the 
+        user to confirm whether to overwrite it. The problem is only reloaded 
+        from the file if the user explicitly confirms, or if 'force_overwrite' 
+        is set to True.
+        One or more symbolic problems can be loaded, depending on the structure
+        of the problem file. One problem: dictionary with one level. More problems:
+        each problem correspond to a key value pair in the dictionary.
 
         Args:
-            force_overwrite (bool): If True, the existing symbolic problem will 
-            be overwritten without user confirmation.
+            force_overwrite (bool, optional): If True, the existing symbolic 
+                problem will be overwritten without user confirmation. 
+                Defaults to False.
 
         Notes:
             The problem definition is expected to be in a file specified by the 
-            system's constants configuration.
+                system's constants configuration. The file should contain a 
+                dictionary with keys matching the constants '_OBJECTIVE_HEADER' 
+                and '_CONSTRAINTS_HEADER'.
         """
         problem_file_name = Constants.get('_SETUP_FILES')[2]
+        problem_keys = [
+            Constants.get('_OBJECTIVE_HEADER'),
+            Constants.get('_CONSTRAINTS_HEADER'),
+        ]
 
         if self.symbolic_problem is not None:
             if not force_overwrite:
@@ -496,18 +507,52 @@ class Problem:
         self.logger.debug(
             f"Loading symbolic problem from '{problem_file_name}' file.")
 
-        try:
-            symbolic_problem = self.files.load_file(
-                file_name=problem_file_name,
-                dir_path=self.paths['model_dir'],
-            )
-            self.symbolic_problem = DotDict(symbolic_problem)
-            self.logger.debug("Symbolic problem loaded successfully.")
+        data = self.files.load_file(
+            file_name=problem_file_name,
+            dir_path=self.paths['model_dir'],
+        )
 
-        except Exception as e:
-            msg = f"Failed to load symbolic problem from file: {e}"
+        if isinstance(data, dict):
+
+            if util.find_dict_depth(data) == 1:
+
+                if not util.items_in_list(data.keys(), problem_keys):
+                    msg = "Invalid symbolic problem structure. Allowed problem " \
+                        f"keys: '{problem_keys}'. Passed keys: '{data.keys()}' " \
+                        f"Check '{problem_file_name}' file."
+                    self.logger.error(msg)
+                    raise exc.SettingsError(msg)
+
+                self.symbolic_problem = DotDict(data)
+                self.logger.debug(
+                    "Unique symbolic problem successfully loaded.")
+
+            elif util.find_dict_depth(data) == 2:
+
+                for key, problem in data.items():
+
+                    if not isinstance(problem, dict) or \
+                            not util.items_in_list(data.keys(), problem_keys):
+                        msg = "Invalid symbolic problem structure. Allowed problem " \
+                            f"keys: '{problem_keys}'. Passed keys: '{data.keys()}' " \
+                            f"Check '{problem_file_name}' file."
+                        self.logger.error(msg)
+                        raise exc.SettingsError(msg)
+
+                    self.symbolic_problem[key] = DotDict(problem)
+                    self.logger.debug(
+                        f"Symbolic problem '{key}' successfully loaded.")
+
+            else:
+                msg = "Invalid symbolic problem structure. " \
+                    f"Check '{problem_file_name}' file."
+                self.logger.error(msg)
+                raise exc.SettingsError(msg)
+
+        else:
+            msg = f"Invalid problem data type. Check '{problem_file_name}' file."
             self.logger.error(msg)
-            raise exc.OperationalError(msg) from e
+            raise exc.SettingsError(msg)
 
     def parse_allowed_symbolic_vars(
             self,
@@ -516,19 +561,19 @@ class Problem:
             standard_pattern: str = r'\b[a-zA-Z_][a-zA-Z0-9_]*\b'
     ) -> List[str]:
         """
-        Parses and extracts variable names from a symbolic expression, excluding 
+        Parses and extracts variable names from a symbolic expression, excluding
         any non-allowed tokens.
-        This method uses regular expressions to identify potential variable names 
-        within the given expression and filters out any tokens that are designated 
+        This method uses regular expressions to identify potential variable names
+        within the given expression and filters out any tokens that are designated
         as non-allowed, such as mathematical operators or reserved keywords.
 
         Args:
-            expression (str): The symbolic expression from which to extract 
+            expression (str): The symbolic expression from which to extract
                 variable names.
-            non_allowed_tokens (Optional[List[str]]): A list of tokens that should 
-                not be considered as variables. Defaults to the keys from 
+            non_allowed_tokens (Optional[List[str]]): A list of tokens that should
+                not be considered as variables. Defaults to the keys from
                 allowed_operators.
-            standard_pattern (str): The regex pattern used to identify possible 
+            standard_pattern (str): The regex pattern used to identify possible
                 variables in the expression.
 
         Returns:
@@ -556,9 +601,9 @@ class Problem:
     ) -> None:
         """
         Checks if a specific attribute is equal across all variables in a given subset.
-        This method is used to ensure that all variables in a subset share the same 
-        value for a specified attribute, which can be critical for operations that 
-        require uniform variable configurations, such as batch processing or 
+        This method is used to ensure that all variables in a subset share the same
+        value for a specified attribute, which can be critical for operations that
+        require uniform variable configurations, such as batch processing or
         collective optimizations.
 
         Args:
@@ -566,7 +611,7 @@ class Problem:
             attribute (str): The attribute of the variables to check for uniformity.
 
         Raises:
-            ValueError: If the attribute values are not the same across all variables 
+            ValueError: If the attribute values are not the same across all variables
                 in the subset.
         """
         try:
