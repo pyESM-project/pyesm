@@ -97,8 +97,9 @@ class Constants:
     _CVXPY_VAR_HEADER = 'variable'
     _FILTER_DICT_HEADER = 'filter'
 
-    _OBJECTIVE_HEADER = 'objective function'
+    _OBJECTIVE_HEADER = 'objective'
     _CONSTRAINTS_HEADER = 'expressions'
+
     _PROBLEM_HEADER = 'problem'
     _PROBLEM_INFO_HEADER = 'info'
     _PROBLEM_STATUS_HEADER = 'status'
