@@ -2,7 +2,7 @@
 
 # definition of the objective function (scalar)
 
-objective function:
+objective:
     - Minimize(sum(C_tot_om)+sum(C_tot_inv))
 
 # definition of the constraints (vector expressions)
