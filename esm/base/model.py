@@ -96,6 +96,7 @@ class Model:
             main_dir_path: str,
             use_existing_data: bool = False,
             multiple_input_files: bool = False,
+            problems_integration: bool = False,
             log_level: str = 'info',
             log_format: str = 'minimal',
             sets_xlsx_file: str = 'sets.xlsx',
@@ -123,6 +124,7 @@ class Model:
             'model_name': model_dir_name,
             'use_existing_data': use_existing_data,
             'multiple_input_files': multiple_input_files,
+            'problems_integration': problems_integration,
             'sets_xlsx_file': sets_xlsx_file,
             'input_data_dir': input_data_dir,
             'input_data_file': input_data_file,
@@ -317,11 +319,11 @@ class Model:
             None
         """
         self.logger.info(
-            'Loading symbolic problem, initializing numerical problems.')
+            'Loading symbolic problem, initializing numerical problem.')
 
         self.core.initialize_problems_variables()
         self.core.data_to_cvxpy_exogenous_vars()
-        self.core.define_numerical_problems(force_overwrite)
+        self.core.define_mathematical_problems(force_overwrite)
 
     def run_model(
         self,
@@ -342,13 +344,8 @@ class Model:
         Returns:
             None
         """
-        self.logger.info('Running numerical model.')
-
-        self.core.solve_numerical_problems(
-            solver=solver,
-            verbose=verbose,
-            **kwargs
-        )
+        self.logger.info('Solving numerical problems.')
+        self.core.solve_numerical_problems(solver, verbose, **kwargs)
 
     def load_results_to_database(
         self,

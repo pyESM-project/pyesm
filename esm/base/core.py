@@ -11,10 +11,8 @@ logging mechanisms, enabling comprehensive management and operations within
 the modeling environment.
 """
 
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 from pathlib import Path
-
-import numpy as np
 
 from esm.base.data_table import DataTable
 from esm.base.database import Database
@@ -148,7 +146,7 @@ class Core:
                     variable=variable
                 )
 
-    def define_numerical_problems(
+    def define_mathematical_problems(
             self,
             force_overwrite: bool = False,
     ) -> None:
@@ -164,15 +162,15 @@ class Core:
             None
         """
         self.logger.debug(
-            "Load symbolic problem, initialize dataframes with cvxpy problems ")
+            "Load symbolic problem, initialize dataframes with cvxpy problem.")
 
         self.problem.load_symbolic_problem_from_file(force_overwrite)
-        self.problem.generate_problems_dataframe(force_overwrite)
+        self.problem.generate_numerical_problems(force_overwrite)
 
     def solve_numerical_problems(
             self,
-            solver: str = "",
-            verbose: bool = True,
+            solver: str,
+            verbose: bool,
             **kwargs: Any,
     ) -> None:
         """
@@ -187,11 +185,8 @@ class Core:
         Returns:
             None
         """
-        self.problem.solve_all_problems(
-            solver=solver,
-            verbose=verbose,
-            **kwargs
-        )
+        self.problem.solve_problems(solver, verbose, **kwargs)
+        self.problem.fetch_problem_status()
 
     def data_to_cvxpy_exogenous_vars(self) -> None:
         """

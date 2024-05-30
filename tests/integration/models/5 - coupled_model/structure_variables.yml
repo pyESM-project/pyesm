@@ -62,12 +62,15 @@ cd:
                 filters: {0: industry-technology}
 
 
+
 # -----------------------------------------------------------------------------
 # endogenous variables
 
 v:
     name: supply coefficients 
-    type: endogenous 
+    type: endogenous
+        # endogenous: 1
+        # exogenous: 2
     coordinates: [technologies, products]
     variables_info:
         v_c: 
