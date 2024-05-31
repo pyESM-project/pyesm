@@ -246,12 +246,12 @@ class SQLManager:
         except sqlite3.OperationalError as op_error:
             msg = str(op_error)
             self.logger.error(msg)
-            raise exc.OperationalError(msg)
+            raise exc.OperationalError(msg) from op_error
 
         except sqlite3.IntegrityError as int_error:
             msg = str(int_error)
             self.logger.error(msg)
-            raise exc.IntegrityError(msg)
+            raise exc.IntegrityError(msg) from int_error
 
     @property
     def get_existing_tables_names(self) -> List[str]:

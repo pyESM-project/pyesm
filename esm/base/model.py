@@ -25,7 +25,7 @@ based on user-defined settings.
 """
 
 from pathlib import Path
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 
 from esm.constants import Constants
 from esm.log_exc import exceptions as exc
@@ -96,7 +96,6 @@ class Model:
             main_dir_path: str,
             use_existing_data: bool = False,
             multiple_input_files: bool = False,
-            problems_integration: bool = False,
             log_level: str = 'info',
             log_format: str = 'minimal',
             sets_xlsx_file: str = 'sets.xlsx',
@@ -124,7 +123,6 @@ class Model:
             'model_name': model_dir_name,
             'use_existing_data': use_existing_data,
             'multiple_input_files': multiple_input_files,
-            'problems_integration': problems_integration,
             'sets_xlsx_file': sets_xlsx_file,
             'input_data_dir': input_data_dir,
             'input_data_file': input_data_file,
@@ -328,7 +326,11 @@ class Model:
     def run_model(
         self,
         solver: str = 'CLARABEL',
-        verbose: bool = True,
+        verbose: bool = False,
+        integrated_problems: bool = False,
+        maximum_iterations: Optional[int] = None,
+        numerical_tolerance: Optional[float] = None,
+        control_variable: Optional[str] = None,
         **kwargs: Any,
     ) -> None:
         """
@@ -344,8 +346,47 @@ class Model:
         Returns:
             None
         """
-        self.logger.info('Solving numerical problems.')
-        self.core.solve_numerical_problems(solver, verbose, **kwargs)
+        n_problems = self.core.problem.number_of_problems
+
+        if solver not in Constants.get('_ALLOWED_SOLVERS'):
+            msg = f"Solver '{solver}' not supported by current CVXPY version. " \
+                f"Available solvers: {Constants.get('_ALLOWED_SOLVERS')}"
+            self.logger.error(msg)
+            raise exc.SettingsError(msg)
+
+        if n_problems == 0:
+            msg = "No numerical problems found. Initialize problems first."
+            self.logger.error(msg)
+            raise exc.OperationalError(msg)
+
+        if integrated_problems and n_problems == 1:
+            msg = "Only one problem found. Integrated problems not possible."
+            self.logger.error(msg)
+            raise exc.SettingsError(msg)
+
+        if not integrated_problems:
+            if n_problems == 1:
+                self.logger.info(
+                    f"Solving numerical problem with '{solver}' solver")
+            else:
+                self.logger.info(
+                    f"Solving '{n_problems}' independent numerical problems "
+                    f"with '{solver}' solver.")
+
+        elif integrated_problems and n_problems > 1:
+            self.logger.info(
+                f"Solving '{n_problems}' integrated numerical problems "
+                f"with '{solver}' solver.")
+
+        self.core.solve_numerical_problems(
+            solver=solver,
+            verbose=verbose,
+            integrated_problems=integrated_problems,
+            maximum_iterations=maximum_iterations,
+            numerical_tolerance=numerical_tolerance,
+            control_variable=control_variable,
+            **kwargs,
+        )
 
     def load_results_to_database(
         self,

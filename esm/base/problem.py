@@ -121,6 +121,21 @@ class Problem:
         class_name = type(self).__name__
         return f'{class_name}'
 
+    @property
+    def number_of_problems(self) -> int:
+        """
+        Returns the number of numerical problems defined in the system.
+        """
+        if self.numerical_problems is None:
+            self.logger.warning("No numerical problems defined.")
+            return 0
+
+        if isinstance(self.numerical_problems, pd.DataFrame):
+            return 1
+
+        if isinstance(self.numerical_problems, dict):
+            return len(self.numerical_problems)
+
     def create_cvxpy_variable(
         self,
         var_type: str,
@@ -1235,7 +1250,7 @@ class Problem:
             ):
                 self.status = 'optimal'
 
-    def solve_problems(
+    def solve_independent_problems(
             self,
             solver: str,
             verbose: bool,
@@ -1282,3 +1297,18 @@ class Problem:
                     solver=solver,
                     **kwargs
                 )
+
+    def solve_integrated_problems(
+            self,
+            solver: str,
+            verbose: bool,
+            integrated_problems: bool = False,
+            maximum_iterations: Optional[int] = None,
+            numerical_tolerance: Optional[float] = None,
+            control_variable: Optional[str] = None,
+            **kwargs: Any,
+    ) -> None:
+        """
+        """
+        self.logger.warning(
+            'Not capable yet to solve integrated problems.')

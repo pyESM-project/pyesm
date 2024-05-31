@@ -171,6 +171,10 @@ class Core:
             self,
             solver: str,
             verbose: bool,
+            integrated_problems: bool = False,
+            maximum_iterations: Optional[int] = None,
+            numerical_tolerance: Optional[float] = None,
+            control_variable: Optional[str] = None,
             **kwargs: Any,
     ) -> None:
         """
@@ -185,8 +189,18 @@ class Core:
         Returns:
             None
         """
-        self.problem.solve_problems(solver, verbose, **kwargs)
-        self.problem.fetch_problem_status()
+        if not integrated_problems:
+            self.problem.solve_independent_problems(solver, verbose, **kwargs)
+            self.problem.fetch_problem_status()
+        else:
+            self.problem.solve_integrated_problems(
+                solver=solver,
+                verbose=verbose,
+                maximum_iterations=maximum_iterations,
+                numerical_tolerance=numerical_tolerance,
+                control_variable=control_variable,
+                **kwargs,
+            )
 
     def data_to_cvxpy_exogenous_vars(self) -> None:
         """
