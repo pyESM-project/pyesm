@@ -156,7 +156,10 @@ class Constants:
         'minv': util_functions.matrix_inverse,
         'weib': util_functions.weibull_distribution,
         'Minimize': cp.Minimize,
+        'Maximize': cp.Maximize,
     }
+
+    _ALLOWED_SOLVERS = cp.installed_solvers()
 
     @classmethod
     def get(cls, constant_name):
