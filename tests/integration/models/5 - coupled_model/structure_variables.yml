@@ -17,127 +17,58 @@
 #                 filters: {0: Physical} # optional, filters for the columns
 
 # -----------------------------------------------------------------------------
-# exogenous variables
-
-u:
-    name: use coefficients 
-    type: exogenous 
-    coordinates: [products, technologies] 
-    variables_info:
-        u: 
-            rows: 
-                set: products 
-            cols: 
-                set: technologies 
-
-r:
-    name: environmental transactions coefficients
-    type: exogenous 
-    coordinates: [emissions, technologies]
-    variables_info:
-        r:
-            rows: 
-                set: emissions
-            cols:
-                set: technologies 
-
-cd: 
-    name: product mix and market shares coefficients
-    type: exogenous
-    coordinates: [products, technologies] 
-    variables_info:
-        c:
-            rows:
-                set: products
-                filters: {0: product-technology}
-            cols:  
-                set: technologies
-                filters: {0: product-technology}
-        d:
-            rows:
-                set: technologies
-                filters: {0: industry-technology}
-            cols:  
-                set: products
-                filters: {0: industry-technology}
-
-
-
-# -----------------------------------------------------------------------------
 # endogenous variables
 
-v:
-    name: supply coefficients 
+x:
+    name: products supply
     type: endogenous
-        # endogenous: 1
-        # exogenous: 2
-    coordinates: [technologies, products]
-    variables_info:
-        v_c: 
-            rows: 
-                set: technologies
-                filters: {0: product-technology}
-            cols: 
-                set: products
-                filters: {0: product-technology}
-        v_d: 
-            rows: 
-                set: technologies
-                filters: {0: industry-technology}
-            cols: 
-                set: products
-                filters: {0: industry-technology}
-        v: 
-            rows: 
-                set: technologies 
-            cols: 
-                set: products 
-
-r_e_p:
-    name: footprint by product 
-    type: endogenous 
-    coordinates: [emissions, products] 
-    variables_info:
-        r_e_p: 
-            rows: 
-                set: emissions 
-            cols: 
-                set: products 
-
-r_e_t:
-    name: footprint by technology activity 
-    type: endogenous 
-    coordinates: [emissions, technologies] 
-    variables_info:
-        r_e_t: 
-            rows: 
-                set: emissions 
-            cols: 
-                set: technologies 
-
-# -----------------------------------------------------------------------------
-# constants variables
-
-I_pp:
-    name: identity, product by product
-    type: constant 
     coordinates: [products] 
     variables_info:
-        I_pp: 
-            value: identity 
-            rows: 
-                set: products 
+        x: 
             cols: 
                 set: products 
 
-I_tt:
-    name: identity, technology by technology 
-    type: constant
-    coordinates: [technologies] 
+
+# -----------------------------------------------------------------------------
+# exogenous variables
+
+products_data:
+    name: product data
+    type: exogenous
+    coordinates: [products, product_data] 
     variables_info:
-        I_tt: 
-            value: identity 
-            rows: 
-                set: technologies 
+        c: 
+            rows:
+                set: product_data
+                filters: {0: profit}
             cols: 
-                set: technologies
+                set: products
+        a: 
+            rows:
+                set: product_data
+                filters: {0: energy_use}
+            cols: 
+                set: products
+        a_0: 
+            rows:
+                set: product_data
+                filters: {0: energy_use_0}
+            cols: 
+                set: products
+        lr:
+            rows:
+                set: product_data
+                filters: {0: learning_rate}
+            cols: 
+                set: products
+        
+
+b:  
+    name: energy availability
+    type: exogenous
+    coordinates: [resources] 
+    variables_info:
+        b: 
+            rows: 
+                set: resources
+            

@@ -1,22 +1,13 @@
 # SYMBOLIC PROBLEM
 
-# expressions:
-#     - v_c == minv(c)
-#     - v_d == d
-#     - r_e_p @ (I_pp - u @ v) - r @ v == 0
-#     - r_e_t @ (I_tt - v @ u) - r == 0
-
-
 1:
+    objective: 
+        - Maximize(c @ tran(x))
+
     expressions:
-        - v_c == minv(c)
-        - v_d == d
+        - a @ tran(x) - b <= 0
+        - x >= 0
 
-2:
-    expressions: 
-        # - r_e_p == 0
-        # - r_e_t == r
-        - r_e_p @ (I_pp - u @ v) - r @ v == 0
-        - r_e_t @ (I_tt - v @ u) - r == 0
-
-
+2: 
+    expressions:
+        - a - a_0 - mult(lr, x) == 0
