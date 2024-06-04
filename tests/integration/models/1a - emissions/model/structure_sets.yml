@@ -4,6 +4,7 @@
 #     symbol: a  # symbol of the set 
 #     table_name: _set_a # name of the table of the set in the database
 #     split_problem: False # (optional) if the items of the set defines separate problems 
+#     copy_from: another_set_key # (optional) key of another set to copy the data from (table_headers must be filled anyway)
 #     table_headers:
 #         name: [a_Names, TYPE] # header of set entries names in database set table
 #         aggregation: [a_Agg, TEXT] # (optional) header of set entries that are matching another set (aggregation)
@@ -26,50 +27,24 @@ scenarios:
     table_structure:
         name: [scenario_Names, TEXT] # header of set entries names in database set table
 
-
-
 techs:
     symbol: techs  # symbol of the set 
     table_name: _set_techs # name of the table of the set in the database
     table_structure:
         name: [techs_Names, TEXT] # header of set entries names in database set table
-        filters:
-            time_resolution:  # (int) index of the category in the set
-                header: [time_resoultion, TEXT] 
-                values: [hourly, yearly]
-
+        aggregation: [tech_agg, TEXT] # (optional) header of set entries that are matching another set (aggregation)
 
 flows:
     symbol: flows  # symbol of the set 
     table_name: _set_flows # name of the table of the set in the database
     table_structure:
         name: [flows_Names, TEXT] # header of set entries names in database set table
-        aggregation: [flows_agg, TEXT] # (optional) header of set entries that are matching another set (aggregation)
-        filters:
-            time_resolution:  # (int) index of the category in the set
-                header: [time_resoultion, TEXT] 
-                values: [hourly, yearly]
 
-
-flows_agg:
-    symbol: flows_agg # symbol of the set 
-    table_name: _set_flows_agg # name of the table of the set in the database
+techs_agg:
+    symbol: techs_agg # symbol of the set 
+    table_name: _set_techs_agg # name of the table of the set in the database
     table_structure:
-        name: [flows_agg_Names, TEXT] # header of set entries names in database set table
-        filters:
-            time_resolution:  # (int) index of the category in the set
-                header: [time_resoultion, TEXT] 
-                values: [hourly, yearly]
+        name: [techs_agg_Names, TEXT] # header of set entries names in database set table
 
-years:
-    symbol: years # symbol of the set 
-    table_name: _set_years # name of the table of the set in the database
-    table_structure:
-        name: [years, TEXT] # header of set entries names in database set table
 
-hours:
-    symbol: hours # symbol of the set 
-    table_name: _set_hours # name of the table of the set in the database
-    table_structure:
-        name: [hours, TEXT] # header of set entries names in database set table
 

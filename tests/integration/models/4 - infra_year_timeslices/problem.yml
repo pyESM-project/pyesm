@@ -2,31 +2,43 @@
 
 # definition of the objective function (scalar)
 
-objective:
-    - Minimize(sum(C_om_y))
+objective function:
+    - Minimize(sum(sum(C_om_y)))
 
 # definition of the constraints (vector expressions)
 
 expressions: 
-    - Q_agg_h == I_ff @ tran(Q_h)
-    - Q_agg_h - u @ tran(X_h) - Y_h == 0
-    - tran(X_h) - d @ tran(Q_h) == 0
+    # hourly resolution balances
+    - Q_agg_h - Y_h - u_h @ tran(X_h) - u_y @ mult(tran(X_y_y), 1/mult(n_slices, n_periods)) == 0
+    - Q_agg_h == I_ff_h @ tran(Q_h)
+    - tran(X_h) - d_h @ tran(Q_h) == 0 
 
-    - Y_h == mult(mult(Y_y, dp), 1/n_periods)
+    #yearly resolution balances
+    - Q_agg_y - Y_y - u @ tran(X_y) == 0
+    - Q_agg_y == I_ff @ tran(Q_y)
+    - tran(X_y) - d @ tran(Q_y) == 0
 
+    #connecting yearly and hourly resolution
+
+    - X_y_h - mult((sum_vect_h @ X_h), 365) == 0
+    - Q_y_h - mult(sum_vect_h @ Q_h, 365) == 0 
+    - Y_h == mult(diag(Y_y_h) @ dp, 1/n_periods)
+
+    #costs
     - C_om_y == mult(X_y, c_om) 
 
-    # - X_y == mult(sum(X_h, axis=1), n_periods)
-    # - Q_y == mult(sum(Q_h, axis=1), n_periods)
-    # - Q_agg_y == mult(sum(Q_h, axis=0), n_periods)
-    - X_y_y ==  sum(X_h, 0, True) * 365
-    # - Q_y == mult(sum(Q_h, axis=1), n_periods)
-    # - Q_agg_y == mult(sum(Q_h, axis=0), n_periods)
+    #production limits
 
-    - X_max == mult(lf_max, cap_year_y) / 1095
+    - X_max_h == mult(lf_max_h, mult(cap_year_h, 1/mult(n_slices, n_periods)))
+    - X_min_h == mult(lf_min_h, mult(cap_year_h, 1/mult(n_slices, n_periods)))
 
+    - X_max_y == mult(lf_max, cap_year_y)
+    - X_min_y == mult(lf_min, cap_year_y)
 
-    - X_h <= X_max
-    - X_h >= 0
+    # #production constraints
 
-    - Q_h >= 0
+    - X_h <= X_max_h
+    - X_h >= X_min_h
+
+    - X_y_y <= X_max_y
+    - X_y_y >= X_min_y
