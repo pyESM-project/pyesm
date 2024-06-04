@@ -68,7 +68,9 @@ cd:
 
 v:
     name: supply coefficients 
-    type: endogenous
+    type: 
+        1: endogenous
+        2: exogenous
     coordinates: [technologies, products]
     variables_info:
         v_c: 

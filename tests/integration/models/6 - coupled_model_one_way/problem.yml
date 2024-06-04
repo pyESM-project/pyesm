@@ -1,12 +1,5 @@
 # SYMBOLIC PROBLEM
 
-# expressions:
-#     - v_c == minv(c)
-#     - v_d == d
-#     - r_e_p @ (I_pp - u @ v) - r @ v == 0
-#     - r_e_t @ (I_tt - v @ u) - r == 0
-
-
 1:
     expressions:
         - v_c == minv(c)
@@ -14,8 +7,6 @@
 
 2:
     expressions: 
-        # - r_e_p == 0
-        # - r_e_t == r
         - r_e_p @ (I_pp - u @ v) - r @ v == 0
         - r_e_t @ (I_tt - v @ u) - r == 0
 
