@@ -704,3 +704,30 @@ def test_find_non_allowed_types():
             target_col_header='A',
             return_col_header='not a column',
         )
+
+
+def test_find_dict_key_corresponding_to_value():
+    """
+    Test the function find_dict_key_corresponding_to_value.
+    This function tests three scenarios: the target value exists in the 
+    dictionary; the target value does not exist in the dictionary; the 
+    provided argument is not a dictionary.
+
+    Raises:
+        TypeError: If the provided argument is not a dictionary.
+    """
+    dictionary = {'a': 1, 'b': 2, 'c': 3}
+
+    # Test with a dictionary where the target value exists
+    target_value = 2
+    assert find_dict_key_corresponding_to_value(
+        dictionary, target_value) == 'b'
+
+    # Test with a dictionary where the target value does not exist
+    target_value = 4
+    assert find_dict_key_corresponding_to_value(
+        dictionary, target_value) is None
+
+    # Test with a non-dictionary argument
+    with pytest.raises(TypeError):
+        find_dict_key_corresponding_to_value("not a dictionary", target_value)

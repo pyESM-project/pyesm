@@ -19,7 +19,7 @@ manipulation and validation.
 from collections.abc import Iterable
 import pprint as pp
 from pathlib import Path
-from typing import Dict, List, Any, Literal, Optional, Tuple, Type
+from typing import Dict, List, Any, Literal, Optional, Tuple
 
 import itertools as it
 import pandas as pd
@@ -792,3 +792,33 @@ def find_non_allowed_types(
         return dataframe.loc[non_allowed_rows, return_col_header].tolist()
 
     return dataframe.loc[non_allowed_rows, target_col_header].tolist()
+
+
+def find_dict_key_corresponding_to_value(
+        dictionary: Dict[Any, Any],
+        target_value: Any,
+) -> Optional[Any]:
+    """
+    This function finds the first key in a dictionary that corresponds to 
+    a given value.
+
+    Parameters:
+        dictionary (Dict[Any, Any]): The dictionary to search.
+        target_value (Any): The value to find.
+
+    Returns:
+        Optional[Any]: The key corresponding to the target value. If the value 
+            is not found, returns None.
+    """
+    if not isinstance(dictionary, dict):
+        raise TypeError(
+            "Passed 'dictionary' argument must be a dictionary."
+            f"{type(dictionary).__name__} was passed instead.")
+
+    return next(
+        (
+            key
+            for key, value in dictionary.items()
+            if value == target_value),
+        None
+    )
