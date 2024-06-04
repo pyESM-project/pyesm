@@ -366,6 +366,7 @@ class Problem:
             self,
             variable_name: str,
             variable: Variable,
+            variable_type: Optional[str] = None,
     ) -> pd.DataFrame:
         """
         Generates a DataFrame containing information necessary to handle and process
@@ -391,8 +392,11 @@ class Problem:
                 the variable's data structure.
         """
 
+        if variable_type is None:
+            variable_type = variable.type
+
         self.logger.debug(
-            f"Generating dataframe for {variable.type} variable '{variable_name}' "
+            f"Generating dataframe for {variable_type} variable '{variable_name}' "
             "(cvxpy object, filter dictionary).")
 
         headers = {
@@ -452,11 +456,11 @@ class Problem:
             var_data.at[row, headers['filter']] = var_filter
 
         # create new cvxpy variables (exogenous vars and constants)
-        if variable.type != 'endogenous':
+        if variable_type != 'endogenous':
             for row in var_data.index:
                 var_data.at[row, headers['cvxpy']] = \
                     self.create_cvxpy_variable(
-                        var_type=variable.type,
+                        var_type=variable_type,
                         shape=variable.shape_size,
                         name=variable_name + str(variable.shape))
 
@@ -466,7 +470,7 @@ class Problem:
             for row in var_data.index:
                 var_data.at[row, headers['cvxpy']] = \
                     self.slice_cvxpy_variable(
-                        var_type=variable.type,
+                        var_type=variable_type,
                         shape=variable.shape_size,
                         related_table_key=variable.related_table,
                         var_filter=var_data.at[row, headers['filter']],
@@ -807,11 +811,11 @@ class Problem:
 
         elif util.find_dict_depth(self.symbolic_problem) == 2:
             self.numerical_problems = {
-                key: self.generate_problem_dataframe(
+                problem_key: self.generate_problem_dataframe(
                     symbolic_problem=problem,
-                    problem_name=key,
+                    problem_key=problem_key,
                 )
-                for key, problem in self.symbolic_problem.items()
+                for problem_key, problem in self.symbolic_problem.items()
             }
             self.problem_status = {key: None for key in self.symbolic_problem}
 
@@ -824,7 +828,7 @@ class Problem:
     def generate_problem_dataframe(
             self,
             symbolic_problem: DotDict,
-            problem_name: Optional[str] = None,
+            problem_key: Optional[int] = None,
     ) -> pd.DataFrame:
         """
         """
@@ -856,22 +860,22 @@ class Problem:
                 column_values=None,
             )
 
-        for problem_num in problems_df.index:
+        for sub_problem in problems_df.index:
 
             problem_info = [
-                problems_df.loc[problem_num][set_name]
+                problems_df.loc[sub_problem][set_name]
                 for set_name in list_sets_split_problem
             ]
 
             msg = "Defining numeric problem"
-            if problem_name:
-                msg += f" '{problem_name}'"
+            if problem_key:
+                msg += f" '{problem_key}'"
             if problem_info:
                 msg += f" for combination of sets: {problem_info}."
             self.logger.debug(msg)
 
             problem_filter = problems_df.loc[
-                [problem_num],
+                [sub_problem],
                 list_sets_split_problem
             ]
 
@@ -879,7 +883,8 @@ class Problem:
             symbolic_constraints = symbolic_problem.get(headers['constraints'])
             constraints = self.define_expressions(
                 symbolic_expressions=symbolic_constraints,
-                problem_filter=problem_filter
+                problem_filter=problem_filter,
+                problem_key=problem_key,
             )
 
             # define problem objective
@@ -890,7 +895,8 @@ class Problem:
                 objective = sum(
                     self.define_expressions(
                         symbolic_expressions=symbolic_objective,
-                        problem_filter=problem_filter
+                        problem_filter=problem_filter,
+                        problem_key=problem_key,
                     )
                 )
             else:
@@ -898,11 +904,11 @@ class Problem:
 
             problem = cp.Problem(objective, constraints)
 
-            problems_df.at[problem_num, headers['info']] = problem_info
-            problems_df.at[problem_num, headers['constraints']] = constraints
-            problems_df.at[problem_num, headers['objective']] = objective
-            problems_df.at[problem_num, headers['problem']] = problem
-            problems_df.at[problem_num, headers['status']] = None
+            problems_df.at[sub_problem, headers['info']] = problem_info
+            problems_df.at[sub_problem, headers['constraints']] = constraints
+            problems_df.at[sub_problem, headers['objective']] = objective
+            problems_df.at[sub_problem, headers['problem']] = problem
+            problems_df.at[sub_problem, headers['status']] = None
 
         return problems_df
 
@@ -910,6 +916,7 @@ class Problem:
             self,
             variables_set_dict: Dict[str, Variable],
             problem_filter: pd.DataFrame,
+            problem_key: Optional[int] = None,
             set_intra_problem_header: Optional[str] = None,
             set_intra_problem_value: Optional[str] = None,
     ) -> Dict[str, cp.Parameter | cp.Variable]:
@@ -965,16 +972,25 @@ class Problem:
                 allowed_variables[var_key] = variable.data
                 continue
 
-            if problem_filter.empty:
-                variable_data = variable.data
+            if isinstance(variable.data, dict):
+                if problem_key:
+                    variable_data = variable.data[problem_key]
+                else:
+                    msg = "Problem key must be provided in case variables type " \
+                        "is dependent by the problem."
+                    self.logger.error(msg)
+                    raise exc.SettingsError(msg)
             else:
-                # filter variable data based on problem filter
+                variable_data = variable.data
+
+            # filter variable data based on problem filter
+            if not problem_filter.empty:
                 variable_data = pd.merge(
-                    left=variable.data,
+                    left=variable_data,
                     right=problem_filter,
                     on=list(problem_filter.columns),
                     how='inner'
-                )
+                ).copy()
 
             # if no sets intra-probles are defined for the variable, the cvxpy
             # variable is fetched for the current ploblem. cvxpy variable must
@@ -1074,6 +1090,7 @@ class Problem:
             self,
             symbolic_expressions: List[str],
             problem_filter: pd.DataFrame,
+            problem_key: Optional[int] = None,
     ) -> List[cp.Expression]:
         """
         Constructs a list of CVXPY expressions based on symbolic problem definitions.
@@ -1161,6 +1178,7 @@ class Problem:
                     allowed_variables = self.fetch_allowed_cvxpy_variables(
                         variables_set_dict={**vars_subset, **constants_subset},
                         problem_filter=problem_filter,
+                        problem_key=problem_key,
                         set_intra_problem_header=set_header,
                         set_intra_problem_value=value,
                     )
@@ -1177,6 +1195,7 @@ class Problem:
                 allowed_variables = self.fetch_allowed_cvxpy_variables(
                     variables_set_dict={**vars_subset, **constants_subset},
                     problem_filter=problem_filter,
+                    problem_key=problem_key,
                 )
 
                 cvxpy_expression = self.execute_cvxpy_code(
@@ -1197,9 +1216,9 @@ class Problem:
     def solve_single_problem(
             self,
             problem_dataframe: pd.DataFrame,
-            problem_name: Optional[str | None] = None,
+            problem_name: Optional[str] = None,
             verbose: Optional[bool] = True,
-            solver: Optional[str | None] = None,
+            solver: Optional[str] = None,
             **kwargs: Any,
     ) -> None:
         """
@@ -1232,54 +1251,41 @@ class Problem:
             self.logger.info(f"Problem status: '{numerical_problem.status}'")
 
     def fetch_problem_status(self) -> None:
-
-        if isinstance(self.numerical_problems, pd.DataFrame):
-            if all(
-                self.numerical_problems[
-                    Constants.get('_PROBLEM_STATUS_HEADER')] == 'optimal'
-            ):
-                self.status = 'optimal'
-
-        elif isinstance(self.numerical_problems, dict):
-            if all(
-                all(
-                    self.numerical_problems[problem_name][
-                        Constants.get('_PROBLEM_STATUS_HEADER')] == 'optimal'
-                )
-                for problem_name in self.numerical_problems.keys()
-            ):
-                self.status = 'optimal'
-
-    def solve_independent_problems(
-            self,
-            solver: str,
-            verbose: bool,
-            force_overwrite: Optional[bool] = False,
-            **kwargs: Any,
-    ) -> None:
         """
+        Fetches the status of the problem. If all problems are 'optimal', sets 
+        the status of the instance to 'optimal'.
+
+        Raises:
+            OperationalError: If the numerical problems are not defined.
         """
         if self.numerical_problems is None:
             msg = "Numerical problems must be defined first."
             self.logger.warning(msg)
             raise exc.OperationalError(msg)
 
-        if self.status == 'optimal':
-            if not force_overwrite:
-                self.logger.warning("Numeric problems already solved.")
-                user_input = input("Solve again numeric problems? (y/[n]): ")
-
-                if user_input.lower() != 'y':
-                    self.logger.info(
-                        "Numeric problem NOT solved.")
-                    return
-            else:
-                self.logger.info(
-                    "Solving numeric problem and overwriting existing "
-                    "variables numerical values.")
+        status_header = Constants.get('_PROBLEM_STATUS_HEADER')
 
         if isinstance(self.numerical_problems, pd.DataFrame):
+            if all(self.numerical_problems[status_header] == 'optimal'):
+                self.status = 'optimal'
 
+        elif isinstance(self.numerical_problems, dict):
+            if all(
+                all(problem[status_header] == 'optimal')
+                for problem in self.numerical_problems.values()
+            ):
+                self.status = 'optimal'
+
+    def solve_problems(
+            self,
+            solver: str,
+            verbose: bool,
+            **kwargs: Any,
+    ) -> None:
+        """solve problems as defined in the numerical_problems attribute.
+        as indepenent problems.
+        """
+        if isinstance(self.numerical_problems, pd.DataFrame):
             self.solve_single_problem(
                 problem_dataframe=self.numerical_problems,
                 verbose=verbose,
@@ -1288,7 +1294,6 @@ class Problem:
             )
 
         elif isinstance(self.numerical_problems, dict):
-
             for problem_name in self.numerical_problems.keys():
                 self.solve_single_problem(
                     problem_dataframe=self.numerical_problems[problem_name],
@@ -1297,18 +1302,8 @@ class Problem:
                     solver=solver,
                     **kwargs
                 )
-
-    def solve_integrated_problems(
-            self,
-            solver: str,
-            verbose: bool,
-            integrated_problems: bool = False,
-            maximum_iterations: Optional[int] = None,
-            numerical_tolerance: Optional[float] = None,
-            control_variable: Optional[str] = None,
-            **kwargs: Any,
-    ) -> None:
-        """
-        """
-        self.logger.warning(
-            'Not capable yet to solve integrated problems.')
+        else:
+            if self.numerical_problems is None:
+                msg = "Numerical problems must be defined first."
+                self.logger.warning(msg)
+                raise exc.OperationalError(msg)

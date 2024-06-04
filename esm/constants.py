@@ -114,7 +114,7 @@ class Constants:
 
     _DATA_TABLE_DEFAULT_STRUCTURE = {
         'name': str,
-        'type': str,
+        'type': str | dict,
         'coordinates': list,
         'variables_info': dict,
     }

@@ -296,6 +296,7 @@ class Model:
             operation=operation,
             force_overwrite=force_overwrite,
         )
+
         # TO BE COMPLETED (automatically filling blank data)
         # self.core.database.empty_data_completion(operation)
 
@@ -327,10 +328,10 @@ class Model:
         self,
         solver: str = 'CLARABEL',
         verbose: bool = False,
+        force_overwrite: bool = False,
         integrated_problems: bool = False,
-        maximum_iterations: Optional[int] = None,
-        numerical_tolerance: Optional[float] = None,
-        control_variable: Optional[str] = None,
+        numerical_tolerance: float = 1,
+        maximum_iterations: int = 10,
         **kwargs: Any,
     ) -> None:
         """
@@ -381,12 +382,18 @@ class Model:
         self.core.solve_numerical_problems(
             solver=solver,
             verbose=verbose,
+            force_overwrite=force_overwrite,
             integrated_problems=integrated_problems,
-            maximum_iterations=maximum_iterations,
             numerical_tolerance=numerical_tolerance,
-            control_variable=control_variable,
+            maximum_iterations=maximum_iterations,
             **kwargs,
         )
+
+        if self.core.problem.status == 'optimal':
+            self.logger.info("Numerical problems solved successfully.")
+        else:
+            self.logger.warning(
+                "Numerical problems not solved successfully.")
 
     def load_results_to_database(
         self,
@@ -476,6 +483,8 @@ class Model:
         """
         self.core.check_results_as_expected(
             values_relative_diff_tolerance=numerical_tolerance)
+
+        self.logger.info("Model results are as expected.")
 
     def erase_model(self) -> None:
         """

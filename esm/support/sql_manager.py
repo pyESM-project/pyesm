@@ -924,7 +924,8 @@ class SQLManager:
             self,
             other_db_dir_path: Path | str,
             other_db_name: str,
-            tolerance_percentage: float,
+            check_values: bool = True,
+            tolerance_percentage: Optional[float] = None,
     ) -> None:
         """
         Compares the current database with another SQLite database to check
@@ -943,6 +944,8 @@ class SQLManager:
             other_db_dir_path (Path | str): Directory path of the other SQLite
                 database.
             other_db_name (str): Name of the other SQLite database.
+            check_values (bool): Flag to check the numerical values in the
+                'values' column. Default is True.
             tolerance_percentage (float): The percentage tolerance for numerical
                 values tables column.
 
@@ -1040,6 +1043,16 @@ class SQLManager:
                 raise exc.ResultsError(msg)
 
             # 4. Compare "values" column with numerical tolerance
+            if not check_values:
+                self.logger.debug(
+                    "Passed SQLite databases are equal (excluding values).")
+                return
+
+            if tolerance_percentage is None:
+                msg = "Tolerance percentage not provided for numerical values."
+                self.logger.error(msg)
+                raise exc.SettingsError(msg)
+
             tables_wrong_values = []
 
             for table in current_tables:
@@ -1057,7 +1070,6 @@ class SQLManager:
                 other_db_cursor.execute(query)
                 other_values = [row[0] for row in other_db_cursor.fetchall()]
 
-                # extract method in util.py
                 for cv, ov in zip(current_values, other_values):
                     if isinstance(cv, str) and isinstance(ov, str):
                         continue
@@ -1076,7 +1088,88 @@ class SQLManager:
                 self.logger.error(msg)
                 raise exc.ResultsError(msg)
 
-            self.logger.info("Passed SQLite databases are equal.")
+            self.logger.debug(
+                "Passed SQLite databases are equal (including values).")
+
+        finally:
+            other_db_connection.close()
+
+    def get_tables_values_relative_difference(
+            self,
+            other_db_dir_path: Path | str,
+            other_db_name: str,
+            tables_names: Optional[List[str]] = None,
+    ) -> Dict[str, float]:
+        """
+        Compare the values in specified tables of two SQLite databases and return
+        the maximum relative difference for each table. The relative difference
+        is calculated as the absolute difference between the values divided by
+        the absolute value of the 'other database' values.
+
+        Parameters:
+        other_db_dir_path (Union[Path, str]): The directory path of the other 
+            database.
+        other_db_name (str): The name of the other database.
+        tables_names (Optional[List[str]]): The names of the tables to compare. 
+            If None, all tables in the database will be compared.
+
+        Returns:
+            Dict[str, float]: A dictionary where the keys are the table names 
+                and the values are the maximum relative differences.
+        """
+        if self.connection is None or self.cursor is None:
+            msg = "Connection or cursor of the database to be checked are " \
+                "not initialized."
+            self.logger.error(msg)
+            raise exc.OperationalError(msg)
+
+        other_db_path = Path(other_db_dir_path) / other_db_name
+
+        if not other_db_path.exists():
+            msg = "Database necessary for comparison not found or not " \
+                "correctly named."
+            self.logger.error(msg)
+            raise exc.ModelFolderError(msg)
+
+        other_db_connection = sqlite3.connect(other_db_path)
+        other_db_cursor = other_db_connection.cursor()
+
+        self.check_databases_equality(
+            other_db_dir_path=other_db_dir_path,
+            other_db_name=other_db_name,
+            check_values=False,
+        )
+
+        if tables_names is None:
+            tables_names = self.get_existing_tables_names
+        else:
+            if not all([
+                table in self.get_existing_tables_names
+                for table in tables_names
+            ]):
+                msg = "One or more tables not found in the database."
+                self.logger.error(msg)
+                raise exc.TableNotFoundError(msg)
+
+        max_relative_difference = {}
+
+        try:
+            for table in tables_names:
+                self.cursor.execute(f"SELECT \"values\" FROM \"{table}\"")
+                current_values = [row[0] for row in self.cursor.fetchall()]
+
+                other_db_cursor.execute(f"SELECT \"values\" FROM \"{table}\"")
+                other_values = [row[0] for row in other_db_cursor.fetchall()]
+
+                relative_differences = [
+                    abs(cv - ov) / abs(ov) if ov != 0 else 0
+                    for cv, ov in zip(current_values, other_values)
+                    if not isinstance(cv, str) and not isinstance(ov, str)
+                ]
+
+                max_relative_difference[table] = max(relative_differences)
+
+            return max_relative_difference
 
         finally:
             other_db_connection.close()

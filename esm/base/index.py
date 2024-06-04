@@ -493,9 +493,6 @@ class Index:
         self.logger.debug("Loading variable coordinates to Index.data.")
 
         for table in self.data.values():
-            if not hasattr(table, 'coordinates_values'):
-                table.coordinates_values = {}
-
             for set_key, set_header in table.coordinates_headers.items():
                 if set_key in self.sets:
                     table.coordinates_values[set_header] = self.sets[set_key].set_items
@@ -522,7 +519,6 @@ class Index:
         self.logger.debug("Loading variable coordinates to Index.variables.")
 
         for var_key, variable in self.variables.items():
-            variable: Variable
 
             # Replicate coordinates_info with inner values as None
             # to prepare the structure
