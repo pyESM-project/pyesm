@@ -41,7 +41,7 @@ product_data:
         filters:
             0: 
                 header: [pd_Category, TEXT] 
-                values: [energy_use, energy_use_0, learning_rate, profit]
+                values: [energy_use_0, learning_rate, profit]
 
 resources:
     symbol: r  

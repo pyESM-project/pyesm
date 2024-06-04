@@ -10,4 +10,4 @@
 
 2: 
     expressions:
-        - a - a_0 - mult(lr, x) == 0
+        - a - a_0 - lr @ diag(x) == 0

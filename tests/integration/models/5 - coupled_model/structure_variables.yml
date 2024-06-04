@@ -2,7 +2,9 @@
 
 # table_key:
 #     name: table_name # description or full name of the table
-#     type: table_type # endogenous, exogenous, or constant
+#     type: table_type # endogenous, exogenous, constant or mixed (dictionary
+#                           with keys as problem key and values as strings 
+#                           defining variable type related to that problem)
 #     coordinates: [a, b, c, d] # list of coordinates with set_key symbols
 #     variables_info:
 #         var_key_1: # variable name
@@ -19,15 +21,31 @@
 # -----------------------------------------------------------------------------
 # endogenous variables
 
+
+# -----------------------------------------------------------------------------
+# mixed variables
+
 x:
     name: products supply
-    type: endogenous
+    type: 
+        1: endogenous
+        2: exogenous
     coordinates: [products] 
     variables_info:
         x: 
             cols: 
                 set: products 
 
+a:
+    name: energy use
+    type: 
+        1: exogenous
+        2: endogenous
+    coordinates: [products] 
+    variables_info:
+        a: 
+            cols: 
+                set: products
 
 # -----------------------------------------------------------------------------
 # exogenous variables
@@ -43,12 +61,6 @@ products_data:
                 filters: {0: profit}
             cols: 
                 set: products
-        a: 
-            rows:
-                set: product_data
-                filters: {0: energy_use}
-            cols: 
-                set: products
         a_0: 
             rows:
                 set: product_data
@@ -61,7 +73,6 @@ products_data:
                 filters: {0: learning_rate}
             cols: 
                 set: products
-        
 
 b:  
     name: energy availability
