@@ -16,6 +16,7 @@ required for successful model operation, providing robust tools for data
 manipulation and validation.
 """
 
+from collections.abc import Iterable
 import pprint as pp
 from pathlib import Path
 from typing import Dict, List, Any, Literal, Optional, Tuple
@@ -23,6 +24,7 @@ from typing import Dict, List, Any, Literal, Optional, Tuple
 import itertools as it
 import pandas as pd
 
+from copy import deepcopy
 from esm.constants import Constants
 from esm.log_exc.logger import Logger
 from esm.support.file_manager import FileManager
@@ -178,6 +180,23 @@ def validate_dict_structure(
     return True
 
 
+def items_in_list(
+        items: List,
+        list_to_check: List,
+) -> bool:
+    """
+    Checks if all items in a list are present in another list.
+
+    Args:
+        items (List): The list of items to check.
+        list_to_check (List): The list to check against.
+
+    Returns:
+        bool: True if all items are present in the list to check, False otherwise.
+    """
+    return all(item in list_to_check for item in items)
+
+
 def confirm_action(message: str) -> bool:
     """
     Prompts the user to confirm an action via command line input.
@@ -232,7 +251,7 @@ def generate_dict_with_none_values(item: dict) -> dict:
 
 def pivot_dict(
         data_dict: Dict,
-        order_list: Optional[List] = None,
+        keys_order: Optional[List] = None,
 ) -> Dict:
     """
     Converts a dictionary of lists into a nested dictionary, optionally 
@@ -246,19 +265,11 @@ def pivot_dict(
     Returns:
         Dict: A nested dictionary with keys from the original dictionary and 
             values as dictionaries.
-
-    Example:
-    >>> data = {
-    >>>     'key_1': ['item_1', 'item_2', 'item_3'], 
-    >>>     'key_2': [10, 20, 30]
-    >>> }
-    >>> data_pivoted = pivot_dict(data)
-
-    data_pivoted = {
-        item_1: {10: None, 20: None, 30: None},
-        item_2: {10: None, 20: None, 30: None},
-    }
     """
+
+    if not isinstance(data_dict, dict):
+        raise TypeError("Argument 'data_dict' must be a dictionary.")
+
     def pivot_recursive(keys, values):
         if not keys:
             return {value: None for value in values}
@@ -268,8 +279,15 @@ def pivot_dict(
             return {item: pivot_recursive(remaining_keys, values)
                     for item in data_dict[key]}
 
-    if order_list:
-        keys = order_list
+    if keys_order:
+        if not isinstance(keys_order, list):
+            raise TypeError("Argument 'keys_order' must be a list.")
+        if not set(keys_order) == set(data_dict.keys()):
+            raise ValueError(
+                "Items in keys_order do not correspond to keys of "
+                "passed dictionary.")
+
+        keys = keys_order
     else:
         keys = list(data_dict.keys())
 
@@ -288,6 +306,7 @@ def unpivot_dict_to_dataframe(
     Args:
         data_dict (Dict[str, List[str]]): The dictionary to be unpivoted.
         key_order (Optional[List[str]]): Order of keys for the resulting DataFrame.
+            default is None, so the order of keys in the dictionary is used.
 
     Returns:
         pd.DataFrame: A DataFrame resulting from the cartesian product of 
@@ -324,21 +343,32 @@ def add_item_to_dict(
         item: dict,
         position: int = -1,
 ) -> dict:
-    """Add an given item to a defined position in a dictionary. 
+    """
+    Add a given item to a specific position in a dictionary.
 
     Args:
-        dictionary (dict): dictionary to be modified.
-        item (dict): dictionary item to be added.
-        position (int, default: -1): position in the original dictionary where 
-        add the item. If not indicated, the function add the item at the end of
-        the original dictionary.
+        dictionary (dict): The dictionary to be modified.
+        item (dict): The dictionary item to be added.
+        position (int, optional): The position in the original dictionary where 
+        the item should be added. If not provided, the function adds the item 
+        at the end of the original dictionary. Default is -1.
 
     Raises:
-        ValueError: this function works with Python >= 3.7
+        TypeError: If either 'dictionary' or 'item' is not of 'dict' type.
+        ValueError: If 'position' is not within the range of -len(dictionary) to 
+            len(dictionary).
 
     Returns:
-        OrderedDict: _description_
+        dict: A new dictionary with the item inserted at the specified position. 
+            The order of the items is preserved.
+
+    Note:
+        This function requires Python 3.7 or later, as it relies on the fact that 
+        dictionaries preserve insertion order as of this version.
     """
+
+    if not all(isinstance(arg, dict) for arg in [dictionary, item]):
+        raise TypeError("Passed argument/s not of 'dict' type.")
 
     if not -len(dictionary) <= position <= len(dictionary):
         raise ValueError(
@@ -356,8 +386,11 @@ def merge_series_to_dataframe(
         dataframe: pd.DataFrame,
         position: Literal[0, -1] = 0,
 ) -> pd.DataFrame:
-    """Merge a given 'series' with a 'dataframe' at the specified position.
-    It repeats all values of series for all rows of the dataframe.
+    """
+    Merge a given 'series' with a 'dataframe' at the specified position.
+    It repeats each value of the series as a new column of the dataframe.
+    Final dataframe has a number of column of initial dataframe plus the number
+    of items of the series.
 
     Args:
     - series (pd.Series): The series to be merged.
@@ -388,6 +421,7 @@ def merge_series_to_dataframe(
 def check_dataframes_equality(
         df_list: List[pd.DataFrame],
         skip_columns: Optional[List[str]] = None,
+        cols_order_matters: bool = False,
         rows_order_matters: bool = False,
 ) -> bool:
     """Check the equality of multiple DataFrames while optionally skipping 
@@ -397,6 +431,8 @@ def check_dataframes_equality(
         df_list (List[pd.DataFrame]): A list of Pandas DataFrames to compare.
         skip_columns (List[str], optional): A list of column names to skip 
             during comparison.
+        cols_order_matters (bool, optional): If set to False, two dataframes
+            with same columns in different orders are still identified as equal.
         rows_order_matters (bool, optional): If set to False, two dataframes
             with same rows in different orders are still identified as equal. 
 
@@ -406,27 +442,43 @@ def check_dataframes_equality(
     Raises:
         None
     """
+    df_list_copy = deepcopy(df_list)
 
     if skip_columns is not None:
-        df_list = [
-            dataframe.drop(columns=skip_columns)
-            for dataframe in df_list
-        ]
+        for dataframe in df_list_copy:
+            columns_to_drop = [
+                column
+                for column in skip_columns
+                if column in dataframe.columns
+            ]
+            dataframe.drop(columns=columns_to_drop, inplace=True)
+
+    if len(set(df.shape for df in df_list_copy)) > 1:
+        raise ValueError(
+            "Passed dataframes have different shapes and cannot be compared.")
+
+    if len(set(tuple(sorted(df.columns)) for df in df_list_copy)) > 1:
+        raise ValueError(
+            "Passed dataframes have different headers and cannot be compared.")
+
+    if not cols_order_matters:
+        df_list_copy = [df.sort_index(axis=1) for df in df_list_copy]
 
     if not rows_order_matters:
-        df_list = [
+        df_list_copy = [
             df.sort_values(df.columns.tolist()).reset_index(drop=True)
-            for df in df_list
+            for df in df_list_copy
         ]
 
-    return all(df.equals(df_list[0]) for df in df_list[1:])
+    return all(df.equals(df_list_copy[0]) for df in df_list_copy[1:])
 
 
 def check_dataframe_columns_equality(
     df_list: List[pd.DataFrame],
     skip_columns: Optional[List[str]] = None,
 ) -> bool:
-    """Check the equality of column headers in multiple DataFrames while 
+    """
+    Check the equality of column headers in multiple DataFrames while 
     optionally skipping specified columns.
 
     Args:
@@ -438,8 +490,16 @@ def check_dataframe_columns_equality(
         bool: True if all DataFrames have the same set of columns, False otherwise.
 
     Raises:
-        None
+        ValueError: If df_list is empty or any DataFrame in df_list has no columns.
     """
+    if not df_list:
+        raise ValueError("Passed list must not be empty.")
+
+    if any(not isinstance(df, pd.DataFrame) for df in df_list):
+        raise TypeError("Passed list must include only Pandas DataFrames.")
+
+    if any(df.empty for df in df_list):
+        raise ValueError("DataFrames in passed list must not be empty.")
 
     if skip_columns is not None:
         modified_df_list = [
@@ -461,7 +521,8 @@ def add_column_to_dataframe(
         column_values: Any = None,
         column_position: Optional[int] = None,
 ) -> bool:
-    """Inserts a new column into the provided DataFrame at the specified 
+    """
+    Inserts a new column into the provided DataFrame at the specified 
     position or at the end if no position is specified, only if the column
     does not already exist.
 
@@ -474,20 +535,41 @@ def add_column_to_dataframe(
             NaN values.
         column_position (int, optional): The index position where the new 
             column will be inserted. If not provided, the column will be 
-            inserted at the end.
+            inserted at the end. Default to None.
 
     Returns:
         bool: True if the column was added, False if the column already exists.
 
     Raises:
+        TypeError: If column_header is not string or dataframe is not a Pandas
+            DataFrame.
         ValueError: If the column_position is greater than the current number 
-            of columns.
+            of columns or if the column_header is empty, or if the legth of the
+            passed column does not match the number of rows of the DataFrame.
     """
+    if not isinstance(column_header, str):
+        raise TypeError("Passed column header must be of type string.")
+
+    if not isinstance(dataframe, pd.DataFrame):
+        raise TypeError(
+            "Passed dataframe argument must be a Pandas DataFrame.")
+
     if column_header in dataframe.columns:
         return False
 
+    if column_position is not None and column_position > len(dataframe):
+        raise ValueError(
+            "Passed column_position is greater than the number of columns "
+            "of the dataframe.")
+
     if column_position is None:
         column_position = len(dataframe.columns)
+
+    if column_values and \
+            len(column_values) != dataframe.shape[0]:
+        raise ValueError(
+            "Passed column_values length must match the number or rows"
+            "of the DataFrame.")
 
     dataframe.insert(
         loc=column_position,
@@ -498,7 +580,7 @@ def add_column_to_dataframe(
     return True
 
 
-def substitute_keys(
+def substitute_dict_keys(
         source_dict: Dict[str, Any],
         key_mapping_dict: Dict[str, Any],
 ) -> Dict[str, Any]:
@@ -516,8 +598,13 @@ def substitute_keys(
         dict: A new dictionary with substituted keys.
 
     Raises:
+        TypeError: If passed arguments are not dictionaries.
         ValueError: If a value from key_mapping is not a key in source_dict.
     """
+    if not isinstance(source_dict, dict) or \
+            not isinstance(key_mapping_dict, dict):
+        raise TypeError("Passed arguments must be of dictionaries.")
+
     substituted_dict = {}
     for key, new_key in key_mapping_dict.items():
         if key not in source_dict:
@@ -527,70 +614,11 @@ def substitute_keys(
     return substituted_dict
 
 
-def filter_dict_by_matching_value_content(
-        input_dict: Dict[str, Dict[str, List[str] | None]]
-) -> Dict[str, Dict[str, List[str] | None]]:
-    """
-    Filters a dictionary by keeping only the key-value pairs where the values
-    (which are dictionaries themselves) contain the same items, disregarding
-    the order of items within the lists that are values of the inner 
-    dictionaries.
-
-    Args:
-        input_dict (dict): A dictionary where each value is another dictionary 
-            with strings as keys and lists of strings as values.
-
-    Returns:
-        dict: A filtered dictionary containing only the entries where at least 
-            one other entry exists with the same content in its value, 
-            disregarding the order of items within the lists.
-
-    Example:
-    >>> example_dict = {
-    ...     "item1": {"key1": ["a", "b"], "key2": ["c"]},
-    ...     "item2": {"key2": ["c"], "key1": ["b", "a"]},  # Same as item1 but different order
-    ...     "item3": {"key1": ["a"], "key2": ["b", "c"]},  # Different
-    ... }
-    >>> filtered_dict = filter_dict_by_matching_value_content(example_dict)
-    >>> print(filtered_dict)
-    {'item1': {'key1': ['a', 'b'], 'key2': ['c']},
-     'item2': {'key2': ['c'], 'key1': ['b', 'a']}}  # Only item1 and item2 are included
-
-    Note:
-        This function assumes that the lists within the inner dictionaries 
-            do not contain duplicate items, as it converts these lists to 
-            sets for comparison purposes.
-    """
-    if not isinstance(input_dict, dict):
-        raise TypeError("input_dict must be a dictionary.")
-
-    def dict_to_comparable_form(d):
-        return frozenset((k, tuple(sorted(v))) for k, v in d.items())
-
-    comparable_form_to_keys = {}
-
-    for key, value in input_dict.items():
-        comparable_form = dict_to_comparable_form(value)
-
-        if comparable_form not in comparable_form_to_keys:
-            comparable_form_to_keys[comparable_form] = []
-
-        comparable_form_to_keys[comparable_form].append(key)
-
-    result_dict = {}
-
-    for keys in comparable_form_to_keys.values():
-        if len(keys) > 1:
-            for key in keys:
-                result_dict[key] = input_dict[key]
-
-    return result_dict
-
-
 def filter_dataframe(
         df_to_filter: pd.DataFrame,
         filter_dict: Dict[str, List[str]],
-        reorder_columns_as_dict_keys: bool = False,
+        reset_index: bool = True,
+        reorder_cols_based_on_filter: bool = False,
         reorder_rows_based_on_filter: bool = False,
 ) -> pd.DataFrame:
     """
@@ -602,55 +630,110 @@ def filter_dataframe(
         filter_dict (dict): A dictionary where keys are dataframe column names 
             and values are lists of strings that the filtered dictionary 
             columns will include.
-        reorder_columns_as_dict_keys (bool): If True, reorder the filtered
+        reset_index (bool, Optional): If True, resets the index of the filtered 
+            DataFrame. Default to True.
+        reorder_cols_based_on_filter (bool, Optional): If True, reorder the filtered
             dataframe columns according to the order of parsed dictionary
             keys. Default to False.
+        reorder_rows_based_on_filter (bool, Optional): If True, reorder the filtered
+            dataframe rows according to the order of parsed dictionary
+            values. Default to False.
 
     Returns:
         pd.DataFrame: A DataFrame filtered based on the specified column 
             criteria.
+
+    Raises:
+        ValueError: If df_to_filter is not a DataFrame, if filter_dict is not 
+            a dictionary, or if any key in filter_dict is not a column in 
+            df_to_filter.
     """
-    combined_mask = pd.Series([True] * len(df_to_filter))
+    if not isinstance(df_to_filter, pd.DataFrame):
+        raise ValueError("Passed df_to_filter must be a Pandas DataFrame.")
+
+    if not isinstance(filter_dict, dict):
+        raise ValueError("Passed filter_dict must be a dictionary.")
+
+    for key in filter_dict.keys():
+        if key not in df_to_filter.columns:
+            raise ValueError(
+                f"Key '{key}' in filter_dict is not a DataFrame column.")
+
+    # filter dataframe based on filter_dict
+    mask = pd.Series([True] * len(df_to_filter))
 
     for column, values in filter_dict.items():
+        mask = mask & df_to_filter[column].isin(values)
 
-        if column in df_to_filter.columns:
-            current_mask = df_to_filter[column].isin(values)
-            combined_mask &= current_mask
+    filtered_df = df_to_filter[mask].copy()
 
-    filtered_df = df_to_filter.loc[combined_mask]
+    # optionally reorder columns based on filter_dict keys
+    if reorder_cols_based_on_filter:
+        filter_keys = list(filter_dict.keys())
+        other_keys = [
+            col
+            for col in df_to_filter.columns
+            if col not in filter_keys
+        ]
+        new_columns_order = filter_keys + other_keys
+        filtered_df = filtered_df[new_columns_order]
 
-    if reorder_columns_as_dict_keys:
-        filtered_df = filtered_df[list(filter_dict.keys())]
-
+    # optionally reorder rows based on filter_dict values
     if reorder_rows_based_on_filter:
-        for column, order in filter_dict.items():
-            filtered_df[column] = pd.Categorical(
-                filtered_df[column],
-                categories=order,
-                ordered=True,
-            )
-            sort_columns = [
-                col for col in filter_dict if col in filtered_df.columns]
-            filtered_df = filtered_df.sort_values(by=sort_columns)
+        df_order = unpivot_dict_to_dataframe(filter_dict)
+        sort_key = pd.Series(
+            range(len(df_order)),
+            index=pd.MultiIndex.from_frame(df_order)
+        )
+        filtered_df['sort_key'] = filtered_df.set_index(
+            list(filter_dict.keys())
+        ).index.map(sort_key.get)
+        filtered_df.sort_values('sort_key', inplace=True)
+        filtered_df.drop(columns='sort_key', inplace=True)
+
+    if reset_index:
+        filtered_df.reset_index(drop=True, inplace=True)
 
     return filtered_df
 
 
 def compare_dicts_ignoring_order(
-        *dicts: Dict[str, List[Any]]
+        iterable: Iterable[Dict[str, List[Any]]]
 ) -> bool:
     """
     Compares any number of dictionaries to see if they are the same, ignoring 
     the order of items in the lists which are the values of the dictionaries.
+
+    Args:
+        iterable (Iterable[Dict[str, List[Any]]]): An iterable of dictionaries 
+            to compare.
+
+    Returns:
+        bool: True if all dictionaries are the same (ignoring order of list 
+            items), False otherwise.
+
+    Raises:
+        ValueError: If dicts is not an iterable, or if any value in dicts is 
+            not a dictionary.
     """
-    if len(dicts) < 2:
+    try:
+        iter(iterable)
+    except TypeError:
+        raise ValueError("'iterable' argument must be an iterable.")
+
+    for value in iterable:
+        if not isinstance(value, dict):
+            raise ValueError(
+                "Each item in 'iterable' must be a dictionary.")
+
+    iterable = list(iterable)
+    if len(iterable) < 2:
         return True
 
-    reference = dicts[0]
+    reference = iterable[0]
     ref_keys = set(reference.keys())
 
-    for d in dicts[1:]:
+    for d in iterable[1:]:
         if set(d.keys()) != ref_keys:
             return False
         for key in ref_keys:
@@ -666,6 +749,39 @@ def find_non_allowed_types(
         target_col_header: str,
         return_col_header: Optional[str] = None,
 ) -> List:
+    """
+    Find rows in a DataFrame where the value in a specified column is not of 
+    an allowed type.
+
+    Args:
+        dataframe (pd.DataFrame): The DataFrame to check.
+        allowed_types (Tuple[type]): The types that are allowed for the target 
+            column values.
+        target_col_header (str): The name of the column to check.
+        return_col_header (Optional[str]): The name of the column to return. 
+            If None, return list of items in the target_col_header with non-allowed
+            types.
+
+    Returns:
+        List: The list of values in the return column for rows where the target 
+            column is not of an allowed type, or items in the target column 
+            with non-allowed types.
+
+    Raises:
+        ValueError: If dataframe is not a DataFrame, if target_col_header or 
+            return_col_header is not a column in dataframe, or if allowed_types 
+            is not a tuple.
+    """
+    if not isinstance(dataframe, pd.DataFrame):
+        raise ValueError("Passed 'dataframe' argument must be a DataFrame.")
+    if not isinstance(allowed_types, tuple):
+        raise ValueError("Passed 'allowed_types' argument must be a tuple.")
+    if target_col_header not in dataframe.columns:
+        raise ValueError(
+            f"'{target_col_header}' is not a column in dataframe.")
+    if return_col_header and return_col_header not in dataframe.columns:
+        raise ValueError(
+            f"'{return_col_header}' is not a column in dataframe.")
 
     non_allowed_rows = dataframe.apply(
         lambda row: not isinstance(
@@ -675,4 +791,34 @@ def find_non_allowed_types(
     if return_col_header:
         return dataframe.loc[non_allowed_rows, return_col_header].tolist()
 
-    return non_allowed_rows
+    return dataframe.loc[non_allowed_rows, target_col_header].tolist()
+
+
+def find_dict_key_corresponding_to_value(
+        dictionary: Dict[Any, Any],
+        target_value: Any,
+) -> Optional[Any]:
+    """
+    This function finds the first key in a dictionary that corresponds to 
+    a given value.
+
+    Parameters:
+        dictionary (Dict[Any, Any]): The dictionary to search.
+        target_value (Any): The value to find.
+
+    Returns:
+        Optional[Any]: The key corresponding to the target value. If the value 
+            is not found, returns None.
+    """
+    if not isinstance(dictionary, dict):
+        raise TypeError(
+            "Passed 'dictionary' argument must be a dictionary."
+            f"{type(dictionary).__name__} was passed instead.")
+
+    return next(
+        (
+            key
+            for key, value in dictionary.items()
+            if value == target_value),
+        None
+    )

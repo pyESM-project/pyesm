@@ -11,10 +11,9 @@ logging mechanisms, enabling comprehensive management and operations within
 the modeling environment.
 """
 
-from typing import Any, Dict
+import os
+from typing import Any, Dict, Optional
 from pathlib import Path
-
-import numpy as np
 
 from esm.base.data_table import DataTable
 from esm.base.database import Database
@@ -115,40 +114,68 @@ class Core:
             "Generating data structures for endogenous data tables "
             "(cvxpy objects, filters dict for data tables).")
 
-        # generate dataframes and cvxpy var for whole endogenous data tables
+        # generate dataframes and cvxpy var for endogenous data tables
+        # and for variables whth type defined by problem linking logic
         for data_table_key, data_table in self.index.data.items():
 
-            if data_table.type == 'endogenous':
+            if data_table.type == 'endogenous' or \
+                    isinstance(data_table.type, dict):
+
                 self.logger.debug(
                     "Generating variable dataframe and cvxpy variable "
                     f"for endogenous data table '{data_table_key}'.")
 
                 data_table.generate_coordinates_dataframe()
                 data_table.cvxpy_var = self.problem.create_cvxpy_variable(
-                    var_type=data_table.type,
+                    var_type='endogenous',
                     shape=(data_table.table_length, 1),
                     name=data_table_key,
                 )
 
         # generating variables dataframes with cvxpy var and filters dictionary
-        # (endogenous vars are sliced from existing cvxpy var in data table
+        # (endogenous vars will be sliced from existing cvxpy var in data table)
         self.logger.debug(
             "Generating data structures for all variables and constants.")
 
         for var_key, variable in self.index.variables.items():
 
+            # for constants, values are directly generated (no dataframes needed)
             if variable.type == 'constant':
                 variable.data = self.problem.generate_constant_data(
                     variable_name=var_key,
                     variable=variable
                 )
-            else:
+
+            # for variable whose type is univocally defined, only one dataframe
+            # is generated and stored in variable.data
+            elif variable.type in ['exogenous', 'endogenous']:
                 variable.data = self.problem.generate_vars_dataframe(
                     variable_name=var_key,
                     variable=variable
                 )
 
-    def define_numerical_problems(
+            # for variable whose type varies depending on the problem, both
+            # endogenous/exogenous variable dataframes are stored in
+            # variable.data defined as a dictionary
+            elif isinstance(variable.type, dict):
+                variable.data = {}
+
+                for problem_key, problem_var_type in variable.type.items():
+                    variable.data[problem_key] = self.problem.generate_vars_dataframe(
+                        variable_name=var_key,
+                        variable=variable,
+                        variable_type=problem_var_type,
+                    )
+
+            else:
+                setup_file = Constants.get('_SETUP_FILES')[1]
+                msg = f"Variable type '{variable.type}' not allowed. Check " \
+                    "definition of variable types in the model configuration " \
+                    f"file '{setup_file}'."
+                self.logger.error(msg)
+                raise exc.SettingsError(msg)
+
+    def define_mathematical_problems(
             self,
             force_overwrite: bool = False,
     ) -> None:
@@ -164,15 +191,19 @@ class Core:
             None
         """
         self.logger.debug(
-            "Load symbolic problem, initialize dataframes with cvxpy problems ")
+            "Load symbolic problem, initialize dataframes with cvxpy problem.")
 
         self.problem.load_symbolic_problem_from_file(force_overwrite)
-        self.problem.generate_problems_dataframe(force_overwrite)
+        self.problem.generate_numerical_problems(force_overwrite)
 
     def solve_numerical_problems(
             self,
-            solver: str = "",
-            verbose: bool = True,
+            solver: str,
+            verbose: bool,
+            integrated_problems: bool,
+            force_overwrite: bool,
+            maximum_iterations: Optional[int] = None,
+            numerical_tolerance: Optional[float] = None,
             **kwargs: Any,
     ) -> None:
         """
@@ -187,11 +218,41 @@ class Core:
         Returns:
             None
         """
-        self.problem.solve_all_problems(
-            solver=solver,
-            verbose=verbose,
-            **kwargs
-        )
+        if self.problem.numerical_problems is None:
+            msg = "Numerical problems must be defined first."
+            self.logger.warning(msg)
+            raise exc.OperationalError(msg)
+
+        if self.problem.status == 'optimal':
+            if not force_overwrite:
+                self.logger.warning("Numeric problems already solved.")
+                user_input = input("Solve again numeric problems? (y/[n]): ")
+
+                if user_input.lower() != 'y':
+                    self.logger.info(
+                        "Numeric problem NOT solved.")
+                    return
+
+            self.logger.info(
+                "Solving numeric problem and overwriting existing "
+                "variables numerical values.")
+
+        if not integrated_problems:
+            self.problem.solve_problems(
+                solver=solver,
+                verbose=verbose,
+                **kwargs
+            )
+        else:
+            self.solve_integrated_problems(
+                solver=solver,
+                verbose=verbose,
+                numerical_tolerance=numerical_tolerance,
+                maximum_iterations=maximum_iterations,
+                **kwargs,
+            )
+
+        self.problem.fetch_problem_status()
 
     def data_to_cvxpy_exogenous_vars(self) -> None:
         """
@@ -213,7 +274,7 @@ class Core:
                     self.logger.error(msg)
                     raise TypeError(msg)
 
-                if variable.type != 'exogenous':
+                if variable.type in ['endogenous', 'constant']:
                     continue
 
                 self.logger.debug(
@@ -240,11 +301,20 @@ class Core:
                     self.logger.error("\n".join(err_msg))
                     raise exc.MissingDataError("\n".join(err_msg))
 
-                for row in variable.data.index:
+                # for variables whose type is defined by the problem,
+                # fetch exogenous variable data.
+                if isinstance(variable.data, dict):
+                    problem_key = util.find_dict_key_corresponding_to_value(
+                        variable.type, 'exogenous')
+                    variable_data = variable.data[problem_key]
+                else:
+                    variable_data = variable.data
+
+                for row in variable_data.index:
                     # get raw data from database
                     raw_data = self.database.sqltools.filtered_table_to_dataframe(
                         table_name=variable.related_table,
-                        filters_dict=variable.data[filter_header][row])
+                        filters_dict=variable_data[filter_header][row])
 
                     # check if variable data are int or float
                     non_numeric_ids = util.find_non_allowed_types(
@@ -268,7 +338,7 @@ class Core:
                     )
 
                     self.problem.data_to_cvxpy_variable(
-                        cvxpy_var=variable.data[cvxpy_var_header][row],
+                        cvxpy_var=variable_data[cvxpy_var_header][row],
                         data=pivoted_data
                     )
 
@@ -293,7 +363,7 @@ class Core:
                     self.logger.error(msg)
                     raise TypeError(msg)
 
-                if data_table.type != 'endogenous':
+                if data_table.type in ['exogenous', 'constant']:
                     continue
 
                 self.logger.debug(
@@ -336,13 +406,20 @@ class Core:
                     operation=operation,
                 )
 
-    def check_results_as_expected(self) -> None:
+    def check_results_as_expected(
+            self,
+            values_relative_diff_tolerance: float,
+    ) -> None:
         """
         Checks if the results of the current database match the expected results.
         This method uses the 'check_databases_equality' method to compare the 
         current database with a test database. The test database is specified 
         by the 'sqlite_database_file_test' setting and is located in the model 
         directory.
+
+        Args:
+            values_relative_diff_tolerance (float): The relative difference 
+                tolerance (%) to use when comparing the databases. 
 
         Raises:
             OperationalError: If the connection or cursor of the database to be 
@@ -356,4 +433,89 @@ class Core:
             self.sqltools.check_databases_equality(
                 other_db_dir_path=self.paths['model_dir'],
                 other_db_name=self.settings['sqlite_database_file_test'],
+                tolerance_percentage=values_relative_diff_tolerance,
             )
+
+    def solve_integrated_problems(
+            self,
+            solver: str,
+            verbose: bool,
+            numerical_tolerance: Optional[float] = None,
+            maximum_iterations: Optional[int] = None,
+            **kwargs: Any,
+    ) -> None:
+        """
+        """
+        if maximum_iterations is None and numerical_tolerance is None:
+            msg = "Either maximum iterations or numerical tolerance must be specified."
+            self.logger.error(msg)
+            raise exc.SettingsError(msg)
+
+        sqlite_db_path = self.paths['model_dir']
+        sqlite_db_file_name = self.settings['sqlite_database_file']
+
+        base_name, extension = os.path.splitext(sqlite_db_file_name)
+        sqlite_db_file_name_previous = f"{base_name}_previous_iter{extension}"
+
+        iter_count = 0
+
+        tables_to_check = [
+            table_key for table_key in self.index.data.keys()
+            if self.index.data[table_key].type not in ['exogenous', 'constant']
+        ]
+
+        while True:
+
+            iter_count += 1
+            if iter_count > maximum_iterations:
+                self.logger.warning(
+                    f"Maximum number of iterations reached before reaching "
+                    "convergence to numerical_tolerance.")
+                break
+
+            self.logger.info(f"=====================")
+            self.logger.info(f"Iteration number '{iter_count}'")
+
+            if iter_count > 1:
+                self.data_to_cvxpy_exogenous_vars()
+
+            self.files.copy_file_to_destination(
+                path_destination=sqlite_db_path,
+                path_source=sqlite_db_path,
+                file_name=sqlite_db_file_name,
+                file_new_name=sqlite_db_file_name_previous,
+                force_overwrite=True,
+            )
+
+            self.problem.solve_problems(
+                solver=solver,
+                verbose=verbose,
+                **kwargs
+            )
+
+            self.cvxpy_endogenous_data_to_database(operation='update')
+
+            with db_handler(self.sqltools):
+                relative_difference = \
+                    self.sqltools.get_tables_values_relative_difference(
+                        other_db_dir_path=sqlite_db_path,
+                        other_db_name=sqlite_db_file_name_previous,
+                        tables_names=tables_to_check,
+                    )
+
+            self.logger.info(
+                "Maximum relative differences in tables values: "
+                f"'{relative_difference}'")
+
+            if all(
+                value <= numerical_tolerance
+                for value in relative_difference.values()
+            ):
+                self.logger.info("Numerical convergence reached.")
+                self.files.erase_file(
+                    dir_path=sqlite_db_path,
+                    file_name=sqlite_db_file_name_previous,
+                    force_erase=True,
+                    confirm=False,
+                )
+                break

@@ -70,7 +70,7 @@ class DataTable:
         self.logger = logger.get_child(__name__)
 
         self.name: Optional[str] = None
-        self.type: Optional[str] = None
+        self.type: Optional[str | dict] = None
         self.coordinates: List[str] = []
         self.coordinates_headers: Dict[str, str] = {}
         self.coordinates_values: Dict[str, Any] = {}

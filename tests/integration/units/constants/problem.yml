@@ -18,7 +18,7 @@ expressions:
 
     # lower triangular matrix
     # --------------    
-
+    - T_ff @ i_f == T_sum
 
 
     # identity rcot
@@ -31,7 +31,7 @@ expressions:
     # aggregating total demand by flow
     - Q_agg - I_ff @ tran(Q) == 0
 
-    # aggregating total demand by hourly flow
+    # aggregating total demand by hourly flow (filtered case)
     - Q_agg_h - I_ff_h @ tran(Q_h) == 0
 
 

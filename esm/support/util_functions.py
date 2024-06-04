@@ -10,13 +10,13 @@ such as generating special matrices, reshaping arrays, and calculating matrix
 inverses.
 """
 
-from typing import Tuple
+from typing import Iterable
 import numpy as np
 import pandas as pd
 import cvxpy as cp
 
 
-def tril(dimension: int) -> np.ndarray:
+def tril(dimension: int) -> np.array:
     """
     Generate a square matrix with ones in the lower triangular region
     (including the diagonal) and zeros elsewhere.
@@ -27,7 +27,17 @@ def tril(dimension: int) -> np.ndarray:
     Returns:
         np.ndarray: A square matrix of size 'dimension x dimension' with 
             ones in the lower triangular region and zeros elsewhere.
+
+    Raises:
+        ValueError: If passed dimension is not greater than zero.
+        TypeError: If passed dimension is not an integer.
     """
+    if not isinstance(dimension, int):
+        raise TypeError("Passed dimension is not an integer.")
+
+    if dimension <= 0:
+        raise ValueError("Passed dimension must be greater than zero.")
+
     matrix = np.tril(np.ones((dimension, dimension)))
     np.fill_diagonal(matrix, 1)
 
@@ -45,7 +55,19 @@ def identity_rcot(related_dims_map: pd.DataFrame) -> np.ndarray:
 
     Returns:
         numpy ndarray containing the special identity matrix.
+
+    Raises:
+        ValueError: If 'related_dims_map' is not a DataFrame or if it does not 
+            contain 'rows' and 'cols' columns.
     """
+    if not isinstance(related_dims_map, pd.DataFrame):
+        raise ValueError("'related_dims_map' must be a pandas DataFrame.")
+
+    if 'rows' not in related_dims_map.columns or \
+            'cols' not in related_dims_map.columns:
+        raise ValueError(
+            "'related_dims_map' must contain 'rows' and 'cols' columns labels.")
+
     related_dims_map['value'] = 1
 
     unique_rows = related_dims_map['rows'].drop_duplicates().tolist()
@@ -68,31 +90,105 @@ def identity_rcot(related_dims_map: pd.DataFrame) -> np.ndarray:
 
 
 def arange(
-        shape_size: Tuple[int, ...],
+        shape_size: Iterable[int],
         start_from: int = 1,
         order: str = 'F',
 ) -> np.ndarray:
     """
-    Generate a reshaped array with values ranging from `start_from` to 
-    `start_from + total_elements`.
+    Generate a reshaped array with values ranging from 'start_from' to 
+    'start_from + total_elements'.
 
     Parameters:
-        shape_size (Tuple[int, ...]): The shape of the output array.
+        shape_size (Iterable[int]): The shape of the output array.
         start_from (int, optional): The starting value for the range. 
             Defaults to 1.
         order (str, optional): The order of the reshaped array. 
             Defaults to 'F'.
 
     Returns:
-        np.ndarray: The reshaped array with values ranging from `start_from` 
-            to `start_from + total_elements`.
+        np.ndarray: The reshaped array with values ranging from 'start_from' 
+            to 'start_from + total_elements'.
+
+    Raises:
+        ValueError: If 'shape_size' is not an iterable of integers, 
+            'start_from' is not an integer, or 'order' is not a string.
+        ValueError: If 'order' is not 'C' or 'F'.
     """
+    if not isinstance(shape_size, Iterable) or \
+            not all(isinstance(i, int) for i in shape_size):
+        raise ValueError("'shape_size' must be an iterable of integers.")
+
+    if not isinstance(start_from, int):
+        raise ValueError("'start_from' must be an integer.")
+
+    if not isinstance(order, str):
+        raise ValueError("'order' must be a string.")
+
+    if order not in ['C', 'F']:
+        raise ValueError("'order' must be either 'C' or 'F'.")
 
     total_elements = np.prod(shape_size)
     values = np.arange(start_from, start_from+total_elements)
     reshaped_array = np.reshape(a=values, newshape=shape_size, order=order)
 
     return reshaped_array
+
+
+def power(
+        base: cp.Parameter | cp.Expression,
+        exponent: cp.Parameter | cp.Expression,
+) -> cp.Parameter:
+    """
+    Calculates the element-wise power of the base, provided an exponent. 
+    Either base or exponent can be a scalar.
+
+    Parameters:
+        base (cp.Parameter | cp.Expression): The base for the power operation. 
+            The corresponding value can be a scalar or a 1-D numpy array.
+        exponent (cp.Parameter | cp.Expression): The exponent for the power 
+            operation. The corresponding value can be a scalar or a 1-D numpy array.
+
+    Returns:
+        cp.Parameter: A new parameter with the same shape as the input parameters, 
+            containing the result of the power operation.
+
+    Raises:
+        TypeError: If the base and exponent are not both instances of cvxpy 
+            Parameter or Expression.
+        ValueError: If the base and exponent do not have the same shape and 
+            neither is a scalar. If the base and exponent are not numpy arrays.
+            If the base and exponent include non-numeric values.
+    """
+
+    if not isinstance(base, cp.Parameter | cp.Expression) or \
+            not isinstance(exponent, cp.Parameter | cp.Expression):
+        raise TypeError(
+            "Arguments of power method must be cvxpy Parameter or Expression.")
+
+    if base.shape != exponent.shape:
+        if base.is_scalar() or exponent.is_scalar():
+            pass
+        else:
+            raise ValueError(
+                "Base and exponent must have the same shape. In case of "
+                "different shapes, one must be a scalar. "
+                f"Shapes -> base: {base.shape}, exponent: {exponent.shape}.")
+
+    base_val: np.ndarray = base.value
+    exponent_val: np.ndarray = exponent.value
+
+    if not isinstance(base.value, np.ndarray) or \
+            not isinstance(exponent.value, np.ndarray):
+        raise ValueError("Base and exponent must be numpy arrays.")
+
+    if not (
+        np.issubdtype(base.value.dtype, np.number) and
+        np.issubdtype(exponent.value.dtype, np.number)
+    ):
+        raise ValueError("Base and exponent must be numeric.")
+
+    power = np.power(base_val, exponent_val)
+    return cp.Parameter(shape=power.shape, value=power)
 
 
 def matrix_inverse(matrix: cp.Parameter | cp.Expression) -> cp.Parameter:
@@ -107,22 +203,24 @@ def matrix_inverse(matrix: cp.Parameter | cp.Expression) -> cp.Parameter:
         cp.Parameter: The inverse of the input matrix.
 
     Raises:
+        TypeError: If the passed item is not a cvxpy Parameter or Expression.
         ValueError: If the passed matrix values are None, or if the passed 
             item is not a matrix, or if the passed item is not a square 
             matrix, or if the passed matrix is singular and cannot be inverted.
     """
-    matrix_val = matrix.value
+    if not isinstance(matrix, (cp.Parameter, cp.Expression)):
+        raise TypeError("Passed item must be a cvxpy Parameter or Expression.")
 
-    if matrix_val is not None:
-        matrix_shape = np.shape(matrix_val)
-    else:
+    matrix_val: np.ndarray = matrix.value
+
+    if matrix_val is None:
         raise ValueError("Passed matrix values cannot be None.")
 
-    if len(matrix_shape) != 2:
-        raise ValueError("Passed item is not a matrix")
+    if not isinstance(matrix_val, np.ndarray) or len(matrix_val.shape) != 2:
+        raise ValueError("Passed item is not a matrix.")
 
-    if matrix_shape[0] != matrix_shape[1]:
-        raise ValueError("Passed item is not a square matrix")
+    if matrix_val.shape[0] != matrix_val.shape[1]:
+        raise ValueError("Passed item is not a square matrix.")
 
     try:
         inverse = np.linalg.inv(matrix_val)
@@ -130,7 +228,7 @@ def matrix_inverse(matrix: cp.Parameter | cp.Expression) -> cp.Parameter:
         raise ValueError(
             "Passed matrix is singular and cannot be inverted.") from exc
 
-    return cp.Parameter(shape=matrix_shape, value=inverse)
+    return cp.Parameter(shape=matrix_val.shape, value=inverse)
 
 
 def weibull_distribution(
@@ -175,25 +273,30 @@ def weibull_distribution(
             or range_vector) is None, or if their contained values do not meet 
             the expected requirements (e.g., non-scalar for scale or shape 
             factors, or if dimensions is not 1 or 2).
-
-    Example:
-        >>> scale_param = cp.Parameter(value=np.array([1.5]))
-        >>> shape_param = cp.Parameter(value=np.array([2.0]))
-        >>> range_vals = cp.Constant(value=np.array([0, 1, 2, 3, 4, 5]))
-        >>> weib_dist = weibull_distribution(scale_param, shape_param, 
-                range_vals, 1)
-        >>> print(weib_dist.value)
-        [[0.  , 0.25, 0.49, 0.69, 0.84, 0.94]]
     """
+    if not isinstance(scale_factor, cp.Parameter) or \
+            not isinstance(shape_factor, cp.Parameter) or \
+            not isinstance(range_vector, cp.Constant):
+        raise TypeError(
+            "scale_factor and shape_factor must be cvxpy.Parameters, "
+            "range_vector must be cvxpy.Constant.")
+
     # extract values from cvxpy parameters
-    sc = scale_factor.value
-    sh = shape_factor.value
-    rx = range_vector.value
+    sc: np.ndarray = scale_factor.value
+    sh: np.ndarray = shape_factor.value
+    rx: np.ndarray = range_vector.value
 
     # checks
     if sc is None or sh is None or rx is None:
         raise ValueError(
-            "Scale factor, shape factor, or range cannot be None.")
+            "Values assigned to scale_factor, shape_factor and range_vector "
+            "cannot be None.")
+
+    if not isinstance(sc, np.ndarray) or \
+            not isinstance(sh, np.ndarray) or \
+            not isinstance(rx, np.ndarray):
+        raise TypeError(
+            "Scale factor, shape factor, and range must be numpy arrays.")
 
     err_msg = []
 
@@ -212,6 +315,11 @@ def weibull_distribution(
         err_msg.append(
             "Output of Weibull distribution must be '1' (vector) "
             f"or 2 (matrix). Passed value: '{dimensions}'")
+
+    if not isinstance(rounding, int) or rounding < 0:
+        err_msg.append(
+            "Rounding parameter must be an integer greater than or equal to zero."
+        )
 
     if err_msg:
         raise ValueError("\n".join(err_msg))

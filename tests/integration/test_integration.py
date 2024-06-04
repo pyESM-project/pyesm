@@ -35,9 +35,6 @@ def create_test_function(
                 getattr(model, method)(**kwargs)
             except Exception as e:
                 pytest.fail(f"Test failed: {model_name}")
-                #     f"Method '{method}' failed for "
-                #     f"'{model.settings['model_name']}': {str(e)}"
-                # )
 
     return test_model
 

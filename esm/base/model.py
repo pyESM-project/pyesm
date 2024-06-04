@@ -25,7 +25,7 @@ based on user-defined settings.
 """
 
 from pathlib import Path
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 
 from esm.constants import Constants
 from esm.log_exc import exceptions as exc
@@ -296,6 +296,7 @@ class Model:
             operation=operation,
             force_overwrite=force_overwrite,
         )
+
         # TO BE COMPLETED (automatically filling blank data)
         # self.core.database.empty_data_completion(operation)
 
@@ -317,16 +318,20 @@ class Model:
             None
         """
         self.logger.info(
-            'Loading symbolic problem, initializing numerical problems.')
+            'Loading symbolic problem, initializing numerical problem.')
 
         self.core.initialize_problems_variables()
         self.core.data_to_cvxpy_exogenous_vars()
-        self.core.define_numerical_problems(force_overwrite)
+        self.core.define_mathematical_problems(force_overwrite)
 
     def run_model(
         self,
-        solver: str = 'SCIPY',
-        verbose: bool = True,
+        solver: str = 'CLARABEL',
+        verbose: bool = False,
+        force_overwrite: bool = False,
+        integrated_problems: bool = False,
+        numerical_tolerance: float = 1,
+        maximum_iterations: int = 10,
         **kwargs: Any,
     ) -> None:
         """
@@ -342,13 +347,53 @@ class Model:
         Returns:
             None
         """
-        self.logger.info('Running numerical model.')
+        n_problems = self.core.problem.number_of_problems
+
+        if solver not in Constants.get('_ALLOWED_SOLVERS'):
+            msg = f"Solver '{solver}' not supported by current CVXPY version. " \
+                f"Available solvers: {Constants.get('_ALLOWED_SOLVERS')}"
+            self.logger.error(msg)
+            raise exc.SettingsError(msg)
+
+        if n_problems == 0:
+            msg = "No numerical problems found. Initialize problems first."
+            self.logger.error(msg)
+            raise exc.OperationalError(msg)
+
+        if integrated_problems and n_problems == 1:
+            msg = "Only one problem found. Integrated problems not possible."
+            self.logger.error(msg)
+            raise exc.SettingsError(msg)
+
+        if not integrated_problems:
+            if n_problems == 1:
+                self.logger.info(
+                    f"Solving numerical problem with '{solver}' solver")
+            else:
+                self.logger.info(
+                    f"Solving '{n_problems}' independent numerical problems "
+                    f"with '{solver}' solver.")
+
+        elif integrated_problems and n_problems > 1:
+            self.logger.info(
+                f"Solving '{n_problems}' integrated numerical problems "
+                f"with '{solver}' solver.")
 
         self.core.solve_numerical_problems(
             solver=solver,
             verbose=verbose,
-            **kwargs
+            force_overwrite=force_overwrite,
+            integrated_problems=integrated_problems,
+            numerical_tolerance=numerical_tolerance,
+            maximum_iterations=maximum_iterations,
+            **kwargs,
         )
+
+        if self.core.problem.status == 'optimal':
+            self.logger.info("Numerical problems solved successfully.")
+        else:
+            self.logger.warning(
+                "Numerical problems not solved successfully.")
 
     def load_results_to_database(
         self,
@@ -410,7 +455,10 @@ class Model:
 
         self.pbi_tools.generate_powerbi_report()
 
-    def check_model_results(self) -> None:
+    def check_model_results(
+            self,
+            numerical_tolerance: float = 3,
+    ) -> None:
         """
         Checks the results of the model's computations. This is mainly called
         for testing purpose.
@@ -420,6 +468,11 @@ class Model:
         The expected results are stored in a test database specified by the 
         'sqlite_database_file_test' setting and located in the model directory.
 
+        Args:
+            numerical_tolerance (float, optional): The relative difference (%) 
+                tolerance for comparing numerical values in different databases. 
+                Defaults to 3%.
+
         Raises:
             OperationalError: If the connection or cursor of the database to be 
                 checked are not initialized.
@@ -428,7 +481,10 @@ class Model:
             ResultsError: If the databases are not identical in terms of table 
                 presence, structure, or contents.
         """
-        self.core.check_results_as_expected()
+        self.core.check_results_as_expected(
+            values_relative_diff_tolerance=numerical_tolerance)
+
+        self.logger.info("Model results are as expected.")
 
     def erase_model(self) -> None:
         """

@@ -42,6 +42,7 @@ class Constants:
         _STD_AGGREGATION_HEADER (str): Standard header for the 'aggregation' field in data tables.
         _STD_VALUES_FIELD (dict): Default column name-type for 'values' field in sets.
         _STD_ID_FIELD (dict): Default column name-type for 'id' field in sets.
+        _ALLOWED_VALUES_TYPES (tuple): Allowed types for 'values' fields in tables.
         _CVXPY_VAR_HEADER (str): Default header for variables in a dataframe.
         _FILTER_DICT_HEADER (str): Default header for filters in a dataframe.
         _OBJECTIVE_HEADER (str): Header for the objective function in problem definitions.
@@ -96,8 +97,9 @@ class Constants:
     _CVXPY_VAR_HEADER = 'variable'
     _FILTER_DICT_HEADER = 'filter'
 
-    _OBJECTIVE_HEADER = 'objective function'
+    _OBJECTIVE_HEADER = 'objective'
     _CONSTRAINTS_HEADER = 'expressions'
+
     _PROBLEM_HEADER = 'problem'
     _PROBLEM_INFO_HEADER = 'info'
     _PROBLEM_STATUS_HEADER = 'status'
@@ -112,7 +114,7 @@ class Constants:
 
     _DATA_TABLE_DEFAULT_STRUCTURE = {
         'name': str,
-        'type': str,
+        'type': str | dict,
         'coordinates': list,
         'variables_info': dict,
     }
@@ -124,14 +126,15 @@ class Constants:
     }
 
     _ALLOWED_CONSTANTS = {
-        'sum_vector': (np.ones, ),  # vector of 1s
-        'identity': (np.eye, ),  # identity matrix
+        'sum_vector': (np.ones, {}),  # vector of 1s
+        'identity': (np.eye, {}),  # identity matrix
         # vector/matrix with a range from 1 up to dimension size
-        'arange': (util_functions.arange, ),
+        'arange_1': (util_functions.arange, {}),
+        'arange_0': (util_functions.arange, {'start_from': 0}),
         # lower triangular matrix of 1s(inc. diagonal)
-        'lower_triangular': (util_functions.tril, ),
+        'lower_triangular': (util_functions.tril, {}),
         # special identity matrix for rcot problems
-        'identity_rcot': (util_functions.identity_rcot, ),
+        'identity_rcot': (util_functions.identity_rcot, {}),
     }
 
     _ALLOWED_OPERATORS = {
@@ -149,10 +152,14 @@ class Constants:
         'diag': cp.diag,
         'sum': cp.sum,
         'mult': cp.multiply,
+        'pow': util_functions.power,
         'minv': util_functions.matrix_inverse,
         'weib': util_functions.weibull_distribution,
         'Minimize': cp.Minimize,
+        'Maximize': cp.Maximize,
     }
+
+    _ALLOWED_SOLVERS = cp.installed_solvers()
 
     @classmethod
     def get(cls, constant_name):

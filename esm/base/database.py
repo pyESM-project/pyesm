@@ -227,14 +227,12 @@ class Database:
         from variable data.
         """
         self.logger.debug(
-            "Adding sets information to sqlite variables tables in "
+            "Adding sets information to sqlite data tables in "
             f"'{self.settings['sqlite_database_file']}'.")
 
         with db_handler(self.sqltools):
             for table_key, table in self.index.data.items():
-                table: DataTable
 
-                # MODIFY HERE TO PUT ALSO CONSTANTS IN DB
                 if table.type == 'constant':
                     continue
 
@@ -319,9 +317,8 @@ class Database:
 
         with db_handler(self.sqltools):
             for table_key, table in self.index.data.items():
-                table: DataTable
 
-                if table.type != 'exogenous':
+                if table.type == 'endogenous':
                     continue
 
                 if self.settings['multiple_input_files']:
