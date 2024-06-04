@@ -1,0 +1,35 @@
+# SYMBOLIC PROBLEM
+
+# definition of the objective function (scalar)
+
+objective: 
+    - Minimize(sum(C_inv)+sum(C_om))
+
+# definition of the constraints (vector expressions)
+
+expressions: 
+
+    - Q_agg == I_ff @ tran(Q)
+
+    - Q_agg - u @ tran(X) - Y == 0
+    - tran(X) - d @ tran(Q) == 0
+
+    - X_min == Cap_op @ diag(lf_min)
+    - X_max == Cap_op @ diag(lf_max)
+
+    - X >= X_min
+    - X <= X_max
+
+    - Cap_disp_new_t == weib(lt_t,sf_t,y_range,2) @ Cap_new_t
+    - Cap_disp_start_t == weib(lt_t,sf_t,y_range,1) @ C_start_t
+    - Cap_op == C_start + Tyy @ Cap_new - Tyy @ Cap_disp_new - Tyy @ Cap_disp_start
+
+    - C_inv == Cap_new @ diag(ci)
+    - C_om == X @ diag(com)
+
+    - Q >= 0
+    - X >= 0
+    - Cap_new >= 0
+
+
+

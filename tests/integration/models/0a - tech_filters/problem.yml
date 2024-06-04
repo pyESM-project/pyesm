@@ -1,0 +1,29 @@
+# SYMBOLIC PROBLEM
+
+# definition of the objective function (scalar)
+
+objective:
+    - Minimize(sum(C_tot_om)+sum(C_tot_inv))
+
+# definition of the constraints (vector expressions)
+
+expressions: 
+    - Q_agg == I_ff @ tran(Q)
+
+    - Q_agg - u @ tran(X) - Y == 0
+    - tran(X) - d @ tran(Q) == 0
+
+    - Cap == X_cap @ diag(lf)
+    - E_tot == X_fossil @ diag(e)
+    
+    - C_tot_om == X @ diag(c_om)
+    - C_tot_inv == mult(Cap,c_inv)
+
+    - X_max - X_resnoncap >= 0
+    - E_max - E_tot >= 0
+    
+    - X >= 0
+    - Q >= 0
+
+
+

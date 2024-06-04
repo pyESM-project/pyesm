@@ -1,0 +1,34 @@
+# SYMBOLIC PROBLEM
+
+# objective function
+objective:
+
+    - Minimize(sum(X_h @ diag(c_om)))
+
+
+# definition of the constraints (vector expressions)
+
+expressions: 
+
+    - Q_agg_h == I_ff @ tran(Q_h)
+    - U_h == u @ tran(X_h)
+    - Y_h == Y @ tran(dp)
+
+    - Q_agg_h - U_h - Y_h == 0
+    - tran(X_h_nonstorage) - d @ tran(Q_h) == 0
+
+    - SOC_min == mult(soc_min,C_start_storage)
+    - SOC_max == mult(soc_max,C_start_storage)
+
+    - X_h_nonstorage <= X_max
+    - X_h_nonstorage >= X_min
+    - SOC <= C_start_storage
+    - SOC >= SOC_min
+    - SOC <= SOC_max
+    - X_h_storage >= max_charge
+    - X_h_storage <= max_discharge
+
+    - Q_h >= 0
+    - X_h_nonstorage >= 0
+
+

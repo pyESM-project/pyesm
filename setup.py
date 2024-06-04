@@ -7,7 +7,8 @@ setup(
     install_requires=[
         'numpy',
         'cvxpy',
-        'openpyxl'
+        'openpyxl',
+        'pytest',
     ],
     author='Matteo V. Rocco',
     author_email='matteovincenzo.rocco@polimi.it',

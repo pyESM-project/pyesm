@@ -1,0 +1,50 @@
+# structure of sets
+
+# set_key:
+#     symbol: a  # symbol of the set 
+#     table_name: _set_a # name of the table of the set in the database
+#     split_problem: False # (optional) if the items of the set defines separate problems 
+#     copy_from: another_set_key # (optional) key of another set to copy the data from (table_headers must be filled anyway)
+#     table_structure:
+#         name: [a_Names, TYPE] # header of set entries names in database set table
+#         aggregation: [a_Agg, TEXT] # (optional) header of set entries that are matching another set (aggregation)
+#         filters:
+#             0:  # (int) index of the category in the set
+#                 header: [a_Cat_1, TEXT] 
+#                 values: [a_1a, a_1b, a_1c]
+#             1: 
+#                 header: [a_Cat_2, TEXT] 
+#                 values: [a_2a, a_2b]
+
+
+# -----------------------------------------------------------------------------
+# sets
+
+# technology_mix:
+#     symbol: tm  # symbol of the set 
+#     table_name: _set_TECHS_MIX # name of the table of the set in the database
+#     split_problem: True # (optional) if the items of the set defines separate problems 
+#     table_structure:
+#         name: [tm_Names, TYPE] # header of set entries names in database set table
+
+products:
+    symbol: p  
+    table_name: _set_PRODUCTS 
+    table_structure:
+        name: [p_Names, TYPE]
+
+product_data:
+    symbol: pd  
+    table_name: _set_PRODUCT_DATA 
+    table_structure:
+        name: [pd_Names, TYPE]
+        filters:
+            0: 
+                header: [pd_Category, TEXT] 
+                values: [energy_use_0, learning_rate, profit]
+
+resources:
+    symbol: r  
+    table_name: _set_RESOURCES 
+    table_structure:
+        name: [r_Names, TYPE]

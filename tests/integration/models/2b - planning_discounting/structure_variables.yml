@@ -1,0 +1,249 @@
+# variables of the model
+
+# table_key:
+#     name: table_name # description or full name of the table
+#     type: table_type # endogenous, exogenous, or constant
+#     coordinates: [a, b, c, d] # list of coordinates with set_key symbols
+#     variables_info:
+#         var_key_1: # variable name
+#             intra: # optional, if variable is filtered within intra-problem set
+#                 set: years # set_key symbol
+#                 filters: {0: warm-up} # filters for the intra-problem set
+#             rows: # rows of the variable
+#                 set: a # set_key symbol
+#                 filters: {0: Supply} # optional, filters for the rows
+#             cols: # columns of the variable
+#                 set: b # set_key symbol
+#                 filters: {0: Physical} # optional, filters for the columns
+
+# -----------------------------------------------------------------------------
+# exogenous variables
+d:
+    name: supply coefficients matrix # description or full name of the table
+    type: exogenous # type of the variable
+    coordinates: [scenarios,techs,flows] # list of coordinates with set_key symbols
+    variables_info:
+        d: # variable name
+            rows: # rows of the variable
+                set: techs # set_key symbol
+            cols: # columns of the variable
+                set: flows # set_key symbol
+
+u:
+    name: use coefficients matrix 
+    type: exogenous 
+    coordinates: [scenarios,techs,flows] 
+    variables_info:
+        u: 
+            rows: 
+                set: flows 
+            cols: 
+                set: techs 
+
+Y:
+    name: final demand matrix 
+    type: exogenous 
+    coordinates: [scenarios,years,flows] 
+    variables_info:
+        Y: 
+            rows: 
+                set: flows 
+            cols: 
+                set: years 
+
+c:
+    name: specific costs coefficients matrix 
+    type: exogenous 
+    coordinates: [scenarios,costs,techs] 
+    variables_info:
+        ci: 
+            rows: 
+                set: costs
+                filters: {item: inv} 
+            cols: 
+                set: techs 
+        com: 
+            rows: 
+                set: costs
+                filters: {item: om} 
+            cols: 
+                set: techs 
+
+lf:
+    name: load factors 
+    type: exogenous 
+    coordinates: [scenarios,load_factors,techs] 
+    variables_info:
+        lf_min: 
+            rows: 
+                set: load_factors
+                filters: {range: min} 
+            cols: 
+                set: techs 
+        lf_max: 
+            rows: 
+                set: load_factors
+                filters: {range: max} 
+            cols: 
+                set: techs 
+
+C_start:
+    name: initial capacity 
+    type: exogenous 
+    coordinates: [scenarios,techs] 
+    variables_info:
+        C_start: 
+            cols:
+                set: techs
+
+d_rate:
+    name: discount rate
+    type: exogenous
+    coordinates: [scenarios]
+    variables_info:
+        d_rate:
+
+# -----------------------------------------------------------------------------
+# endogenous variables
+Q:
+    name: total production by flows 
+    type: endogenous 
+    coordinates: [scenarios,flows,years] 
+    variables_info:
+        Q: 
+            rows: 
+                set: years
+            cols: 
+                set: flows
+
+X:
+    name: total production by techs 
+    type: endogenous 
+    coordinates: [scenarios,techs,years] 
+    variables_info:
+        X: 
+            rows: 
+                set: years
+            cols: 
+                set: techs
+
+Cap_new:
+    name: new installed capacity 
+    type: endogenous 
+    coordinates: [scenarios,techs,years] 
+    variables_info:
+        Cap_new: 
+            rows: 
+                set: years
+            cols: 
+                set: techs
+
+Cap_op:
+    name: operative capacity 
+    type: endogenous 
+    coordinates: [scenarios,techs,years] 
+    variables_info:
+        Cap_op: 
+            rows: 
+                set: years
+            cols:
+                set: techs
+
+X_min:
+    name: production range of techs 
+    type: endogenous 
+    coordinates: [scenarios,techs,years] 
+    variables_info:
+        X_min: 
+            rows: 
+                set: years
+            cols: 
+                set: techs
+
+X_max:
+    name: production range of techs 
+    type: endogenous 
+    coordinates: [scenarios,techs,years] 
+    variables_info:
+        X_max: 
+            rows: 
+                set: years
+            cols: 
+                set: techs
+
+C_inv:
+    name: total investment costs 
+    type: endogenous 
+    coordinates: [scenarios,techs,years] 
+    variables_info:
+        C_inv: 
+            rows: 
+                set: years
+            cols:
+                set: techs
+        C_inv_y:
+            rows:
+                set: years
+            cols:
+                set: techs
+C_inv_d:
+    name: total discounted investment costs 
+    type: endogenous 
+    coordinates: [scenarios,techs,years] 
+    variables_info:
+        C_inv_d:
+            rows:
+                set: years
+            cols:
+                set: techs
+
+C_om:
+    name: total operation costs 
+    type: endogenous 
+    coordinates: [scenarios,techs,years] 
+    variables_info:
+        C_om: 
+            rows: 
+                set: years
+            cols:
+                set: techs
+        C_om_y: 
+            rows:
+                set: years
+            cols:
+                set: techs
+
+C_om_d:
+    name: total discounted operation costs 
+    type: endogenous 
+    coordinates: [scenarios,techs,years] 
+    variables_info:
+        C_om_d: 
+            rows:
+                set: years
+            cols:
+                set: techs
+
+# -----------------------------------------------------------------------------
+# constants variables
+Tyy:
+    name: lower triangular matrix 
+    type: constant 
+    coordinates: [years] 
+    variables_info:
+        Tyy: 
+            value: lower_triangular
+            rows: 
+                set: years
+            cols:
+                set: years
+
+y_range:
+    name: range of years
+    type: constant 
+    coordinates: [years] 
+    variables_info:
+        y_range:
+            value: arange_0
+            rows: 
+                set: years

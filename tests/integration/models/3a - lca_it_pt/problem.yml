@@ -1,0 +1,9 @@
+# SYMBOLIC PROBLEM
+
+expressions: 
+
+    - r_e_p @ (I_pp - u @ v) - r @ v == 0
+    - r_e_t @ (I_tt - v @ u) - r == 0
+
+
+

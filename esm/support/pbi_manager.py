@@ -1,5 +1,3 @@
-from pathlib import Path
-
 from esm.log_exc.logger import Logger
 from esm.support.dotdict import DotDict
 
@@ -9,11 +7,11 @@ class PBIManager:
     def __init__(
         self,
         logger: Logger,
-        settings: DotDict[str, str],
-        paths: DotDict[str, str | Path]
+        settings: DotDict,
+        paths: DotDict,
     ) -> None:
 
-        self.logger = logger.getChild(__name__)
+        self.logger = logger.get_child(__name__)
         self.logger.debug(f"'{self}' object generated.")
 
         self.settings = settings

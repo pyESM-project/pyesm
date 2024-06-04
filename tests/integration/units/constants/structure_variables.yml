@@ -1,0 +1,114 @@
+# variables of the model
+
+# -----------------------------------------------------------------------------
+# exogenous variables
+
+Q:
+    name: demand by flow
+    type: exogenous
+    coordinates: [flows]
+    variables_info:
+        Q:
+            cols: 
+                set: flows
+        Q_h:
+            cols: 
+                set: flows
+                filters: {0: Hourly dispatched}
+
+
+# -----------------------------------------------------------------------------
+# constants
+
+special_identity: 
+    name: special identity matrix
+    type: constant
+    coordinates: [flows, flows_aggregated]
+    variables_info:
+        I_ff:
+            value: identity_rcot
+            rows:
+                set: flows_aggregated
+            cols:
+                set: flows
+        I_ff_h:
+            value: identity_rcot
+            rows:
+                set: flows_aggregated
+                filters: {0: Hourly dispatched}
+            cols:
+                set: flows
+                filters: {0: Hourly dispatched}
+
+lower_triangular_matrix:
+    name: lower triangular matrix
+    type: constant
+    coordinates: [flows]
+    variables_info:
+        T_ff:
+            value: lower_triangular
+            rows:
+                set: flows
+            cols:
+                set: flows
+        T_ff_h:
+            value: lower_triangular
+            rows:
+                set: flows
+                filters: {0: Hourly dispatched}
+            cols:
+                set: flows
+                filters: {0: Hourly dispatched}
+
+summation_vector:
+    name: sum vector
+    type: constant
+    coordinates: [flows]
+    variables_info:
+        i_f:
+            value: sum_vector
+            rows:
+                set: flows
+
+# -----------------------------------------------------------------------------
+# endogenous variables
+
+I_ff_exp:
+    name: special identity matrix, expected
+    type: endogenous
+    coordinates: [flows, flows_aggregated]
+    variables_info:
+        I_ff_exp:
+            rows: 
+                set: flows_aggregated
+            cols: 
+                set: flows
+        I_ff_h_exp:
+            rows: 
+                set: flows_aggregated
+                filters: {0: Hourly dispatched}
+            cols: 
+                set: flows
+                filters: {0: Hourly dispatched}
+
+T_sum:
+    name: sum of lower triangular matrix
+    type: endogenous
+    coordinates: [flows]
+    variables_info:
+        T_sum:
+            rows: 
+                set: flows
+
+Q_agg:
+    name: demand by flow
+    type: endogenous
+    coordinates: [flows_aggregated]
+    variables_info:
+        Q_agg:
+            rows: 
+                set: flows_aggregated
+        Q_agg_h:
+            rows: 
+                set: flows_aggregated
+                filters: {0: Hourly dispatched}

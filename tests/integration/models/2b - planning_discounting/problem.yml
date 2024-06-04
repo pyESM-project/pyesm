@@ -1,0 +1,34 @@
+# SYMBOLIC PROBLEM
+
+# definition of the objective function (scalar)
+
+objective:
+    - Minimize(sum(C_inv_d)+sum(C_om_d))
+
+# definition of the constraints (vector expressions)
+
+expressions: 
+
+    - tran(Q) - u @ tran(X) - Y == 0
+    - tran(X) - d @ tran(Q) == 0
+
+    - X_min == mult(Cap_op, lf_min)
+    - X_max == mult(Cap_op, lf_max)
+
+    - X >= X_min
+    - X == X_max
+
+    - Cap_op == C_start + Tyy @ Cap_new
+
+    - C_inv == mult(Cap_new, ci)
+    - C_om == mult(X, com)
+
+    - mult(C_inv_d, pow(1+d_rate, y_range)) == C_inv_y
+    - mult(C_om_d, pow(1+d_rate, y_range)) == C_om_y
+
+    - Q >= 0
+    - X >= 0
+    - Cap_new >= 0
+
+
+
