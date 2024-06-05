@@ -446,10 +446,13 @@ class Core:
     ) -> None:
         """
         """
-        if maximum_iterations is None and numerical_tolerance is None:
-            msg = "Either maximum iterations or numerical tolerance must be specified."
-            self.logger.error(msg)
-            raise exc.SettingsError(msg)
+        if maximum_iterations is None:
+            maximum_iterations = Constants.get(
+                '_MAXIMUM_ITERATIONS_MODEL_COUPLING')
+
+        if numerical_tolerance is None:
+            numerical_tolerance = Constants.get(
+                '_TOLERANCE_MODEL_COUPLING_CONVERGENCE')
 
         sqlite_db_path = self.paths['model_dir']
         sqlite_db_file_name = self.settings['sqlite_database_file']

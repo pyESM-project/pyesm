@@ -326,12 +326,12 @@ class Model:
 
     def run_model(
         self,
-        solver: str = 'CLARABEL',
         verbose: bool = False,
         force_overwrite: bool = False,
         integrated_problems: bool = False,
-        numerical_tolerance: float = 1,
-        maximum_iterations: int = 10,
+        solver: Optional[str] = None,
+        numerical_tolerance: Optional[float] = None,
+        maximum_iterations: Optional[int] = None,
         **kwargs: Any,
     ) -> None:
         """
@@ -348,6 +348,9 @@ class Model:
             None
         """
         n_problems = self.core.problem.number_of_problems
+
+        if solver is None:
+            solver = Constants.get('_DEFAULT_SOLVER')
 
         if solver not in Constants.get('_ALLOWED_SOLVERS'):
             msg = f"Solver '{solver}' not supported by current CVXPY version. " \
@@ -457,7 +460,7 @@ class Model:
 
     def check_model_results(
             self,
-            numerical_tolerance: float = 3,
+            numerical_tolerance: Optional[float] = None,
     ) -> None:
         """
         Checks the results of the model's computations. This is mainly called
@@ -469,9 +472,8 @@ class Model:
         'sqlite_database_file_test' setting and located in the model directory.
 
         Args:
-            numerical_tolerance (float, optional): The relative difference (%) 
-                tolerance for comparing numerical values in different databases. 
-                Defaults to 3%.
+            numerical_tolerance (float): The relative difference (non-percentage) 
+                tolerance for comparing numerical values in different databases.
 
         Raises:
             OperationalError: If the connection or cursor of the database to be 
@@ -481,6 +483,8 @@ class Model:
             ResultsError: If the databases are not identical in terms of table 
                 presence, structure, or contents.
         """
+        numerical_tolerance = Constants.get('_TOLERANCE_TESTS_RESULTS_CHECK')
+
         self.core.check_results_as_expected(
             values_relative_diff_tolerance=numerical_tolerance)
 

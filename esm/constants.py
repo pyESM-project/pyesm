@@ -69,6 +69,7 @@ class Constants:
         AttributeError: If the specified constant name does not exist within the class.
     """
 
+    # CONFIGURATION FILES INFO
     _SETUP_FILES = {
         0: 'structure_sets.yml',
         1: 'structure_variables.yml',
@@ -85,6 +86,7 @@ class Constants:
         '4_sut_multi_year_rcot_cap_dis',
     ]
 
+    # STANDARD HEADERS, TABLE FIELDS AND VALUE TYPES
     _STD_NAME_HEADER = 'name'
     _STD_FILTERS_HEADERS = 'filters'
     _STD_AGGREGATION_HEADER = 'aggregation'
@@ -97,12 +99,13 @@ class Constants:
     _CVXPY_VAR_HEADER = 'variable'
     _FILTER_DICT_HEADER = 'filter'
 
-    _OBJECTIVE_HEADER = 'objective'
-    _CONSTRAINTS_HEADER = 'expressions'
-
     _PROBLEM_HEADER = 'problem'
     _PROBLEM_INFO_HEADER = 'info'
     _PROBLEM_STATUS_HEADER = 'status'
+
+    # DEFAULT STRUCTURES FOR VALIDATION
+    _OBJECTIVE_HEADER = 'objective'
+    _CONSTRAINTS_HEADER = 'expressions'
 
     _SET_DEFAULT_STRUCTURE = {
         'symbol': str,
@@ -125,6 +128,7 @@ class Constants:
         'value': str,
     }
 
+    # ALLOWED ITEMS FOR DEFINING SYMBOLIC PROBLEMS
     _ALLOWED_CONSTANTS = {
         'sum_vector': (np.ones, {}),  # vector of 1s
         'identity': (np.eye, {}),  # identity matrix
@@ -159,7 +163,12 @@ class Constants:
         'Maximize': cp.Maximize,
     }
 
+    # NUMERICAL SETTINGS
     _ALLOWED_SOLVERS = cp.installed_solvers()
+    _DEFAULT_SOLVER = 'GUROBI'
+    _TOLERANCE_TESTS_RESULTS_CHECK = 0.03
+    _TOLERANCE_MODEL_COUPLING_CONVERGENCE = 0.01
+    _MAXIMUM_ITERATIONS_MODEL_COUPLING = 10
 
     @classmethod
     def get(cls, constant_name):
