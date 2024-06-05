@@ -21,6 +21,7 @@ Key functionalities include:
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 import re
+import warnings
 
 import pandas as pd
 import numpy as np
@@ -1223,6 +1224,14 @@ class Problem:
     ) -> None:
         """
         """
+
+        if verbose == False:
+            warnings.filterwarnings(
+                'ignore',
+                category=UserWarning,
+                module='cvxpy.reductions.solvers.solving_chain'
+            )
+
         for problem_num in problem_dataframe.index:
 
             problem_info: List[str] = problem_dataframe.at[
@@ -1241,7 +1250,7 @@ class Problem:
             numerical_problem.solve(
                 solver=solver,
                 verbose=verbose,
-                **kwargs
+                **kwargs,
             )
 
             problem_dataframe.at[

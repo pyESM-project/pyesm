@@ -120,6 +120,7 @@ class Model:
         self.files = FileManager(logger=self.logger)
 
         self.settings = DotDict({
+            'log_level': log_level,
             'model_name': model_dir_name,
             'use_existing_data': use_existing_data,
             'multiple_input_files': multiple_input_files,

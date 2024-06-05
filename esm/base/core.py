@@ -342,7 +342,11 @@ class Core:
                         data=pivoted_data
                     )
 
-    def cvxpy_endogenous_data_to_database(self, operation: str) -> None:
+    def cvxpy_endogenous_data_to_database(
+            self,
+            operation: str,
+            suppress_warnings: bool = False,
+    ) -> None:
         """
         Exports data from cvxpy endogenous variables back to data tables into 
         the SQLite database.
@@ -375,13 +379,16 @@ class Core:
 
                 if data_table.coordinates_dataframe is not None:
                     data_table_dataframe = data_table.coordinates_dataframe
+
                     if not util.add_column_to_dataframe(
                         dataframe=data_table_dataframe,
                         column_header=values_headers,
                     ):
-                        self.logger.warning(
-                            f"Column '{values_headers}' already exists in data "
-                            f"table '{data_table_key}'")
+                        if self.settings['log_level'] == 'debug' or \
+                                not suppress_warnings:
+                            self.logger.warning(
+                                f"Column '{values_headers}' already exists in data "
+                                f"table '{data_table_key}'")
                 else:
                     msg = "Coordinates dataframe not defined for data " \
                         f"table '{data_table_key}'. "
@@ -394,8 +401,10 @@ class Core:
                     cvxpy_var_data = None
 
                 if cvxpy_var_data is None or len(cvxpy_var_data) == 0:
-                    self.logger.warning(
-                        f"No data available in cvxpy variable '{data_table_key}'")
+                    if self.settings['log_level'] == 'debug' or \
+                            not suppress_warnings:
+                        self.logger.warning(
+                            f"No data available in cvxpy variable '{data_table_key}'")
                     continue
 
                 data_table_dataframe[values_headers] = cvxpy_var_data
@@ -404,6 +413,7 @@ class Core:
                     table_name=data_table_key,
                     dataframe=data_table_dataframe,
                     operation=operation,
+                    suppress_warnings=suppress_warnings,
                 )
 
     def check_results_as_expected(
@@ -496,7 +506,10 @@ class Core:
                 **kwargs
             )
 
-            self.cvxpy_endogenous_data_to_database(operation='update')
+            self.cvxpy_endogenous_data_to_database(
+                operation='update',
+                suppress_warnings=True,
+            )
 
             with db_handler(self.sqltools):
                 relative_difference = \
@@ -506,14 +519,20 @@ class Core:
                         tables_names=tables_to_check,
                     )
 
-            self.logger.info(
-                "Maximum relative differences in tables values: "
-                f"'{relative_difference}'")
+            relative_difference_above = {
+                table: value
+                for table, value in relative_difference.items()
+                if value > numerical_tolerance
+            }
 
-            if all(
-                value <= numerical_tolerance
-                for value in relative_difference.values()
-            ):
+            if relative_difference_above:
+                self.logger.info(
+                    "Data tables with highest relative difference above "
+                    f"treshold ({numerical_tolerance}):"
+                )
+                for table, value in relative_difference_above.items():
+                    self.logger.info(f"Data table '{table}': {value}")
+            else:
                 self.logger.info("Numerical convergence reached.")
                 self.files.erase_file(
                     dir_path=sqlite_db_path,

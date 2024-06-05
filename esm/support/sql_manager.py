@@ -645,6 +645,7 @@ class SQLManager:
         dataframe: pd.DataFrame,
         operation: str = 'overwrite',
         force_operation: bool = False,
+        suppress_warnings: bool = False,
     ) -> None:
         """Add or update a SQLite table based on data provided by a Pandas
         DataFrame.
@@ -720,8 +721,9 @@ class SQLManager:
             dataframe_to_update = self.table_to_dataframe(table_name)
 
             if util.check_dataframes_equality([dataframe_to_update, dataframe]):
-                self.logger.warning(
-                    f"SQLite table {table_name} already up to date.")
+                if not suppress_warnings:
+                    self.logger.warning(
+                        f"SQLite table {table_name} already up to date.")
                 return
 
             if not util.check_dataframe_columns_equality(
