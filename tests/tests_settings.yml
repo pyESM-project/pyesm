@@ -1,0 +1,45 @@
+log_level: 'info'
+
+paths: 
+    features: models/features
+    linear: models/linear
+    integrated: models/integrated
+
+fixtures:
+    features: 
+        - constants
+        - variables_filtering
+        - weibull
+        - test_structure
+        - sets_mirror
+        - inverse
+
+    linear: 
+        - 0a_tech_filters
+        - 0b_year_filters
+        - 1_operation
+        - 1a_emissions
+        - 2a_planning
+        - 2b_planning_discounting
+        - 3_lca
+        - 3a_lca_it_pt
+        - 4_infra_year_timeslice
+        - 4a_storage
+
+    integrated:
+        - 1_coupled_model
+        - 2_lca_twin_problem 
+
+test_methods:
+    update_database_and_problem: {force_overwrite: True}
+    initialize_problems: {force_overwrite: True}
+    run_model: {force_overwrite: True}
+    load_results_to_database: {}
+    check_model_results: {}
+
+test_methods_integrated:
+    update_database_and_problem: {force_overwrite: True}
+    initialize_problems: {force_overwrite: True}
+    run_model: {force_overwrite: True, integrated_problems: True}
+    load_results_to_database: {}
+    check_model_results: {}

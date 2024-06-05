@@ -40,7 +40,7 @@ class Database:
         paths (Dict): Contains paths used throughout operations, such as for files and directories.
         settings (Dict): Configuration settings for the application.
 
-    Args:
+    Parameters:
         logger (Logger): Logger instance for the class.
         files (FileManager): FileManager instance for handling file operations.
         paths (Dict): Dictionary of path configurations.
@@ -62,8 +62,30 @@ class Database:
     ) -> None:
         """
         Initializes the Database class with the necessary components and settings.
-        """
 
+        Parameters:
+            logger (Logger): An instance of Logger for logging information and 
+                error messages.
+            files (FileManager): An instance of FileManager for managing 
+                file-related operations.
+            sqltools (SQLManager): An instance of SQLManager for managing SQL 
+                database interactions.
+            index (Index): An instance of Index for managing set tables and data 
+                tables.
+            paths (Dict[str, str]): A dictionary containing paths used throughout 
+                operations, such as for files and directories.
+            settings (Dict[str, Any]): A dictionary containing configuration 
+                settings for the application.
+
+        Returns:
+            None
+
+        Notes:
+            The logger is initialized with a child logger using the name of the 
+                current module.
+            If the 'use_existing_data' setting is False, a blank sets Excel file 
+                is created for defining sets.
+        """
         self.logger = logger.get_child(__name__)
         self.logger.debug(f"'{self}' object initialization...")
 
@@ -86,6 +108,21 @@ class Database:
         """
         Creates a blank Excel file for sets if it does not exist, or erases it 
         based on settings.
+        This method checks if the sets Excel file specified in the settings exists. 
+        If it does and 'use_existing_data' is False, the method erases the existing 
+        file. If 'use_existing_data' is True or the file does not exist, the method 
+        creates a new blank Excel file with headers for each set.
+
+        Returns:
+            None
+
+        Notes:
+            The method logs information about whether it is using an existing file, 
+                erasing an existing file, or creating a new file.
+            The headers for the new Excel file are determined based on the 
+                'set_excel_file_headers' attribute of each set in the index.
+            Sets that have a 'copy_from' attribute are not included in the new 
+                Excel file.
         """
         sets_file_name = self.settings['sets_xlsx_file']
 
@@ -132,7 +169,25 @@ class Database:
     def create_blank_sqlite_database(self) -> None:
         """
         Creates a blank SQLite database with table structures defined in the 
-        Model.Index class.
+        Model.Index class. 
+        This method generates a new SQLite database file as specified in the 
+        settings. It then iterates over each set in the index, validates that 
+        it is an instance of SetTable, and creates a new table in the database 
+        for the set. The table's headers are determined based on the 
+        'table_headers' attribute of the set.
+
+        Returns:
+            None
+
+        Raises:
+            AssertionError: If a set in the index is not an instance of SetTable.
+            MissingDataError: If the 'table_headers' attribute of a set is None.
+
+        Notes:
+            The method logs information about the creation of the database and 
+                each table.
+            If the 'table_headers' attribute of a set does not include the 
+                standard ID field, the method adds it.
         """
         self.logger.debug(
             f"Generating database '{self.settings['sqlite_database_file']}'.")
@@ -162,12 +217,24 @@ class Database:
     def load_sets_to_sqlite_database(self) -> None:
         """
         Loads the sets data from the in-memory data structures into the SQLite 
-        database. It assumes that the data is already present in the set 
-        instances within the index.
+        database.
+        This method iterates over each set in the index, validates that it is an 
+        instance of SetTable, and loads the set's data into the corresponding table 
+        in the SQLite database. The data is assumed to be already present in the 
+        set instances within the index.
+
+        Returns:
+            None
 
         Raises:
-            MissingDataError: If any of the sets' data is not defined, 
-            indicating incomplete setup.
+            AssertionError: If a set in the index is not an instance of SetTable.
+            MissingDataError: If the 'data' attribute of a set is None, indicating 
+                incomplete setup.
+
+        Notes:
+            The method logs information about the loading process for each set.
+            If the 'table_headers' attribute of a set does not include the 
+                standard ID field, the method adds it.
         """
         self.logger.debug(
             f"Loading Sets to '{self.settings['sqlite_database_file']}'.")
@@ -200,8 +267,20 @@ class Database:
 
     def generate_blank_sqlite_data_tables(self) -> None:
         """
-        Generates empty data tables in the SQLite database for endogenous and
+        Generates empty data tables in the SQLite database for endogenous and 
         exogenous variables.
+        This method iterates over each data table in the index. If the table's 
+        type is not 'constant', it creates a new table in the SQLite database 
+        for the data table. The table's headers and foreign keys are determined 
+        based on the 'table_headers' and 'foreign_keys' attributes of the data table.
+
+        Returns:
+            None
+
+        Notes:
+            The method logs information about the creation of each table.
+            Constant tables are skipped as they do not require a separate table 
+                in the SQLite database.
         """
         self.logger.debug(
             "Generation of empty data tables in "
@@ -223,8 +302,22 @@ class Database:
     def sets_data_to_sql_data_tables(self) -> None:
         """
         Transforms and loads sets data into SQLite tables, preparing them for 
-        variable storage. Excludes constant types to separate configuration 
-        from variable data.
+        variable storage.
+        This method iterates over each data table in the index. If the table's 
+        type is not 'constant', it unpivots the table's coordinates values into 
+        a DataFrame, adds an ID column to the DataFrame, and loads the DataFrame 
+        into the corresponding table in the SQLite database. It then adds a 
+        standard values field to the table.
+        Excludes constant types to separate configuration from variable data.
+
+        Returns:
+            None
+
+        Notes:
+            The method logs information about the loading process for each table.
+            The unpivoting process transforms the coordinates values from a 
+                dictionary format into a DataFrame format.
+            The standard values field is added to store the values of the variables.
         """
         self.logger.debug(
             "Adding sets information to sqlite data tables in "
@@ -271,11 +364,22 @@ class Database:
     ) -> None:
         """
         Clears specified tables or all tables from the SQLite database.
+        This method accepts a list of table names or a single table name to 
+        clear. If no table names are provided, it clears all tables in the 
+        SQLite database. The method logs information about the clearing process 
+        and uses the SQLManager instance to drop the tables.
 
-        Args:
-            table_names (Optional[List[str] | str]): A list of table names or 
-            a single table name to clear. If None, all tables in the database 
-            will be cleared.
+        Parameters:
+            table_names (Optional[List[str] | str]): A list of table names or a 
+                single table name to clear. If None, all tables in the database 
+                will be cleared.
+
+        Returns:
+            None
+
+        Notes:
+            The method uses a context manager to handle the database connection.
+            If a table name is not found in the index, the method skips it.
         """
         with db_handler(self.sqltools):
             existing_tables = self.sqltools.get_existing_tables_names
@@ -303,12 +407,26 @@ class Database:
         file_extension: str = data_file_extension,
     ) -> None:
         """
-        Generates blank data input files for exogenous data tables, either as 
-        multiple files or a single combined file based on settings.
+        Generates blank data input files for exogenous data tables.
+        This method iterates over each data table in the index. If the table's 
+        type is 'exogenous', it exports the table's data from the SQLite database 
+        to an Excel file. The file's name is determined based on the 
+        'multiple_input_files' setting and the table's key. If 'multiple_input_files' 
+        is True, a separate file is created for each table. Otherwise, all tables 
+        are exported to a single file as separate tabs.
 
-        Args:
-            file_extension (str): File extension to use for generated files, 
-            default is taken from class attribute.
+        Parameters:
+            file_extension (str, optional): The file extension to use for the 
+                generated files. Defaults to the 'data_file_extension' class attribute.
+
+        Returns:
+            None
+
+        Notes:
+            The method logs information about the file generation process.
+            If the input data directory does not exist, the method creates it.
+            Endogenous and constant tables are skipped as they do not require 
+                input files.
         """
         self.logger.debug("Generation of data input file/s.")
 
@@ -318,7 +436,7 @@ class Database:
         with db_handler(self.sqltools):
             for table_key, table in self.index.data.items():
 
-                if table.type == 'endogenous':
+                if table.type in ['endogenous', 'constant']:
                     continue
 
                 if self.settings['multiple_input_files']:
@@ -340,13 +458,28 @@ class Database:
     ) -> None:
         """
         Loads data from user-filled input files into the SQLite database.
+        This method checks the 'multiple_input_files' setting to determine whether 
+        to load data from multiple files or a single file. If 'multiple_input_files' 
+        is True, the method iterates over each exogenous data table in the index, 
+        loads the table's data from the corresponding Excel file, and inserts or 
+        updates the data in the SQLite database. If 'multiple_input_files' is False, 
+        the method loads data from a single Excel file and inserts or updates the 
+        data for each table in the SQLite database.
 
-        Args:
+        Parameters:
             operation (str): The SQL operation to be performed with the data 
                 ('insert', 'update', etc.).
-            file_extension (str): The extension of the data files to load.
-            force_overwrite (bool): If True, forces the overwrite of existing 
-                data.
+            file_extension (str, optional): The extension of the data files to 
+                load. Defaults to the 'data_file_extension' class attribute.
+            force_overwrite (bool, optional): If True, forces the overwrite of 
+                existing data. Defaults to False.
+
+        Returns:
+            None
+
+        Notes:
+            The method logs information about the loading process.
+            The method uses a context manager to handle the database connection.
         """
         self.logger.debug(
             "Loading data from input file/s filled by the user "
@@ -358,7 +491,7 @@ class Database:
             with db_handler(self.sqltools):
                 for table_key, table in self.index.data.items():
 
-                    if table.type == 'exogenous':
+                    if table.type not in ['endogenous', 'constant']:
                         file_name = table_key + file_extension
 
                         data.update(

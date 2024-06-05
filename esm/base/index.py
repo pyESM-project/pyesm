@@ -41,7 +41,7 @@ class Index:
         data (Dict[str, DataTable]): Dictionary of data tables loaded upon initialization.
         variables (Dict[str, Variable]): Dictionary of variables fetched upon initialization.
 
-    Args:
+    Parameters:
         logger (Logger): Logger instance from the parent or main handler.
         files (FileManager): FileManager instance for handling file operations.
         paths (Dict[str, Path]): Dictionary containing necessary path configurations.
@@ -144,7 +144,7 @@ class Index:
         If validation passes, it creates instances of the specified class for 
         each entry.
 
-        Args:
+        Parameters:
             file_key (int): Key to retrieve the file name from constants.
             validation_structure (Dict): The structure against which to validate 
                 the data.
@@ -405,7 +405,7 @@ class Index:
         Loads data for sets from an Excel file into the Index. If any set already 
         contains data, prompts the user to decide whether to overwrite the existing data.
 
-        Args:
+        Parameters:
             excel_file_name (str): The name of the Excel file to load.
             excel_file_dir_path (Path | str): The directory path where the Excel 
                 file is located.

@@ -4,12 +4,12 @@ sql_manager.py
 @author: Matteo V. Rocco
 @institution: Politecnico di Milano
 
-This module contains the SQLManager class, which is designed to manage SQLite
-database interactions for the package relying on the built-in sqlite3 functions.
-It handles database connections, executes SQLite queries, and exports data to
-Excel files using specified engines. The class provides methods to open and close
-database connections, execute queries with various options, and perform Excel
-exports.
+This module defines the SQLManager class responsible for managing SQLite database
+interactions in Python using the sqlite3 library. It facilitates various database
+operations such as connecting to databases, executing SQL queries, and exporting
+data to Excel files. The SQLManager class aims to simplify database management
+tasks by providing a set of easy-to-use methods for common SQL operations, ensuring
+that database interactions are both efficient and safe.
 """
 
 from typing import List, Dict, Any, Literal, Optional, Tuple
@@ -27,84 +27,63 @@ from esm.support import util
 
 class SQLManager:
     """
-    A class designed to manage SQLite database interactions and facilitate data
-    export to Excel files.
-    This class handles all database operations including opening and closing
-    connections, executing SQL queries, and managing database transactions.
-    It also provides methods for exporting data directly to Excel using specified
-    Excel writing engines.
+    Manages SQLite database interactions and facilitates data export to Excel files.
+
+    This class simplifies the process of database management by providing methods to
+    open and close database connections, execute SQL queries, handle transactions,
+    and export tables to Excel files using specific engines. It ensures that all database
+    operations are conducted securely and efficiently, leveraging Python's sqlite3
+    library functionalities.
 
     Attributes:
-        logger (Logger): An instance of a logging class used to log messages
-            in different severity levels.
-        database_sql_path (Path): The file system path to the SQLite database file.
-        database_name (str): A human-readable identifier for the database used
-            in logging.
-        xls_engine (Literal['openpyxl', 'xlsxwriter']): The engine to use for
-            exporting data to Excel. Currently supports 'openpyxl' and 'xlsxwriter'.
-        connection (Optional[sqlite3.Connection]): The SQLite database connection
-            object, which is None until the database is connected.
-        cursor (Optional[sqlite3.Cursor]): The cursor object for executing SQL
-            queries, None if the database is not connected.
-        foreign_keys_enabled (Optional[bool]): Indicates whether SQLite foreign
-            key constraints are actively enforced in the database session.
+        logger (Logger): An instance of a logging class for logging messages.
+        database_sql_path (Path): Path to the SQLite database file.
+        database_name (str): Descriptive name of the database used in logs.
+        xls_engine (Literal['openpyxl', 'xlsxwriter']): Engine for exporting 
+            data to Excel.
+        connection (Optional[sqlite3.Connection]): Active database connection, 
+            None if not connected.
+        cursor (Optional[sqlite3.Cursor]): Database cursor for executing SQL 
+            queries, None if not connected.
+        foreign_keys_enabled (Optional[bool]): Status of SQLite foreign key 
+            enforcement in the session.
 
     Methods:
-        open_connection(): Opens a connection to the SQLite database and
-            initializes a cursor.
-        close_connection(): Closes the existing database connection and
-            nullifies the cursor.
-        execute_query(query, params, many, fetch, commit): Executes a SQL query
-            using the provided parameters.
-        check_table_exists(table_name): Checks if the specified table exists
-            in the database.
-        get_existing_tables_names(): Retrieves a list of table names existing
-            in the database.
-        table_to_excel(excel_filename, excel_dir_path, table_name): Exports the
-            contents of a database table to an Excel file.
-        get_primary_column_name(table_name): Retrieves the primary key column
-            name from the specified table.
-        drop_table(table_name): Deletes the specified table from the database.
-        get_table_fields(table_name): Fetches and returns the fields and their
-            data types of the specified table.
-        create_table(table_name, table_fields, foreign_keys): Creates a new
-            table with the given specifications.
-        switch_foreign_keys(switch): Enables or disables foreign key enforcement
-            in the database.
-        add_table_column(table_name, column_name, column_type, default_value,
-            commit): Adds a new column to an existing table.
-        count_table_data_entries(table_name): Counts and returns the number of
-            entries in the specified table.
-        delete_all_table_entries(table_name, force_operation): Deletes all
-            entries from the specified table.
-        validate_table_dataframe_headers(table_name, dataframe, check_id_field):
-            Validates that DataFrame headers match the table schema.
-        add_primary_keys_from_table(table_name, dataframe): Adds primary key
-            values from a table to a DataFrame.
-        table_to_dataframe(table_name): Converts the entire contents of a
-            table into a pandas DataFrame.
-        dataframe_to_table(table_name, dataframe, operation, force_operation):
-            Inserts or updates data from a DataFrame into a table.
-        filtered_table_to_dataframe(table_name, filters_dict): Returns a DataFrame
-            based on filtered data from a table.
-        get_related_table_keys(child_column_name, parent_table_name,
-            parent_table_fields): Retrieves related keys from a child table
-            based on parent table filters.
-        compare_with_other_database(): Compare two SQLite databases.
+        - open_connection: Establishes a connection to the SQLite database.
+        - close_connection: Closes the current database connection.
+        - execute_query: Executes a SQL query with optional parameters.
+        - check_table_exists: Checks existence of a table in the database.
+        - get_existing_tables_names: Retrieves a list of all tables in the database.
+        - table_to_excel: Exports a database table to an Excel file.
+        - get_primary_column_name: Finds the primary key column of a table.
+        - drop_table: Removes a table from the database.
+        - get_table_fields: Fetches field names and types of a table.
+        - create_table: Creates a table with specified fields and foreign keys.
+        - switch_foreign_keys: Enables or disables foreign key enforcement.
+        - add_table_column: Adds a new column to an existing table.
+        - count_table_data_entries: Counts entries in a table.
+        - delete_all_table_entries: Deletes all entries from a table.
+        - validate_table_dataframe_headers: Validates DataFrame headers against 
+            table schema.
+        - add_primary_keys_from_table: Appends primary key values from a table 
+            to a DataFrame.
+        - table_to_dataframe: Converts table contents into a DataFrame.
+        - dataframe_to_table: Inserts or updates data from a DataFrame into a table.
+        - filtered_table_to_dataframe: Filters a table and returns the results 
+            as a DataFrame.
+        - get_related_table_keys: Retrieves related keys based on parent table filters.
 
     Examples:
-        To use this class, instantiate it with a logger and database details,
-        then use its methods to manage database operations:
         >>> logger = Logger()
-        >>> sql_manager = SQLManager(logger, Path('/path/to/database.db'),
+        >>> sql_manager = SQLManager(logger, Path('/path/to/database.db'), 
                 'MyDatabase', 'openpyxl')
         >>> sql_manager.open_connection()
         >>> sql_manager.execute_query("SELECT * FROM my_table")
         >>> sql_manager.close_connection()
 
     Note:
-        This class assumes that a valid SQLite database path is provided and
-        that the database file is accessible and correctly formatted.
+        Assumes a valid SQLite database path is provided and that the database 
+        file is accessible and correctly formatted.
     """
 
     def __init__(
@@ -114,14 +93,20 @@ class SQLManager:
         database_name: str,
         xls_engine: Literal['openpyxl', 'xlswriter'] = 'openpyxl',
     ) -> None:
-        """Initialize the SQLManager.
+        """
+        Initializes the SQLManager instance with necessary database details 
+        and configurations.
 
         Args:
-            logger (Logger): Logger object.
-            database_path (Path): Path to the SQLite database.
-            database_name (str): Name of the SQLite database.
-            xls_engine (str, optional): Engine to use for Excel writing.
-                Defaults to 'openpyxl'.
+            logger (Logger): Logger object for logging database operations.
+            database_path (Path): File system path to the SQLite database file.
+            database_name (str): Descriptive name of the database for logging 
+                purposes.
+            xls_engine (Literal['openpyxl', 'xlsxwriter']): Preferred engine 
+                for exporting data to Excel, defaults to 'openpyxl'.
+
+        Sets up the initial state of the SQLManager, preparing it for database 
+            operations. It logs the creation of the SQLManager instance.
         """
         self.logger = logger.get_child(__name__)
         self.logger.debug(f"'{self}' object generation.")
@@ -139,18 +124,15 @@ class SQLManager:
         return f'{class_name}'
 
     def open_connection(self) -> None:
-        """Opens a connection to the SQLite database.
-        If the connection is not already established, it creates a new
-        connection to the specified SQLite database file. It also initializes a
-        cursor for executing SQL queries. If there is an error during the
-        connection process, it logs the error and raises the caught exception.
-
-        Returns:
-            None
+        """
+        Opens a connection to the SQLite database.
+        Establishes a connection to the specified database file and initializes 
+        a cursor for executing SQL queries. Logs and re-raises any sqlite3.Error 
+        encountered during the connection process.
 
         Raises:
-            sqlite3.Error: If there is an error in establishing the database
-            connection.
+            OperationalError: If there is an error establishing the database 
+                connection, captured and logged.
         """
         if self.connection is None:
             try:
@@ -158,27 +140,25 @@ class SQLManager:
                 self.cursor = self.connection.cursor()
                 self.logger.debug(
                     f"Connection to '{self.database_name}' opened.")
-            except sqlite3.Error:
-                self.logger.error(
-                    f"Error opening connection to '{self.database_name}'")
-                raise
+            except sqlite3.Error as error:
+                msg = f"Error opening connection to '{self.database_name}'."
+                self.logger.error(msg)
+                raise exc.OperationalError(msg) from error
 
         else:
             self.logger.warning(
                 f"Connection to '{self.database_name}' already opened.")
 
     def close_connection(self) -> None:
-        """Closes the connection to the SQLite database.
-        If a connection is currently open, it closes the connection and sets
-        the connection attribute to None. If no connection exists, it logs a
-        warning message indicating that no connection is open.
-
-        Returns:
-            None
+        """
+        Closes the currently open database connection.
+        Terminates the database connection and resets the connection and cursor 
+        attributes to None. Logs a warning if no connection is open at the time 
+        of the call.
 
         Raises:
-            sqlite3.Error: If there is an error in closing the database
-            connection.
+            OperationalError: If there is an error closing the database connection, 
+                which is logged.
         """
         if self.connection:
             try:
@@ -186,10 +166,10 @@ class SQLManager:
                 self.connection = None
                 self.logger.debug(
                     f"Connection to '{self.database_name}' closed.")
-            except sqlite3.Error:
-                self.logger.error(
-                    f"Error closing connection to '{self.database_name}'")
-                raise
+            except sqlite3.Error as error:
+                msg = f"Error closing connection to '{self.database_name}'."
+                self.logger.error(msg)
+                raise exc.OperationalError(msg) from error
 
         else:
             self.logger.warning(
@@ -204,28 +184,32 @@ class SQLManager:
             fetch: bool = False,
             commit: bool = True,
     ) -> Optional[List[Tuple]]:
-        """Executes an SQL query on the SQLite database.
+        """
+        Executes a specified SQL query using provided parameters.
+        This method supports executing single or multiple SQL commands with 
+        optional parameterization, fetching results, and committing changes to 
+        the database. Handles and logs specific sqlite3 exceptions related to 
+        operation and integrity.
 
         Args:
-            query (str): The SQL query to be executed.
-            params (tuple, optional): Parameters to be used in the query.
-                Default is an empty tuple.
-            many (bool, optional): Set to True if executing a many-parameter
-                query. Default is False.
-            fetch (bool, optional): Set to True if the query returns data that
-            needs to be fetched. Default is False.
-            commit (bool, optional): Set to False to skip changes commit,
-                True otherwise. Default is True.
+            query (str): SQL query to be executed.
+            params (tuple | List[tuple], optional): Parameters for the SQL query.
+            many (bool, optional): Whether to execute the query with multiple 
+                parameter sets.
+            fetch (bool, optional): Whether to fetch and return the query results.
+            commit (bool, optional): Whether to commit the transaction after 
+                query execution.
 
         Returns:
-            Optional[List[Tuple]]: A list of tuples containing the fetched data
-            if fetch is True, None otherwise.
+            Optional[List[Tuple]]: Results of the query if fetched; otherwise, 
+                None.
 
         Raises:
-            OperationalError: If there is an operational error during query execution.
-            IntegrityError: If there is an integrity error during query execution.
+            exc.OperationalError: If there is an operational issue during query 
+                execution.
+            exc.IntegrityError: If there is an integrity issue during query 
+                execution.
         """
-
         if self.connection is None or self.cursor is None:
             msg = "Database connection or cursor not initialized."
             self.logger.error(msg)
@@ -255,7 +239,10 @@ class SQLManager:
 
     @property
     def get_existing_tables_names(self) -> List[str]:
-        """Retrieve a list of existing table names in the SQLite database.
+        """
+        Retrieve a list of existing table names in the SQLite database.
+        This method queries the database to extract the names of all tables and 
+        logs any related errors.
 
         Returns:
             List[str]: A list containing the names of existing tables in the
@@ -270,14 +257,17 @@ class SQLManager:
         return [table[0] for table in tables]
 
     def check_table_exists(self, table_name: str) -> None:
-        """Check if a table exists in the SQLite database.
+        """
+        Verifies the existence of a specified table within the SQLite database.
+        Checks against the list of existing tables and logs an error if the 
+        specified table is not found.
 
         Args:
-            table_name (str): The name of the table to check.
+            table_name (str): Name of the table to check.
 
         Raises:
-            TableNotFoundError: If the specified table does not exist in
-            the database.
+            exc.TableNotFoundError: If the specified table does not exist in 
+                the database.
         """
         if table_name not in self.get_existing_tables_names:
             msg = f"SQLite table '{table_name}' NOT found."
@@ -285,16 +275,21 @@ class SQLManager:
             raise exc.TableNotFoundError(msg)
 
     def get_primary_column_name(self, table_name: str) -> str:
-        """Retrieve the name of the primary key column for a given SQLite table.
+        """
+        Determines the primary key column name for a specified table.
+        This method retrieves and analyzes the table schema to identify the 
+        primary key column. It raises an error if the table lacks a unique 
+        primary key.
 
         Args:
-            table_name (str): The name of the SQLite table.
+            table_name (str): The name of the table to inspect.
 
         Returns:
             str: The name of the primary key column.
 
         Raises:
-            ValueError: If the table does not have a unique primary key column.
+            ValueError: If the table does not have a unique primary key column 
+                or has multiple primary key columns.
         """
         query = f"PRAGMA table_info({table_name})"
         self.execute_query(query)
@@ -317,33 +312,34 @@ class SQLManager:
                 f"columns: {primary_key_columns}")
 
     def drop_table(self, table_name: str) -> None:
-        """Drops an SQLite table.
+        """
+        Deletes a specified table from the SQLite database.
+        This method constructs and executes a SQL command to drop the table and 
+        logs the action. It checks for operational errors during the execution.
 
         Args:
             table_name (str): The name of the table to be dropped.
-
-        Returns:
-            None
-
-        Raises:
-            OperationalError: If there is an operational error during table
-            dropping.
         """
         query = f"DROP TABLE {table_name}"
         self.execute_query(query)
         self.logger.debug(f"SQLite '{table_name}' - deleted.")
 
     def get_table_fields(self, table_name: str) -> Dict[str, str]:
-        """Retrieve the fields and their corresponding types for a given
-        SQLite table.
+        """
+        Fetches and returns the field names and data types for a specified table.
+        Queries the database schema to determine the structure of the given table, 
+        providing insights into its composition.
 
         Args:
-            table_name (str): The name of the SQLite table.
+            table_name (str): The name of the table to query.
 
         Returns:
-            Dict[str, List[str]]: A dictionary containing two lists:
-                - 'labels': List of field names.
-                - 'types': List of corresponding field types.
+            Dict[str, List[str]]: A dictionary with lists of field names 
+                ('labels') and their corresponding data types ('types').
+
+        Raises:
+            exc.MissingDataError: If the table fields are not available or 
+                the query fails.
         """
         query = f"PRAGMA table_info('{table_name}')"
         result = self.execute_query(query, fetch=True)
@@ -365,25 +361,19 @@ class SQLManager:
             table_fields: Dict[str, List[str]],
             foreign_keys: Optional[Dict[str, tuple]] = None,
     ) -> None:
-        """Create an SQLite table with the specified name, fields and foreign
-        keys (optional).
+        """
+        Creates a new table in the SQLite database with specified fields and 
+        optional foreign keys.
+        This method constructs a SQL command to create a table based on provided 
+        field definitions and foreign key constraints. It logs the creation 
+        process and handles potential errors.
 
         Args:
-            table_name (str): The name of the SQLite table.
-            table_fields (Dict[str, List[str]]): A dictionary containing
-            two lists:
-                - 'labels': List of field names.
-                - 'types': List of corresponding field types.
-            foreign_keys (Dict[str, tuple], optional): A dictionary
-                representing foreign key constraints. Keys are field names,
-                and values are tuples (referencing_field, referenced_table).
-
-        Returns:
-            None
-
-        Raises:
-            OperationalError: If there is an operational error during
-            table creation.
+            table_name (str): The name of the table to create.
+            table_fields (Dict[str, List[str]]): Dictionary of field names and 
+                types to define the table structure.
+            foreign_keys (Optional[Dict[str, tuple]]): Dictionary specifying 
+                foreign key constraints. Default is None.
         """
         if table_name in self.get_existing_tables_names:
             self.logger.info(f"SQLite table '{table_name}' already exists.")
@@ -424,13 +414,14 @@ class SQLManager:
             self.logger.debug(f"SQLite table '{table_name}' - created.")
 
     def switch_foreing_keys(self, switch: bool) -> None:
-        """Enable or disable foreign keys in the SQLite database.
+        """
+        Enables or disables the enforcement of foreign key constraints within 
+        the SQLite database session.
+        This method adjusts the foreign key constraint settings based on the 
+        specified parameter and logs the state change.
 
         Args:
-            switch (bool): Set to True to enable foreign keys, False to disable.
-
-        Returns:
-            None
+            switch (bool): True to enable, False to disable foreign key constraints.
         """
         if switch:
             if self.foreign_keys_enabled:
@@ -452,22 +443,22 @@ class SQLManager:
             default_value: Any = None,
             commit: bool = True,
     ) -> None:
-        """Add a column to an SQLite table.
+        """
+        Adds a new column to an existing table in the SQLite database.
+        This method constructs and executes an ALTER TABLE command to add a 
+        new column with specified properties. It logs the addition and any 
+        errors encountered.
 
         Args:
-            table_name (str): The name of the SQLite table.
-            column_name (str): The name of the column to be added.
-            column_type (str): The SQLite data type of the new column.
-            default_value (Any, optional): The default value for the new column.
-                Default is None.
-            commit (bool, optional): Set to True to commit the changes,
-                False otherwise. Default is True.
-
-        Returns:
-            None
+            table_name (str): The table to modify.
+            column_name (str): The name of the new column.
+            column_type (str): The data type of the new column.
+            default_value (Any, optional): Default value for the new column.
+            commit (bool, optional): Whether to commit the transaction immediately.
 
         Raises:
-            Exception: In case of errors in adding column to SQLite table.
+            OperationalError: If there is an error during the execution of the 
+                command.
         """
         try:
             query = f"""
@@ -482,8 +473,10 @@ class SQLManager:
             self.logger.debug(
                 f"SQLite table '{table_name}' - column '{column_name}' added.")
 
-        except sqlite3.Error as msg:
-            self.logger.error(f"Error adding column to table: {msg}")
+        except sqlite3.Error as error:
+            msg = f"Error adding column to table: {error}"
+            self.logger.error(msg)
+            raise exc.OperationalError(msg) from error
 
     def count_table_data_entries(self, table_name: str) -> int:
         """Count the number of entries in an SQLite table.
@@ -496,28 +489,30 @@ class SQLManager:
         """
         query = f'SELECT COUNT(*) FROM {table_name}'
         self.execute_query(query)
-
-        if self.cursor:
-            return self.cursor.fetchone()[0]
-
-        msg = "Database cursor not initialized."
-        self.logger.error(msg)
-        raise exc.OperationalError(msg)
+        return self.cursor.fetchone()[0]
 
     def delete_all_table_entries(
             self,
             table_name: str,
             force_operation: bool = False
     ) -> bool:
-        """Delete all entries in an SQLite table.
+        """
+        Deletes all entries from a specified table in the SQLite database.
+        This method executes a DELETE command to remove all records from the 
+        table, with an optional confirmation to proceed based on user input.
 
         Args:
-        table_name (str): The name of the SQLite table.
-        force_operation (bool, optional): If True, avoid asking user
-            confirmation to execute the operation. Defaults to False.
+            table_name (str): The name of the table from which to delete entries.
+            force_operation (bool, optional): If True, bypasses user confirmation 
+                and deletes entries.
 
         Returns:
-            True if entries are deleted, False if user chooses not to delete.
+            bool: True if entries were successfully deleted, False if the 
+                operation was aborted by the user.
+
+        Notes:
+            If there are entries in the table and force_operation is False, 
+                the method will prompt the user to confirm deletion.
         """
         num_entries = self.count_table_data_entries(table_name)
 
@@ -545,18 +540,21 @@ class SQLManager:
             dataframe: pd.DataFrame,
             check_id_field: bool = False,
     ) -> None:
-        """Validate that the headers of a DataFrame match the headers of an
+        """
+        Validates that the headers of a DataFrame match the schema of a specified 
         SQLite table.
+        This method ensures that the DataFrame columns align with the table's 
+        field names, optionally excluding the primary key field from the validation.
 
         Args:
-            table_name (str): The name of the SQLite table.
-            dataframe (pd.DataFrame): The DataFrame to be validated.
-            check_id_field (bool, optional): Set to True to exclude the
-                primary key field from the check. Default is False.
+            table_name (str): The table against which to validate the DataFrame 
+                headers.
+            dataframe (pd.DataFrame): The DataFrame to validate.
+            check_id_field (bool, optional): Whether to exclude the primary key 
+                field from validation.
 
         Raises:
-            ValueError: If the headers of the DataFrame and the SQLite table
-                mismatch.
+            ValueError: If the DataFrame headers do not match the table schema.
         """
         field_id = self.get_primary_column_name(table_name)
         table_fields = self.get_table_fields(table_name)['labels']
@@ -566,7 +564,9 @@ class SQLManager:
             return
 
         if dataframe.columns.tolist() != table_fields:
-            msg = f"Passed DataFrame and SQLite table '{table_name}' headers mismatch."
+            mismatched_headers = set(dataframe.columns) - set(table_fields)
+            msg = f"Passed DataFrame and SQLite table '{table_name}' headers " \
+                f"mismatch. Mismatched headers: '{mismatched_headers}'"
             self.logger.error(msg)
             raise ValueError(msg)
 
@@ -575,19 +575,20 @@ class SQLManager:
             table_name: str,
             dataframe: pd.DataFrame,
     ) -> pd.DataFrame:
-        """Get primary keys from an SQLite table and add them to a DataFrame.
+        """
+        Adds primary key values from a specified SQLite table to a DataFrame 
+        based on common columns.
+        This method merges primary key values from the table into the DataFrame, 
+        ensuring that the DataFrame headers are properly aligned with the table 
+        schema before proceeding.
 
         Args:
-            table_name (str): The name of the SQLite table.
-            dataframe (pd.DataFrame): The DataFrame to which primary keys
-                will be added.
+            table_name (str): The name of the table from which to add primary keys.
+            dataframe (pd.DataFrame): The DataFrame to which primary keys will 
+                be added.
 
         Returns:
-            pd.DataFrame: The DataFrame with primary keys added.
-
-        Raises:
-            TableNotFoundError: If the specified table does not exist.
-            ValueError: If DataFrame and table headers mismatch.
+            pd.DataFrame: The modified DataFrame with primary keys included.
         """
         self.check_table_exists(table_name)
         self.validate_table_dataframe_headers(
@@ -645,33 +646,23 @@ class SQLManager:
         dataframe: pd.DataFrame,
         operation: str = 'overwrite',
         force_operation: bool = False,
+        suppress_warnings: bool = False,
     ) -> None:
-        """Add or update a SQLite table based on data provided by a Pandas
-        DataFrame.
+        """
+        Converts the contents of a specified SQLite table into a pandas DataFrame.
+        This method fetches all data from the table and structures it as a DataFrame, 
+        ensuring that the table exists before proceeding. It logs any issues 
+        encountered during the fetch operation.
 
         Args:
-            table_name (str): The name of the target SQLite table.
-            dataframe (pd.DataFrame): The Pandas DataFrame to be written to
-                the table.
-            operation (str, optional): The operation to perform (see below).
-                Defaults to 'overwrite'.
-            force_operation (bool, optional): If True, avoid asking user
-                confirmation to execute the operation. Defaults to False.
+            table_name (str): The name of the table to convert to a DataFrame.
 
         Returns:
-            None
+            pd.DataFrame: A DataFrame containing the data from the specified table.
 
         Raises:
-            ValueError: If the specified operation is not valid.
-            TableNotFoundError: If the specified table does not exist.
-            ValueError: If DataFrame and table headers mismatch.
-            OperationalError: If there is an error during query execution.
-
-        Valid 'operation' modes:
-            - overwrite: deletes all table entries and writes the new data.
-            - update: common entries (except for values) will be updated, while
-                other entries (if present) are unchanged.
-
+            exc.TableNotFoundError: If the specified table does not exist.
+            exc.OperationalError: If there is an error during query execution.
         """
         valid_operations = ['overwrite', 'update', ]
         util.validate_selection(valid_operations, operation)
@@ -720,8 +711,9 @@ class SQLManager:
             dataframe_to_update = self.table_to_dataframe(table_name)
 
             if util.check_dataframes_equality([dataframe_to_update, dataframe]):
-                self.logger.warning(
-                    f"SQLite table {table_name} already up to date.")
+                if not suppress_warnings:
+                    self.logger.warning(
+                        f"SQLite table {table_name} already up to date.")
                 return
 
             if not util.check_dataframe_columns_equality(
@@ -758,20 +750,21 @@ class SQLManager:
             excel_dir_path: Path | str,
             table_name: str,
     ) -> None:
-        """Export data from an SQLite table to an Excel file.
+        """
+        Exports the data from a specified SQLite table to an Excel file using 
+        the configured Excel engine.
+        This method prepares the data from the table and writes it to an Excel 
+        file at the specified location, offering options to overwrite existing 
+        files based on user input.
 
         Args:
-            excel_filename (str): The name of the Excel file.
-            excel_dir_path (Path): The directory path where the Excel file will
-                be saved. If it does not exist, it will be created.
-            table_name (str): The name of the SQLite table.
+            excel_filename (str): The filename for the Excel export.
+            excel_dir_path (Path | str): The directory path where the Excel file 
+                will be saved.
+            table_name (str): The name of the table whose data is being exported.
 
         Returns:
             None
-
-        Raises:
-            TableNotFoundError: If the specified table does not exist.
-            OperationalError: If there is an error during query execution.
         """
         self.check_table_exists(table_name)
 
@@ -809,28 +802,32 @@ class SQLManager:
             table_name: str,
             filters_dict: Dict[str, List[str]],
     ) -> pd.DataFrame:
-        """Filters a SQL table based on the provided filters and returns the
-        result as a pandas DataFrame.
+        """
+        Filters a specified SQLite table based on given conditions and returns 
+        the filtered data as a pandas DataFrame.
+        This method constructs a SQL query using the provided filter conditions 
+        and retrieves the matching records. It handles data type validation 
+        for the filter conditions and logs any errors or warnings if the resulting 
+        DataFrame is empty.
 
         Args:
-            table_name (str): The name of the SQL table to be filtered.
-            filters_dict (Dict[str, List[str]]): A dictionary where the keys are
-                the column names and the values are lists of values to filter by.
+            table_name (str): The name of the table to filter.
+            filters_dict (Dict[str, List[str]]): Conditions for filtering the 
+                table, with column names as keys and lists of acceptable values 
+                as values.
 
         Returns:
-            pd.DataFrame: A DataFrame containing the filtered results.
-                If no results are found, an empty DataFrame is returned
-                and a warning is logged.
+            pd.DataFrame: A DataFrame containing the filtered results. Returns 
+                an empty DataFrame if no records match.
 
         Raises:
-            ValueError: If the table_name is not found in the database.
-            TypeError: If the filters_dict is not a dictionary or if the keys
-                of the dictionary are not strings or if the values of the
-                dictionary are not lists of strings.
-            Exception: If there is an error during query execution.
+            TypeError: If the filters_dict is incorrectly structured.
+            OperationalError: If there is an error during query execution.
         """
         if not isinstance(filters_dict, dict):
-            raise TypeError("filters_dict must be a dictionary.")
+            raise TypeError(
+                f"Passed filters_dict must be a dictionary. {type(filters_dict)} "
+                "was passed instead.")
 
         for key, values in filters_dict.items():
             if not isinstance(key, str) or not isinstance(values, list):
@@ -857,8 +854,9 @@ class SQLManager:
                 params=flattened_values
             )
         except Exception as error:
-            self.logger.error(str(error))
-            raise
+            msg = f"Error filtering table '{table_name}': {error}."
+            self.logger.error(msg)
+            raise exc.OperationalError(msg) from error
 
         if result.empty:
             self.logger.warning(
@@ -872,24 +870,27 @@ class SQLManager:
             parent_table_name: str,
             parent_table_fields: Dict[str, List[str]],
     ) -> Dict[str, List[str]]:
-        """Retrieves related keys from a child table based on specified
-        conditions in the parent table. The related keys are meant to be used
-        as 'filter_dict' parameter in 'filtered_table_to_dataframe' method.
+        """
+        Retrieves keys from a child table that correspond to filtering criteria 
+        specified in a parent table.
+        This method constructs a query to extract keys from the child table 
+        based on conditions defined for the parent table, which can then be used 
+        to filter data in subsequent operations.
 
         Args:
-            child_column_name (str): The column in the child table from which
-                to retrieve related keys.
-            parent_table_name (str): The name of the parent table.
-            parent_table_fields (Dict[str, List[str]]): A dictionary where the
-                keys are the column names, and the values are lists of values
-                to filter by.
+            child_column_name (str): The column name in the child table from 
+                which to retrieve keys.
+            parent_table_name (str): The name of the parent table where filtering 
+                conditions are specified.
+            parent_table_fields (Dict[str, List[str]]): Dictionary specifying the 
+                filter conditions for the parent table.
 
         Returns:
-            Dict[str, List[str]]: A dictionary containing the related keys from
+            Dict[str, List[str]]: A dictionary containing the retrieved keys from 
                 the child table.
 
         Raises:
-            Exception: If there is an error during query execution.
+            OperationalError: If there is an error during query execution.
         """
         conditions = " AND ".join(
             [f"{key} IN ({' ,'.join('?')*len(values)})"
@@ -914,8 +915,9 @@ class SQLManager:
                 params=flattened_values
             )
         except Exception as error:
-            self.logger.error(str(error))
-            raise
+            msg = f"Error retrieving related keys: {error}."
+            self.logger.error(msg)
+            raise exc.OperationalError(msg) from error
 
         column_values = result[child_column_name].tolist()
         return {child_column_name: column_values}
@@ -932,22 +934,21 @@ class SQLManager:
         if they are identical.
 
         This method checks for the following:
-        1. Existence of tables in the source database.
-        2. Structure of the tables (schema).
-        3. Contents of the tables (coordinates).
-        4. Numerical values in the 'values' column with a specified tolerance.
+            1. Existence of tables in the source database.
+            2. Structure of the tables (schema).
+            3. Contents of the tables (coordinates).
+            4. Numerical values in the 'values' column with a specified tolerance.
 
         If any of these checks fail, the method raises a ResultsError and logs the 
         details of the failure. If all checks pass, the method logs a success message.
 
         Args:
-            other_db_dir_path (Path | str): Directory path of the other SQLite
-                database.
-            other_db_name (str): Name of the other SQLite database.
-            check_values (bool): Flag to check the numerical values in the
-                'values' column. Default is True.
-            tolerance_percentage (float): The percentage tolerance for numerical
-                values tables column.
+            other_db_dir_path (Path | str): Directory path of the other SQLite database.
+            other_db_name (str): The name of the other database to compare.
+            check_values (bool, optional): Whether to include a comparison of the 
+                numerical values in the tables. Default is True.
+            tolerance_percentage (Optional[float], optional): Tolerance for 
+                numerical value comparison. Default is None.
 
         Raises:
             OperationalError: If the connection or cursor of the database to be 
@@ -1053,7 +1054,7 @@ class SQLManager:
                 self.logger.error(msg)
                 raise exc.SettingsError(msg)
 
-            tables_wrong_values = []
+            tables_wrong_values = {}
 
             for table in current_tables:
                 self.cursor.execute(f"PRAGMA table_info({table})")
@@ -1070,21 +1071,27 @@ class SQLManager:
                 other_db_cursor.execute(query)
                 other_values = [row[0] for row in other_db_cursor.fetchall()]
 
-                for cv, ov in zip(current_values, other_values):
-                    if isinstance(cv, str) and isinstance(ov, str):
-                        continue
+                relative_differences = [
+                    util.calculate_values_difference(
+                        value_1=cv,
+                        value_2=ov,
+                        modules_difference=True,
+                        ignore_nan=True,
+                    )
+                    for cv, ov in zip(current_values, other_values)
+                ]
 
-                    if ov == 0:
-                        if cv != 0:
-                            tables_wrong_values.append(table)
-                    else:
-                        relative_error = abs(cv - ov) / abs(ov) * 100
-                        if relative_error > tolerance_percentage:
-                            tables_wrong_values.append(table)
+                if any([
+                    rd > tolerance_percentage
+                    for rd in relative_differences
+                    if rd is not None
+                ]):
+                    tables_wrong_values[table] = max(relative_differences)
 
             if tables_wrong_values:
-                msg = "Numerical differences in 'values' column exceeding " \
-                    f"tolerance for tables: {tables_wrong_values}."
+                msg = "Maximum numerical differences in 'values' column " \
+                    "exceeding maximum tolerance for tables: " \
+                    f"{round(tables_wrong_values, 5)}."
                 self.logger.error(msg)
                 raise exc.ResultsError(msg)
 
@@ -1107,15 +1114,21 @@ class SQLManager:
         the absolute value of the 'other database' values.
 
         Parameters:
-        other_db_dir_path (Union[Path, str]): The directory path of the other 
-            database.
-        other_db_name (str): The name of the other database.
-        tables_names (Optional[List[str]]): The names of the tables to compare. 
-            If None, all tables in the database will be compared.
+            other_db_dir_path (Path | str): The directory path of the other 
+                SQLite database.
+            other_db_name (str): The name of the other SQLite database.
+            tables_names (Optional[List[str]], optional): Specific tables to 
+                compare; if None, all tables are compared.
 
         Returns:
             Dict[str, float]: A dictionary where the keys are the table names 
                 and the values are the maximum relative differences.
+
+        Raises:
+            exc.OperationalError: If the connection or cursor is not initialized.
+            exc.ModelFolderError: If the comparison database does not exist or 
+                is misnamed.
+            exc.TableNotFoundError: If specified tables are not found in the database.
         """
         if self.connection is None or self.cursor is None:
             msg = "Connection or cursor of the database to be checked are " \
@@ -1162,9 +1175,13 @@ class SQLManager:
                 other_values = [row[0] for row in other_db_cursor.fetchall()]
 
                 relative_differences = [
-                    abs(cv - ov) / abs(ov) if ov != 0 else 0
+                    util.calculate_values_difference(
+                        value_1=cv,
+                        value_2=ov,
+                        modules_difference=True,
+                        ignore_nan=True,
+                    )
                     for cv, ov in zip(current_values, other_values)
-                    if not isinstance(cv, str) and not isinstance(ov, str)
                 ]
 
                 max_relative_difference[table] = max(relative_differences)

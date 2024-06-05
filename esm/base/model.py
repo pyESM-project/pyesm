@@ -120,6 +120,7 @@ class Model:
         self.files = FileManager(logger=self.logger)
 
         self.settings = DotDict({
+            'log_level': log_level,
             'model_name': model_dir_name,
             'use_existing_data': use_existing_data,
             'multiple_input_files': multiple_input_files,
@@ -326,28 +327,49 @@ class Model:
 
     def run_model(
         self,
-        solver: str = 'CLARABEL',
         verbose: bool = False,
         force_overwrite: bool = False,
         integrated_problems: bool = False,
-        numerical_tolerance: float = 1,
-        maximum_iterations: int = 10,
+        solver: Optional[str] = None,
+        numerical_tolerance: Optional[float] = None,
+        maximum_iterations: Optional[int] = None,
         **kwargs: Any,
     ) -> None:
         """
-        Solve numerical problems defined by the model instance.
+        This method is used to solve numerical problems defined by the model 
+        instance.
 
         Parameters:
-            solver (str): The solver to use for solving numerical problems. 
-                Defaults to 'SCIPY'.
-            verbose (bool): Whether to print verbose output during the model 
-                run. Defaults to True.
+            verbose (bool, optional): If True, the method will print verbose 
+                output during the model run. Defaults to False.
+            force_overwrite (bool, optional): If True, the method will overwrite 
+                existing results. Defaults to False.
+            integrated_problems (bool, optional): If True, the method will solve 
+                problems in an integrated manner. Defaults to False.
+            solver (str, optional): The solver to use for solving numerical 
+                problems. Defaults to None, in which case the default solver 
+                specified in Constants is used.
+            numerical_tolerance (float, optional): The numerical tolerance for 
+                the solver. Defaults to None.
+            maximum_iterations (int, optional): The maximum number of iterations 
+                for solving integrated problems. Defaults to None.
             **kwargs: Additional keyword arguments to be passed to the solver.
 
+        Raises:
+            SettingsError: If the specified solver is not supported by the 
+                current CVXPY version.
+            OperationalError: If no numerical problems are found.
+            SettingsError: If integrated problems are requested but only one 
+                problem is found.
+
         Returns:
-            None
+            None: This method does not return any value. It modifies the model 
+                instance by solving the numerical problems.
         """
         n_problems = self.core.problem.number_of_problems
+
+        if solver is None:
+            solver = Constants.get('_DEFAULT_SOLVER')
 
         if solver not in Constants.get('_ALLOWED_SOLVERS'):
             msg = f"Solver '{solver}' not supported by current CVXPY version. " \
@@ -389,7 +411,7 @@ class Model:
             **kwargs,
         )
 
-        if self.core.problem.status == 'optimal':
+        if self.core.problem.problem_status == 'optimal':
             self.logger.info("Numerical problems solved successfully.")
         else:
             self.logger.warning(
@@ -457,7 +479,7 @@ class Model:
 
     def check_model_results(
             self,
-            numerical_tolerance: float = 3,
+            numerical_tolerance: Optional[float] = None,
     ) -> None:
         """
         Checks the results of the model's computations. This is mainly called
@@ -469,9 +491,8 @@ class Model:
         'sqlite_database_file_test' setting and located in the model directory.
 
         Args:
-            numerical_tolerance (float, optional): The relative difference (%) 
-                tolerance for comparing numerical values in different databases. 
-                Defaults to 3%.
+            numerical_tolerance (float): The relative difference (non-percentage) 
+                tolerance for comparing numerical values in different databases.
 
         Raises:
             OperationalError: If the connection or cursor of the database to be 
@@ -481,6 +502,8 @@ class Model:
             ResultsError: If the databases are not identical in terms of table 
                 presence, structure, or contents.
         """
+        numerical_tolerance = Constants.get('_TOLERANCE_TESTS_RESULTS_CHECK')
+
         self.core.check_results_as_expected(
             values_relative_diff_tolerance=numerical_tolerance)
 
