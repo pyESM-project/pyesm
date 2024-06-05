@@ -336,17 +336,35 @@ class Model:
         **kwargs: Any,
     ) -> None:
         """
-        Solve numerical problems defined by the model instance.
+        This method is used to solve numerical problems defined by the model 
+        instance.
 
         Parameters:
-            solver (str): The solver to use for solving numerical problems. 
-                Defaults to 'SCIPY'.
-            verbose (bool): Whether to print verbose output during the model 
-                run. Defaults to True.
+            verbose (bool, optional): If True, the method will print verbose 
+                output during the model run. Defaults to False.
+            force_overwrite (bool, optional): If True, the method will overwrite 
+                existing results. Defaults to False.
+            integrated_problems (bool, optional): If True, the method will solve 
+                problems in an integrated manner. Defaults to False.
+            solver (str, optional): The solver to use for solving numerical 
+                problems. Defaults to None, in which case the default solver 
+                specified in Constants is used.
+            numerical_tolerance (float, optional): The numerical tolerance for 
+                the solver. Defaults to None.
+            maximum_iterations (int, optional): The maximum number of iterations 
+                for solving integrated problems. Defaults to None.
             **kwargs: Additional keyword arguments to be passed to the solver.
 
+        Raises:
+            SettingsError: If the specified solver is not supported by the 
+                current CVXPY version.
+            OperationalError: If no numerical problems are found.
+            SettingsError: If integrated problems are requested but only one 
+                problem is found.
+
         Returns:
-            None
+            None: This method does not return any value. It modifies the model 
+                instance by solving the numerical problems.
         """
         n_problems = self.core.problem.number_of_problems
 
@@ -393,7 +411,7 @@ class Model:
             **kwargs,
         )
 
-        if self.core.problem.status == 'optimal':
+        if self.core.problem.problem_status == 'optimal':
             self.logger.info("Numerical problems solved successfully.")
         else:
             self.logger.warning(
