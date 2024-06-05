@@ -61,3 +61,14 @@ test_models = create_test_function(
     models_dir_path=models_dir_path,
     methods=test_methods,
 )
+
+# testing integrated models
+integrated_models_dir_path = root_path / settings['paths']['integrated_models']
+integrated_models = settings['fixtures']['integrated_models']
+test_methods_integrated = settings['test_methods_integrated']
+
+test_integrated_models = create_test_function(
+    models=integrated_models,
+    models_dir_path=integrated_models_dir_path,
+    methods=test_methods_integrated,
+)

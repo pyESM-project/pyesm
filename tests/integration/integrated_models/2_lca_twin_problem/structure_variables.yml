@@ -88,7 +88,6 @@ v:
                 set: products
                 filters: {0: industry-technology}
         v:
-            inter_problems: True 
             rows: 
                 set: technologies 
             cols: 
