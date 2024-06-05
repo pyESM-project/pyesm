@@ -58,7 +58,30 @@ class Core:
             settings: Dict[str, str],
             paths: Dict[str, Path],
     ) -> None:
+        """
+        Initializes the Core class with the necessary components and settings.
+        This class serves as the main orchestrator for the application, managing 
+        the interactions between the various components.
 
+        Args:
+            logger (Logger): An instance of Logger for logging information and 
+                error messages.
+            files (FileManager): An instance of FileManager for managing 
+                file-related operations.
+            settings (Dict[str, str]): A dictionary containing configuration 
+                settings for the application.
+            paths (Dict[str, Path]): A dictionary containing paths used throughout 
+                operations, such as for files and directories.
+
+        Returns:
+            None
+
+        Notes:
+            The logger is initialized with a child logger using the name of the 
+                current module.
+            The SQLManager, Index, Database, and Problem instances are initialized 
+                with the provided logger, files, paths, and settings.
+        """
         self.logger = logger.get_child(__name__)
         self.logger.debug(f"'{self}' object initialization...")
 
@@ -103,12 +126,31 @@ class Core:
 
     def initialize_problems_variables(self) -> None:
         """
-        Initializes and generates data structures for handling problem variables. 
-        This includes generating DataFrame variables structures with related 
-        variables coordinates, data filters, cvxpy objects.
+        Initializes and generates data structures for handling problem variables.
+        This method iterates over each data table and variable in the index. 
+        For each endogenous data table or data table with a dictionary type, 
+        it generates a coordinates DataFrame and a cvxpy variable. For each 
+        constant variable, it generates the variable's data directly. For each 
+        exogenous or endogenous variable, it generates a DataFrame and stores it 
+        in the variable's data attribute. For each variable with a dictionary 
+        type, it generates a DataFrame for each problem and stores them in the 
+        variable's data attribute as a dictionary.
 
         Returns:
             None
+
+        Raises:
+            SettingsError: If a variable's type is not 'constant', 'exogenous', 
+                'endogenous', or a dictionary.
+
+        Notes:
+            The method logs information about the generation process.
+            The cvxpy variables for endogenous data tables are created using the 
+                'create_cvxpy_variable' method of the Problem instance.
+            The data for constant variables is generated using the 
+                'generate_constant_data' method of the Problem instance.
+            The DataFrames for exogenous and endogenous variables are generated 
+                using the 'generate_vars_dataframe' method of the Problem instance.
         """
         self.logger.debug(
             "Generating data structures for endogenous data tables "
@@ -181,14 +223,24 @@ class Core:
     ) -> None:
         """
         Defines and initializes numerical problems based on the loaded symbolic 
-        definitions. This can optionally overwrite existing problem definitions.
+        definitions.
+        This method loads the symbolic problem from a file and generates numerical 
+        problems based on the symbolic definitions. The method can optionally 
+        overwrite existing problem definitions.
 
         Args:
-            force_overwrite (bool): If True, forces the redefinition of problems 
-                even if they already exist. Default to False.
+            force_overwrite (bool, optional): If True, forces the redefinition 
+                of problems even if they already exist. Defaults to False.
 
         Returns:
             None
+
+        Notes:
+            The method logs information about the problem definition process.
+            The symbolic problem is loaded using the 'load_symbolic_problem_from_file' 
+                method of the Problem instance.
+            The numerical problems are generated using the 'generate_numerical_problems' 
+                method of the Problem instance.
         """
         self.logger.debug(
             "Load symbolic problem, initialize dataframes with cvxpy problem.")
@@ -209,21 +261,44 @@ class Core:
         """
         Solves all defined numerical problems using the specified solver and 
         verbosity settings.
+        This method checks if numerical problems have been defined and if they 
+        have already been solved. If the problems have not been solved or if 
+        'force_overwrite' is True, the method solves the problems using the 
+        specified solver. The method can solve the problems individually or as 
+        an integrated problem, depending on the 'integrated_problems' setting.
 
         Args:
             solver (str): The solver to use for solving the problems.
             verbose (bool): If True, enables verbose output during problem solving.
+            integrated_problems (bool): If True, solves the problems as an 
+                integrated problem. If False, solves the problems individually.
+            force_overwrite (bool): If True, forces the re-solution of problems 
+                even if they have already been solved.
+            maximum_iterations (Optional[int], optional): The maximum number of 
+                iterations for the solver. Defaults to None.
+            numerical_tolerance (Optional[float], optional): The numerical 
+                tolerance for the solver. Defaults to None.
             **kwargs: Additional keyword arguments to pass to the solver.
 
         Returns:
             None
+
+        Raises:
+            OperationalError: If numerical problems have not been defined.
+
+        Notes:
+            The method logs information about the problem solving process.
+            The problems are solved using the 'solve_problems' or 
+                'solve_integrated_problems' method of the Problem instance, 
+                depending on the 'integrated_problems' setting.
+            The method fetches the problem status after solving the problems.
         """
         if self.problem.numerical_problems is None:
             msg = "Numerical problems must be defined first."
             self.logger.warning(msg)
             raise exc.OperationalError(msg)
 
-        if self.problem.status == 'optimal':
+        if self.problem.problem_status == 'optimal':
             if not force_overwrite:
                 self.logger.warning("Numeric problems already solved.")
                 user_input = input("Solve again numeric problems? (y/[n]): ")
@@ -256,11 +331,28 @@ class Core:
 
     def data_to_cvxpy_exogenous_vars(self) -> None:
         """
-        Fetches data from the SQLite database and assigns it to cvxpy 
-        exogenous variables only.
+        Fetches data from the SQLite database and assigns it to cvxpy exogenous 
+        variables.
+        This method iterates over each variable in the index. If the variable's 
+        type is not 'endogenous' or 'constant', the method fetches the variable's 
+        data from the SQLite database and assigns it to the cvxpy variable. 
+        The method handles variables whose type is defined by the problem separately.
 
         Returns:
             None
+
+        Raises:
+            TypeError: If a passed item is not an instance of the 'Variable' class.
+            MissingDataError: If no data or related table is defined for a variable, 
+                or if the data for a variable contains non-allowed values types.
+
+        Notes:
+            The method logs information about the data fetching process.
+            The method uses a context manager to handle the database connection.
+            The data is fetched using the 'filtered_table_to_dataframe' method 
+                of the SQLTools instance.
+            The data is assigned to the cvxpy variable using the 'data_to_cvxpy_variable' 
+                method of the Problem instance.
         """
         self.logger.debug(
             f"Fetching data from '{self.settings['sqlite_database_file']}' "
@@ -342,14 +434,35 @@ class Core:
                         data=pivoted_data
                     )
 
-    def cvxpy_endogenous_data_to_database(self, operation: str) -> None:
+    def cvxpy_endogenous_data_to_database(
+            self,
+            operation: str,
+            suppress_warnings: bool = False,
+    ) -> None:
         """
-        Exports data from cvxpy endogenous variables back to data tables into 
-        the SQLite database.
+        Exports data from cvxpy endogenous variables back to data tables in the 
+        SQLite database.
+        This method iterates over each data table in the index. If the table's 
+        type is not 'exogenous' or 'constant', the method exports the data from 
+        the cvxpy variable to the corresponding data table in the SQLite database. 
 
-        Args:
-            operation (str): Specifies the type of database operation to 
-                perform (e.g., 'update', 'insert').
+        Parameters:
+            operation (str): The type of database operation to perform.
+            suppress_warnings (bool, optional): If True, suppresses warnings 
+                during the data export process. Defaults to False.
+
+        Returns:
+            None
+
+        Raises:
+            TypeError: If a passed item is not an instance of the 'DataTable' class.
+            OperationalError: If no coordinates DataFrame is defined for a data table.
+
+        Notes:
+            The method logs information about the data export process.
+            The method uses a context manager to handle the database connection.
+            The data is exported using the 'dataframe_to_table' method of the 
+                SQLTools instance.
         """
         self.logger.debug(
             "Exporting data from cvxpy endogenous variable (in data table) "
@@ -375,13 +488,16 @@ class Core:
 
                 if data_table.coordinates_dataframe is not None:
                     data_table_dataframe = data_table.coordinates_dataframe
+
                     if not util.add_column_to_dataframe(
                         dataframe=data_table_dataframe,
                         column_header=values_headers,
                     ):
-                        self.logger.warning(
-                            f"Column '{values_headers}' already exists in data "
-                            f"table '{data_table_key}'")
+                        if self.settings['log_level'] == 'debug' or \
+                                not suppress_warnings:
+                            self.logger.warning(
+                                f"Column '{values_headers}' already exists in data "
+                                f"table '{data_table_key}'")
                 else:
                     msg = "Coordinates dataframe not defined for data " \
                         f"table '{data_table_key}'. "
@@ -394,8 +510,10 @@ class Core:
                     cvxpy_var_data = None
 
                 if cvxpy_var_data is None or len(cvxpy_var_data) == 0:
-                    self.logger.warning(
-                        f"No data available in cvxpy variable '{data_table_key}'")
+                    if self.settings['log_level'] == 'debug' or \
+                            not suppress_warnings:
+                        self.logger.warning(
+                            f"No data available in cvxpy variable '{data_table_key}'")
                     continue
 
                 data_table_dataframe[values_headers] = cvxpy_var_data
@@ -404,6 +522,7 @@ class Core:
                     table_name=data_table_key,
                     dataframe=data_table_dataframe,
                     operation=operation,
+                    suppress_warnings=suppress_warnings,
                 )
 
     def check_results_as_expected(
@@ -445,11 +564,46 @@ class Core:
             **kwargs: Any,
     ) -> None:
         """
+        Solves all defined numerical problems iteratively using the specified 
+        solver and verbosity settings.
+        This method iteratively solves the problems until the relative difference 
+        between the solutions in consecutive iterations is less than the specified 
+        numerical tolerance or until the maximum number of iterations is reached. 
+        The method handles the database operations required for each iteration, 
+        including updating the data for exogenous variables and exporting the 
+        data for endogenous variables.
+
+        Parameters:
+            solver (str): The solver to use for solving the problems.
+            verbose (bool): If True, enables verbose output during problem solving.
+            numerical_tolerance (Optional[float], optional): The numerical tolerance 
+                for the solver. Defaults to None.
+            maximum_iterations (Optional[int], optional): The maximum number of 
+                iterations for the solver. Defaults to None.
+            **kwargs: Additional keyword arguments to pass to the solver.
+
+        Returns:
+            None
+
+        Notes:
+            The method logs information about the problem solving process.
+            The problems are solved using the 'solve_problems' method of the 
+                Problem instance.
+            The data for exogenous variables is updated using the 
+                'data_to_cvxpy_exogenous_vars' method.
+            The data for endogenous variables is exported using the 
+                'cvxpy_endogenous_data_to_database' method.
+            The method calculates the relative difference between the solutions 
+                in consecutive iterations using the 'get_tables_values_relative_difference' 
+                method of the SQLTools instance.
         """
-        if maximum_iterations is None and numerical_tolerance is None:
-            msg = "Either maximum iterations or numerical tolerance must be specified."
-            self.logger.error(msg)
-            raise exc.SettingsError(msg)
+        if maximum_iterations is None:
+            maximum_iterations = Constants.get(
+                '_MAXIMUM_ITERATIONS_MODEL_COUPLING')
+
+        if numerical_tolerance is None:
+            numerical_tolerance = Constants.get(
+                '_TOLERANCE_MODEL_COUPLING_CONVERGENCE')
 
         sqlite_db_path = self.paths['model_dir']
         sqlite_db_file_name = self.settings['sqlite_database_file']
@@ -493,7 +647,10 @@ class Core:
                 **kwargs
             )
 
-            self.cvxpy_endogenous_data_to_database(operation='update')
+            self.cvxpy_endogenous_data_to_database(
+                operation='update',
+                suppress_warnings=True,
+            )
 
             with db_handler(self.sqltools):
                 relative_difference = \
@@ -503,14 +660,21 @@ class Core:
                         tables_names=tables_to_check,
                     )
 
-            self.logger.info(
-                "Maximum relative differences in tables values: "
-                f"'{relative_difference}'")
+            relative_difference_above = {
+                table: value
+                for table, value in relative_difference.items()
+                if value > numerical_tolerance
+            }
 
-            if all(
-                value <= numerical_tolerance
-                for value in relative_difference.values()
-            ):
+            if relative_difference_above:
+                self.logger.info(
+                    "Data tables with highest relative difference above "
+                    f"treshold ({numerical_tolerance}):"
+                )
+                for table, value in relative_difference_above.items():
+                    self.logger.info(
+                        f"Data table '{table}': {round(value, 5)}")
+            else:
                 self.logger.info("Numerical convergence reached.")
                 self.files.erase_file(
                     dir_path=sqlite_db_path,
