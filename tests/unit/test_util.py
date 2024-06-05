@@ -731,3 +731,41 @@ def test_find_dict_key_corresponding_to_value():
     # Test with a non-dictionary argument
     with pytest.raises(TypeError):
         find_dict_key_corresponding_to_value("not a dictionary", target_value)
+
+
+def test_calulate_values_difference():
+    # Test relative difference
+    assert calculate_values_difference(10, 5) == 1.0
+    assert calculate_values_difference(5, 10) == -0.5
+    assert calculate_values_difference(0, 10) == -1.0
+    assert calculate_values_difference(10, 0) == float('inf')
+
+    # Test absolute difference
+    assert calculate_values_difference(10, 5, False) == 5
+    assert calculate_values_difference(5, 10, False) == -5
+    assert calculate_values_difference(0, 10, False) == -10
+    assert calculate_values_difference(10, 0, False) == 10
+
+    # Test module of difference
+    assert calculate_values_difference(10, 5, False, True) == 5
+    assert calculate_values_difference(5, 10, False, True) == 5
+    assert calculate_values_difference(0, 10, False, True) == 10
+    assert calculate_values_difference(10, 0, False, True) == 10
+
+    # Test with non-numeric values
+    assert calculate_values_difference('a', 10, ignore_nan=True) is None
+    assert calculate_values_difference(10, 'a', ignore_nan=True) is None
+    assert calculate_values_difference('a', 'b', ignore_nan=True) is None
+
+    # Test with None values
+    assert calculate_values_difference(None, 10, ignore_nan=True) is None
+    assert calculate_values_difference(10, None, ignore_nan=True) is None
+    assert calculate_values_difference(None, None, ignore_nan=True) is None
+
+    # Test ValueError when ignore_nan_values is False
+    with pytest.raises(ValueError):
+        calculate_values_difference('a', 10, True, False, False)
+    with pytest.raises(ValueError):
+        calculate_values_difference(10, 'a', True, False, False)
+    with pytest.raises(ValueError):
+        calculate_values_difference('a', 'b', True, False, False)

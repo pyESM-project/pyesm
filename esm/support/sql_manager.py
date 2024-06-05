@@ -1053,7 +1053,7 @@ class SQLManager:
                 self.logger.error(msg)
                 raise exc.SettingsError(msg)
 
-            tables_wrong_values = []
+            tables_wrong_values = {}
 
             for table in current_tables:
                 self.cursor.execute(f"PRAGMA table_info({table})")
@@ -1070,21 +1070,27 @@ class SQLManager:
                 other_db_cursor.execute(query)
                 other_values = [row[0] for row in other_db_cursor.fetchall()]
 
-                for cv, ov in zip(current_values, other_values):
-                    if isinstance(cv, str) and isinstance(ov, str):
-                        continue
+                relative_differences = [
+                    util.calculate_values_difference(
+                        value_1=cv,
+                        value_2=ov,
+                        modules_difference=True,
+                        ignore_nan=True,
+                    )
+                    for cv, ov in zip(current_values, other_values)
+                ]
 
-                    if ov == 0:
-                        if cv != 0:
-                            tables_wrong_values.append(table)
-                    else:
-                        relative_error = abs(cv - ov) / abs(ov) * 100
-                        if relative_error > tolerance_percentage:
-                            tables_wrong_values.append(table)
+                if any([
+                    rd > tolerance_percentage
+                    for rd in relative_differences
+                    if rd is not None
+                ]):
+                    tables_wrong_values[table] = max(relative_differences)
 
             if tables_wrong_values:
-                msg = "Numerical differences in 'values' column exceeding " \
-                    f"tolerance for tables: {tables_wrong_values}."
+                msg = "Maximum numerical differences in 'values' column " \
+                    "exceeding maximum tolerance for tables: " \
+                    f"{tables_wrong_values}."
                 self.logger.error(msg)
                 raise exc.ResultsError(msg)
 
@@ -1162,9 +1168,13 @@ class SQLManager:
                 other_values = [row[0] for row in other_db_cursor.fetchall()]
 
                 relative_differences = [
-                    abs(cv - ov) / abs(ov) if ov != 0 else 0
+                    util.calculate_values_difference(
+                        value_1=cv,
+                        value_2=ov,
+                        modules_difference=True,
+                        ignore_nan=True,
+                    )
                     for cv, ov in zip(current_values, other_values)
-                    if not isinstance(cv, str) and not isinstance(ov, str)
                 ]
 
                 max_relative_difference[table] = max(relative_differences)

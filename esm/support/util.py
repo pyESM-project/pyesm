@@ -822,3 +822,55 @@ def find_dict_key_corresponding_to_value(
             if value == target_value),
         None
     )
+
+
+def calculate_values_difference(
+        value_1: float,
+        value_2: float,
+        relative_difference: bool = True,
+        modules_difference: bool = False,
+        ignore_nan: bool = False,
+) -> float:
+    """
+    Calculate the difference between two values.
+
+    Parameters:
+        value_1 (float): The first value.
+        value_2 (float): The second value.
+        relative_difference (bool): If True, calculate the relative difference. 
+            Default is True.
+        modules_difference (bool): If True, calculate the module of difference 
+            (either absolute or relative). Default is False.
+        ignore_nan (bool): If True, ignore non-numeric values. 
+            Default is False.
+
+    Returns:
+        float: The calculated difference. If both values are non-numeric 
+            and ignore_nan_values is True, nothing is returned.
+    """
+    if not isinstance(value_1, float | int) or \
+            not isinstance(value_2, float | int):
+        if not ignore_nan:
+            raise ValueError("Passed values must be of numeric type.")
+        else:
+            return
+
+    if modules_difference:
+        difference = abs(value_1 - value_2)
+        reference = abs(value_2)
+    else:
+        difference = value_1 - value_2
+        reference = value_2
+
+    if relative_difference:
+
+        if difference == 0:
+            return 0
+
+        if reference == 0:
+            return float('inf')
+
+        return difference / reference
+
+    else:
+        return difference
