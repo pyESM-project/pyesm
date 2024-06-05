@@ -318,7 +318,7 @@ class Database:
         with db_handler(self.sqltools):
             for table_key, table in self.index.data.items():
 
-                if table.type == 'endogenous':
+                if table.type in ['endogenous', 'constant']:
                     continue
 
                 if self.settings['multiple_input_files']:
