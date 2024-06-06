@@ -27,13 +27,6 @@
 #     table_structure:
 #         name: [tm_Names, TYPE] # header of set entries names in database set table
 
-scenarios:
-    symbol: s  
-    table_name: _set_SCENARIOS 
-    split_problem: True
-    table_structure:
-        name: [s_Names, TYPE]
-
 products:
     symbol: p  
     table_name: _set_PRODUCTS 
