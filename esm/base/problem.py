@@ -1050,14 +1050,30 @@ class Problem:
             else:
                 variable_data = variable.data
 
-            # filter variable data based on problem filter
+            # filter variable data based on problem filter (inter-problem sets)
             if not problem_filter.empty:
-                variable_data = pd.merge(
-                    left=variable_data,
-                    right=problem_filter,
-                    on=list(problem_filter.columns),
-                    how='inner'
-                ).copy()
+
+                # if variable is not defined for the current inter-problem sets
+                # if a unique variable can be identified, ok
+                # if not raise an error
+                if set(problem_filter.columns).isdisjoint(variable_data.columns):
+                    if len(variable_data.index) > 1:
+                        filter_columns = list(problem_filter.columns)
+                        msg = f"Variable '{var_key}' is not defined for " \
+                            f"inter-problem sets {filter_columns}: however, a " \
+                            "unique Variable cannot be identified."
+                        self.logger.error(msg)
+                        raise exc.ConceptualModelError(msg)
+
+                # if variable is defined for the current inter-problem sets
+                # filter the variable data
+                else:
+                    variable_data = pd.merge(
+                        left=variable_data,
+                        right=problem_filter,
+                        on=list(problem_filter.columns),
+                        how='inner'
+                    ).copy()
 
             # if no sets intra-probles are defined for the variable, the cvxpy
             # variable is fetched for the current ploblem. cvxpy variable must
@@ -1326,6 +1342,9 @@ class Problem:
                 module='cvxpy.reductions.solvers.solving_chain'
             )
 
+        # possible workaround: summing all problems into one and solve it
+        # other solution: at the moment of generating endogenous variables bound
+        # to tables, in case of set split problems, define a dictionary with different variables.
         for problem_num in problem_dataframe.index:
 
             problem_info: List[str] = problem_dataframe.at[
@@ -1333,9 +1352,9 @@ class Problem:
 
             msg = "Solving numerical problem"
             if problem_name:
-                msg += f" '{problem_name}'"
+                msg += f" ' [{problem_name}]"
             if problem_info:
-                msg += f" {problem_info}."
+                msg += f" - inter-problem sets: {problem_info}."
             self.logger.info(msg)
 
             numerical_problem: cp.Problem = problem_dataframe.at[
