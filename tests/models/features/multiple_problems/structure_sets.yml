@@ -25,17 +25,17 @@ scenarios:
     table_name: _set_scenarios
     split_problem: True
     table_structure:
-        name: [scenarios, TEXT]
+        name: [s_Names, TEXT]
 
 uncertainty:
     symbol: u
     table_name: _set_uncertainty
     split_problem: True
     table_structure:
-        name: [uncertainty, TEXT]
+        name: [u_Names, TEXT]
 
 products:
     symbol: p
     table_name: _set_products
     table_structure:
-        name: [products, TEXT]
+        name: [p_Names, TEXT]
