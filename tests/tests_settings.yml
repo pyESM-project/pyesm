@@ -29,7 +29,8 @@ fixtures:
 
     integrated:
         - 1_coupled_model
-        - 2_lca_twin_problem 
+        - 2_lca_twin_problem
+        - 3_triple_model
 
 test_methods:
     update_database_and_problem: {force_overwrite: True}
