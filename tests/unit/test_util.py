@@ -720,17 +720,17 @@ def test_find_dict_key_corresponding_to_value():
 
     # Test with a dictionary where the target value exists
     target_value = 2
-    assert find_dict_key_corresponding_to_value(
+    assert find_dict_keys_corresponding_to_value(
         dictionary, target_value) == 'b'
 
     # Test with a dictionary where the target value does not exist
     target_value = 4
-    assert find_dict_key_corresponding_to_value(
+    assert find_dict_keys_corresponding_to_value(
         dictionary, target_value) is None
 
     # Test with a non-dictionary argument
     with pytest.raises(TypeError):
-        find_dict_key_corresponding_to_value("not a dictionary", target_value)
+        find_dict_keys_corresponding_to_value("not a dictionary", target_value)
 
 
 def test_calulate_values_difference():

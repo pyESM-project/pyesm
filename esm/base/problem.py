@@ -142,7 +142,7 @@ class Problem:
 
         self.symbolic_problem = None
         self.numerical_problems = None
-        self.problem_status = 'not solved'
+        self.problem_status = None
 
         self.logger.debug(f"'{self}' object initialized.")
 
@@ -903,7 +903,7 @@ class Problem:
             self.numerical_problems = self.generate_problem_dataframe(
                 symbolic_problem=self.symbolic_problem
             )
-            self.problem_status = None
+            # self.problem_status = None
 
         elif util.find_dict_depth(self.symbolic_problem) == 2:
             self.numerical_problems = {
@@ -913,7 +913,7 @@ class Problem:
                 )
                 for problem_key, problem in self.symbolic_problem.items()
             }
-            self.problem_status = {key: None for key in self.symbolic_problem}
+            # self.problem_status = {key: None for key in self.symbolic_problem}
 
         else:
             msg = "Invalid symbolic problem structure. " \
@@ -1400,9 +1400,9 @@ class Problem:
 
             msg = "Solving numerical problem"
             if problem_name:
-                msg += f" ' [{problem_name}]"
+                msg += f" [{problem_name}]"
             if problem_info:
-                msg += f" - inter-problem sets: {problem_info}."
+                msg += f" - Sub-problem {problem_info}."
             self.logger.info(msg)
 
             numerical_problem: cp.Problem = problem_dataframe.at[
@@ -1418,12 +1418,12 @@ class Problem:
                 problem_num, Constants.get('_PROBLEM_STATUS_HEADER')
             ] = numerical_problem.status
 
-            self.logger.info(f"Problem status: '{numerical_problem.status}'")
+            self.logger.debug(f"Problem status: '{numerical_problem.status}'")
 
     def fetch_problem_status(self) -> None:
         """
-        Fetches the status of the problem. If all problems are 'optimal', sets 
-        the status of the instance to 'optimal'.
+        Fetches the status of all problems and sub-problems defined in the
+        'numerical_problems' attribute.
 
         Raises:
             OperationalError: If the numerical problems are not defined.
@@ -1434,17 +1434,26 @@ class Problem:
             raise exc.OperationalError(msg)
 
         status_header = Constants.get('_PROBLEM_STATUS_HEADER')
+        info_header = Constants.get('_PROBLEM_INFO_HEADER')
 
         if isinstance(self.numerical_problems, pd.DataFrame):
-            if all(self.numerical_problems[status_header] == 'optimal'):
-                self.problem_status = 'optimal'
+            problem_df = self.numerical_problems
+
+            problem_status = {
+                f'sub-problem {info}' if len(problem_df) > 1 else 'problem': status
+                for info, status in zip(problem_df[info_header], problem_df[status_header])
+            }
 
         elif isinstance(self.numerical_problems, dict):
-            if all(
-                all(problem[status_header] == 'optimal')
-                for problem in self.numerical_problems.values()
-            ):
-                self.problem_status = 'optimal'
+
+            problem_status = {
+                f'Problem [{problem_key}]' +
+                (f' - Sub-problem {info}' if len(problem_df) > 1 else ''): status
+                for problem_key, problem_df in self.numerical_problems.items()
+                for info, status in zip(problem_df[info_header], problem_df[status_header])
+            }
+
+        self.problem_status = problem_status
 
     def solve_problems(
             self,

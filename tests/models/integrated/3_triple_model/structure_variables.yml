@@ -30,7 +30,8 @@ x:
     type: 
         1: endogenous
         2: exogenous
-    coordinates: [products] 
+        3: exogenous
+    coordinates: [scenarios, products] 
     variables_info:
         x: 
             cols: 
@@ -41,9 +42,20 @@ a:
     type: 
         1: exogenous
         2: endogenous
-    coordinates: [products] 
+    coordinates: [scenarios, products] 
     variables_info:
         a: 
+            cols: 
+                set: products
+
+c:
+    name: profit
+    type: 
+        1: exogenous
+        3: endogenous
+    coordinates: [scenarios, products] 
+    variables_info:
+        c: 
             cols: 
                 set: products
 
@@ -55,10 +67,10 @@ products_data:
     type: exogenous
     coordinates: [products, product_data] 
     variables_info:
-        c: 
+        c_0: 
             rows:
                 set: product_data
-                filters: {0: profit}
+                filters: {0: unit_profit_0}
             cols: 
                 set: products
         a_0: 
@@ -67,17 +79,23 @@ products_data:
                 filters: {0: energy_use_0}
             cols: 
                 set: products
-        lr:
+        lr_a:
             rows:
                 set: product_data
-                filters: {0: learning_rate}
+                filters: {0: learning_rate_energy}
+            cols: 
+                set: products
+        lr_c:
+            rows:
+                set: product_data
+                filters: {0: learning_rate_profit}
             cols: 
                 set: products
 
 b:  
     name: energy availability
     type: exogenous
-    coordinates: [resources] 
+    coordinates: [scenarios, resources] 
     variables_info:
         b: 
             rows: 

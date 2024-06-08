@@ -10,4 +10,8 @@
 
 2: 
     expressions:
-        - a - a_0 - lr @ diag(x) == 0
+        - a - a_0 - lr_a @ diag(x) == 0
+
+3: 
+    expressions:
+        - c - c_0 - lr_c @ diag(x) == 0
