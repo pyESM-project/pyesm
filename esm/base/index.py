@@ -75,7 +75,7 @@ class Index:
         return f'{class_name}'
 
     @property
-    def sets_split_problem_list(self) -> Dict[str, str]:
+    def sets_split_problem_dict(self) -> Dict[str, str]:
         """
         Provides a dictionary of sets that have a split problem, mapped to 
         their respective headers. Returns an empty dictionary if no sets are 
@@ -351,7 +351,7 @@ class Index:
                     if key == variable.shape[1]:
                         cols[key] = table_header
                     if key not in variable.shape:
-                        if key not in self.sets_split_problem_list:
+                        if key not in self.sets_split_problem_dict:
                             intra[key] = table_header
                         else:
                             inter[key] = table_header

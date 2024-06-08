@@ -98,6 +98,7 @@ class Constants:
 
     _CVXPY_VAR_HEADER = 'variable'
     _FILTER_DICT_HEADER = 'filter'
+    _SUB_PROBLEM_KEY_HEADER = 'sub_problem_key'
 
     _PROBLEM_HEADER = 'problem'
     _PROBLEM_INFO_HEADER = 'info'

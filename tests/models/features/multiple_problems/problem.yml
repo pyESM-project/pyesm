@@ -3,16 +3,12 @@
 # definition of the objective function (scalar, optional)
 
 objective:
-    - Minimize(1)
+    - Maximize(sum(X))
 
 # definition of the constraints (vector expressions)
 
 expressions: 
-
-    - ex_tf - en_tf == 0
-    # - ex_tf_y - en_tf_y == 0
-    # - ex_tf_1 - en_tf_1 == 0
-    # - ex_tf_2 - en_tf_2 == 0
+    - X <= C
 
 
 

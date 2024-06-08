@@ -93,7 +93,7 @@ test_methods = settings['test_methods']
 features_dir_path = root_path / settings['paths']['features']
 features_models = settings['fixtures']['features']
 
-test_units = create_test_function(
+test_model_features = create_test_function(
     models=features_models,
     models_dir_path=features_dir_path,
     methods=test_methods,
@@ -103,7 +103,7 @@ test_units = create_test_function(
 linear_models_dir_path = root_path / settings['paths']['linear']
 linear_models = settings['fixtures']['linear']
 
-test_models = create_test_function(
+test_linear_models = create_test_function(
     models=linear_models,
     models_dir_path=linear_models_dir_path,
     methods=test_methods,
