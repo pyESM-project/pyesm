@@ -15,6 +15,10 @@ import os
 from typing import Any, Dict, Optional
 from pathlib import Path
 
+import numpy as np
+import pandas as pd
+import cvxpy as cp
+
 from esm.base.data_table import DataTable
 from esm.base.database import Database
 from esm.base.index import Index, Variable
@@ -167,12 +171,33 @@ class Core:
                     "Generating variable dataframe and cvxpy variable "
                     f"for endogenous data table '{data_table_key}'.")
 
-                data_table.generate_coordinates_dataframe()
-                data_table.cvxpy_var = self.problem.create_cvxpy_variable(
-                    var_type='endogenous',
-                    shape=(data_table.table_length, 1),
-                    name=data_table_key,
+                data_table.generate_coordinates_dataframes(
+                    sets_split_problems=self.index.sets_split_problem_dict
                 )
+
+                if isinstance(data_table.coordinates_dataframe, pd.DataFrame):
+
+                    cvxpy_var = self.problem.create_cvxpy_variable(
+                        var_type='endogenous',
+                        shape=(data_table.table_length, 1),
+                        name=data_table_key,
+                    )
+
+                # in case of problem with sets split, multiple endogenous variables
+                # are created and stored in a dictionary
+                elif isinstance(data_table.coordinates_dataframe, dict):
+
+                    cvxpy_var = {}
+
+                    for problem_key, variable_df in data_table.coordinates_dataframe.items():
+
+                        cvxpy_var[problem_key] = self.problem.create_cvxpy_variable(
+                            var_type='endogenous',
+                            shape=(len(variable_df), 1),
+                            name=f"{data_table_key}_{problem_key}",
+                        )
+
+                data_table.cvxpy_var = cvxpy_var
 
         # generating variables dataframes with cvxpy var and filters dictionary
         # (endogenous vars will be sliced from existing cvxpy var in data table)
@@ -188,7 +213,7 @@ class Core:
                     variable=variable
                 )
 
-            # for variable whose type is univocally defined, only one dataframe
+            # for variables whose type is univocally defined, only one data structure
             # is generated and stored in variable.data
             elif variable.type in ['exogenous', 'endogenous']:
                 variable.data = self.problem.generate_vars_dataframe(
@@ -468,6 +493,8 @@ class Core:
             "Exporting data from cvxpy endogenous variable (in data table) "
             f"to SQLite database '{self.settings['sqlite_database_file']}' ")
 
+        values_headers = Constants.get('_STD_VALUES_FIELD')['values'][0]
+
         with db_handler(self.sqltools):
             for data_table_key, data_table in self.index.data.items():
 
@@ -483,38 +510,43 @@ class Core:
                     "Exporting data from cvxpy variable to the related "
                     f"data table '{data_table_key}'. ")
 
-                values_headers = Constants.get(
-                    '_STD_VALUES_FIELD')['values'][0]
-
-                if data_table.coordinates_dataframe is not None:
+                if isinstance(data_table.coordinates_dataframe, pd.DataFrame):
                     data_table_dataframe = data_table.coordinates_dataframe
 
-                    if not util.add_column_to_dataframe(
-                        dataframe=data_table_dataframe,
-                        column_header=values_headers,
-                    ):
-                        if self.settings['log_level'] == 'debug' or \
-                                not suppress_warnings:
-                            self.logger.warning(
-                                f"Column '{values_headers}' already exists in data "
-                                f"table '{data_table_key}'")
-                else:
-                    msg = "Coordinates dataframe not defined for data " \
-                        f"table '{data_table_key}'. "
-                    self.logger.error(msg)
-                    raise exc.OperationalError(msg)
+                elif isinstance(data_table.coordinates_dataframe, dict):
+                    data_table_dataframe = pd.concat(
+                        data_table.coordinates_dataframe.values(),
+                        ignore_index=True
+                    )
 
-                if data_table.cvxpy_var is not None:
-                    cvxpy_var_data = data_table.cvxpy_var.value
-                else:
-                    cvxpy_var_data = None
+                if not util.add_column_to_dataframe(
+                    dataframe=data_table_dataframe,
+                    column_header=values_headers,
+                ):
+                    if self.settings['log_level'] == 'debug' or \
+                            not suppress_warnings:
+                        self.logger.warning(
+                            f"Column '{values_headers}' already exists in data "
+                            f"table '{data_table_key}'")
 
-                if cvxpy_var_data is None or len(cvxpy_var_data) == 0:
+                if data_table.cvxpy_var is None:
                     if self.settings['log_level'] == 'debug' or \
                             not suppress_warnings:
                         self.logger.warning(
                             f"No data available in cvxpy variable '{data_table_key}'")
                     continue
+
+                if isinstance(data_table.cvxpy_var, dict):
+
+                    cvxpy_var_values_list = []
+                    for cvxpy_var in data_table.cvxpy_var.values():
+                        cvxpy_var: cp.Variable
+                        cvxpy_var_values_list.append(cvxpy_var.value)
+
+                    cvxpy_var_data = np.vstack(cvxpy_var_values_list)
+
+                else:
+                    cvxpy_var_data = data_table.cvxpy_var.value
 
                 data_table_dataframe[values_headers] = cvxpy_var_data
 
