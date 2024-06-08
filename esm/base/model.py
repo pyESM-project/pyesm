@@ -411,11 +411,9 @@ class Model:
             **kwargs,
         )
 
-        if self.core.problem.problem_status == 'optimal':
-            self.logger.info("Numerical problems solved successfully.")
-        else:
-            self.logger.warning(
-                "Numerical problems not solved successfully.")
+        self.logger.info("Numerical problems status report:")
+        for info, status in self.core.problem.problem_status.items():
+            self.logger.info(f"{info}: {status}")
 
     def load_results_to_database(
         self,

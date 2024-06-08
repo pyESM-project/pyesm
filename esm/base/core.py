@@ -323,7 +323,7 @@ class Core:
             self.logger.warning(msg)
             raise exc.OperationalError(msg)
 
-        if self.problem.problem_status == 'optimal':
+        if self.problem.problem_status is not None:
             if not force_overwrite:
                 self.logger.warning("Numeric problems already solved.")
                 user_input = input("Solve again numeric problems? (y/[n]): ")
