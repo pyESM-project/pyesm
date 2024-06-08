@@ -19,6 +19,7 @@ import numpy as np
 import pandas as pd
 import cvxpy as cp
 
+from esm.base import problem
 from esm.base.data_table import DataTable
 from esm.base.database import Database
 from esm.base.index import Index, Variable
@@ -418,46 +419,52 @@ class Core:
                     self.logger.error("\n".join(err_msg))
                     raise exc.MissingDataError("\n".join(err_msg))
 
-                # for variables whose type is defined by the problem,
+                # for variables whose type is end/exo depending on the problem,
                 # fetch exogenous variable data.
-                if isinstance(variable.data, dict):
-                    problem_key = util.find_dict_key_corresponding_to_value(
+                if isinstance(variable.type, dict):
+                    problem_keys = util.find_dict_keys_corresponding_to_value(
                         variable.type, 'exogenous')
-                    variable_data = variable.data[problem_key]
                 else:
-                    variable_data = variable.data
+                    problem_keys = [None]
 
-                for row in variable_data.index:
-                    # get raw data from database
-                    raw_data = self.database.sqltools.filtered_table_to_dataframe(
-                        table_name=variable.related_table,
-                        filters_dict=variable_data[filter_header][row])
+                for problem_key in problem_keys:
 
-                    # check if variable data are int or float
-                    non_numeric_ids = util.find_non_allowed_types(
-                        dataframe=raw_data,
-                        allowed_types=allowed_values_types,
-                        target_col_header=values_header,
-                        return_col_header=id_header,
-                    )
+                    if problem_key:
+                        variable_data = variable.data[problem_key]
+                    else:
+                        variable_data = variable.data
 
-                    if non_numeric_ids:
-                        msg = f"Data for variable '{var_key}' in table " \
-                            f"'{variable.related_table}' contains " \
-                            f"non-allowed values types in rows: " \
-                            f"{non_numeric_ids}."
-                        self.logger.error(msg)
-                        raise exc.MissingDataError(msg)
+                    for row in variable_data.index:
+                        # get raw data from database
+                        raw_data = self.database.sqltools.filtered_table_to_dataframe(
+                            table_name=variable.related_table,
+                            filters_dict=variable_data[filter_header][row])
 
-                    # pivoting and reshaping data to fit variables
-                    pivoted_data = variable.reshaping_sqlite_table_data(
-                        data=raw_data
-                    )
+                        # check if variable data are int or float
+                        non_numeric_ids = util.find_non_allowed_types(
+                            dataframe=raw_data,
+                            allowed_types=allowed_values_types,
+                            target_col_header=values_header,
+                            return_col_header=id_header,
+                        )
 
-                    self.problem.data_to_cvxpy_variable(
-                        cvxpy_var=variable_data[cvxpy_var_header][row],
-                        data=pivoted_data
-                    )
+                        if non_numeric_ids:
+                            msg = f"Data for variable '{var_key}' in table " \
+                                f"'{variable.related_table}' contains " \
+                                f"non-allowed values types in rows: " \
+                                f"{non_numeric_ids}."
+                            self.logger.error(msg)
+                            raise exc.MissingDataError(msg)
+
+                        # pivoting and reshaping data to fit variables
+                        pivoted_data = variable.reshaping_sqlite_table_data(
+                            data=raw_data
+                        )
+
+                        self.problem.data_to_cvxpy_variable(
+                            cvxpy_var=variable_data[cvxpy_var_header][row],
+                            data=pivoted_data
+                        )
 
     def cvxpy_endogenous_data_to_database(
             self,
@@ -652,66 +659,69 @@ class Core:
 
         while True:
 
-            iter_count += 1
-            if iter_count > maximum_iterations:
-                self.logger.warning(
-                    f"Maximum number of iterations reached before reaching "
-                    "convergence to numerical_tolerance.")
-                break
+            try:
+                iter_count += 1
+                if iter_count > maximum_iterations:
+                    self.logger.warning(
+                        f"Maximum number of iterations reached before reaching "
+                        "convergence to numerical_tolerance.")
+                    break
 
-            self.logger.info(f"=====================")
-            self.logger.info(f"Iteration number '{iter_count}'")
+                self.logger.info(f"=====================")
+                self.logger.info(f"Iteration number '{iter_count}'")
 
-            if iter_count > 1:
-                self.data_to_cvxpy_exogenous_vars()
+                if iter_count > 1:
+                    self.data_to_cvxpy_exogenous_vars()
 
-            self.files.copy_file_to_destination(
-                path_destination=sqlite_db_path,
-                path_source=sqlite_db_path,
-                file_name=sqlite_db_file_name,
-                file_new_name=sqlite_db_file_name_previous,
-                force_overwrite=True,
-            )
-
-            self.problem.solve_problems(
-                solver=solver,
-                verbose=verbose,
-                **kwargs
-            )
-
-            self.cvxpy_endogenous_data_to_database(
-                operation='update',
-                suppress_warnings=True,
-            )
-
-            with db_handler(self.sqltools):
-                relative_difference = \
-                    self.sqltools.get_tables_values_relative_difference(
-                        other_db_dir_path=sqlite_db_path,
-                        other_db_name=sqlite_db_file_name_previous,
-                        tables_names=tables_to_check,
-                    )
-
-            relative_difference_above = {
-                table: value
-                for table, value in relative_difference.items()
-                if value > numerical_tolerance
-            }
-
-            if relative_difference_above:
-                self.logger.info(
-                    "Data tables with highest relative difference above "
-                    f"treshold ({numerical_tolerance}):"
+                self.files.copy_file_to_destination(
+                    path_destination=sqlite_db_path,
+                    path_source=sqlite_db_path,
+                    file_name=sqlite_db_file_name,
+                    file_new_name=sqlite_db_file_name_previous,
+                    force_overwrite=True,
                 )
-                for table, value in relative_difference_above.items():
+
+                self.problem.solve_problems(
+                    solver=solver,
+                    verbose=verbose,
+                    **kwargs
+                )
+
+                self.cvxpy_endogenous_data_to_database(
+                    operation='update',
+                    suppress_warnings=True,
+                )
+
+                with db_handler(self.sqltools):
+                    relative_difference = \
+                        self.sqltools.get_tables_values_relative_difference(
+                            other_db_dir_path=sqlite_db_path,
+                            other_db_name=sqlite_db_file_name_previous,
+                            tables_names=tables_to_check,
+                        )
+
+                relative_difference_above = {
+                    table: value
+                    for table, value in relative_difference.items()
+                    if value > numerical_tolerance
+                }
+
+                if relative_difference_above:
                     self.logger.info(
-                        f"Data table '{table}': {round(value, 5)}")
-            else:
-                self.logger.info("Numerical convergence reached.")
+                        "Data tables with highest relative difference above "
+                        f"treshold ({numerical_tolerance}):"
+                    )
+                    for table, value in relative_difference_above.items():
+                        self.logger.info(
+                            f"Data table '{table}': {round(value, 5)}")
+                else:
+                    self.logger.info("Numerical convergence reached.")
+                    break
+
+            finally:
                 self.files.erase_file(
                     dir_path=sqlite_db_path,
                     file_name=sqlite_db_file_name_previous,
                     force_erase=True,
                     confirm=False,
                 )
-                break

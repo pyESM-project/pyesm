@@ -794,12 +794,12 @@ def find_non_allowed_types(
     return dataframe.loc[non_allowed_rows, target_col_header].tolist()
 
 
-def find_dict_key_corresponding_to_value(
+def find_dict_keys_corresponding_to_value(
         dictionary: Dict[Any, Any],
         target_value: Any,
 ) -> Optional[Any]:
     """
-    This function finds the first key in a dictionary that corresponds to 
+    This function finds all keys in a dictionary that correspond to 
     a given value.
 
     Parameters:
@@ -807,21 +807,18 @@ def find_dict_key_corresponding_to_value(
         target_value (Any): The value to find.
 
     Returns:
-        Optional[Any]: The key corresponding to the target value. If the value 
-            is not found, returns None.
+        List[Any]: The keys corresponding to the target value. If the value 
+            is not found, returns an empty list.
     """
     if not isinstance(dictionary, dict):
         raise TypeError(
             "Passed 'dictionary' argument must be a dictionary."
             f"{type(dictionary).__name__} was passed instead.")
 
-    return next(
-        (
-            key
-            for key, value in dictionary.items()
-            if value == target_value),
-        None
-    )
+    return [
+        key for key, value in dictionary.items()
+        if value == target_value
+    ]
 
 
 def calculate_values_difference(
