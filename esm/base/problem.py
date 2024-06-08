@@ -216,6 +216,7 @@ class Problem:
             shape: Tuple[int],
             related_table_key: str,
             var_filter: Dict[str, List[str]],
+            sub_problem_key: Optional[int] = None,
     ) -> cp.Expression:
         """
         Slices a part of a CVXPY variable based on specified filtering criteria,
@@ -233,6 +234,8 @@ class Problem:
                 variable to slice.
             var_filter (Dict[str, List[str]]): Dictionary specifying the filtering
                 criteria to apply to the DataTable.
+            sub_problem_key (int, optional): The sub-problem key to use for filtering
+                data_table cvxpy_var. Defaults to None.
 
         Returns:
             cp.Expression: The reshaped sliced CVXPY variable.
@@ -255,19 +258,30 @@ class Problem:
         if not related_table:
             err_msg.append(f"Data table '{related_table_key}' not found.")
 
-        if related_table.coordinates_dataframe is None or \
-                related_table.coordinates_dataframe.empty:
-            msg = f"Coordinates not defined for data table '{related_table_key}'."
+        if related_table.coordinates_dataframe is None:
+            err_msg.append(
+                f"Coordinates not defined for data table '{related_table_key}'.")
 
         if not related_table.cvxpy_var:
-            msg = f"Variables not defined data table '{related_table_key}'."
+            err_msg.append(
+                f"Variables not defined data table '{related_table_key}'.")
 
         if err_msg:
             self.logger.error("\n".join(err_msg))
             raise exc.MissingDataError("\n".join(err_msg))
 
+        # use sub_problem_key to identify the endogenous variable for sub-problem
+        if sub_problem_key is not None and \
+                isinstance(related_table.coordinates_dataframe, dict) and \
+                isinstance(related_table.cvxpy_var, dict):
+            df_to_filter = related_table.coordinates_dataframe[sub_problem_key]
+            cvxpy_var = related_table.cvxpy_var[sub_problem_key]
+        else:
+            df_to_filter = related_table.coordinates_dataframe
+            cvxpy_var = related_table.cvxpy_var
+
         filtered_var_dataframe = util.filter_dataframe(
-            df_to_filter=related_table.coordinates_dataframe,
+            df_to_filter=df_to_filter,
             filter_dict=var_filter,
             reset_index=False,
             reorder_cols_based_on_filter=True,
@@ -281,7 +295,7 @@ class Problem:
             raise exc.MissingDataError(msg)
 
         filtered_index = filtered_var_dataframe.index
-        sliced_cvxpy_var = related_table.cvxpy_var[filtered_index]
+        sliced_cvxpy_var = cvxpy_var[filtered_index]
         sliced_cvxpy_var_reshaped = cp.reshape(
             sliced_cvxpy_var,
             shape=shape,
@@ -426,11 +440,12 @@ class Problem:
 
         self.logger.debug(
             f"Generating dataframe for {variable_type} variable '{variable_name}' "
-            "(cvxpy object, filter dictionary).")
+            "(cvxpy object, filter dictionary, sub problem key).")
 
         headers = {
             'cvxpy': Constants.get('_CVXPY_VAR_HEADER'),
             'filter': Constants.get('_FILTER_DICT_HEADER'),
+            'sub_problem_key': Constants.get('_SUB_PROBLEM_KEY_HEADER')
         }
 
         if variable.sets_parsing_hierarchy:
@@ -459,12 +474,13 @@ class Problem:
         # create variable filter
         for row in var_data.index:
             var_filter = {}
+            var_data_item: pd.Series = var_data.loc[row]
 
-            for header in var_data.loc[row].index:
+            for header in var_data_item.index:
 
                 if sets_parsing_hierarchy is not None and \
                         header in sets_parsing_hierarchy:
-                    var_filter[header] = [var_data.loc[row][header]]
+                    var_filter[header] = [var_data_item[header]]
 
                 elif header == headers['cvxpy']:
                     for dim in [0, 1]:
@@ -474,7 +490,7 @@ class Problem:
                             dim_header = variable.dims_labels[dim]
                             var_filter[dim_header] = variable.dims_items[dim]
 
-                elif header == headers['filter']:
+                elif header in [headers['filter'], headers['sub_problem_key']]:
                     pass
 
                 else:
@@ -483,6 +499,35 @@ class Problem:
                     raise ValueError(msg)
 
             var_data.at[row, headers['filter']] = var_filter
+
+        # identify sub_problem_key
+        if variable_type not in ['exogenous', 'constant'] and \
+                variable.coordinates['inter']:
+            for row in var_data.index:
+
+                inter_problem_coords = {
+                    set_label: variable.coordinates['inter'][set_key]
+                    for set_key, set_label in variable.coordinates_info['inter'].items()
+                }
+                inter_df = util.unpivot_dict_to_dataframe(inter_problem_coords)
+
+                var_filter: dict = var_data.at[row, headers['filter']]
+                var_inter_problem_coords = {
+                    key: value
+                    for key, value in var_filter.items()
+                    if key in inter_problem_coords.keys()
+                }
+                var_inter_df = util.unpivot_dict_to_dataframe(
+                    var_inter_problem_coords)
+
+                merged_df = inter_df.reset_index().merge(
+                    var_inter_df,
+                    on=list(inter_df.columns),
+                    how='inner'
+                ).set_index('index')
+
+                var_data.at[row, headers['sub_problem_key']] = \
+                    merged_df.index[0]
 
         # create new cvxpy variables (exogenous vars and constants)
         if variable_type != 'endogenous':
@@ -494,15 +539,18 @@ class Problem:
                         name=variable_name + str(variable.shape))
 
         # slice endogenous cvxpy variables (all endogenous variables are
-        # slices of one unique variable stored in data table.)
+        # slices of one unique variable for each sub-problem stored in data table.)
         else:
             for row in var_data.index:
+                sub_problem_key = var_data.at[row, headers['sub_problem_key']]
+
                 var_data.at[row, headers['cvxpy']] = \
                     self.slice_cvxpy_variable(
                         var_type=variable_type,
                         shape=variable.shape_size,
                         related_table_key=variable.related_table,
                         var_filter=var_data.at[row, headers['filter']],
+                        sub_problem_key=sub_problem_key,
                 )
 
         return var_data
@@ -905,12 +953,12 @@ class Problem:
         }
 
         dict_to_unpivot = {}
-        for set_name, set_header in self.index.sets_split_problem_list.items():
+        for set_name, set_header in self.index.sets_split_problem_dict.items():
             set_values = self.index.sets[set_name].data[set_header]
             dict_to_unpivot[set_header] = list(set_values)
 
         list_sets_split_problem = list(
-            self.index.sets_split_problem_list.values())
+            self.index.sets_split_problem_dict.values())
 
         problems_df = util.unpivot_dict_to_dataframe(
             data_dict=dict_to_unpivot,
@@ -1050,14 +1098,30 @@ class Problem:
             else:
                 variable_data = variable.data
 
-            # filter variable data based on problem filter
+            # filter variable data based on problem filter (inter-problem sets)
             if not problem_filter.empty:
-                variable_data = pd.merge(
-                    left=variable_data,
-                    right=problem_filter,
-                    on=list(problem_filter.columns),
-                    how='inner'
-                ).copy()
+
+                # if variable is not defined for the current inter-problem sets
+                # if a unique variable can be identified, ok
+                # if not raise an error
+                if set(problem_filter.columns).isdisjoint(variable_data.columns):
+                    if len(variable_data.index) > 1:
+                        filter_columns = list(problem_filter.columns)
+                        msg = f"Variable '{var_key}' is not defined for " \
+                            f"inter-problem sets {filter_columns}: however, a " \
+                            "unique Variable cannot be identified."
+                        self.logger.error(msg)
+                        raise exc.ConceptualModelError(msg)
+
+                # if variable is defined for the current inter-problem sets
+                # filter the variable data
+                else:
+                    variable_data = pd.merge(
+                        left=variable_data,
+                        right=problem_filter,
+                        on=list(problem_filter.columns),
+                        how='inner'
+                    ).copy()
 
             # if no sets intra-probles are defined for the variable, the cvxpy
             # variable is fetched for the current ploblem. cvxpy variable must
@@ -1326,6 +1390,9 @@ class Problem:
                 module='cvxpy.reductions.solvers.solving_chain'
             )
 
+        # possible workaround: summing all problems into one and solve it
+        # other solution: at the moment of generating endogenous variables bound
+        # to tables, in case of set split problems, define a dictionary with different variables.
         for problem_num in problem_dataframe.index:
 
             problem_info: List[str] = problem_dataframe.at[
@@ -1333,9 +1400,9 @@ class Problem:
 
             msg = "Solving numerical problem"
             if problem_name:
-                msg += f" '{problem_name}'"
+                msg += f" ' [{problem_name}]"
             if problem_info:
-                msg += f" {problem_info}."
+                msg += f" - inter-problem sets: {problem_info}."
             self.logger.info(msg)
 
             numerical_problem: cp.Problem = problem_dataframe.at[

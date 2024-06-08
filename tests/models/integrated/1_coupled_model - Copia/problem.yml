@@ -1,0 +1,13 @@
+# SYMBOLIC PROBLEM
+
+1:
+    objective: 
+        - Maximize(c @ tran(x))
+
+    expressions:
+        - a @ tran(x) - b <= 0
+        - x >= 0
+
+2: 
+    expressions:
+        - a - a_0 - lr @ diag(x) == 0

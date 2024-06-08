@@ -13,6 +13,7 @@ fixtures:
         - test_structure
         - sets_mirror
         - inverse
+        - multiple_problems
 
     linear: 
         - 0a_tech_filters

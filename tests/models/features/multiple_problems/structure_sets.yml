@@ -20,38 +20,22 @@
 # -----------------------------------------------------------------------------
 # sets
 
-# technology_mix:
-#     symbol: tm  # symbol of the set 
-#     table_name: _set_TECHS_MIX # name of the table of the set in the database
-#     split_problem: True # (optional) if the items of the set defines separate problems 
-#     table_structure:
-#         name: [tm_Names, TYPE] # header of set entries names in database set table
-
 scenarios:
-    symbol: s  
-    table_name: _set_SCENARIOS 
+    symbol: s
+    table_name: _set_scenarios
     split_problem: True
     table_structure:
-        name: [s_Names, TYPE]
+        name: [s_Names, TEXT]
+
+uncertainty:
+    symbol: u
+    table_name: _set_uncertainty
+    split_problem: True
+    table_structure:
+        name: [u_Names, TEXT]
 
 products:
-    symbol: p  
-    table_name: _set_PRODUCTS 
+    symbol: p
+    table_name: _set_products
     table_structure:
-        name: [p_Names, TYPE]
-
-product_data:
-    symbol: pd  
-    table_name: _set_PRODUCT_DATA 
-    table_structure:
-        name: [pd_Names, TYPE]
-        filters:
-            0: 
-                header: [pd_Category, TEXT] 
-                values: [energy_use_0, learning_rate, profit]
-
-resources:
-    symbol: r  
-    table_name: _set_RESOURCES 
-    table_structure:
-        name: [r_Names, TYPE]
+        name: [p_Names, TEXT]

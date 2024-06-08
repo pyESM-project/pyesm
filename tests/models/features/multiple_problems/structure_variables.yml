@@ -19,67 +19,31 @@
 #                 filters: {0: Physical} # optional, filters for the columns
 
 # -----------------------------------------------------------------------------
-# endogenous variables
-
-
-# -----------------------------------------------------------------------------
-# mixed variables
-
-x:
-    name: products supply
-    type: 
-        1: endogenous
-        2: exogenous
-    coordinates: [scenarios, products] 
-    variables_info:
-        x: 
-            cols: 
-                set: products 
-
-a:
-    name: energy use
-    type: 
-        1: exogenous
-        2: endogenous
-    coordinates: [scenarios, products] 
-    variables_info:
-        a: 
-            cols: 
-                set: products
-
-# -----------------------------------------------------------------------------
 # exogenous variables
 
-products_data:
-    name: product data
+products_constraints:
+    name: products_constraints
     type: exogenous
-    coordinates: [products, product_data] 
+    coordinates: [products]
     variables_info:
-        c: 
+        C:
             rows:
-                set: product_data
-                filters: {0: profit}
-            cols: 
                 set: products
-        a_0: 
+        
+
+
+# -----------------------------------------------------------------------------
+# endogenous variables
+
+production:
+    name: production
+    type: endogenous
+    coordinates: [scenarios, uncertainty, products]
+    variables_info:
+        X:
             rows:
-                set: product_data
-                filters: {0: energy_use_0}
-            cols: 
-                set: products
-        lr:
-            rows:
-                set: product_data
-                filters: {0: learning_rate}
-            cols: 
                 set: products
 
-b:  
-    name: energy availability
-    type: exogenous
-    coordinates: [scenarios, resources] 
-    variables_info:
-        b: 
-            rows: 
-                set: resources
-            
+
+# -----------------------------------------------------------------------------
+# constants variables
