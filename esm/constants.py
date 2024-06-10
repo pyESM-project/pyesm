@@ -104,6 +104,12 @@ class Constants:
     _PROBLEM_INFO_HEADER = 'info'
     _PROBLEM_STATUS_HEADER = 'status'
 
+    # COORDINATES LABELS
+    rows = 'rows'
+    cols = 'cols'
+    intra = 'intra'
+    inter = 'inter'
+
     # DEFAULT STRUCTURES FOR VALIDATION
     _OBJECTIVE_HEADER = 'objective'
     _CONSTRAINTS_HEADER = 'expressions'
@@ -123,9 +129,9 @@ class Constants:
         'variables_info': dict,
     }
     _VARIABLE_DEFAULT_STRUCTURE = {
-        'intra': dict,
-        'rows': dict,
-        'cols': dict,
+        intra: dict,
+        rows: dict,
+        cols: dict,
         'value': str,
     }
 
