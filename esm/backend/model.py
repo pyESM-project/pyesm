@@ -411,6 +411,7 @@ class Model:
             **kwargs,
         )
 
+        self.logger.info("=================================")
         self.logger.info("Numerical problems status report:")
         for info, status in self.core.problem.problem_status.items():
             self.logger.info(f"{info}: {status}")
