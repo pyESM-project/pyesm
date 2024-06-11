@@ -2,7 +2,7 @@
 
 # definition of the objective function (scalar)
 objective:
-    - Minimize(sum(C_om))
+    - Minimize(sum(C_om_tot))
 
 # definition of the constraints (vector expressions)
 expressions: 
@@ -16,7 +16,7 @@ expressions:
     - X_pub_strike <= X_max_pub_strike
 
     - E == Q @ diag(e)
-    - C_om == X @ diag(c_om)
+    - C_om_tot == X @ diag(c_om)
 
     - X >= 0
     - Q >= 0
