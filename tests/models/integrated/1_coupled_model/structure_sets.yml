@@ -6,7 +6,7 @@
 #     split_problem: False # (optional) if the items of the set defines separate problems 
 #     copy_from: another_set_key # (optional) key of another set to copy the data from (table_headers must be filled anyway)
 #     table_structure:
-#         name: [a_Names, TYPE] # header of set entries names in database set table
+#         name: [a_Names, TEXT] # header of set entries names in database set table
 #         aggregation: [a_Agg, TEXT] # (optional) header of set entries that are matching another set (aggregation)
 #         filters:
 #             0:  # (int) index of the category in the set
@@ -27,31 +27,25 @@
 #     table_structure:
 #         name: [tm_Names, TYPE] # header of set entries names in database set table
 
-scenarios:
-    symbol: s  
-    table_name: _set_SCENARIOS 
+resources:
+    symbol: r  
     split_problem: True
+    table_name: _set_RESOURCES 
     table_structure:
-        name: [s_Names, TYPE]
+        name: [r_Names, TEXT]
 
 products:
     symbol: p  
     table_name: _set_PRODUCTS 
     table_structure:
-        name: [p_Names, TYPE]
+        name: [p_Names, TEXT]
 
 product_data:
     symbol: pd  
     table_name: _set_PRODUCT_DATA 
     table_structure:
-        name: [pd_Names, TYPE]
+        name: [pd_Names, TEXT]
         filters:
             0: 
                 header: [pd_Category, TEXT] 
                 values: [energy_use_0, learning_rate, profit]
-
-resources:
-    symbol: r  
-    table_name: _set_RESOURCES 
-    table_structure:
-        name: [r_Names, TYPE]
