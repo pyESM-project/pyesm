@@ -501,7 +501,9 @@ class Model:
             ResultsError: If the databases are not identical in terms of table 
                 presence, structure, or contents.
         """
-        numerical_tolerance = Constants.get('_TOLERANCE_TESTS_RESULTS_CHECK')
+        if not numerical_tolerance:
+            numerical_tolerance = \
+                Constants.get('_TOLERANCE_TESTS_RESULTS_CHECK')
 
         self.core.check_results_as_expected(
             values_relative_diff_tolerance=numerical_tolerance)
