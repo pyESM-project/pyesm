@@ -179,4 +179,5 @@ dependencies:
       - qdldl==0.1.7.post0
       - scipy==1.12.0
       - scs==3.2.4.post1
+      - gurobipy==11.0.0
 prefix: C:\ProgramData\Anaconda3\envs\esm

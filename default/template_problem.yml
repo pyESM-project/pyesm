@@ -1,18 +1,13 @@
 # SYMBOLIC PROBLEM
 
-# definition of the objective function (scalar, optional)
+0:                              # (optional) problem_key defined in case of multiple problems
 
-objective:
-    - Minimize(1)
+    objective:                  # (optional) definition of the objective function
+        - Minimize(obj)         # Minimize() or Maximize() with a scalar obj expression
 
-# definition of the constraints (vector expressions)
-
-expressions: 
-
-    - ex_tf - en_tf == 0
-    # - ex_tf_y - en_tf_y == 0
-    # - ex_tf_1 - en_tf_1 == 0
-    # - ex_tf_2 - en_tf_2 == 0
+    expressions:                # definition of additional expressions (equalities/inequalities)
+        - var_1 - var_2 == 0    
+        - var_3 >= 0
 
 
 
