@@ -33,7 +33,7 @@ from esm.log_exc.logger import Logger
 from esm.support.dotdict import DotDict
 from esm.support.file_manager import FileManager
 from esm.support.pbi_manager import PBIManager
-from esm.base.core import Core
+from esm.backend.core import Core
 
 
 class Model:
@@ -411,11 +411,10 @@ class Model:
             **kwargs,
         )
 
-        if self.core.problem.problem_status == 'optimal':
-            self.logger.info("Numerical problems solved successfully.")
-        else:
-            self.logger.warning(
-                "Numerical problems not solved successfully.")
+        self.logger.info("=================================")
+        self.logger.info("Numerical problems status report:")
+        for info, status in self.core.problem.problem_status.items():
+            self.logger.info(f"{info}: {status}")
 
     def load_results_to_database(
         self,
@@ -502,7 +501,9 @@ class Model:
             ResultsError: If the databases are not identical in terms of table 
                 presence, structure, or contents.
         """
-        numerical_tolerance = Constants.get('_TOLERANCE_TESTS_RESULTS_CHECK')
+        if not numerical_tolerance:
+            numerical_tolerance = \
+                Constants.get('_TOLERANCE_TESTS_RESULTS_CHECK')
 
         self.core.check_results_as_expected(
             values_relative_diff_tolerance=numerical_tolerance)

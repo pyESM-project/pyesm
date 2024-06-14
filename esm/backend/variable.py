@@ -156,7 +156,7 @@ class Variable:
         """
         shape_size = []
 
-        for dimension in ['rows', 'cols']:
+        for dimension in [Constants.get('rows'), Constants.get('cols')]:
             if self.coordinates[dimension]:
                 shape_size.append(len(*self.coordinates[dimension].values()))
             else:
@@ -175,7 +175,7 @@ class Variable:
         """
         dim_labels = []
 
-        for dimension in ['rows', 'cols']:
+        for dimension in [Constants.get('rows'), Constants.get('cols')]:
             if self.coordinates_info[dimension]:
                 self.coordinates_info: Dict[str, Dict]
                 dim_labels.append(
@@ -196,7 +196,7 @@ class Variable:
         """
         dim_items = []
 
-        for dimension in ['rows', 'cols']:
+        for dimension in [Constants.get('rows'), Constants.get('cols')]:
             if self.coordinates[dimension]:
                 self.coordinates: Dict[str, Dict]
                 dim_items.append(
@@ -233,7 +233,7 @@ class Variable:
         """
         dims_sets = {}
 
-        for dim in ['rows', 'cols']:
+        for dim in [Constants.get('rows'), Constants.get('cols')]:
             if dim in self.coordinates_info:
                 dim_set: dict = self.coordinates_info[dim]
 
@@ -283,8 +283,8 @@ class Variable:
             Dict[str, str]: Dictionary representing the hierarchy of sets parsing.
         """
         return {
-            **self.coordinates_info['inter'],
-            **self.coordinates_info['intra'],
+            **self.coordinates_info[Constants.get('inter')],
+            **self.coordinates_info[Constants.get('intra')],
         }
 
     @property
@@ -297,8 +297,8 @@ class Variable:
             Dict[str, str]: Dictionary with parsing hierarchy values.
         """
         return {
-            **self.coordinates['intra'],
-            **self.coordinates['inter'],
+            **self.coordinates[Constants.get('intra')],
+            **self.coordinates[Constants.get('inter')],
         }
 
     @property

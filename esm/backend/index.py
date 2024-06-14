@@ -18,9 +18,9 @@ from typing import Dict, List, Optional, Type
 import pandas as pd
 
 from esm.constants import Constants
-from esm.base.data_table import DataTable
-from esm.base.set_table import SetTable
-from esm.base.variable import Variable
+from esm.backend.data_table import DataTable
+from esm.backend.set_table import SetTable
+from esm.backend.variable import Variable
 from esm.log_exc import exceptions as exc
 from esm.log_exc.logger import Logger
 from esm.support import util
@@ -363,10 +363,10 @@ class Index:
                 raise exc.ConceptualModelError(msg)
 
             variable.coordinates_info = {
-                'rows': rows,
-                'cols': cols,
-                'intra': intra,
-                'inter': inter,
+                Constants.get('rows'): rows,
+                Constants.get('cols'): cols,
+                Constants.get('intra'): intra,
+                Constants.get('inter'): inter,
             }
 
     def fetch_foreign_keys_to_data_tables(self) -> None:
@@ -588,7 +588,12 @@ class Index:
                 }
 
                 # only rows, cols and intra problem sets can be filtered
-                if var_coord_filter and coord_category in ['rows', 'cols', 'intra']:
+                coord_categories = [
+                    Constants.get('rows'),
+                    Constants.get('cols'),
+                    Constants.get('intra'),
+                ]
+                if var_coord_filter and coord_category in coord_categories:
                     set_data = self.sets[coord_key].data.copy()
 
                     for column, conditions in var_coord_filter.items():
@@ -683,8 +688,8 @@ class Index:
 
                         # filtering rows and cols (in case of filtered vars)
                         filter_dict = {
-                            'rows': variable.dims_items[0],
-                            'cols': variable.dims_items[1],
+                            Constants.get('rows'): variable.dims_items[0],
+                            Constants.get('cols'): variable.dims_items[1],
                         }
                         set_items_agg_map_filtered = util.filter_dataframe(
                             df_to_filter=set_items_agg_map,

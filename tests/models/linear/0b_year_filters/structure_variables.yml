@@ -159,7 +159,7 @@ C_om_tot:
     type: endogenous 
     coordinates: [scenarios,techs,days] 
     variables_info:
-        C_om: 
+        C_om_tot: 
             rows: 
                 set: days 
             cols: 
