@@ -23,7 +23,7 @@
 u:
     name: use matrix # description or full name of the table
     type: exogenous 
-    coordinates: [scenarios, techs, flows_agg, years] # list of coordinates with set_key symbols
+    coordinates: [scenarios, techs, flows_agg] # list of coordinates with set_key symbols
     variables_info:
         u: # variable name
             rows: # rows of the variable
