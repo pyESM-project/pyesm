@@ -117,7 +117,7 @@ class Variable:
 
         self.coordinates_info: Dict[str, Any] = {}
         self.coordinates: Dict[str, Any] = {}
-        self.data: Optional[pd.DataFrame] = None
+        self.data: Optional[pd.DataFrame | dict] = None
 
     def __repr__(self) -> str:
         output = ''

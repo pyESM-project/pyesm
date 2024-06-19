@@ -25,7 +25,9 @@ based on user-defined settings.
 """
 
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional
+
+import pandas as pd
 
 from esm.constants import Constants
 from esm.log_exc import exceptions as exc
@@ -162,6 +164,27 @@ class Model:
         )
 
         self.logger.debug(f"'{self}' object initialized.")
+
+    @property
+    def sets(self) -> List[str]:
+        return self.core.index.list_sets
+
+    @property
+    def data_tables(self) -> List[str]:
+        return {
+            table_key:
+                f"name: {table.name}, "
+                f"coordinates: {table.coordinates}, "
+                f"variables: {list(table.variables_info.keys())}"
+            for table_key, table in self.core.index.data.items()
+        }
+
+    @property
+    def variables(self) -> Dict[str, str]:
+        return {
+            var_key: f"shape: {variable.shape}"
+            for var_key, variable in self.core.index.variables.items()
+        }
 
     def __repr__(self):
         class_name = type(self).__name__
@@ -509,6 +532,22 @@ class Model:
             values_relative_diff_tolerance=numerical_tolerance)
 
         self.logger.info("Model results are as expected.")
+
+    def variable(
+            self,
+            name: str,
+            problem_key: Optional[int] = None,
+            sub_problem_key: Optional[int] = None,
+    ) -> Optional[pd.DataFrame]:
+
+        return self.core.index.fetch_variable_data(
+            var_key=name,
+            problem_index=problem_key,
+            sub_problem_index=sub_problem_key,
+        )
+
+    def set(self, name: str) -> Optional[pd.DataFrame]:
+        return self.core.index.fetch_set_data(set_key=name)
 
     def erase_model(self) -> None:
         """
