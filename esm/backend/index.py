@@ -15,6 +15,7 @@ operational characteristics related to these entities.
 from pathlib import Path
 from typing import Dict, List, Optional, Type
 
+import cvxpy as cp
 import pandas as pd
 
 from esm.constants import Constants
@@ -749,6 +750,14 @@ class Index:
             return
 
         variable = self.variables[var_key]
+
+        if variable.type == 'constant':
+            data: cp.Constant = variable.data
+            values_dataframe = pd.DataFrame(
+                data=data.value,
+                index=variable.dims_items[0],
+                columns=variable.dims_items[1],
+            )
 
         if variable.data is None:
             self.logger.warning(
