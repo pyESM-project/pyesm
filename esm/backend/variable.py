@@ -120,9 +120,11 @@ class Variable:
         self.data: Optional[pd.DataFrame | dict] = None
 
     def __repr__(self) -> str:
+        excluded_keys = ['data', 'logger', 'related_dims_map']
+
         output = ''
         for key, value in self.__dict__.items():
-            if key not in ('data', 'logger'):
+            if key not in excluded_keys:
                 output += f'\n{key}: {value}'
         return output
 
@@ -466,7 +468,11 @@ class Variable:
         elif value_type == 'identity_rcot':
             if self.related_dims_map is not None and \
                     not self.related_dims_map.empty:
-                return factory_function(self.related_dims_map, **args)
+                return factory_function(
+                    related_dims_map=self.related_dims_map,
+                    rows_order=self.dims_items[0],
+                    cols_order=self.dims_items[1],
+                )
             else:
                 msg = 'Identity_rcot matrix supported only for variables ' \
                     'with dimensions defined by the same set, or when one set ' \
