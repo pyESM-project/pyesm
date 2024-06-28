@@ -34,7 +34,7 @@ from esm.log_exc.logger import Logger
 from esm.support import util
 from esm.support.file_manager import FileManager
 from esm.support.dotdict import DotDict
-from esm.base.index import Index, Variable
+from esm.backend.index import Index, Variable
 
 
 class Problem:
@@ -501,13 +501,15 @@ class Problem:
             var_data.at[row, headers['filter']] = var_filter
 
         # identify sub_problem_key
+        inter_coord_label = Constants.get('inter')
         if variable_type not in ['exogenous', 'constant'] and \
-                variable.coordinates['inter']:
+                variable.coordinates[inter_coord_label]:
             for row in var_data.index:
 
                 inter_problem_coords = {
-                    set_label: variable.coordinates['inter'][set_key]
-                    for set_key, set_label in variable.coordinates_info['inter'].items()
+                    set_label: variable.coordinates[inter_coord_label][set_key]
+                    for set_key, set_label
+                    in variable.coordinates_info[inter_coord_label].items()
                 }
                 inter_df = util.unpivot_dict_to_dataframe(inter_problem_coords)
 
@@ -774,7 +776,7 @@ class Problem:
         for key, variable in variables_subset.items():
             variable: Variable
             vars_sets_intra_problem[key] = \
-                variable.coordinates_info.get('intra', None)
+                variable.coordinates_info.get(Constants.get('intra'), None)
 
         if allow_none:
             # in this case, a variable is equal for all intra-problem set items
@@ -1126,7 +1128,7 @@ class Problem:
             # if no sets intra-probles are defined for the variable, the cvxpy
             # variable is fetched for the current ploblem. cvxpy variable must
             # be unique for the defined problem
-            if not variable.coordinates_info['intra']:
+            if not variable.coordinates_info[Constants.get('intra')]:
                 if variable_data.shape[0] == 1:
                     allowed_variables[var_key] = \
                         variable_data[cvxpy_var_header].values[0]
@@ -1138,7 +1140,7 @@ class Problem:
 
             # if sets_intra_problem is defined for the variable, the right
             # cvxpy variable is fetched for the current problem
-            elif variable.coordinates_info['intra'] \
+            elif variable.coordinates_info[Constants.get('intra')] \
                     and set_intra_problem_header and set_intra_problem_value:
                 allowed_variables[var_key] = variable_data.loc[
                     variable_data[set_intra_problem_header] == set_intra_problem_value,
@@ -1296,7 +1298,7 @@ class Problem:
                 # check if there are filters (and if it is equal for all vars)
                 common_intra_coords = self.fetch_common_vars_coords(
                     variables_subset=vars_subset,
-                    coord_category='intra',
+                    coord_category=Constants.get('intra'),
                     allow_empty_coord=True,
                 )
 

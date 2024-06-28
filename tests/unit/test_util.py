@@ -716,17 +716,17 @@ def test_find_dict_key_corresponding_to_value():
     Raises:
         TypeError: If the provided argument is not a dictionary.
     """
-    dictionary = {'a': 1, 'b': 2, 'c': 3}
+    dictionary = {'a': 1, 'b': 2, 'c': 2, 'd': 3}
 
     # Test with a dictionary where the target value exists
     target_value = 2
     assert find_dict_keys_corresponding_to_value(
-        dictionary, target_value) == 'b'
+        dictionary, target_value) == ['b', 'c']
 
     # Test with a dictionary where the target value does not exist
     target_value = 4
     assert find_dict_keys_corresponding_to_value(
-        dictionary, target_value) is None
+        dictionary, target_value) == []
 
     # Test with a non-dictionary argument
     with pytest.raises(TypeError):
