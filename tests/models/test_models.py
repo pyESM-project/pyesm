@@ -20,22 +20,13 @@ the specified methods on each model.
 
 The module raises a FileNotFoundError if the settings file does not exist.
 """
+import os
 from pathlib import Path
 from typing import Dict
 import pytest
 import yaml
 
 from esm import Model
-
-root_path = Path(__file__).parents[1]
-tests_settings = root_path / 'tests_settings.yml'
-
-if not tests_settings.exists():
-    raise FileNotFoundError(
-        f"Expected settings file does not exist: '{tests_settings}'")
-
-with open(tests_settings, 'r') as file:
-    settings = yaml.safe_load(file)
 
 
 def create_test_function(
@@ -69,7 +60,7 @@ def create_test_function(
             a message indicating the name of the model.
     """
     @pytest.mark.parametrize("model_name", models)
-    def test_model(model_name):
+    def test_model(model_name: Dict):
         model = Model(
             model_dir_name=model_name,
             main_dir_path=models_dir_path,
@@ -86,13 +77,33 @@ def create_test_function(
     return test_model
 
 
+# load tests settings
+root_path = Path(__file__).parents[1]
+tests_settings = root_path / 'tests_settings.yml'
+
+if not tests_settings.exists():
+    raise FileNotFoundError(
+        f"Expected settings file does not exist: '{tests_settings}'")
+
+with open(tests_settings, 'r') as file:
+    settings = yaml.safe_load(file)
+
+# fetch log level and test methods
 log_level = settings['log_level']
 test_methods = settings['test_methods']
+test_methods_integrated = settings['test_methods_integrated']
 
-# testing features
+# fetch tests paths
 features_dir_path = root_path / settings['paths']['features']
-features_models = settings['fixtures']['features']
+linear_models_dir_path = root_path / settings['paths']['linear']
+integrated_models_dir_path = root_path / settings['paths']['integrated']
 
+# fetch models names
+features_models = os.listdir(features_dir_path)
+linear_models = os.listdir(linear_models_dir_path)
+integrated_models = os.listdir(integrated_models_dir_path)
+
+# generating testing functions
 test_model_features = create_test_function(
     models=features_models,
     models_dir_path=features_dir_path,
@@ -100,9 +111,6 @@ test_model_features = create_test_function(
 )
 
 # testing non-integrated linear models
-linear_models_dir_path = root_path / settings['paths']['linear']
-linear_models = settings['fixtures']['linear']
-
 test_linear_models = create_test_function(
     models=linear_models,
     models_dir_path=linear_models_dir_path,
@@ -110,10 +118,6 @@ test_linear_models = create_test_function(
 )
 
 # testing integrated models
-integrated_models_dir_path = root_path / settings['paths']['integrated']
-integrated_models = settings['fixtures']['integrated']
-test_methods_integrated = settings['test_methods_integrated']
-
 test_integrated_models = create_test_function(
     models=integrated_models,
     models_dir_path=integrated_models_dir_path,

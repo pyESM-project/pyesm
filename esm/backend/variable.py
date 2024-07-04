@@ -117,12 +117,14 @@ class Variable:
 
         self.coordinates_info: Dict[str, Any] = {}
         self.coordinates: Dict[str, Any] = {}
-        self.data: Optional[pd.DataFrame] = None
+        self.data: Optional[pd.DataFrame | dict] = None
 
     def __repr__(self) -> str:
+        excluded_keys = ['data', 'logger', 'related_dims_map']
+
         output = ''
         for key, value in self.__dict__.items():
-            if key not in ('data', 'logger'):
+            if key not in excluded_keys:
                 output += f'\n{key}: {value}'
         return output
 
@@ -156,7 +158,7 @@ class Variable:
         """
         shape_size = []
 
-        for dimension in ['rows', 'cols']:
+        for dimension in [Constants.get('rows'), Constants.get('cols')]:
             if self.coordinates[dimension]:
                 shape_size.append(len(*self.coordinates[dimension].values()))
             else:
@@ -175,7 +177,7 @@ class Variable:
         """
         dim_labels = []
 
-        for dimension in ['rows', 'cols']:
+        for dimension in [Constants.get('rows'), Constants.get('cols')]:
             if self.coordinates_info[dimension]:
                 self.coordinates_info: Dict[str, Dict]
                 dim_labels.append(
@@ -196,7 +198,7 @@ class Variable:
         """
         dim_items = []
 
-        for dimension in ['rows', 'cols']:
+        for dimension in [Constants.get('rows'), Constants.get('cols')]:
             if self.coordinates[dimension]:
                 self.coordinates: Dict[str, Dict]
                 dim_items.append(
@@ -233,7 +235,7 @@ class Variable:
         """
         dims_sets = {}
 
-        for dim in ['rows', 'cols']:
+        for dim in [Constants.get('rows'), Constants.get('cols')]:
             if dim in self.coordinates_info:
                 dim_set: dict = self.coordinates_info[dim]
 
@@ -283,8 +285,8 @@ class Variable:
             Dict[str, str]: Dictionary representing the hierarchy of sets parsing.
         """
         return {
-            **self.coordinates_info['inter'],
-            **self.coordinates_info['intra'],
+            **self.coordinates_info[Constants.get('inter')],
+            **self.coordinates_info[Constants.get('intra')],
         }
 
     @property
@@ -297,8 +299,8 @@ class Variable:
             Dict[str, str]: Dictionary with parsing hierarchy values.
         """
         return {
-            **self.coordinates['intra'],
-            **self.coordinates['inter'],
+            **self.coordinates[Constants.get('intra')],
+            **self.coordinates[Constants.get('inter')],
         }
 
     @property
@@ -466,7 +468,11 @@ class Variable:
         elif value_type == 'identity_rcot':
             if self.related_dims_map is not None and \
                     not self.related_dims_map.empty:
-                return factory_function(self.related_dims_map, **args)
+                return factory_function(
+                    related_dims_map=self.related_dims_map,
+                    rows_order=self.dims_items[0],
+                    cols_order=self.dims_items[1],
+                )
             else:
                 msg = 'Identity_rcot matrix supported only for variables ' \
                     'with dimensions defined by the same set, or when one set ' \

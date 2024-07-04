@@ -59,7 +59,9 @@ def test_identity_rcot():
         'rows': ['a', 'b', 'c'],
         'cols': ['x', 'y', 'z']
     })
-    matrix = identity_rcot(df)
+    rows_order = ['a', 'b', 'c']
+    cols_order = ['x', 'y', 'z']
+    matrix = identity_rcot(df, rows_order, cols_order)
     expected_matrix = np.array([
         [1, 0, 0],
         [0, 1, 0],
@@ -67,38 +69,63 @@ def test_identity_rcot():
     ])
     assert np.array_equal(matrix, expected_matrix)
 
-    # valid input
+    # valid input with reordered rows and columns
     df = pd.DataFrame({
         'rows': ['a', 'b', 'b', 'c', 'c'],
         'cols': ['x', 'y1', 'y2', 'z1', 'z2']
     })
-    matrix = identity_rcot(df)
+    rows_order = ['c', 'a', 'b']
+    cols_order = ['z2', 'z1', 'y2', 'y1', 'x']
+    matrix = identity_rcot(df, rows_order, cols_order)
     expected_matrix = np.array([
-        [1, 0, 0, 0, 0],
-        [0, 1, 1, 0, 0],
-        [0, 0, 0, 1, 1]
+        [1, 1, 0, 0, 0],
+        [0, 0, 0, 0, 1],
+        [0, 0, 1, 1, 0]
     ])
     assert np.array_equal(matrix, expected_matrix)
 
-    # valid input
+    # valid input with all rows having the same value
     df = pd.DataFrame({
         'rows': ['a', 'a', 'a'],
         'cols': ['x1', 'x2', 'x3']
     })
-    matrix = identity_rcot(df)
+    rows_order = ['a']
+    cols_order = ['x1', 'x2', 'x3']
+    matrix = identity_rcot(df, rows_order, cols_order)
     expected_matrix = np.array([[1, 1, 1]])
     assert np.array_equal(matrix, expected_matrix)
 
-    # invalid input
+    # invalid input: not a dataframe
     with pytest.raises(ValueError):
-        identity_rcot('not a dataframe')
+        identity_rcot('not a dataframe', [], [])
 
+    # invalid input: missing 'rows' and 'cols' columns
     with pytest.raises(ValueError):
         df = pd.DataFrame({
             'not_rows': ['a', 'b', 'c'],
             'not_cols': ['x', 'y', 'z']
         })
-        identity_rcot(df)
+        identity_rcot(df, [], [])
+
+    # invalid input: rows_order not fully represented
+    with pytest.raises(ValueError):
+        df = pd.DataFrame({
+            'rows': ['a', 'b'],
+            'cols': ['x', 'y']
+        })
+        rows_order = ['a', 'b', 'c']  # 'c' is not in 'rows'
+        cols_order = ['x', 'y']
+        identity_rcot(df, rows_order, cols_order)
+
+    # invalid input: cols_order not fully represented
+    with pytest.raises(ValueError):
+        df = pd.DataFrame({
+            'rows': ['a', 'b'],
+            'cols': ['x', 'y']
+        })
+        rows_order = ['a', 'b']
+        cols_order = ['x', 'y', 'z']  # 'z' is not in 'cols'
+        identity_rcot(df, rows_order, cols_order)
 
 
 def test_arange():

@@ -104,6 +104,12 @@ class Constants:
     _PROBLEM_INFO_HEADER = 'info'
     _PROBLEM_STATUS_HEADER = 'status'
 
+    # COORDINATES LABELS
+    rows = 'rows'
+    cols = 'cols'
+    intra = 'intra'
+    inter = 'inter'
+
     # DEFAULT STRUCTURES FOR VALIDATION
     _OBJECTIVE_HEADER = 'objective'
     _CONSTRAINTS_HEADER = 'expressions'
@@ -123,9 +129,9 @@ class Constants:
         'variables_info': dict,
     }
     _VARIABLE_DEFAULT_STRUCTURE = {
-        'intra': dict,
-        'rows': dict,
-        'cols': dict,
+        intra: dict,
+        rows: dict,
+        cols: dict,
         'value': str,
     }
 
@@ -170,6 +176,7 @@ class Constants:
     _TOLERANCE_TESTS_RESULTS_CHECK = 0.02
     _TOLERANCE_MODEL_COUPLING_CONVERGENCE = 0.01
     _MAXIMUM_ITERATIONS_MODEL_COUPLING = 20
+    _ROUNDING_DIGITS_RELATIVE_DIFFERENCE_DB = 5
 
     @classmethod
     def get(cls, constant_name):

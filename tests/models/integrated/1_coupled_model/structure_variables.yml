@@ -18,19 +18,13 @@
 #                 set: b # set_key symbol
 #                 filters: {0: Physical} # optional, filters for the columns
 
-# -----------------------------------------------------------------------------
-# endogenous variables
-
-
-# -----------------------------------------------------------------------------
-# mixed variables
 
 x:
     name: products supply
     type: 
         1: endogenous
         2: exogenous
-    coordinates: [scenarios, products] 
+    coordinates: [resources, products] 
     variables_info:
         x: 
             cols: 
@@ -41,14 +35,11 @@ a:
     type: 
         1: exogenous
         2: endogenous
-    coordinates: [scenarios, products] 
+    coordinates: [resources, products] 
     variables_info:
         a: 
             cols: 
                 set: products
-
-# -----------------------------------------------------------------------------
-# exogenous variables
 
 products_data:
     name: product data
@@ -77,9 +68,7 @@ products_data:
 b:  
     name: energy availability
     type: exogenous
-    coordinates: [scenarios, resources] 
+    coordinates: [resources] 
     variables_info:
         b: 
-            rows: 
-                set: resources
             
