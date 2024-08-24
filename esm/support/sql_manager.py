@@ -189,7 +189,8 @@ class SQLManager:
         This method supports executing single or multiple SQL commands with
         optional parameterization, fetching results, and committing changes to
         the database. Handles and logs specific sqlite3 exceptions related to
-        operation and integrity.
+        operation, integrity, database, and programming errors. Rolls back the
+        transaction if an error occurs.
 
         Args:
             query (str): SQL query to be executed.
@@ -208,6 +209,10 @@ class SQLManager:
             exc.OperationalError: If there is an operational issue during query
                 execution.
             exc.IntegrityError: If there is an integrity issue during query
+                execution.
+            exc.DatabaseError: If there is a database issue during query
+                execution.
+            exc.ProgrammingError: If there is a programming issue during query
                 execution.
         """
         if self.connection is None or self.cursor is None:
@@ -228,14 +233,22 @@ class SQLManager:
                 return self.cursor.fetchall()
 
         except sqlite3.OperationalError as op_error:
+            self.connection.rollback()
             msg = str(op_error)
             self.logger.error(msg)
             raise exc.OperationalError(msg) from op_error
 
         except sqlite3.IntegrityError as int_error:
+            self.connection.rollback()
             msg = str(int_error)
             self.logger.error(msg)
             raise exc.IntegrityError(msg) from int_error
+
+        except sqlite3.DatabaseError as db_error:
+            self.connection.rollback()
+            msg = str(db_error)
+            self.logger.error(msg)
+            raise exc.MissingDataError(msg) from db_error
 
     @property
     def get_existing_tables_names(self) -> List[str]:

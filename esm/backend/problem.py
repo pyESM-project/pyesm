@@ -687,7 +687,9 @@ class Problem:
 
         tokens = re.findall(pattern=standard_pattern, string=expression)
         allowed_vars = [
-            token for token in tokens if token not in non_allowed_tokens]
+            token
+            for token in tokens
+            if token not in non_allowed_tokens]
 
         if not allowed_vars:
             self.logger.warning(

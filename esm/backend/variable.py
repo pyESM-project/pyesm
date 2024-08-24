@@ -308,13 +308,15 @@ class Variable:
         """
         Compiles all coordinates related to the variable into a single dictionary.
 
+        Note:
+            In case a variable has the same coordinates in different dimensions, 
+            only one of them is reported. This is a rare case of a variable with 
+            the same rows and columns.
+
         Returns:
             Dict[str, List[str] | None]: Dictionary containing all coordinate 
                 values, grouped by dimension.
         """
-        # attention: in case a variable has same coordinates in different
-        # dimensions, only one of them is reported (rare case of a variable
-        # with same rows and cols).
         all_coordinates = {}
         for coordinates in self.coordinates.values():
             all_coordinates.update(coordinates)
