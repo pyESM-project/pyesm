@@ -748,6 +748,7 @@ def find_non_allowed_types(
         allowed_types: Tuple,
         target_col_header: str,
         return_col_header: Optional[str] = None,
+        allow_none: bool = False,
 ) -> List:
     """
     Find rows in a DataFrame where the value in a specified column is not of 
@@ -761,6 +762,7 @@ def find_non_allowed_types(
         return_col_header (Optional[str]): The name of the column to return. 
             If None, return list of items in the target_col_header with non-allowed
             types.
+        allow_none (bool): Whether to allow None values. Default is False.
 
     Returns:
         List: The list of values in the return column for rows where the target 
@@ -783,10 +785,13 @@ def find_non_allowed_types(
         raise ValueError(
             f"'{return_col_header}' is not a column in dataframe.")
 
-    non_allowed_rows = dataframe.apply(
-        lambda row: not isinstance(
-            row[target_col_header], allowed_types),
-        axis=1)
+    def is_non_allowed(row):
+        value = row[target_col_header]
+        if pd.isna(value):
+            return not allow_none
+        return not isinstance(value, allowed_types)
+
+    non_allowed_rows = dataframe.apply(is_non_allowed, axis=1)
 
     if return_col_header:
         return dataframe.loc[non_allowed_rows, return_col_header].tolist()

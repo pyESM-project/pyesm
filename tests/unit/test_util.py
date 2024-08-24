@@ -652,31 +652,53 @@ def test_find_non_allowed_types():
     invalid input, and checks if the function correctly identifies rows with 
     non-allowed types, handles invalid input, and raises the correct errors.
     """
+    allowed_types = (int, float)
+
     # Test with valid input
-    df = pd.DataFrame({'A': [1, 2, '3', 4], 'B': ['a', 'b', 'c', 'd']})
+    dataframe = pd.DataFrame({'A': [1, 2, '3', 4], 'B': ['a', 'b', 'c', 'd']})
     assert find_non_allowed_types(
-        dataframe=df,
-        allowed_types=(int,),
+        dataframe,
+        allowed_types,
         target_col_header='A',
         return_col_header='B'
     ) == ['c']
 
     # Test with no non-allowed types
-    df = pd.DataFrame({'A': [1, 2, 3, 4], 'B': ['a', 'b', 'c', 'd']})
+    dataframe = pd.DataFrame({'A': [1, 2, 3, 4], 'B': ['a', 'b', 'c', 'd']})
     assert find_non_allowed_types(
-        dataframe=df,
-        allowed_types=(int,),
+        dataframe,
+        allowed_types,
         target_col_header='A',
-        return_col_header='B'
+        return_col_header='B',
     ) == []
 
     # Test with return_col_header=None
-    df = pd.DataFrame({'A': [1, 2, '3', 4], 'B': ['a', 'b', 'c', 'd']})
+    dataframe = pd.DataFrame({'A': [1, 2, '3', 4], 'B': ['a', 'b', 'c', 'd']})
     assert find_non_allowed_types(
-        dataframe=df,
-        allowed_types=(int,),
+        dataframe,
+        allowed_types,
         target_col_header='A',
     ) == ['3']
+
+    # Test with allow_none as True
+    dataframe = pd.DataFrame(
+        {'A': [1, None, '3', 4], 'B': ['a', 'b', 'c', 'd']})
+    assert find_non_allowed_types(
+        dataframe,
+        allowed_types,
+        target_col_header='A',
+        return_col_header='B',
+        allow_none=True,
+    ) == ['c']
+
+    dataframe = pd.DataFrame({'A': [1, None, 3, 4], 'B': ['a', 'b', 'c', 'd']})
+    assert find_non_allowed_types(
+        dataframe,
+        allowed_types,
+        target_col_header='A',
+        return_col_header='B',
+        allow_none=False,
+    ) == ['b']
 
     # Test with invalid input
     with pytest.raises(ValueError):
@@ -687,19 +709,19 @@ def test_find_non_allowed_types():
         )
     with pytest.raises(ValueError):
         find_non_allowed_types(
-            dataframe=df,
+            dataframe=dataframe,
             allowed_types='not a tuple',
             target_col_header='A',
         )
     with pytest.raises(ValueError):
         find_non_allowed_types(
-            dataframe=df,
+            dataframe=dataframe,
             allowed_types=(int,),
             target_col_header='not a column',
         )
     with pytest.raises(ValueError):
         find_non_allowed_types(
-            dataframe=df,
+            dataframe=dataframe,
             allowed_types=(int,),
             target_col_header='A',
             return_col_header='not a column',
