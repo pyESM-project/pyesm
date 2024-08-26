@@ -355,7 +355,10 @@ class Core:
 
         self.problem.fetch_problem_status()
 
-    def data_to_cvxpy_exogenous_vars(self) -> None:
+    def data_to_cvxpy_exogenous_vars(
+            self,
+            allow_none_values: bool = True,
+    ) -> None:
         """
         Fetches data from the SQLite database and assigns it to cvxpy exogenous 
         variables.
@@ -363,6 +366,10 @@ class Core:
         type is not 'endogenous' or 'constant', the method fetches the variable's 
         data from the SQLite database and assigns it to the cvxpy variable. 
         The method handles variables whose type is defined by the problem separately.
+
+        Args:
+            allow_none_values (bool, optional): If True, allows None values in 
+                the data for the variable. Defaults to True.
 
         Returns:
             None
@@ -441,18 +448,19 @@ class Core:
                             filters_dict=variable_data[filter_header][row])
 
                         # check if variable data are int or float
-                        non_numeric_ids = util.find_non_allowed_types(
+                        non_allowed_ids = util.find_non_allowed_types(
                             dataframe=raw_data,
                             allowed_types=allowed_values_types,
                             target_col_header=values_header,
                             return_col_header=id_header,
+                            allow_none=allow_none_values,
                         )
 
-                        if non_numeric_ids:
+                        if non_allowed_ids:
                             msg = f"Data for variable '{var_key}' in table " \
                                 f"'{variable.related_table}' contains " \
                                 f"non-allowed values types in rows: " \
-                                f"{non_numeric_ids}."
+                                f"{non_allowed_ids}."
                             self.logger.error(msg)
                             raise exc.MissingDataError(msg)
 
