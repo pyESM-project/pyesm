@@ -753,11 +753,14 @@ class Index:
 
         if variable.type == 'constant':
             data: cp.Constant = variable.data
-            values_dataframe = pd.DataFrame(
-                data=data.value,
-                index=variable.dims_items[0],
-                columns=variable.dims_items[1],
-            )
+            if variable.value == 'set_length':
+                values_dataframe = pd.DataFrame(data=data.value)
+            else:
+                values_dataframe = pd.DataFrame(
+                    data=data.value,
+                    index=variable.dims_items[0],
+                    columns=variable.dims_items[1],
+                )
 
         if variable.data is None:
             self.logger.warning(

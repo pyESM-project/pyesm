@@ -139,6 +139,7 @@ class Constants:
     _ALLOWED_CONSTANTS = {
         'sum_vector': (np.ones, {}),  # vector of 1s
         'identity': (np.eye, {}),  # identity matrix
+        'set_length': (np.size, {}),  # scalar getting set length
         # vector/matrix with a range from 1 up to dimension size
         'arange_1': (util_functions.arange, {}),
         'arange_0': (util_functions.arange, {'start_from': 0}),

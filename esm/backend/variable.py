@@ -17,6 +17,7 @@ convert SQL data to formats usable by optimization tools like CVXPY.
 from typing import Any, Dict, Iterator, List, Optional, Tuple
 
 import cvxpy as cp
+import numpy as np
 import pandas as pd
 
 from esm.constants import Constants
@@ -444,18 +445,29 @@ class Variable:
         factory_function, args = \
             Constants.get('_ALLOWED_CONSTANTS')[value_type]
 
-        if value_type == 'identity':
-            if self.is_square:
-                return factory_function(self.shape_size[0], **args)
-            else:
-                msg = 'Identity matrix must be square. Check variable shape.'
-
-        elif value_type == 'sum_vector':
+        if value_type == 'sum_vector':
             if self.is_vector:
                 return factory_function(self.shape_size, **args)
             else:
                 msg = 'Summation vector must be a vector (one dimension). ' \
                     'Check variable shape.'
+
+        elif value_type == 'identity':
+            if self.is_square:
+                return factory_function(self.shape_size[0], **args)
+            else:
+                msg = 'Identity matrix must be square. Check variable shape.'
+
+        elif value_type == 'set_length':
+            if self.is_vector:
+                result = factory_function(self.dims_items[0], **args)
+                result_array = np.array(result)
+                if result_array.ndim == 0:
+                    result_array = result_array.reshape(-1, 1)
+                return result_array
+            else:
+                msg = 'One unique dimension can be set as row-col for the ' \
+                    'set_length variable .'
 
         elif value_type in ['arange_0', 'arange_1']:
             return factory_function(self.shape_size, **args)
