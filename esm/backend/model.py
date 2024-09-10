@@ -489,6 +489,27 @@ class Model:
         self.load_exogenous_data_to_sqlite_database(operation, force_overwrite)
         self.initialize_problems(force_overwrite)
 
+    def reinitialize_sqlite_database(
+            self,
+            operation: str = 'update',
+            force_overwrite: bool = False,
+    ) -> None:
+        """Initialize endogenous tables in sqlite database to Null values, and
+        reimport input data to exogenous tables.
+
+        Args:
+            operation (str, optional): The operation to perform on the 
+                database. Defaults to 'update'.
+            force_overwrite (bool, optional): Whether to force overwrite 
+                existing data. Used for testing purpose. Defaults to False.
+        """
+        self.logger.info(
+            f"Reinitializing SQLite database '{self.settings['sqlite_database_file']}' "
+            "endogenous tables.")
+
+        self.core.database.reinit_sqlite_endogenous_tables(force_overwrite)
+        self.load_exogenous_data_to_sqlite_database(operation, force_overwrite)
+
     def generate_pbi_report(self) -> None:
         """
         This method generates the PowerBI report for inspecting input data

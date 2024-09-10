@@ -504,46 +504,57 @@ class SQLManager:
         self.execute_query(query)
         return self.cursor.fetchone()[0]
 
-    def delete_all_table_entries(
+    def delete_table_entries(
             self,
             table_name: str,
-            force_operation: bool = False
+            force_operation: bool = False,
+            column_name: Optional[str] = None,
     ) -> bool:
         """
-        Deletes all entries from a specified table in the SQLite database.
-        This method executes a DELETE command to remove all records from the
-        table, with an optional confirmation to proceed based on user input.
+        Deletes values from a specified column in a table in the SQLite database.
+        This method executes an UPDATE command to set the values in the specified
+        column to NULL, with an optional confirmation to proceed based on user input.
+        If no column name is provided, all entries in the table are deleted.
 
         Args:
-            table_name (str): The name of the table from which to delete entries.
+            table_name (str): The name of the table from which to delete column entries.
             force_operation (bool, optional): If True, bypasses user confirmation
-                and deletes entries.
+                and deletes column entries.
+            column_name (str, optional): The name of the column from which to 
+                delete values.
 
         Returns:
-            bool: True if entries were successfully deleted, False if the
+            bool: True if column entries were successfully deleted, False if the
                 operation was aborted by the user.
 
         Notes:
-            If there are entries in the table and force_operation is False,
+            If there are entries in the column and force_operation is False,
                 the method will prompt the user to confirm deletion.
         """
         num_entries = self.count_table_data_entries(table_name)
 
         if num_entries > 0 and not force_operation:
             confirm = input(
-                f"SQLite table '{table_name}' already has {num_entries} "
-                "rows. Delete all table entries? (y/[n])"
-            )
+                f"SQLite table '{table_name}' already has {num_entries} rows. Delete all "
+                f"{'entries' if column_name is None else f'entries in column {column_name}'}? "
+                "(y/[n])")
+
             if confirm.lower() != 'y':
                 self.logger.debug(
                     f"SQLite table '{table_name}' - NOT overwritten.")
                 return False
 
-        query = f"DELETE FROM {table_name}"
+        if column_name:
+            query = f"UPDATE {table_name} SET '{column_name}' = NULL"
+        else:
+            query = f"DELETE FROM {table_name}"
+
         self.execute_query(query)
 
         self.logger.debug(
-            f"SQLite table '{table_name}' - {num_entries} entries deleted.")
+            f"SQLite table '{table_name}' - {num_entries} "
+            f"{'entries' if column_name is None else f'entries in column {column_name}'} "
+            "deleted.")
 
         return True
 
@@ -698,7 +709,7 @@ class SQLManager:
                 (operation == 'update' and num_entries == 0):
 
             if num_entries != 0:
-                data_erased = self.delete_all_table_entries(
+                data_erased = self.delete_table_entries(
                     table_name,
                     force_operation)
 

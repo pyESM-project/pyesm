@@ -526,12 +526,34 @@ class Database:
                         force_operation=force_overwrite,
                     )
 
-    def empty_data_completion(
-        self,
-        operation: str,
-    ):
-        self.logger.debug(
-            "Auto-completion of blank data in SQLite database.")
+    def reinit_sqlite_endogenous_tables(
+            self,
+            force_overwrite: bool = False,
+    ) -> None:
+        """
+        Reinitializes the endogenous tables in the SQLite database.
+        This method iterates over each endogenous data table in the index and 
+        clears the table in the SQLite database. 
+
+        Returns:
+            None
+
+        Notes:
+            The method uses a context manager to handle the database connection.
+        """
 
         with db_handler(self.sqltools):
-            pass
+            for table_key, table in self.index.data.items():
+
+                if table.type == 'endogenous':
+
+                    self.logger.debug(
+                        f"Reinitializing endogenous table '{table_key}' "
+                        "in SQLite database.")
+
+                    self.sqltools.delete_table_entries(
+                        table_name=table_key,
+                        force_operation=force_overwrite,
+                        column_name=Constants.get(
+                            '_STD_VALUES_FIELD')['values'][0],
+                    )
