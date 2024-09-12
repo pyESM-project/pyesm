@@ -358,10 +358,9 @@ class Index:
                             inter[key] = table_header
 
             if len(intra) > 1:
-                msg = "Only one intra-problem set allowed. Current " \
-                    f"intra-problem sets: '{intra}'."
-                self.logger.error(msg)
-                raise exc.ConceptualModelError(msg)
+                msg = "Multiple intra-problem sets are defined for variable " \
+                    f"'{var_key}': {list(intra.keys())}."
+                self.logger.warning(msg)
 
             variable.coordinates_info = {
                 Constants.get('rows'): rows,

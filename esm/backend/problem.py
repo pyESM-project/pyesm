@@ -748,18 +748,18 @@ class Problem:
             self.logger.warning(msg)
             raise ValueError(msg)
 
-    def find_common_sets_intra_problem(
+    def find_vars_common_sets_intra_problem(
         self,
         variables_subset: DotDict,
         allow_none: bool = True,
     ) -> Dict[str, str]:
         """
         Identifies common intra-problem sets for a subset of variables.
-        This method checks if there is a consistent set of intra-problem settings 
-        across all variables in the subset. If 'allow_none' is True, variables 
-        without specific intra-problem sets are considered uniform. If all variables 
-        share the same intra-problem set or none, the common set is returned; 
-        otherwise, an error is raised.
+        This method identifies the common intra-problem sets across all variables 
+        in the subset. If 'allow_none' is True, variables without specific 
+        intra-problem sets are considered constant across all other intra-problem 
+        sets. If all variables share the same intra-problem sets or none, 
+        the common sets are returned as a dictionary; otherwise, an error is raised.
 
         Parameters:
             variables_subset (DotDict): A subset of variables from which to find 
@@ -768,20 +768,22 @@ class Problem:
                 intra-problem set as having a common set. Defaults to True.
 
         Returns:
-            Dict[str, str]: A dictionary representing the common intra-problem set.
+            Dict[str, str]: A dictionary representing the common intra-problem sets.
 
         Raises:
             ConceptualModelError: If no common intra-problem set is found and 
                 'allow_none' is False, or if the intra-problem sets are inconsistent.
         """
         vars_sets_intra_problem = {}
+
         for key, variable in variables_subset.items():
             variable: Variable
             vars_sets_intra_problem[key] = \
                 variable.coordinates_info.get(Constants.get('intra'), None)
 
+        # in this case, a variable with no intra-problem sets is used as it is
+        # for all expressions
         if allow_none:
-            # in this case, a variable is equal for all intra-problem set items
             vars_sets_intra_problem_list = [
                 value for value in vars_sets_intra_problem.values() if value
             ]
@@ -799,13 +801,15 @@ class Problem:
             return vars_sets_intra_problem_list[0]
         else:
             msg = "Fore each problem, each expression must be defined for " \
-                "a unique common set (defined by 'sets_intra_problem')." \
-                "A variable can be used for multiple expressions if ." \
-                "'sets_intra_problem' is None."
+                "the same intra-problem sets (defined by 'sets_intra_problem'). "
+            if allow_none:
+                msg += "If a variable has no sets_intra_problem, it is " \
+                    "replicated for multiple expressions."
+
             self.logger.error(msg)
             raise exc.ConceptualModelError(msg)
 
-    def fetch_common_vars_coords(
+    def find_common_vars_coords(
         self,
         variables_subset: DotDict,
         coord_category: str,
@@ -815,8 +819,7 @@ class Problem:
         Retrieves and verifies that a specific coordinate category is uniformly 
         defined across a subset of variables.
         This method ensures that all variables in the subset have the same settings 
-        for a specified coordinate category, which is crucial for collective 
-        operations in optimization tasks. If the variables do not have uniform 
+        for a specified coordinate category. If the variables do not have uniform 
         coordinates, it raises an error.
 
         Parameters:
@@ -870,11 +873,10 @@ class Problem:
         The method will raise an OperationalError if no symbolic problem has been 
         loaded, or a SettingsError if the symbolic problem structure is invalid.
 
-
         Parameters:
             force_overwrite (bool, optional): If set to True, existing numerical 
-                problems will be overwritten without
-            prompting the user for confirmation. Defaults to False.
+                problems will be overwritten without prompting the user for 
+                confirmation (for testing purposes). Defaults to False.
 
         Raises:
             exc.OperationalError: If no symbolic problem has been loaded.
@@ -907,7 +909,7 @@ class Problem:
             self.numerical_problems = self.generate_problem_dataframe(
                 symbolic_problem=self.symbolic_problem
             )
-            # self.problem_status = None
+            self.problem_status = None
 
         elif util.find_dict_depth(self.symbolic_problem) == 2:
             self.numerical_problems = {
@@ -917,7 +919,7 @@ class Problem:
                 )
                 for problem_key, problem in self.symbolic_problem.items()
             }
-            # self.problem_status = {key: None for key in self.symbolic_problem}
+            self.problem_status = {key: None for key in self.symbolic_problem}
 
         else:
             msg = "Invalid symbolic problem structure. " \
@@ -997,7 +999,7 @@ class Problem:
 
             # define explicit problem constraints (user-defined constraints)
             symbolic_constraints = symbolic_problem.get(headers['constraints'])
-            constraints = self.define_expressions(
+            constraints = self.define_expressions_list(
                 symbolic_expressions=symbolic_constraints,
                 problem_filter=problem_filter,
                 problem_key=problem_key,
@@ -1009,7 +1011,7 @@ class Problem:
                 headers['objective'], None)
             if symbolic_objective:
                 objective = sum(
-                    self.define_expressions(
+                    self.define_expressions_list(
                         symbolic_expressions=symbolic_objective,
                         problem_filter=problem_filter,
                         problem_key=problem_key,
@@ -1105,7 +1107,7 @@ class Problem:
             # filter variable data based on problem filter (inter-problem sets)
             if not problem_filter.empty:
 
-                # if variable is not defined for the current inter-problem sets
+                # if variable is not defined for the current inter-problem sets,
                 # if a unique variable can be identified, ok
                 # if not raise an error
                 if set(problem_filter.columns).isdisjoint(variable_data.columns):
@@ -1144,10 +1146,26 @@ class Problem:
             # cvxpy variable is fetched for the current problem
             elif variable.coordinates_info[Constants.get('intra')] \
                     and set_intra_problem_header and set_intra_problem_value:
+
+                # case of a single intra-problem set
+                if not all((
+                    isinstance(set_intra_problem_header, list),
+                    isinstance(set_intra_problem_value, list),
+                )):
+                    condition = variable_data[set_intra_problem_header] == \
+                        set_intra_problem_value
+
+                # case of multiple intra-problem sets
+                else:
+                    condition = True
+                    for header, value in zip(
+                        set_intra_problem_header,
+                        set_intra_problem_value
+                    ):
+                        condition &= variable_data[header] == value
+
                 allowed_variables[var_key] = variable_data.loc[
-                    variable_data[set_intra_problem_header] == set_intra_problem_value,
-                    cvxpy_var_header,
-                ].iloc[0]
+                    condition, cvxpy_var_header].iloc[0]
 
             # other cases
             else:
@@ -1221,7 +1239,7 @@ class Problem:
 
         return local_vars['output']
 
-    def define_expressions(
+    def define_expressions_list(
             self,
             symbolic_expressions: List[str],
             problem_filter: pd.DataFrame,
@@ -1252,7 +1270,7 @@ class Problem:
             The function processes each symbolic expression in the input list.
             It distinguishes between variable types (constant vs. non-constant) 
                 and filters variables based on the specified problem settings.
-            The function handles intra-problem set distinctions by dynamically 
+            The function handles intra-problem sets distinctions by dynamically 
                 constructing expressions based on available data.
             Expressions are skipped if they do not meet the required conditions 
                 specified in the 'problem_filter' and the intra-problem sets.
@@ -1265,6 +1283,8 @@ class Problem:
             raise exc.MissingDataError(msg)
 
         for expression in symbolic_expressions:
+
+            cvxpy_expression = None
 
             vars_symbols_list = self.parse_allowed_symbolic_vars(expression)
 
@@ -1280,56 +1300,12 @@ class Problem:
                 and variable.type == 'constant'
             })
 
-            # only one intra-problem set per expression allowed
-            set_intra_problem = self.find_common_sets_intra_problem(
+            sets_intra_problem = self.find_vars_common_sets_intra_problem(
                 variables_subset=vars_subset,
             )
 
-            cvxpy_expression = None
-
-            if set_intra_problem:
-                set_key = list(set_intra_problem.keys())[0]
-                set_header = list(set_intra_problem.values())[0]
-                set_data = self.index.sets[set_key].data
-
-                if set_data is None:
-                    msg = f"Set data for set '{set_key}' not defined."
-                    self.logger.error(msg)
-                    raise exc.MissingDataError(msg)
-
-                # check if there are filters (and if it is equal for all vars)
-                common_intra_coords = self.fetch_common_vars_coords(
-                    variables_subset=vars_subset,
-                    coord_category=Constants.get('intra'),
-                    allow_empty_coord=True,
-                )
-
-                # parse values in intra-problem-set
-                for value in set_data[set_header]:
-
-                    # define expression only for filtered intra-problem set values
-                    if common_intra_coords is None or \
-                            value not in common_intra_coords.get(set_key, []):
-                        continue
-
-                    # fetch allowed cvxpy variables
-                    allowed_variables = self.fetch_allowed_cvxpy_variables(
-                        variables_set_dict={**vars_subset, **constants_subset},
-                        problem_filter=problem_filter,
-                        problem_key=problem_key,
-                        set_intra_problem_header=set_header,
-                        set_intra_problem_value=value,
-                    )
-
-                    # define constraint
-                    cvxpy_expression = self.execute_cvxpy_code(
-                        expression=expression,
-                        allowed_variables=allowed_variables,
-                    )
-
-                    numerical_expressions.append(cvxpy_expression)
-
-            else:
+            # case of no intra-problem sets
+            if not sets_intra_problem:
                 allowed_variables = self.fetch_allowed_cvxpy_variables(
                     variables_set_dict={**vars_subset, **constants_subset},
                     problem_filter=problem_filter,
@@ -1342,6 +1318,55 @@ class Problem:
                 )
 
                 numerical_expressions.append(cvxpy_expression)
+
+            # case of one or more intra-problem sets
+            else:
+
+                # check for common filtered intra-problem set coordinates
+                sets_intra_problem_coords = self.find_common_vars_coords(
+                    variables_subset=vars_subset,
+                    coord_category=Constants.get('intra'),
+                    allow_empty_coord=True,
+                )
+
+                # if filtered intra-problem set coordinates are not defined
+                if not sets_intra_problem_coords:
+                    continue
+
+                # substitute set keys with headers
+                sets_intra_problem_coords = util.substitute_dict_keys(
+                    source_dict=sets_intra_problem_coords,
+                    key_mapping_dict=sets_intra_problem,
+                )
+
+                # define all possible combinations of intra-problem set values
+                sets_intra_problem_coords_combinations = util.dict_cartesian_product(
+                    data_dict=sets_intra_problem_coords,
+                    include_dict_keys=True,
+                )
+
+                # define one expression for each combination of intra-problem set values
+                for sets_combination in sets_intra_problem_coords_combinations:
+                    sets_headers = list(sets_combination.keys())
+                    sets_data = list(sets_combination.values())
+
+                    # fetch allowed cvxpy variables
+                    allowed_variables = self.fetch_allowed_cvxpy_variables(
+                        variables_set_dict={
+                            **vars_subset, **constants_subset},
+                        problem_filter=problem_filter,
+                        problem_key=problem_key,
+                        set_intra_problem_header=sets_headers,
+                        set_intra_problem_value=sets_data,
+                    )
+
+                    # define constraint
+                    cvxpy_expression = self.execute_cvxpy_code(
+                        expression=expression,
+                        allowed_variables=allowed_variables,
+                    )
+
+                    numerical_expressions.append(cvxpy_expression)
 
             if cvxpy_expression is None:
                 msg = "CVXPY expression not generated for " \

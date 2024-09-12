@@ -1,0 +1,9 @@
+# SYMBOLIC PROBLEM
+
+expressions:
+    - V - V_end == 0
+    # - V_y_filtered - V_y_filtered_end == 0
+
+
+
+

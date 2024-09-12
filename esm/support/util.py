@@ -295,6 +295,52 @@ def pivot_dict(
     return pivot_recursive(keys[:-1], values)
 
 
+def dict_cartesian_product(
+        data_dict: Dict[Any, List[Any]],
+        include_dict_keys: bool = True,
+) -> List[Dict[Any, Any] | List[Any]]:
+    """
+    Generates a list of dictionaries or lists representing the cartesian 
+    product of dictionary values.
+
+    Args:
+        data_dict (Dict[Any, List[Any]]): The dictionary to be used for the 
+            cartesian product. The keys are any hashable type, and the values 
+            are lists of elements to be combined.
+        include_dict_keys (bool): If True, includes dictionary keys in the 
+            resulting dictionaries. If False, returns lists of values only. 
+            Default is True.
+
+    Returns:
+        List[Dict[Any, Any] | List[Any]]: A list of dictionaries or lists 
+            representing the cartesian product of dictionary values. Each 
+            dictionary contains one combination of the input values with the 
+            corresponding keys, or each list contains one combination 
+            of the input values without keys.
+
+    Raises:
+        TypeError: If 'data_dict' is not a dictionary or 'include_dict_keys' 
+            is not a boolean.
+    """
+    if not isinstance(data_dict, dict):
+        raise TypeError("Argument 'data_dict' must be a dictionary.")
+    if not isinstance(include_dict_keys, bool):
+        raise TypeError("Argument 'include_dict_keys' must be a boolean.")
+
+    if not data_dict:
+        return []
+
+    combinations = it.product(*data_dict.values())
+
+    if not include_dict_keys:
+        return [list(combination) for combination in combinations]
+
+    return [
+        dict(zip(data_dict.keys(), combination))
+        for combination in combinations
+    ]
+
+
 def unpivot_dict_to_dataframe(
         data_dict: Dict[str, List[str]],
         key_order: Optional[List[str]] = None,
