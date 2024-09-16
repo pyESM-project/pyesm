@@ -1,22 +1,5 @@
 # structure of sets
 
-# set_key:                                        # put here the name of the set
-#     symbol: a                                   # symbol of the set
-#     table_name: _set_a                          # name of the table of the set in the database
-#     split_problem: False                        # (optional) if the set defines independent numerical sub-problems
-#     copy_from: another_set_key                  # (optional) key of another set to copy the data from (table_structure must be filled anyway)
-#     table_structure:                            # structure of the set sqlite table (columns)
-#         name: [a_Names, TYPE]                   # header and type of the main set entry (defining set items names)
-#         aggregation: [a_Agg, TEXT]              # (optional) header of set entries that are matching another set (aggregation)
-#         filters:                                # (optional) add multiple filter columns if needed
-#             0:                                  # (int) index of the filter category
-#                 header: [a_Cat_1, TEXT]         # header and type of the filter category
-#                 values: [a_1a, a_1b, a_1c]      # values that will be present in the filter category
-#             1: 
-#                 header: [a_Cat_2, TEXT] 
-#                 values: [a_2a, a_2b]
-
-
 # -----------------------------------------------------------------------------
 # sets
 

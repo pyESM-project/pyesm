@@ -1,105 +1,79 @@
 # variables of the model
 
-# table_key:
-#     name: table_name # description or full name of the table
-#     type: table_type # endogenous, exogenous, or constant
-#     coordinates: [a, b, c, d] # list of coordinates with set_key symbols
-#     variables_info:
-#         var_key_1: # variable name
-#             intra: # optional, if variable is filtered within intra-problem set
-#                 set: years # set_key symbol
-#                 filters: {0: warm-up} # filters for the intra-problem set
-#             rows: # rows of the variable
-#                 set: a # set_key symbol
-#                 filters: {0: Supply} # optional, filters for the rows
-#             cols: # columns of the variable
-#                 set: b # set_key symbol
-#                 filters: {0: Physical} # optional, filters for the columns
-
 # -----------------------------------------------------------------------------
 # exogenous variables
 
 u:
-    name: use coefficients # description or full name of the table
-    type: exogenous # endogenous, exogenous, or constant
-    coordinates: [products, technologies] # list of coordinates with set_key symbols
-    variables_info:
-        u: # variable name
-            rows: # rows of the variable
-                set: products # set_key symbol
-            cols: # columns of the variable
-                set: technologies # set_key symbol
+  name: use coefficients
+  type: exogenous
+  coordinates: [products, technologies]
+  variables_info:
+    u:
+      products:
+        dim: rows
+      technologies:
+        dim: cols
 
 r:
-    name: environmental transactions coefficients # description or full name of the table
-    type: exogenous # endogenous, exogenous, or constant
-    coordinates: [emissions, technologies] # list of coordinates with set_key symbols
-    variables_info:
-        r: # variable name
-            rows: # rows of the variable
-                set: emissions # set_key symbol
-            cols: # columns of the variable
-                set: technologies # set_key symbol
+  name: environmental transactions coefficients
+  type: exogenous
+  coordinates: [emissions, technologies]
+  variables_info:
+    r:
+      emissions:
+        dim: rows
+      technologies:
+        dim: cols
 
 v:
-    name: supply coefficients # description or full name of the table
-    type: exogenous # endogenous, exogenous, or constant
-    coordinates: [technologies, products] # list of coordinates with set_key symbols
-    variables_info:
-        v: # variable name
-            rows: # rows of the variable
-                set: technologies # set_key symbol
-            cols: # columns of the variable
-                set: products # set_key symbol
-
-# -----------------------------------------------------------------------------
-# endogenous variables
+  name: supply coefficients
+  type: exogenous
+  coordinates: [technologies, products]
+  variables_info:
+    v:
+      technologies:
+        dim: rows
+      products:
+        dim: cols
 
 r_e_p:
-    name: footprint by product # description or full name of the table
-    type: endogenous # endogenous, exogenous, or constant
-    coordinates: [emissions, products] # list of coordinates with set_key symbols
-    variables_info:
-        r_e_p: # variable name
-            rows: # rows of the variable
-                set: emissions # set_key symbol
-            cols: # columns of the variable
-                set: products # set_key symbol
+  name: footprint by product
+  type: endogenous
+  coordinates: [emissions, products]
+  variables_info:
+    r_e_p:
+      emissions:
+        dim: rows
+      products:
+        dim: cols
 
 r_e_t:
-    name: footprint by technology activity # description or full name of the table
-    type: endogenous # endogenous, exogenous, or constant
-    coordinates: [emissions, technologies] # list of coordinates with set_key symbols
-    variables_info:
-        r_e_t: # variable name
-            rows: # rows of the variable
-                set: emissions # set_key symbol
-            cols: # columns of the variable
-                set: technologies # set_key symbol
-
-# -----------------------------------------------------------------------------
-# constants variables
+  name: footprint by technology activity
+  type: endogenous
+  coordinates: [emissions, technologies]
+  variables_info:
+    r_e_t:
+      emissions:
+        dim: rows
+      technologies:
+        dim: cols
 
 I_pp:
-    name: identity, product by product # description or full name of the table
-    type: constant # endogenous, exogenous, or constant
-    coordinates: [products] # list of coordinates with set_key symbols
-    variables_info:
-        I_pp: # variable name
-            value: identity # values of the constant
-            rows: # rows of the variable
-                set: products # set_key symbol
-            cols: # columns of the variable
-                set: products # set_key symbol
+  name: identity, product by product
+  type: constant
+  coordinates: [products]
+  variables_info:
+    I_pp:
+      value: identity
+      products:
+        dim: cols
 
 I_tt:
-    name: identity, technology by technology # description or full name of the table
-    type: constant # endogenous, exogenous, or constant
-    coordinates: [technologies] # list of coordinates with set_key symbols
-    variables_info:
-        I_tt: # variable name
-            value: identity # values of the constant
-            rows: # rows of the variable
-                set: technologies # set_key symbol
-            cols: # columns of the variable
-                set: technologies # set_key symbol
+  name: identity, technology by technology
+  type: constant
+  coordinates: [technologies]
+  variables_info:
+    I_tt:
+      value: identity
+      technologies:
+        dim: cols

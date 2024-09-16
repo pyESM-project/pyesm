@@ -1,21 +1,5 @@
 # variables of the model
 
-# table_key:
-#     name: table_name # description or full name of the table
-#     type: table_type # endogenous, exogenous, or constant
-#     coordinates: [a, b, c, d] # list of coordinates with set_key symbols
-#     variables_info:
-#         var_key_1: # variable name
-#             intra: # optional, if variable is filtered within intra-problem set
-#                 set: years # set_key symbol
-#                 filters: {0: warm-up} # filters for the intra-problem set
-#             rows: # rows of the variable
-#                 set: a # set_key symbol
-#                 filters: {0: Supply} # optional, filters for the rows
-#             cols: # columns of the variable
-#                 set: b # set_key symbol
-#                 filters: {0: Physical} # optional, filters for the columns
-
 # -----------------------------------------------------------------------------
 # exogenous variables
 
@@ -25,10 +9,10 @@ Technical_coeffs:
     coordinates: [case, products, technologies]
     variables_info:
         A:
-            rows: 
-                set: products
-            cols:
-                set: technologies
+            products: 
+                dim: rows
+            technologies:
+                dim: cols 
 
 # -----------------------------------------------------------------------------
 # endogenous variables
@@ -39,10 +23,10 @@ Leontief_inverse_coeffs:
     coordinates: [case, products, technologies]
     variables_info:
         L:
-            rows: 
-                set: products
-            cols:
-                set: technologies
+            products: 
+                dim: rows
+            technologies:
+                dim: cols
 
 
 # -----------------------------------------------------------------------------
@@ -55,7 +39,6 @@ Constants:
     variables_info:
         I:
             value: identity
-            rows:
-                set: products
-            cols:
-                set: technologies
+            products:
+                dim: rows
+

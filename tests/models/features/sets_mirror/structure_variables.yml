@@ -9,11 +9,10 @@ A_ex:
     coordinates: [flows, flows_to]
     variables_info:
         A_ex:
-            rows:
-                set: flows
-            cols: 
-                set: flows_to
-
+            flows:
+                dim: rows
+            flows_to: 
+                dim: cols 
 
 # -----------------------------------------------------------------------------
 # constants
@@ -21,24 +20,13 @@ A_ex:
 constants: 
     name: constant values
     type: constant
-    coordinates: [flows, flows_to]
+    coordinates: [flows]
     variables_info:
         I_ff:
             value: identity
-            rows:
-                set: flows
-            cols:
-                set: flows_to
-        # I_ff_h:
-        #     value: identity_rcot
-        #     rows:
-        #         set: flows_aggregated
-        #         filters: {0: Hourly dispatched}
-        #     cols:
-        #         set: flows
-        #         filters: {0: Hourly dispatched}
+            flows:
+                dim: rows
         
-
 # -----------------------------------------------------------------------------
 # endogenous variables
 
@@ -48,11 +36,8 @@ A_en:
     coordinates: [flows, flows_to]
     variables_info:
         A_en:
-            rows: 
-                set: flows
-            cols:
-                set: flows_to
-        # Q_agg_h:
-        #     rows: 
-        #         set: flows_aggregated
-        #         filters: {0: Hourly dispatched}
+            flows:
+                dim: rows
+            flows_to:
+                dim: cols
+

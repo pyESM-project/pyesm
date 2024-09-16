@@ -9,11 +9,11 @@ Q:
     coordinates: [flows]
     variables_info:
         Q:
-            cols: 
-                set: flows
+            flows: 
+                dim: cols
         Q_h:
-            cols: 
-                set: flows
+            flows: 
+                dim: cols
                 filters: {0: Hourly dispatched}
 
 
@@ -27,17 +27,17 @@ special_identity:
     variables_info:
         I_ff:
             value: identity_rcot
-            rows:
-                set: flows_aggregated
-            cols:
-                set: flows
+            flows_aggregated:
+                dim: rows
+            flows:
+                dim: cols
         I_ff_h:
             value: identity_rcot
-            rows:
-                set: flows_aggregated
+            flows_aggregated:
+                dim: rows
                 filters: {0: Hourly dispatched}
-            cols:
-                set: flows
+            flows:
+                dim: cols
                 filters: {0: Hourly dispatched}
 
 lower_triangular_matrix:
@@ -47,17 +47,12 @@ lower_triangular_matrix:
     variables_info:
         T_ff:
             value: lower_triangular
-            rows:
-                set: flows
-            cols:
-                set: flows
+            flows:
+                dim: rows
         T_ff_h:
             value: lower_triangular
-            rows:
-                set: flows
-                filters: {0: Hourly dispatched}
-            cols:
-                set: flows
+            flows:
+                dim: rows
                 filters: {0: Hourly dispatched}
 
 summation_vector:
@@ -67,8 +62,8 @@ summation_vector:
     variables_info:
         i_f:
             value: sum_vector
-            rows:
-                set: flows
+            flows:
+                dim: rows
 
 # -----------------------------------------------------------------------------
 # endogenous variables
@@ -79,16 +74,16 @@ I_ff_exp:
     coordinates: [flows, flows_aggregated]
     variables_info:
         I_ff_exp:
-            rows: 
-                set: flows_aggregated
-            cols: 
-                set: flows
+            flows_aggregated: 
+                dim: rows
+            flows: 
+                dim: cols
         I_ff_h_exp:
-            rows: 
-                set: flows_aggregated
+            flows_aggregated: 
+                dim: rows 
                 filters: {0: Hourly dispatched}
-            cols: 
-                set: flows
+            flows: 
+                dim: cols
                 filters: {0: Hourly dispatched}
 
 T_sum:
@@ -97,8 +92,8 @@ T_sum:
     coordinates: [flows]
     variables_info:
         T_sum:
-            rows: 
-                set: flows
+            flows: 
+                dim: rows
 
 Q_agg:
     name: demand by flow
@@ -106,9 +101,9 @@ Q_agg:
     coordinates: [flows_aggregated]
     variables_info:
         Q_agg:
-            rows: 
-                set: flows_aggregated
+            flows_aggregated: 
+                dim: rows
         Q_agg_h:
-            rows: 
-                set: flows_aggregated
+            flows_aggregated: 
+                dim: rows 
                 filters: {0: Hourly dispatched}

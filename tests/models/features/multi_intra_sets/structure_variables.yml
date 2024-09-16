@@ -1,26 +1,5 @@
 # variables of the model
 
-# table_key:                                  # name of the data table from which variables are defined
-#     name: table_name                        # description or full name of the table
-#     type: table_type                        # endogenous, exogenous, constant or dictionary 
-#     type:                                   # dictionary with keys as problem key and values as table_type 
-#         problem_key: table_type
-#     NEW: integer: True                           # (optional) if the table is integer type
-#     coordinates: [a, b, c, d]               # list of table coordinates (set_key symbols)
-#     variables_info:                         # list of variables defined from the data_table
-#         var_key_1:                          # variable name
-#             value: constant_type            # constant value type (predefined)
-#             rows:                           # (optional) rows of the variable
-#                 set: a                      # set_key symbol
-#                 filters: {0: filter_values} # (optional) filters for the set values
-#             cols:                           # (optional) cols of the variable
-#                 set: b                      # set_key symbol
-#                 filters: {0: filter_values} # (optional) filters for the set values
-#             intra:                          # (optional) filter on intra-problem sets 
-#                 set: c                      # set_key symbol
-#                 filters: {0: filter_values} # (optional) filters for the set values
-
-
 # -----------------------------------------------------------------------------
 # exogenous variables
 
@@ -36,7 +15,7 @@ V:
                 dim: cols
                 filters: {0: [not-detailed]}
             years:
-                filters: {0: [warmup]}
+                filters: {0: [warmup, run]}
 
 
 # -----------------------------------------------------------------------------
@@ -54,7 +33,17 @@ V_end:
                 dim: cols
                 filters: {0: [not-detailed]}
             years:
-                filters: {0: [warmup]}
+                filters: {0: [warmup, run]}
 
 # -----------------------------------------------------------------------------
-# constants variables
+# constants 
+
+C:
+    name: constants of the model
+    type: constant
+    coordinates: [products, technologies, years]
+    variables_info:
+        i_p:
+            value: sum_vector
+            products:
+                dim: rows

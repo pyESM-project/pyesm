@@ -1,10 +1,3 @@
-# template for defining variables of the model
-
-# RULES:
-# - variables define SQLite tables (name case insensitive: two tables named 
-# 'e' and 'E' are not allowed. However, variables symbols are case sensitive).
-# - 
-
 
 # -----------------------------------------------------------------------------
 # exogenous variables
@@ -15,24 +8,24 @@ V:
     coordinates: [scenarios, sensitivity, time, technologies, flows]
     variables_info:
         V_tfp:
-            rows: 
-                set: technologies
+            technologies: 
+                dim: rows
                 filters: {0: Supply technology}
-            cols:
-                set: flows
+            flows:
+                dim: cols 
                 filters: {0: Product flow}
         V_tfc:
-            rows: 
-                set: technologies
+            technologies: 
+                dim: rows
                 filters: {0: Supply technology}
-            cols:
-                set: flows
+            flows:
+                dim: cols
                 filters: {0: Cost flow}
         V_yt:
-            rows: 
-                set: time
-            cols:
-                set: technologies 
+            time: 
+                dim: rows
+            technologies:
+                dim: cols
                 filters: {0: Supply technology}
 
 # -----------------------------------------------------------------------------
@@ -45,16 +38,14 @@ constants:
     variables_info:
         i_1f:
             value: sum_vector
-            cols:
-                set: flows
+            flows:
+                dim: cols
                 filters: {0: Product flow}
         T_yy:
             value: lower_triangular
-            rows:
-                set: time
-            cols:
-                set: time
-
+            time:
+                dim: rows
+            
 # -----------------------------------------------------------------------------
 # endogenous variables
 
@@ -64,26 +55,23 @@ X:
     coordinates: [scenarios, sensitivity, time, technologies, flows]
     variables_info:
         X_tfp:
-            rows: 
-                set: technologies
+            technologies: 
+                dim: rows
                 filters: {0: Supply technology}
-            cols:
-                set: flows
+            flows:
+                dim: cols
                 filters: {0: Product flow}
         X_tfc:
-            rows: 
-                set: technologies
+            technologies: 
+                dim: rows
                 filters: {0: Supply technology}
-            cols:
-                set: flows
+            flows:
+                dim: cols
                 filters: {0: Cost flow}
         X_yt:
-            rows: 
-                set: time
-            cols:
-                set: technologies 
+            time: 
+                dim: rows
+            technologies:
+                dim: cols 
                 filters: {0: Supply technology}
-        # X_1f:
-        #     cols:
-        #         set: flows 
-        #         filters: {0: Product flow}
+

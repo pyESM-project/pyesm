@@ -1,122 +1,100 @@
 # variables of the model
 
-# table_key:
-#     name: table_name # description or full name of the table
-#     type: table_type # endogenous, exogenous, or constant
-#     coordinates: [a, b, c, d] # list of coordinates with set_key symbols
-#     variables_info:
-#         var_key_1: # variable name
-#             intra: # optional, if variable is filtered within intra-problem set
-#                 set: years # set_key symbol
-#                 filters: {0: warm-up} # filters for the intra-problem set
-#             rows: # rows of the variable
-#                 set: a # set_key symbol
-#                 filters: {0: Supply} # optional, filters for the rows
-#             cols: # columns of the variable
-#                 set: b # set_key symbol
-#                 filters: {0: Physical} # optional, filters for the columns
-
 # -----------------------------------------------------------------------------
 # exogenous variables
 s:
-    name: supply coefficients matrix # description or full name of the table
-    type: exogenous # type of the variable
-    coordinates: [scenarios,sensitivities,techs,flows_to] # list of coordinates with set_key symbols
-    variables_info:
-        s: # variable name
-            rows: # rows of the variable
-                set: techs # set_key symbol
-            cols: # columns of the variable
-                set: flows_to # set_key symbol
-        
+  name: supply coefficients matrix
+  type: exogenous
+  coordinates: [scenarios, sensitivities, techs, flows_to]
+  variables_info:
+    s:
+      techs:
+        dim: rows
+      flows_to:
+        dim: cols
+
 u:
-    name: use coefficients matrix 
-    type: exogenous 
-    coordinates: [scenarios,sensitivities,techs,flows_from] 
-    variables_info:
-        u: 
-            rows: 
-                set: flows_from 
-            cols: 
-                set: techs 
+  name: use coefficients matrix
+  type: exogenous
+  coordinates: [scenarios, sensitivities, techs, flows_from]
+  variables_info:
+    u:
+      flows_from:
+        dim: rows
+      techs:
+        dim: cols
 
 Y:
-    name: final demand matrix 
-    type: exogenous 
-    coordinates: [scenarios,sensitivities,flows_from] 
-    variables_info:
-        Y: 
-            rows: 
-                set: flows_from  
+  name: final demand matrix
+  type: exogenous
+  coordinates: [scenarios, sensitivities, flows_from]
+  variables_info:
+    Y:
+      flows_from:
+        dim: rows
 
 e:
-    name: co2 emissions direct coefficients 
-    type: exogenous 
-    coordinates: [scenarios, sensitivities, techs] 
-    variables_info:
-        e: 
-            cols: 
-                set: techs  
+  name: co2 emissions direct coefficients
+  type: exogenous
+  coordinates: [scenarios, sensitivities, techs]
+  variables_info:
+    e:
+      techs:
+        dim: cols
 
-# -----------------------------------------------------------------------------
-# constants
 I:
-    name: identity matrix 
-    type: constant 
-    coordinates: [scenarios,sensitivities,flows_from,flows_to] 
-    variables_info:
-        I: 
-            value: identity
-            rows: 
-                set: flows_from
-
-# -----------------------------------------------------------------------------
-# endogenous variables
+  name: identity matrix
+  type: constant
+  coordinates: [scenarios, sensitivities, flows_from, flows_to]
+  variables_info:
+    I:
+      value: identity
+      flows_from:
+        dim: rows
 
 Lff:
-    name: Leontief inverse matrix 
-    type: endogenous 
-    coordinates: [scenarios,sensitivities,flows_from,flows_to] 
-    variables_info:
-        Lff: 
-            rows: 
-                set: flows_from 
-            cols: 
-                set: flows_to 
+  name: Leontief inverse matrix
+  type: endogenous
+  coordinates: [scenarios, sensitivities, flows_from, flows_to]
+  variables_info:
+    Lff:
+      flows_from:
+        dim: rows
+      flows_to:
+        dim: cols
 
 Q:
-    name: total demand by flows 
-    type: endogenous 
-    coordinates: [scenarios,sensitivities,flows_from] 
-    variables_info:
-        Q: 
-            rows: 
-                set: flows_from 
+  name: total demand by flows
+  type: endogenous
+  coordinates: [scenarios, sensitivities, flows_from]
+  variables_info:
+    Q:
+      flows_from:
+        dim: rows
 
 X:
-    name: total production by techs 
-    type: endogenous 
-    coordinates: [scenarios,sensitivities,techs] 
-    variables_info:
-        X: 
-            rows: 
-                set: techs 
+  name: total production by techs
+  type: endogenous
+  coordinates: [scenarios, sensitivities, techs]
+  variables_info:
+    X:
+      techs:
+        dim: rows
 
 E_tot:
-    name: total co2 emissions 
-    type: endogenous 
-    coordinates: [scenarios,sensitivities,techs] 
-    variables_info:
-        E: 
-            cols: 
-                set: techs 
+  name: total co2 emissions
+  type: endogenous
+  coordinates: [scenarios, sensitivities, techs]
+  variables_info:
+    E:
+      techs:
+        dim: cols
 
 f:
-    name: co2 emissions footprint coefficients 
-    type: endogenous 
-    coordinates: [scenarios,sensitivities,flows_to] 
-    variables_info:
-        f: 
-            cols: 
-                set: flows_to 
-
+  name: co2 emissions footprint coefficients
+  type: endogenous
+  coordinates: [scenarios, sensitivities, flows_to]
+  variables_info:
+    f:
+      flows_to:
+        dim: cols

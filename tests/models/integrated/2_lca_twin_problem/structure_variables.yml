@@ -1,20 +1,5 @@
 # variables of the model
 
-# table_key:
-#     name: table_name # description or full name of the table
-#     type: table_type # endogenous, exogenous, or constant
-#     coordinates: [a, b, c, d] # list of coordinates with set_key symbols
-#     variables_info:
-#         var_key_1: # variable name
-#             intra: # optional, if variable is filtered within intra-problem set
-#                 set: years # set_key symbol
-#                 filters: {0: warm-up} # filters for the intra-problem set
-#             rows: # rows of the variable
-#                 set: a # set_key symbol
-#                 filters: {0: Supply} # optional, filters for the rows
-#             cols: # columns of the variable
-#                 set: b # set_key symbol
-#                 filters: {0: Physical} # optional, filters for the columns
 
 # -----------------------------------------------------------------------------
 # exogenous variables
@@ -25,10 +10,10 @@ u:
     coordinates: [products, technologies] 
     variables_info:
         u: 
-            rows: 
-                set: products 
-            cols: 
-                set: technologies 
+            products: 
+                dim: rows 
+            technologies: 
+                dim: cols 
 
 r:
     name: environmental transactions coefficients
@@ -36,10 +21,10 @@ r:
     coordinates: [emissions, technologies]
     variables_info:
         r:
-            rows: 
-                set: emissions
-            cols:
-                set: technologies 
+            emissions: 
+                dim: rows
+            technologies:
+                dim: cols 
 
 cd: 
     name: product mix and market shares coefficients
@@ -47,18 +32,18 @@ cd:
     coordinates: [products, technologies] 
     variables_info:
         c:
-            rows:
-                set: products
+            products:
+                dim: rows
                 filters: {0: product-technology}
-            cols:  
-                set: technologies
+            technologies:  
+                dim: cols
                 filters: {0: product-technology}
         d:
-            rows:
-                set: technologies
+            technologies:
+                dim: rows
                 filters: {0: industry-technology}
-            cols:  
-                set: products
+            products:  
+                dim: cols
                 filters: {0: industry-technology}
 
 
@@ -74,24 +59,24 @@ v:
     coordinates: [technologies, products]
     variables_info:
         v_c: 
-            rows: 
-                set: technologies
+            technologies: 
+                dim: rows
                 filters: {0: product-technology}
-            cols: 
-                set: products
+            products: 
+                dim: cols
                 filters: {0: product-technology}
         v_d: 
-            rows: 
-                set: technologies
+            technologies: 
+                dim: rows
                 filters: {0: industry-technology}
-            cols: 
-                set: products
+            products: 
+                dim: cols
                 filters: {0: industry-technology}
         v:
-            rows: 
-                set: technologies 
-            cols: 
-                set: products 
+            technologies: 
+                dim: rows 
+            products: 
+                dim: cols
 
 r_e_p:
     name: footprint by product 
@@ -99,10 +84,10 @@ r_e_p:
     coordinates: [emissions, products] 
     variables_info:
         r_e_p: 
-            rows: 
-                set: emissions 
-            cols: 
-                set: products 
+            emissions: 
+                dim: rows 
+            products: 
+                dim: cols 
 
 r_e_t:
     name: footprint by technology activity 
@@ -110,10 +95,10 @@ r_e_t:
     coordinates: [emissions, technologies] 
     variables_info:
         r_e_t: 
-            rows: 
-                set: emissions 
-            cols: 
-                set: technologies 
+            emissions: 
+                dim: rows 
+            technologies: 
+                dim: cols 
 
 # -----------------------------------------------------------------------------
 # constants variables
@@ -125,10 +110,8 @@ I_pp:
     variables_info:
         I_pp: 
             value: identity 
-            rows: 
-                set: products 
-            cols: 
-                set: products 
+            products: 
+                dim: rows 
 
 I_tt:
     name: identity, technology by technology 
@@ -137,7 +120,5 @@ I_tt:
     variables_info:
         I_tt: 
             value: identity 
-            rows: 
-                set: technologies 
-            cols: 
-                set: technologies
+            technologies: 
+                dim: rows

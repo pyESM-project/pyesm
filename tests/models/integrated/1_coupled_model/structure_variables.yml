@@ -1,24 +1,5 @@
 # variables of the model
 
-# table_key:
-#     name: table_name # description or full name of the table
-#     type: table_type # endogenous, exogenous, constant or dictionary
-#                           with keys as problem key and values as strings 
-#                           defining variable type related to that problem.
-#     coordinates: [a, b, c, d] # list of coordinates with set_key symbols
-#     variables_info:
-#         var_key_1: # variable name
-#             intra: # optional, if variable is filtered within intra-problem set
-#                 set: years # set_key symbol
-#                 filters: {0: warm-up} # filters for the intra-problem set
-#             rows: # rows of the variable
-#                 set: a # set_key symbol
-#                 filters: {0: Supply} # optional, filters for the rows
-#             cols: # columns of the variable
-#                 set: b # set_key symbol
-#                 filters: {0: Physical} # optional, filters for the columns
-
-
 x:
     name: products supply
     type: 
@@ -27,8 +8,8 @@ x:
     coordinates: [resources, products] 
     variables_info:
         x: 
-            cols: 
-                set: products 
+            products: 
+                dim: cols 
 
 a:
     name: energy use
@@ -38,8 +19,8 @@ a:
     coordinates: [resources, products] 
     variables_info:
         a: 
-            cols: 
-                set: products
+            products: 
+                dim: cols 
 
 products_data:
     name: product data
@@ -47,23 +28,23 @@ products_data:
     coordinates: [products, product_data] 
     variables_info:
         c: 
-            rows:
-                set: product_data
+            product_data:
+                dim: rows
                 filters: {0: profit}
-            cols: 
-                set: products
+            products: 
+                dim: cols 
         a_0: 
-            rows:
-                set: product_data
+            product_data:
+                dim: rows
                 filters: {0: energy_use_0}
-            cols: 
-                set: products
+            products: 
+                dim: cols 
         lr:
-            rows:
-                set: product_data
+            product_data:
+                dim: rows
                 filters: {0: learning_rate}
-            cols: 
-                set: products
+            products: 
+                dim: cols 
 
 b:  
     name: energy availability
