@@ -182,7 +182,7 @@ class Model:
     @property
     def variables(self) -> Dict[str, str]:
         return {
-            var_key: f"shape: {variable.shape}"
+            var_key: f"shape: {variable.shape_sets}"
             for var_key, variable in self.core.index.variables.items()
         }
 

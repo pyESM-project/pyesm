@@ -392,7 +392,7 @@ class Problem:
         result = self.create_cvxpy_variable(
             var_type=variable.type,
             shape=variable.shape_size,
-            name=variable_name + str(variable.shape),
+            name=variable_name + str(variable.shape_sets),
             value=var_value,
         )
 
@@ -484,9 +484,9 @@ class Problem:
 
                 elif header == headers['cvxpy']:
                     for dim in [0, 1]:
-                        if isinstance(variable.shape[dim], int):
+                        if isinstance(variable.shape_sets[dim], int):
                             pass
-                        elif isinstance(variable.shape[dim], str):
+                        elif isinstance(variable.shape_sets[dim], str):
                             dim_header = variable.dims_labels[dim]
                             var_filter[dim_header] = variable.dims_items[dim]
 
@@ -501,7 +501,7 @@ class Problem:
             var_data.at[row, headers['filter']] = var_filter
 
         # identify sub_problem_key
-        inter_coord_label = Constants.get('inter')
+        inter_coord_label = 'inter'
         if variable_type not in ['exogenous', 'constant'] and \
                 variable.coordinates[inter_coord_label]:
             for row in var_data.index:
@@ -538,7 +538,7 @@ class Problem:
                     self.create_cvxpy_variable(
                         var_type=variable_type,
                         shape=variable.shape_size,
-                        name=variable_name + str(variable.shape))
+                        name=variable_name + str(variable.shape_sets))
 
         # slice endogenous cvxpy variables (all endogenous variables are
         # slices of one unique variable for each sub-problem stored in data table.)
@@ -779,7 +779,7 @@ class Problem:
         for key, variable in variables_subset.items():
             variable: Variable
             vars_sets_intra_problem[key] = \
-                variable.coordinates_info.get(Constants.get('intra'), None)
+                variable.coordinates_info.get('intra', None)
 
         # in this case, a variable with no intra-problem sets is used as it is
         # for all expressions
@@ -1132,7 +1132,7 @@ class Problem:
             # if no sets intra-probles are defined for the variable, the cvxpy
             # variable is fetched for the current ploblem. cvxpy variable must
             # be unique for the defined problem
-            if not variable.coordinates_info[Constants.get('intra')]:
+            if not variable.coordinates_info['intra']:
                 if variable_data.shape[0] == 1:
                     allowed_variables[var_key] = \
                         variable_data[cvxpy_var_header].values[0]
@@ -1144,7 +1144,7 @@ class Problem:
 
             # if sets_intra_problem is defined for the variable, the right
             # cvxpy variable is fetched for the current problem
-            elif variable.coordinates_info[Constants.get('intra')] \
+            elif variable.coordinates_info['intra'] \
                     and set_intra_problem_header and set_intra_problem_value:
 
                 # case of a single intra-problem set
@@ -1325,7 +1325,7 @@ class Problem:
                 # check for common filtered intra-problem set coordinates
                 sets_intra_problem_coords = self.find_common_vars_coords(
                     variables_subset=vars_subset,
-                    coord_category=Constants.get('intra'),
+                    coord_category='intra',
                     allow_empty_coord=True,
                 )
 
@@ -1537,3 +1537,5 @@ class Problem:
                 msg = "Numerical problems must be defined first."
                 self.logger.warning(msg)
                 raise exc.OperationalError(msg)
+
+        self.fetch_problem_status()
