@@ -132,7 +132,7 @@ def prettify(item: dict) -> None:
 
 
 def validate_selection(
-        valid_selections: List[str],
+        valid_selections: Iterable[str],
         selection: str,
 ) -> None:
     """
@@ -658,6 +658,37 @@ def substitute_dict_keys(
                 f"Key '{key}' from key_mapping is not found in source_dict.")
         substituted_dict[new_key] = source_dict[key]
     return substituted_dict
+
+
+def fetch_dict_primary_key(
+        dictionary: Dict[str, Any],
+        second_level_key: str | int,
+        second_level_value: Any,
+) -> str | int:
+    """
+    Fetches the primary key from a dictionary based on a second-level key-value
+    pair. If the second-level key-value pair is not found, returns None.
+
+    Args:
+        dictionary (Dict[str, Any]): The dictionary to search.
+        second_level_key (str | int): The key to search for in the second level.
+        second_level_value (Any): The value to search for in the second level.
+
+    Returns:
+        str | int: The primary key of the dictionary where the second-level 
+            key-value pair is found, or None if not found.
+
+    Raises: 
+        TypeError: If dictionary is not a dictionary.
+    """
+    if not isinstance(dictionary, dict):
+        raise TypeError("Passed dictionary must be a dictionary.")
+
+    for primary_key, value in dictionary.items():
+        if isinstance(value, dict) and \
+                value.get(second_level_key) == second_level_value:
+            return primary_key
+    return None
 
 
 def filter_dataframe(
