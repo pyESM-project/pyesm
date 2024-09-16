@@ -1,29 +1,29 @@
 # variables of the model
 
-# table_key:                                  # name of the data table from which variables are defined
-#     name: table_name                        # description or full name of the table
-#     type: table_type                        # endogenous, exogenous, constant or dictionary 
-#     type:                                   # dictionary with keys as problem key and values as table_type 
+# table_key:                                      # name of the data table from which variables are defined
+#     name: table_name                            # description or full name of the table
+#     type: table_type                            # endogenous, exogenous, constant or dictionary 
+#     type:                                       # dictionary with keys as problem key and values as table_type 
 #         problem_key: table_type
-#     coordinates: [a, b, c, d]               # list of table coordinates (set_key symbols)
-#     variables_info:                         # list of variables defined from the data_table
-#         var_key_1:                          # variable name
-#             value: constant_type            # constant value type (predefined)
-#             rows:                           # (optional) rows of the variable
-#                 set: a                      # set_key symbol
-#                 filters: {0: filter_values} # (optional) filters for the set values
-#             cols:                           # (optional) cols of the variable
-#                 set: b                      # set_key symbol
-#                 filters: {0: filter_values} # (optional) filters for the set values
-#             intra:                          # (optional) filter on intra-problem sets 
-#                 set: c                      # set_key symbol
-#                 filters: {0: filter_values} # (optional) filters for the set values
+#     integer: True                               # (optional) if variables of the table are integers
+#     coordinates: [a, b, c, d]                   # list of table coordinates (set_key symbols)
+#     variables_info:                             # list of variables defined from the data_table
+#         var_key_1:                              # variable name
+#             value: constant_type                # (only for table type: constant) types list in constants.py
+#             set_key_a:                          # (optional) set_key symbol
+#                 dim: str                        # (optional) rows, cols or intra
+#                 filters: {index: values}        # (optional) filters for the set values
+
+# RULES:
+# - variables define SQLite tables (name case insensitive: two tables named 
+# 'e' and 'E' are not allowed. However, variables symbols are case sensitive).
+# - 
 
 
 # -----------------------------------------------------------------------------
 # exogenous variables
 
-        
+
 
 
 # -----------------------------------------------------------------------------
@@ -33,4 +33,4 @@
 
 
 # -----------------------------------------------------------------------------
-# constants variables
+# constants
