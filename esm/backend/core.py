@@ -324,14 +324,18 @@ class Core:
             self.logger.warning(msg)
             raise exc.OperationalError(msg)
 
-        if self.problem.problem_status is not None:
+        # check if problems have already been solved
+        problem_status = self.problem.problem_status
+        if (isinstance(problem_status, dict) and
+            not all(value is None for value in problem_status.values())) or \
+                (problem_status is not None and not isinstance(problem_status, dict)):
+
             if not force_overwrite:
                 self.logger.warning("Numeric problems already solved.")
                 user_input = input("Solve again numeric problems? (y/[n]): ")
 
                 if user_input.lower() != 'y':
-                    self.logger.info(
-                        "Numeric problem NOT solved.")
+                    self.logger.info("Numeric problem NOT solved.")
                     return
 
             self.logger.info(
@@ -352,8 +356,6 @@ class Core:
                 maximum_iterations=maximum_iterations,
                 **kwargs,
             )
-
-        self.problem.fetch_problem_status()
 
     def data_to_cvxpy_exogenous_vars(
             self,
@@ -466,7 +468,8 @@ class Core:
 
                         # pivoting and reshaping data to fit variables
                         pivoted_data = variable.reshaping_sqlite_table_data(
-                            data=raw_data
+                            data=raw_data,
+                            nan_to_zero=allow_none_values,
                         )
 
                         self.problem.data_to_cvxpy_variable(
@@ -694,6 +697,18 @@ class Core:
                     verbose=verbose,
                     **kwargs
                 )
+
+                infeasible_problems = {
+                    problem_key: problem_status
+                    for problem_key, problem_status in self.problem.problem_status.items()
+                    if problem_status != 'optimal'
+                }
+
+                if infeasible_problems:
+                    self.logger.warning(
+                        "Infeasible problems: "
+                        f"'{list(infeasible_problems.keys())}'.")
+                    break
 
                 self.cvxpy_endogenous_data_to_database(
                     operation='update',
