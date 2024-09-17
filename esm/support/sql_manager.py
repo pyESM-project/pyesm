@@ -189,7 +189,8 @@ class SQLManager:
         This method supports executing single or multiple SQL commands with
         optional parameterization, fetching results, and committing changes to
         the database. Handles and logs specific sqlite3 exceptions related to
-        operation and integrity.
+        operation, integrity, database, and programming errors. Rolls back the
+        transaction if an error occurs.
 
         Args:
             query (str): SQL query to be executed.
@@ -208,6 +209,10 @@ class SQLManager:
             exc.OperationalError: If there is an operational issue during query
                 execution.
             exc.IntegrityError: If there is an integrity issue during query
+                execution.
+            exc.DatabaseError: If there is a database issue during query
+                execution.
+            exc.ProgrammingError: If there is a programming issue during query
                 execution.
         """
         if self.connection is None or self.cursor is None:
@@ -228,14 +233,22 @@ class SQLManager:
                 return self.cursor.fetchall()
 
         except sqlite3.OperationalError as op_error:
+            self.connection.rollback()
             msg = str(op_error)
             self.logger.error(msg)
             raise exc.OperationalError(msg) from op_error
 
         except sqlite3.IntegrityError as int_error:
+            self.connection.rollback()
             msg = str(int_error)
             self.logger.error(msg)
             raise exc.IntegrityError(msg) from int_error
+
+        except sqlite3.DatabaseError as db_error:
+            self.connection.rollback()
+            msg = str(db_error)
+            self.logger.error(msg)
+            raise exc.MissingDataError(msg) from db_error
 
     @property
     def get_existing_tables_names(self) -> List[str]:
@@ -491,46 +504,57 @@ class SQLManager:
         self.execute_query(query)
         return self.cursor.fetchone()[0]
 
-    def delete_all_table_entries(
+    def delete_table_entries(
             self,
             table_name: str,
-            force_operation: bool = False
+            force_operation: bool = False,
+            column_name: Optional[str] = None,
     ) -> bool:
         """
-        Deletes all entries from a specified table in the SQLite database.
-        This method executes a DELETE command to remove all records from the
-        table, with an optional confirmation to proceed based on user input.
+        Deletes values from a specified column in a table in the SQLite database.
+        This method executes an UPDATE command to set the values in the specified
+        column to NULL, with an optional confirmation to proceed based on user input.
+        If no column name is provided, all entries in the table are deleted.
 
         Args:
-            table_name (str): The name of the table from which to delete entries.
+            table_name (str): The name of the table from which to delete column entries.
             force_operation (bool, optional): If True, bypasses user confirmation
-                and deletes entries.
+                and deletes column entries.
+            column_name (str, optional): The name of the column from which to 
+                delete values.
 
         Returns:
-            bool: True if entries were successfully deleted, False if the
+            bool: True if column entries were successfully deleted, False if the
                 operation was aborted by the user.
 
         Notes:
-            If there are entries in the table and force_operation is False,
+            If there are entries in the column and force_operation is False,
                 the method will prompt the user to confirm deletion.
         """
         num_entries = self.count_table_data_entries(table_name)
 
         if num_entries > 0 and not force_operation:
             confirm = input(
-                f"SQLite table '{table_name}' already has {num_entries} "
-                "rows. Delete all table entries? (y/[n])"
-            )
+                f"SQLite table '{table_name}' already has {num_entries} rows. Delete all "
+                f"{'entries' if column_name is None else f'entries in column {column_name}'}? "
+                "(y/[n])")
+
             if confirm.lower() != 'y':
                 self.logger.debug(
                     f"SQLite table '{table_name}' - NOT overwritten.")
                 return False
 
-        query = f"DELETE FROM {table_name}"
+        if column_name:
+            query = f"UPDATE {table_name} SET '{column_name}' = NULL"
+        else:
+            query = f"DELETE FROM {table_name}"
+
         self.execute_query(query)
 
         self.logger.debug(
-            f"SQLite table '{table_name}' - {num_entries} entries deleted.")
+            f"SQLite table '{table_name}' - {num_entries} "
+            f"{'entries' if column_name is None else f'entries in column {column_name}'} "
+            "deleted.")
 
         return True
 
@@ -685,7 +709,7 @@ class SQLManager:
                 (operation == 'update' and num_entries == 0):
 
             if num_entries != 0:
-                data_erased = self.delete_all_table_entries(
+                data_erased = self.delete_table_entries(
                     table_name,
                     force_operation)
 

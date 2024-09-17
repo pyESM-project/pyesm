@@ -104,16 +104,10 @@ class Constants:
     _PROBLEM_INFO_HEADER = 'info'
     _PROBLEM_STATUS_HEADER = 'status'
 
-    # COORDINATES LABELS
-    rows = 'rows'
-    cols = 'cols'
-    intra = 'intra'
-    inter = 'inter'
-
-    # DEFAULT STRUCTURES FOR VALIDATION
     _OBJECTIVE_HEADER = 'objective'
     _CONSTRAINTS_HEADER = 'expressions'
 
+    # DEFAULT STRUCTURES FOR VALIDATION
     _SET_DEFAULT_STRUCTURE = {
         'symbol': str,
         'table_name': str,
@@ -125,20 +119,25 @@ class Constants:
     _DATA_TABLE_DEFAULT_STRUCTURE = {
         'name': str,
         'type': str | dict,
+        'integer': bool,
         'coordinates': list,
         'variables_info': dict,
     }
-    _VARIABLE_DEFAULT_STRUCTURE = {
-        intra: dict,
-        rows: dict,
-        cols: dict,
+
+    _VAR_INFO_DEFAULT_STRUCTURE = {
         'value': str,
+    }
+
+    _VAR_COORD_DEFAULT_STRUCTURE = {
+        'dim': str,
+        'filters': dict,
     }
 
     # ALLOWED ITEMS FOR DEFINING SYMBOLIC PROBLEMS
     _ALLOWED_CONSTANTS = {
         'sum_vector': (np.ones, {}),  # vector of 1s
         'identity': (np.eye, {}),  # identity matrix
+        'set_length': (np.size, {}),  # scalar getting set length
         # vector/matrix with a range from 1 up to dimension size
         'arange_1': (util_functions.arange, {}),
         'arange_0': (util_functions.arange, {'start_from': 0}),

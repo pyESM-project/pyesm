@@ -182,7 +182,7 @@ class Model:
     @property
     def variables(self) -> Dict[str, str]:
         return {
-            var_key: f"shape: {variable.shape}"
+            var_key: f"shape: {variable.shape_sets}"
             for var_key, variable in self.core.index.variables.items()
         }
 
@@ -304,6 +304,7 @@ class Model:
             self,
             operation: str = 'update',
             force_overwrite: bool = False,
+            empty_data_fill: Any = 0,
     ) -> None:
         """
         Loads input (exogenous) data to the SQLite database. 
@@ -313,20 +314,21 @@ class Model:
                 database. Defaults to 'update'.
             force_overwrite (bool, optional): Whether to force overwrite 
                 existing data. Defaults to False.
+            empty_data_fill (Any, optional): The value to fill empty data
+                cells with. Defaults to 0.
         """
         self.logger.info('Loading input data to SQLite database.')
 
         self.core.database.load_data_input_files_to_database(
             operation=operation,
             force_overwrite=force_overwrite,
+            empty_data_fill=empty_data_fill,
         )
-
-        # TO BE COMPLETED (automatically filling blank data)
-        # self.core.database.empty_data_completion(operation)
 
     def initialize_problems(
             self,
             force_overwrite: bool = False,
+            allow_none_values: bool = True,
     ) -> None:
         """
         Initializes numerical problems in the Model instance. Specifically, the
@@ -335,8 +337,10 @@ class Model:
 
         Args:
             force_overwrite (bool, optional): If True, forces the overwrite 
-            of existing numerical problems. Used for testing purpose. Defaults 
-            to False.
+                of existing numerical problems. Used for testing purpose. Defaults 
+                to False.
+            allow_none_values (bool, optional): If True, allows None values in
+                the exogenous data. Defaults to True.
 
         Return:
             None
@@ -345,7 +349,7 @@ class Model:
             'Loading symbolic problem, initializing numerical problem.')
 
         self.core.initialize_problems_variables()
-        self.core.data_to_cvxpy_exogenous_vars()
+        self.core.data_to_cvxpy_exogenous_vars(allow_none_values)
         self.core.define_mathematical_problems(force_overwrite)
 
     def run_model(
@@ -484,6 +488,27 @@ class Model:
 
         self.load_exogenous_data_to_sqlite_database(operation, force_overwrite)
         self.initialize_problems(force_overwrite)
+
+    def reinitialize_sqlite_database(
+            self,
+            operation: str = 'update',
+            force_overwrite: bool = False,
+    ) -> None:
+        """Initialize endogenous tables in sqlite database to Null values, and
+        reimport input data to exogenous tables.
+
+        Args:
+            operation (str, optional): The operation to perform on the 
+                database. Defaults to 'update'.
+            force_overwrite (bool, optional): Whether to force overwrite 
+                existing data. Used for testing purpose. Defaults to False.
+        """
+        self.logger.info(
+            f"Reinitializing SQLite database '{self.settings['sqlite_database_file']}' "
+            "endogenous tables.")
+
+        self.core.database.reinit_sqlite_endogenous_tables(force_overwrite)
+        self.load_exogenous_data_to_sqlite_database(operation, force_overwrite)
 
     def generate_pbi_report(self) -> None:
         """

@@ -2,15 +2,15 @@
 
 # EXOGENOUS VARIABLES -----------------------------------------------------------------------------
 d:
-    name: supply coefficients matrix # description or full name of the table
-    type: exogenous # type of the variable
-    coordinates: [scenarios,techs, flows] # list of coordinates with set_key symbols
+    name: supply coefficients matrix
+    type: exogenous
+    coordinates: [scenarios,techs, flows]
     variables_info:
-        d: # variable name
-            rows: # rows of the variable
-                set: techs # set_key symbol
-            cols: # columns of the variable
-                set: flows # set_key symbol
+        d:
+            techs:
+                dim: rows
+            flows:
+                dim: cols
 
 Y:
     name: final demand 
@@ -18,10 +18,10 @@ Y:
     coordinates: [scenarios,flows_agg, days] 
     variables_info:
         Y: 
-            rows: 
-                set: flows_agg 
-            cols: 
-                set: days 
+            flows_agg:
+                dim: rows
+            days: 
+                dim: cols 
 
 c_om:
     name: operation costs 
@@ -29,8 +29,8 @@ c_om:
     coordinates: [scenarios,techs] 
     variables_info:
         c_om: 
-            cols: 
-                set: techs 
+            techs: 
+                dim: cols
 
 e:
     name: co2 emissions 
@@ -38,15 +38,15 @@ e:
     coordinates: [scenarios,flows] 
     variables_info:
         e: 
-            cols: 
-                set: flows 
+            flows: 
+                dim: cols
 
 E_max:
     name: maximum emissions of urban mode 
     type: exogenous 
     coordinates: [scenarios] 
     variables_info:
-        E_max_urban:  # scalar parameter
+        E_max_urban:
 
 X_max:
     name: maximum production by techs 
@@ -54,11 +54,11 @@ X_max:
     coordinates: [scenarios,techs,days] 
     variables_info:
         X_max_pub_strike: 
-            rows: 
-                set: days 
-                filters: {strikes: strikes} # filters to select the category
-            cols: 
-                set: techs 
+            days: 
+                dim: rows
+                filters: {strikes: strikes}
+            techs: 
+                dim: cols 
                 filters: {ownership: public}
 
 Q_max:
@@ -67,11 +67,11 @@ Q_max:
     coordinates: [scenarios,flows,days] 
     variables_info:
         Q_max_urban_icev_we: 
-            rows: 
-                set: days 
+            days: 
+                dim: rows 
                 filters: {we: we} 
-            cols: 
-                set: flows 
+            flows: 
+                dim: cols
                 filters: {powertrain: icev, mode: urban}
 
 # CONSTANTS -----------------------------------------------------------------------------
@@ -82,10 +82,10 @@ I_ff:
     variables_info:
         I_ff: 
             value: identity_rcot
-            rows: 
-                set: flows_agg
-            cols:
-                set: flows
+            flows_agg: 
+                dim: rows
+            flows:
+                dim: cols
 
 
 
@@ -96,16 +96,16 @@ Q:
     coordinates: [scenarios,flows,days] 
     variables_info:
         Q: 
-            rows: 
-                set: days 
-            cols: 
-                set: flows 
+            days: 
+                dim: rows
+            flows: 
+                dim: cols
         Q_urban_icev_we: 
-            rows: 
-                set: days 
-                filters: {we: we} # filters to select the category
-            cols: 
-                set: flows 
+            days: 
+                dim: rows 
+                filters: {we: we}
+            flows: 
+                dim: cols
                 filters: {powertrain: icev, mode: urban}
 
 Q_agg:
@@ -114,10 +114,10 @@ Q_agg:
     coordinates: [scenarios,flows_agg,days] 
     variables_info:
         Q_agg: 
-            rows: 
-                set: flows_agg 
-            cols: 
-                set: days 
+            flows_agg:
+                dim: rows
+            days: 
+                dim: cols 
 
 X:
     name: total production by techs  
@@ -125,16 +125,16 @@ X:
     coordinates: [scenarios,techs,days] 
     variables_info:
         X: 
-            rows: 
-                set: days 
-            cols: 
-                set: techs 
+            days: 
+                dim: rows 
+            techs: 
+                dim: cols
         X_pub_strike: 
-            rows: 
-                set: days 
-                filters: {strikes: strikes} # filters to select the category
-            cols: 
-                set: techs 
+            days: 
+                dim: rows 
+                filters: {strikes: strikes}
+            techs: 
+                dim: cols
                 filters: {ownership: public}
 
 E_tot:
@@ -143,15 +143,15 @@ E_tot:
     coordinates: [scenarios,flows,days] 
     variables_info:
         E: 
-            rows: 
-                set: days 
-            cols: 
-                set: flows 
+            days: 
+                dim: rows
+            flows: 
+                dim: cols 
         E_urban:
-            rows: 
-                set: days 
-            cols: 
-                set: flows 
+            days: 
+                dim: rows 
+            flows: 
+                dim: cols
                 filters: {mode: urban}
                 
 C_om_tot:
@@ -160,7 +160,7 @@ C_om_tot:
     coordinates: [scenarios,techs,days] 
     variables_info:
         C_om_tot: 
-            rows: 
-                set: days 
-            cols: 
-                set: techs 
+            days: 
+                dim: rows
+            techs: 
+                dim: cols 

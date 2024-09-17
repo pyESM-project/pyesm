@@ -180,6 +180,7 @@ class Core:
 
                     cvxpy_var = self.problem.create_cvxpy_variable(
                         var_type='endogenous',
+                        integer=data_table.integer,
                         shape=(data_table.table_length, 1),
                         name=data_table_key,
                     )
@@ -194,6 +195,7 @@ class Core:
 
                         cvxpy_var[problem_key] = self.problem.create_cvxpy_variable(
                             var_type='endogenous',
+                            integer=data_table.integer,
                             shape=(len(variable_df), 1),
                             name=f"{data_table_key}_{problem_key}",
                         )
@@ -324,14 +326,18 @@ class Core:
             self.logger.warning(msg)
             raise exc.OperationalError(msg)
 
-        if self.problem.problem_status is not None:
+        # check if problems have already been solved
+        problem_status = self.problem.problem_status
+        if (isinstance(problem_status, dict) and
+            not all(value is None for value in problem_status.values())) or \
+                (problem_status is not None and not isinstance(problem_status, dict)):
+
             if not force_overwrite:
                 self.logger.warning("Numeric problems already solved.")
                 user_input = input("Solve again numeric problems? (y/[n]): ")
 
                 if user_input.lower() != 'y':
-                    self.logger.info(
-                        "Numeric problem NOT solved.")
+                    self.logger.info("Numeric problem NOT solved.")
                     return
 
             self.logger.info(
@@ -353,9 +359,10 @@ class Core:
                 **kwargs,
             )
 
-        self.problem.fetch_problem_status()
-
-    def data_to_cvxpy_exogenous_vars(self) -> None:
+    def data_to_cvxpy_exogenous_vars(
+            self,
+            allow_none_values: bool = True,
+    ) -> None:
         """
         Fetches data from the SQLite database and assigns it to cvxpy exogenous 
         variables.
@@ -363,6 +370,10 @@ class Core:
         type is not 'endogenous' or 'constant', the method fetches the variable's 
         data from the SQLite database and assigns it to the cvxpy variable. 
         The method handles variables whose type is defined by the problem separately.
+
+        Args:
+            allow_none_values (bool, optional): If True, allows None values in 
+                the data for the variable. Defaults to True.
 
         Returns:
             None
@@ -441,24 +452,26 @@ class Core:
                             filters_dict=variable_data[filter_header][row])
 
                         # check if variable data are int or float
-                        non_numeric_ids = util.find_non_allowed_types(
+                        non_allowed_ids = util.find_non_allowed_types(
                             dataframe=raw_data,
                             allowed_types=allowed_values_types,
                             target_col_header=values_header,
                             return_col_header=id_header,
+                            allow_none=allow_none_values,
                         )
 
-                        if non_numeric_ids:
+                        if non_allowed_ids:
                             msg = f"Data for variable '{var_key}' in table " \
                                 f"'{variable.related_table}' contains " \
                                 f"non-allowed values types in rows: " \
-                                f"{non_numeric_ids}."
+                                f"{non_allowed_ids}."
                             self.logger.error(msg)
                             raise exc.MissingDataError(msg)
 
                         # pivoting and reshaping data to fit variables
                         pivoted_data = variable.reshaping_sqlite_table_data(
-                            data=raw_data
+                            data=raw_data,
+                            nan_to_zero=allow_none_values,
                         )
 
                         self.problem.data_to_cvxpy_variable(
@@ -686,6 +699,18 @@ class Core:
                     verbose=verbose,
                     **kwargs
                 )
+
+                infeasible_problems = {
+                    problem_key: problem_status
+                    for problem_key, problem_status in self.problem.problem_status.items()
+                    if problem_status != 'optimal'
+                }
+
+                if infeasible_problems:
+                    self.logger.warning(
+                        "Infeasible problems: "
+                        f"'{list(infeasible_problems.keys())}'.")
+                    break
 
                 self.cvxpy_endogenous_data_to_database(
                     operation='update',

@@ -1,21 +1,5 @@
 # variables of the model
 
-# table_key:
-#     name: table_name # description or full name of the table
-#     type: table_type # endogenous, exogenous, or constant
-#     coordinates: [a, b, c, d] # list of coordinates with set_key symbols
-#     variables_info:
-#         var_key_1: # variable name
-#             intra: # optional, if variable is filtered within intra-problem set
-#                 set: years # set_key symbol
-#                 filters: {0: warm-up} # filters for the intra-problem set
-#             rows: # rows of the variable
-#                 set: a # set_key symbol
-#                 filters: {0: Supply} # optional, filters for the rows
-#             cols: # columns of the variable
-#                 set: b # set_key symbol
-#                 filters: {0: Physical} # optional, filters for the columns
-
 # -----------------------------------------------------------------------------
 # exogenous variables
 
@@ -26,34 +10,34 @@ ex:
     variables_info:
         # all values in the table
         ex_tf:
-            rows: 
-                set: technologies
-            cols:
-                set: flows
+            technologies: 
+                dim: rows
+            flows:
+                dim: cols
         # selecting all techs and flows but for a sub set of years (intra-problem-set)
         ex_tf_y:
-            intra:
-                set: years
+            years:
+                dim: intra
                 filters: {0: warm-up}
-            rows: 
-                set: technologies
-            cols:
-                set: flows
+            technologies: 
+                dim: rows
+            flows:
+                dim: cols
         # selecting one category for both rows and cols
         ex_tf_1:
-            rows: 
-                set: technologies
+            technologies: 
+                dim: rows
                 filters: {0: Supply}
-            cols:
-                set: flows
+            flows:
+                dim: cols
                 filters: {0: Physical}
         # filtering variable based on a double category
         ex_tf_2:
-            rows: 
-                set: technologies
+            technologies: 
+                dim: rows
                 filters: {0: Supply, 1: [Non-Renewable, Elon-Musk-Approved]}
-            cols:
-                set: flows
+            flows:
+                dim: cols
                 filters: {0: Physical}
 
 ex_agg:
@@ -63,11 +47,11 @@ ex_agg:
     variables_info:
         # filtering variable with an aggregated set
         ex_tf_agg:
-            rows: 
-                set: technologies
+            technologies: 
+                dim: rows
                 filters: {0: Supply, 1: [Non-Renewable, Elon-Musk-Approved]}
-            cols:
-                set: flows_agg
+            flows_agg:
+                dim: cols
                 filters: {0: Physical}
         
 
@@ -82,34 +66,34 @@ en:
     variables_info:
         # all values in the table
         en_tf:
-            rows: 
-                set: technologies
-            cols:
-                set: flows
+            technologies: 
+                dim: rows
+            flows:
+                dim: cols
         # selecting all techs and flows but for a sub set of years (intra-problem-set)
         en_tf_y:
-            intra:
-                set: years
+            years:
+                dim: intra
                 filters: {0: warm-up}
-            rows: 
-                set: technologies
-            cols:
-                set: flows
+            technologies: 
+                dim: rows
+            flows:
+                dim: cols
         # selecting one category for both rows and cols
         en_tf_1:
-            rows: 
-                set: technologies
+            technologies: 
+                dim: rows
                 filters: {0: Supply}
-            cols:
-                set: flows
+            flows:
+                dim: cols
                 filters: {0: Physical}
         # filtering variable based on a double category
         en_tf_2:
-            rows: 
-                set: technologies
+            technologies: 
+                dim: rows
                 filters: {0: Supply, 1: [Non-Renewable, Elon-Musk-Approved]}
-            cols:
-                set: flows
+            flows:
+                dim: cols
                 filters: {0: Physical}
             
 
@@ -120,9 +104,9 @@ en_agg:
     variables_info:
         # filtering variable with an aggregated set
         en_tf_agg:
-            rows: 
-                set: technologies
+            technologies: 
+                dim: rows
                 filters: {0: Supply, 1: [Non-Renewable, Elon-Musk-Approved]}
-            cols:
-                set: flows_agg
+            flows_agg:
+                dim: cols
                 filters: {0: Physical}

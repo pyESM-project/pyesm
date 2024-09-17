@@ -25,7 +25,7 @@ def test_tril():
     """
 
     # valid input
-    matrix = tril(3)
+    matrix = tril((3, 1))
     expected_matrix = np.array([
         [1, 0, 0],
         [1, 1, 0],
@@ -34,7 +34,7 @@ def test_tril():
     assert np.array_equal(matrix, expected_matrix)
 
     # valid input
-    matrix = tril(1)
+    matrix = tril((1, 1))
     expected_matrix = np.array([[1.]])
     assert np.array_equal(matrix, expected_matrix)
 
@@ -42,8 +42,11 @@ def test_tril():
     with pytest.raises(TypeError):
         tril('not an integer')
 
-    with pytest.raises(ValueError):
+    with pytest.raises(TypeError):
         tril(-1)
+
+    with pytest.raises(ValueError):
+        tril((-10, 1))
 
 
 def test_identity_rcot():

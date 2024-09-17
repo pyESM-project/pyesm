@@ -14,7 +14,7 @@ SQLite database interactions via the SQLManager.
 """
 
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Optional
 
 from esm.backend.data_table import DataTable
 from esm.backend.index import Index
@@ -453,6 +453,7 @@ class Database:
     def load_data_input_files_to_database(
         self,
         operation: str,
+        empty_data_fill: Optional[Any] = None,
         file_extension: str = data_file_extension,
         force_overwrite: bool = False,
     ) -> None:
@@ -469,6 +470,8 @@ class Database:
         Parameters:
             operation (str): The SQL operation to be performed with the data 
                 ('insert', 'update', etc.).
+            empty_data_fill (Any, optional): The value to fill empty data cells
+                with. Defaults to None.
             file_extension (str, optional): The extension of the data files to 
                 load. Defaults to the 'data_file_extension' class attribute.
             force_overwrite (bool, optional): If True, forces the overwrite of 
@@ -498,6 +501,7 @@ class Database:
                             self.files.excel_to_dataframes_dict(
                                 excel_file_dir_path=self.paths['input_data_dir'],
                                 excel_file_name=file_name,
+                                empty_data_fill=empty_data_fill,
                             )
                         )
                         self.sqltools.dataframe_to_table(
@@ -510,6 +514,7 @@ class Database:
             data = self.files.excel_to_dataframes_dict(
                 excel_file_dir_path=self.paths['input_data_dir'],
                 excel_file_name=self.settings['input_data_file'],
+                empty_data_fill=empty_data_fill,
             )
 
             with db_handler(self.sqltools):
@@ -521,12 +526,34 @@ class Database:
                         force_operation=force_overwrite,
                     )
 
-    def empty_data_completion(
-        self,
-        operation: str,
-    ):
-        self.logger.debug(
-            "Auto-completion of blank data in SQLite database.")
+    def reinit_sqlite_endogenous_tables(
+            self,
+            force_overwrite: bool = False,
+    ) -> None:
+        """
+        Reinitializes the endogenous tables in the SQLite database.
+        This method iterates over each endogenous data table in the index and 
+        clears the table in the SQLite database. 
+
+        Returns:
+            None
+
+        Notes:
+            The method uses a context manager to handle the database connection.
+        """
 
         with db_handler(self.sqltools):
-            pass
+            for table_key, table in self.index.data.items():
+
+                if table.type == 'endogenous':
+
+                    self.logger.debug(
+                        f"Reinitializing endogenous table '{table_key}' "
+                        "in SQLite database.")
+
+                    self.sqltools.delete_table_entries(
+                        table_name=table_key,
+                        force_operation=force_overwrite,
+                        column_name=Constants.get(
+                            '_STD_VALUES_FIELD')['values'][0],
+                    )

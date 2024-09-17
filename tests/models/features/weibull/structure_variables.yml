@@ -1,21 +1,5 @@
 # variables of the model
 
-# table_key:
-#     name: table_name # description or full name of the table
-#     type: table_type # endogenous, exogenous, or constant
-#     coordinates: [a, b, c, d] # list of coordinates with set_key symbols
-#     variables_info:
-#         var_key_1: # variable name
-#             intra: # optional, if variable is filtered within intra-problem set
-#                 set: years # set_key symbol
-#                 filters: {0: warm-up} # filters for the intra-problem set
-#             rows: # rows of the variable
-#                 set: a # set_key symbol
-#                 filters: {0: Supply} # optional, filters for the rows
-#             cols: # columns of the variable
-#                 set: b # set_key symbol
-#                 filters: {0: Physical} # optional, filters for the columns
-
 # -----------------------------------------------------------------------------
 # exogenous variables
 
@@ -24,7 +8,7 @@ Capacity_start:
     type: exogenous
     coordinates: [case, technologies]
     variables_info:
-        Cap_start: null
+        Cap_start: 
 
 # just usefult to constrain the new capacity (usually defined as endogenous)
 Capacity_new:
@@ -33,10 +17,10 @@ Capacity_new:
     coordinates: [case, years, technologies, capacity]
     variables_info:
         Cap_new_ex:
-            rows: 
-                set: years
-            cols:
-                set: capacity
+            years: 
+                dim: rows
+            capacity:
+                dim: cols
                 filters: {0: New}
 
 Disposal_shapes:
@@ -44,7 +28,7 @@ Disposal_shapes:
     type: exogenous
     coordinates: [case, technologies]
     variables_info:
-        sf: null
+        sf: 
 
 Tech_lifetime:
     name: lifetime of technologies
@@ -52,12 +36,12 @@ Tech_lifetime:
     coordinates: [case, technologies, tech_lifetime]
     variables_info:
         lt:
-            rows: 
-                set: tech_lifetime
+            tech_lifetime: 
+                dim: rows
                 filters: {0: Standard}
         lt_start:
-            rows: 
-                set: tech_lifetime
+            tech_lifetime: 
+                dim: rows
                 filters: {0: Residual_start}
 
 # -----------------------------------------------------------------------------
@@ -70,34 +54,34 @@ Capacity:
     variables_info:
         # operational capacity (techs as intra-problem-set)
         Cap_op:
-            rows: 
-                set: years
-            cols:
-                set: capacity
+            years: 
+                dim: rows
+            capacity:
+                dim: cols
                 filters: {0: Operational}
         
         # new capacity (techs as intra-problem-set)
         Cap_new:
-            rows: 
-                set: years
-            cols:
-                set: capacity
+            years: 
+                dim: rows
+            capacity:
+                dim: cols
                 filters: {0: New}
         
         # disposed capacity start (techs as intra-problem-set)
         Cap_dis_start:
-            rows: 
-                set: years
-            cols:
-                set: capacity
+            years: 
+                dim: rows
+            capacity:
+                dim: cols
                 filters: {0: Disposed_start}
         
         # disposed capacity new (techs as intra-problem-set)
         Cap_dis_new:
-            rows: 
-                set: years
-            cols:
-                set: capacity
+            years: 
+                dim: rows
+            capacity:
+                dim: cols
                 filters: {0: Disposed_new}
 
 
@@ -113,11 +97,9 @@ Constants:
     variables_info:
         T_yy:
             value: lower_triangular
-            rows:
-                set: years
-            cols:
-                set: years
+            years:
+                dim: rows
         y_range:
             value: arange_1
-            rows:
-                set: years
+            years:
+                dim: rows

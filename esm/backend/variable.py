@@ -17,6 +17,7 @@ convert SQL data to formats usable by optimization tools like CVXPY.
 from typing import Any, Dict, Iterator, List, Optional, Tuple
 
 import cvxpy as cp
+import numpy as np
 import pandas as pd
 
 from esm.constants import Constants
@@ -105,22 +106,26 @@ class Variable:
         """
         self.logger = logger.get_child(__name__)
 
+        self.symbol: Optional[str] = None
+        self.type: Optional[str] = None
         self.rows: Dict[str, Any] = {}
         self.cols: Dict[str, Any] = {}
         self.value: Optional[str] = None
         self.related_table: Optional[str] = None
         self.related_dims_map: Optional[pd.DataFrame] = None
-        self.type: Optional[str] = None
+        self.var_info: Optional[Dict[str, Any]] = None
 
         for key, value in kwargs.items():
             setattr(self, key, value)
+
+        self._rearrange_var_info()
 
         self.coordinates_info: Dict[str, Any] = {}
         self.coordinates: Dict[str, Any] = {}
         self.data: Optional[pd.DataFrame | dict] = None
 
     def __repr__(self) -> str:
-        excluded_keys = ['data', 'logger', 'related_dims_map']
+        excluded_keys = ['data', 'logger', 'related_dims_map', 'var_info']
 
         output = ''
         for key, value in self.__dict__.items():
@@ -133,15 +138,52 @@ class Variable:
             if key not in ('data', 'logger'):
                 yield key, value
 
-    @property
-    def shape(self) -> List[str | int]:
+    def _rearrange_var_info(self) -> None:
         """
-        Determines the shape of the variable in terms of rows and columns dimensions.
+        Rearranges the information from .yaml variables file (var_info attribute) 
+        to the corresponding attributes of the Variable class. This method is
+        called upon initialization of the Variable class.
+        """
+        if self.var_info is None:
+            return
+
+        constant_value = self.var_info.get('value', None)
+        if constant_value and \
+                constant_value in Constants.get('_ALLOWED_CONSTANTS'):
+            self.value = constant_value
+
+        for dimension in ['rows', 'cols']:
+            shape_set = util.fetch_dict_primary_key(
+                dictionary=self.var_info,
+                second_level_key='dim',
+                second_level_value=dimension,
+            )
+            dim_info_yml: dict | None = self.var_info.get(shape_set, None)
+            if not dim_info_yml:
+                continue
+
+            dim_info = {
+                'set': shape_set,
+                'filters': dim_info_yml.get('filters', None),
+            }
+
+            if dimension == 'rows':
+                self.rows = dim_info
+            elif dimension == 'cols':
+                self.cols = dim_info
+
+    @property
+    def shape_sets(self) -> List[str | int]:
+        """
+        Determines the set of the rows columns dimensions of the variable.
 
         Returns:
             List[Union[str, int]]: A list containing dimension identifiers or 
                 sizes, such as ['set1', 1].
         """
+        if self.rows is None and self.cols is None:
+            return []
+
         rows_shape = self.rows['set'] if 'set' in self.rows else 1
         cols_shape = self.cols['set'] if 'set' in self.cols else 1
         return [rows_shape, cols_shape]
@@ -156,9 +198,12 @@ class Variable:
         Returns:
             Tuple[int]: A tuple containing the size of each dimension.
         """
+        if not self.coordinates:
+            return ()
+
         shape_size = []
 
-        for dimension in [Constants.get('rows'), Constants.get('cols')]:
+        for dimension in ['rows', 'cols']:
             if self.coordinates[dimension]:
                 shape_size.append(len(*self.coordinates[dimension].values()))
             else:
@@ -175,9 +220,12 @@ class Variable:
         Returns:
             List[str]: A list containing labels for each dimension of the variable.
         """
+        if not self.coordinates_info:
+            return []
+
         dim_labels = []
 
-        for dimension in [Constants.get('rows'), Constants.get('cols')]:
+        for dimension in ['rows', 'cols']:
             if self.coordinates_info[dimension]:
                 self.coordinates_info: Dict[str, Dict]
                 dim_labels.append(
@@ -196,9 +244,12 @@ class Variable:
         Returns:
             List[List[str]]: Lists of items for each dimension.
         """
+        if not self.coordinates:
+            return []
+
         dim_items = []
 
-        for dimension in [Constants.get('rows'), Constants.get('cols')]:
+        for dimension in ['rows', 'cols']:
             if self.coordinates[dimension]:
                 self.coordinates: Dict[str, Dict]
                 dim_items.append(
@@ -233,9 +284,12 @@ class Variable:
             Dict[str]: A dictionary containing dimension name as keys and 
                 corresponding set name as values.
         """
+        if not self.coordinates_info:
+            return []
+
         dims_sets = {}
 
-        for dim in [Constants.get('rows'), Constants.get('cols')]:
+        for dim in ['rows', 'cols']:
             if dim in self.coordinates_info:
                 dim_set: dict = self.coordinates_info[dim]
 
@@ -253,8 +307,7 @@ class Variable:
         Returns:
             bool: True if the variable matrix is square, False otherwise.
         """
-
-        if len(self.shape) != 2:
+        if len(self.shape_sets) != 2:
             return False
 
         if len(self.shape_size) == 2 and \
@@ -270,7 +323,6 @@ class Variable:
         Returns:
             bool: True if the variable is a vector, False otherwise.
         """
-
         if len(self.shape_size) == 1 or 1 in self.shape_size:
             return True
         return False
@@ -284,9 +336,14 @@ class Variable:
         Returns:
             Dict[str, str]: Dictionary representing the hierarchy of sets parsing.
         """
+        if not self.coordinates_info:
+            self.logger.warning(
+                f"Coordinates_info not defined for variable '{self.symbol}'.")
+            return []
+
         return {
-            **self.coordinates_info[Constants.get('inter')],
-            **self.coordinates_info[Constants.get('intra')],
+            **self.coordinates_info['inter'],
+            **self.coordinates_info['intra'],
         }
 
     @property
@@ -298,9 +355,14 @@ class Variable:
         Returns:
             Dict[str, str]: Dictionary with parsing hierarchy values.
         """
+        if not self.coordinates_info:
+            self.logger.warning(
+                f"Coordinates_info not defined for variable '{self.symbol}'.")
+            return []
+
         return {
-            **self.coordinates[Constants.get('intra')],
-            **self.coordinates[Constants.get('inter')],
+            **self.coordinates['intra'],
+            **self.coordinates['inter'],
         }
 
     @property
@@ -308,13 +370,20 @@ class Variable:
         """
         Compiles all coordinates related to the variable into a single dictionary.
 
+        Note:
+            In case a variable has the same coordinates in different dimensions, 
+            only one of them is reported. This is a rare case of a variable with 
+            the same rows and columns.
+
         Returns:
             Dict[str, List[str] | None]: Dictionary containing all coordinate 
                 values, grouped by dimension.
         """
-        # attention: in case a variable has same coordinates in different
-        # dimensions, only one of them is reported (rare case of a variable
-        # with same rows and cols).
+        if not self.coordinates_info:
+            self.logger.warning(
+                f"Coordinates not defined for variable '{self.symbol}'.")
+            return []
+
         all_coordinates = {}
         for coordinates in self.coordinates.values():
             all_coordinates.update(coordinates)
@@ -366,7 +435,11 @@ class Variable:
 
         return None
 
-    def reshaping_sqlite_table_data(self, data: pd.DataFrame) -> pd.DataFrame:
+    def reshaping_sqlite_table_data(
+            self,
+            data: pd.DataFrame,
+            nan_to_zero: bool = False,
+    ) -> pd.DataFrame:
         """
         It takes a dataframe with data fetched from SQLite database variable
         table, in the form of a Pandas DataFrame, and elaborate it to get 
@@ -375,6 +448,7 @@ class Variable:
         Args:
             data (pd.DataFrame): data filtered from the SQLite variable table,
             related to a unique cvxpy variable.
+            nan_to_zero (bool): if True, replaces NaN values with 0.
 
         Returns:
             pd.DataFrame: data reshaped and pivoted to be used as cvxpy values.
@@ -402,6 +476,9 @@ class Variable:
             index=self.dims_items[0],
             columns=self.dims_items[1]
         )
+
+        if nan_to_zero:
+            pivoted_data.fillna(0, inplace=True)
 
         return pivoted_data
 
@@ -435,35 +512,47 @@ class Variable:
                 suitable for creating the constant.
         """
         util.validate_selection(
-            valid_selections=list(Constants.get('_ALLOWED_CONSTANTS').keys()),
+            valid_selections=Constants.get('_ALLOWED_CONSTANTS'),
             selection=value_type,
         )
 
         factory_function, args = \
             Constants.get('_ALLOWED_CONSTANTS')[value_type]
 
-        if value_type == 'identity':
-            if self.is_square:
-                return factory_function(self.shape_size[0], **args)
-            else:
-                msg = 'Identity matrix must be square. Check variable shape.'
-
-        elif value_type == 'sum_vector':
+        if value_type == 'sum_vector':
             if self.is_vector:
                 return factory_function(self.shape_size, **args)
             else:
                 msg = 'Summation vector must be a vector (one dimension). ' \
                     'Check variable shape.'
 
+        elif value_type == 'identity':
+            if self.is_vector:
+                return factory_function(max(self.shape_size), **args)
+            else:
+                msg = 'Identity matrix must be defined by a unique set '\
+                    'as either rows or cols. Check variable shape.'
+
+        elif value_type == 'set_length':
+            if self.is_vector:
+                result = factory_function(self.dims_items[0], **args)
+                result_array = np.array(result)
+                if result_array.ndim == 0:
+                    result_array = result_array.reshape(-1, 1)
+                return result_array
+            else:
+                msg = 'One unique dimension can be set as row-col for the ' \
+                    'set_length variable .'
+
         elif value_type in ['arange_0', 'arange_1']:
             return factory_function(self.shape_size, **args)
 
         elif value_type == 'lower_triangular':
-            if self.is_square:
-                return factory_function(self.shape_size[0], **args)
+            if self.is_vector:
+                return factory_function(self.shape_size, **args)
             else:
-                msg = 'Lower triangular matrix must be square. ' \
-                    'Check variable shape.'
+                msg = 'Lower triangular matrix must be defined by a unique set '\
+                    'as either rows or cols. Check variable shape.'
 
         elif value_type == 'identity_rcot':
             if self.related_dims_map is not None and \

@@ -10,35 +10,45 @@ such as generating special matrices, reshaping arrays, and calculating matrix
 inverses.
 """
 
-from typing import Iterable
+from typing import Iterable, Tuple
 import numpy as np
 import pandas as pd
 import cvxpy as cp
 
 
-def tril(dimension: int) -> np.array:
+def tril(dimension: Tuple[int]) -> np.array:
     """
     Generate a square matrix with ones in the lower triangular region
     (including the diagonal) and zeros elsewhere.
 
     Parameters:
-        dimension (int): The size of the square matrix.
+        dimension (Tuple[int]): The dimension of the matrix row/col.
 
     Returns:
-        np.ndarray: A square matrix of size 'dimension x dimension' with 
-            ones in the lower triangular region and zeros elsewhere.
+        np.ndarray: A square matrix with ones in the lower triangular region 
+            and zeros elsewhere.
 
     Raises:
         ValueError: If passed dimension is not greater than zero.
-        TypeError: If passed dimension is not an integer.
+        TypeError: If passed dimension is not an iterable containing integers.
     """
-    if not isinstance(dimension, int):
-        raise TypeError("Passed dimension is not an integer.")
 
-    if dimension <= 0:
-        raise ValueError("Passed dimension must be greater than zero.")
+    if not isinstance(dimension, Tuple) and not \
+            all(isinstance(i, int) for i in dimension):
+        raise TypeError(
+            "Passed dimension must be a tuple containing integers.")
 
-    matrix = np.tril(np.ones((dimension, dimension)))
+    if any(i < 0 for i in dimension):
+        raise ValueError(
+            "Passed dimension must be integers greater than zero.")
+
+    if len(dimension) != 2 or not any(i == 1 for i in dimension):
+        raise ValueError(
+            "Passed dimension must have at least one element equal to 1 (it "
+            "must represent a vector.")
+
+    size = max(dimension)
+    matrix = np.tril(np.ones((size, size)))
     np.fill_diagonal(matrix, 1)
 
     return matrix
