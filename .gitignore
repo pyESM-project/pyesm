@@ -130,13 +130,14 @@ dmypy.json
 
 # Folders
 .vscode/
-.vscode/launch.json
-.vscode/settings.json
+
 
 # File extensions
 *.log
 
 # Specific files
+launch.json
+settings.json
 tutorial.ipynb
 pyesm_sourcetrail.srctrlbm
 pyesm_sourcetrail.srctrldb

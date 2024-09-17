@@ -10,41 +10,55 @@ such as generating special matrices, reshaping arrays, and calculating matrix
 inverses.
 """
 
-from typing import Iterable
+from typing import Iterable, Tuple
 import numpy as np
 import pandas as pd
 import cvxpy as cp
 
 
-def tril(dimension: int) -> np.array:
+def tril(dimension: Tuple[int]) -> np.array:
     """
     Generate a square matrix with ones in the lower triangular region
     (including the diagonal) and zeros elsewhere.
 
     Parameters:
-        dimension (int): The size of the square matrix.
+        dimension (Tuple[int]): The dimension of the matrix row/col.
 
     Returns:
-        np.ndarray: A square matrix of size 'dimension x dimension' with 
-            ones in the lower triangular region and zeros elsewhere.
+        np.ndarray: A square matrix with ones in the lower triangular region 
+            and zeros elsewhere.
 
     Raises:
         ValueError: If passed dimension is not greater than zero.
-        TypeError: If passed dimension is not an integer.
+        TypeError: If passed dimension is not an iterable containing integers.
     """
-    if not isinstance(dimension, int):
-        raise TypeError("Passed dimension is not an integer.")
 
-    if dimension <= 0:
-        raise ValueError("Passed dimension must be greater than zero.")
+    if not isinstance(dimension, Tuple) and not \
+            all(isinstance(i, int) for i in dimension):
+        raise TypeError(
+            "Passed dimension must be a tuple containing integers.")
 
-    matrix = np.tril(np.ones((dimension, dimension)))
+    if any(i < 0 for i in dimension):
+        raise ValueError(
+            "Passed dimension must be integers greater than zero.")
+
+    if len(dimension) != 2 or not any(i == 1 for i in dimension):
+        raise ValueError(
+            "Passed dimension must have at least one element equal to 1 (it "
+            "must represent a vector.")
+
+    size = max(dimension)
+    matrix = np.tril(np.ones((size, size)))
     np.fill_diagonal(matrix, 1)
 
     return matrix
 
 
-def identity_rcot(related_dims_map: pd.DataFrame) -> np.ndarray:
+def identity_rcot(
+        related_dims_map: pd.DataFrame,
+        rows_order: list[str],
+        cols_order: list[str],
+) -> np.ndarray:
     """
     Generate a special identity matrix from a map of columns and rows items 
     provided by a 'related_dims_map' dataframe. 
@@ -63,15 +77,19 @@ def identity_rcot(related_dims_map: pd.DataFrame) -> np.ndarray:
     if not isinstance(related_dims_map, pd.DataFrame):
         raise ValueError("'related_dims_map' must be a pandas DataFrame.")
 
-    if 'rows' not in related_dims_map.columns or \
-            'cols' not in related_dims_map.columns:
+    if not {'rows', 'cols'}.issubset(related_dims_map.columns):
         raise ValueError(
             "'related_dims_map' must contain 'rows' and 'cols' columns labels.")
 
-    related_dims_map['value'] = 1
+    error_list = []
+    if not set(rows_order).issubset(related_dims_map['rows']):
+        error_list.append("'rows_order' do not match 'related_dims_map.rows'.")
+    if not set(cols_order).issubset(related_dims_map['cols']):
+        error_list.append("'cols_order' do not match 'related_dims_map.cols'.")
+    if error_list:
+        raise ValueError("\n".join(error_list))
 
-    unique_rows = related_dims_map['rows'].drop_duplicates().tolist()
-    unique_cols = related_dims_map['cols'].drop_duplicates().tolist()
+    related_dims_map['value'] = 1
 
     pivot_df = related_dims_map.pivot_table(
         index='rows',
@@ -80,13 +98,13 @@ def identity_rcot(related_dims_map: pd.DataFrame) -> np.ndarray:
         aggfunc='sum'
     ).fillna(0).astype(int)
 
-    pivot_df_reorder = pivot_df.reindex(
-        index=unique_rows,
-        columns=unique_cols,
+    pivot_df_reordered = pivot_df.reindex(
+        index=rows_order,
+        columns=cols_order,
         fill_value=0
     )
 
-    return pivot_df_reorder.values
+    return pivot_df_reordered.values
 
 
 def arange(

@@ -1,0 +1,34 @@
+# structure of sets
+
+# -----------------------------------------------------------------------------
+# sets
+
+products:    
+    symbol: p
+    table_name: _set_products
+    split_problem: False                       
+    table_structure:
+        name: [p_Names, TYPE]
+
+technologies:    
+    symbol: t
+    table_name: _set_technologies
+    split_problem: False
+    table_structure:    
+        name: [t_Names, TYPE]
+        filters:
+            0:
+                header: [t_category, TEXT]
+                values: [not-detailed, detailed]
+
+years:    
+    symbol: y
+    table_name: _set_years
+    split_problem: False
+    table_structure:    
+        name: [y_Names, TYPE]
+        filters:
+            0:
+                header: [y_category, TEXT]
+                values: [warmup, run]
+

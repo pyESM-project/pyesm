@@ -534,7 +534,7 @@ class FileManager:
             self,
             excel_file_name: str,
             excel_file_dir_path: Path | str,
-            empty_data_fill: str = '',
+            empty_data_fill: Optional[Any] = None,
             dtype: Optional[type[str]] = None,
     ) -> Dict[str, pd.DataFrame]:
         """
@@ -546,8 +546,8 @@ class FileManager:
             excel_file_name (str): The name of the Excel file to read.
             excel_file_dir_path (Path | str): The directory path where the 
                 Excel file is located.
-            empty_data_fill (str, optional): Value to fill empty cells with 
-                in the DataFrames. Defaults to ''.
+            empty_data_fill (Optional[Any], optional): Value to fill empty 
+                cells with in the DataFrames. Defaults to None.
             dtype (Optional[type[str]], optional): Data type to force for the 
                 DataFrame columns. Defaults to None.
 
@@ -566,8 +566,11 @@ class FileManager:
             raise FileNotFoundError(f"{excel_file_name} does not exist.")
 
         df_dict = pd.read_excel(io=file_path, sheet_name=None, dtype=dtype)
-        df_dict = {sheet_name: df.fillna(empty_data_fill)
-                   for sheet_name, df in df_dict.items()}
+        if empty_data_fill is not None:
+            df_dict = {
+                sheet_name: df.fillna(empty_data_fill)
+                for sheet_name, df in df_dict.items()
+            }
 
         self.logger.debug(f"Excel file '{excel_file_name}' loaded.")
         return df_dict

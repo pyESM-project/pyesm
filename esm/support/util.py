@@ -132,7 +132,7 @@ def prettify(item: dict) -> None:
 
 
 def validate_selection(
-        valid_selections: List[str],
+        valid_selections: Iterable[str],
         selection: str,
 ) -> None:
     """
@@ -293,6 +293,52 @@ def pivot_dict(
 
     values = list(data_dict[keys[-1]])
     return pivot_recursive(keys[:-1], values)
+
+
+def dict_cartesian_product(
+        data_dict: Dict[Any, List[Any]],
+        include_dict_keys: bool = True,
+) -> List[Dict[Any, Any] | List[Any]]:
+    """
+    Generates a list of dictionaries or lists representing the cartesian 
+    product of dictionary values.
+
+    Args:
+        data_dict (Dict[Any, List[Any]]): The dictionary to be used for the 
+            cartesian product. The keys are any hashable type, and the values 
+            are lists of elements to be combined.
+        include_dict_keys (bool): If True, includes dictionary keys in the 
+            resulting dictionaries. If False, returns lists of values only. 
+            Default is True.
+
+    Returns:
+        List[Dict[Any, Any] | List[Any]]: A list of dictionaries or lists 
+            representing the cartesian product of dictionary values. Each 
+            dictionary contains one combination of the input values with the 
+            corresponding keys, or each list contains one combination 
+            of the input values without keys.
+
+    Raises:
+        TypeError: If 'data_dict' is not a dictionary or 'include_dict_keys' 
+            is not a boolean.
+    """
+    if not isinstance(data_dict, dict):
+        raise TypeError("Argument 'data_dict' must be a dictionary.")
+    if not isinstance(include_dict_keys, bool):
+        raise TypeError("Argument 'include_dict_keys' must be a boolean.")
+
+    if not data_dict:
+        return []
+
+    combinations = it.product(*data_dict.values())
+
+    if not include_dict_keys:
+        return [list(combination) for combination in combinations]
+
+    return [
+        dict(zip(data_dict.keys(), combination))
+        for combination in combinations
+    ]
 
 
 def unpivot_dict_to_dataframe(
@@ -614,6 +660,37 @@ def substitute_dict_keys(
     return substituted_dict
 
 
+def fetch_dict_primary_key(
+        dictionary: Dict[str, Any],
+        second_level_key: str | int,
+        second_level_value: Any,
+) -> str | int:
+    """
+    Fetches the primary key from a dictionary based on a second-level key-value
+    pair. If the second-level key-value pair is not found, returns None.
+
+    Args:
+        dictionary (Dict[str, Any]): The dictionary to search.
+        second_level_key (str | int): The key to search for in the second level.
+        second_level_value (Any): The value to search for in the second level.
+
+    Returns:
+        str | int: The primary key of the dictionary where the second-level 
+            key-value pair is found, or None if not found.
+
+    Raises: 
+        TypeError: If dictionary is not a dictionary.
+    """
+    if not isinstance(dictionary, dict):
+        raise TypeError("Passed dictionary must be a dictionary.")
+
+    for primary_key, value in dictionary.items():
+        if isinstance(value, dict) and \
+                value.get(second_level_key) == second_level_value:
+            return primary_key
+    return None
+
+
 def filter_dataframe(
         df_to_filter: pd.DataFrame,
         filter_dict: Dict[str, List[str]],
@@ -748,6 +825,7 @@ def find_non_allowed_types(
         allowed_types: Tuple,
         target_col_header: str,
         return_col_header: Optional[str] = None,
+        allow_none: bool = False,
 ) -> List:
     """
     Find rows in a DataFrame where the value in a specified column is not of 
@@ -761,6 +839,7 @@ def find_non_allowed_types(
         return_col_header (Optional[str]): The name of the column to return. 
             If None, return list of items in the target_col_header with non-allowed
             types.
+        allow_none (bool): Whether to allow None values. Default is False.
 
     Returns:
         List: The list of values in the return column for rows where the target 
@@ -783,10 +862,13 @@ def find_non_allowed_types(
         raise ValueError(
             f"'{return_col_header}' is not a column in dataframe.")
 
-    non_allowed_rows = dataframe.apply(
-        lambda row: not isinstance(
-            row[target_col_header], allowed_types),
-        axis=1)
+    def is_non_allowed(row):
+        value = row[target_col_header]
+        if pd.isna(value):
+            return not allow_none
+        return not isinstance(value, allowed_types)
+
+    non_allowed_rows = dataframe.apply(is_non_allowed, axis=1)
 
     if return_col_header:
         return dataframe.loc[non_allowed_rows, return_col_header].tolist()

@@ -32,6 +32,8 @@ class DataTable:
         logger (Logger): Logger object for logging information, warnings, and errors.
         name (Optional[str]): Name of the data table.
         type (Optional[str]): Type of data table (e.g., 'endogenous', 'exogenous').
+        integer (Optional[bool]): Flag indicating if the data table contains integer
+            values.
         coordinates (List[str]): List of coordinates that define the data structure.
         coordinates_headers (Dict[str, str]): Dictionary mapping coordinates to 
             their headers.
@@ -71,6 +73,7 @@ class DataTable:
 
         self.name: Optional[str] = None
         self.type: Optional[str | dict] = None
+        self.integer: Optional[bool] = False
         self.coordinates: List[str] = []
         self.coordinates_headers: Dict[str, str] = {}
         self.coordinates_values: Dict[str, Any] = {}

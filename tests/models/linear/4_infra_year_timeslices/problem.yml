@@ -29,11 +29,11 @@ expressions:
 
     #production limits
 
-    - X_max_h == mult(lf_max_h, mult(cap_year_h, 1/mult(n_slices, n_periods)))
-    - X_min_h == mult(lf_min_h, mult(cap_year_h, 1/mult(n_slices, n_periods)))
-
-    - X_max_y == mult(lf_max, cap_year_y)
-    - X_min_y == mult(lf_min, cap_year_y)
+    - X_max_h == mult(lf_max_h, cap_year_h)
+    - X_min_h == mult(lf_min_h, cap_year_h)
+    
+    - X_max_y == mult(lf_max, mult(cap_year_y, mult(n_slices, n_periods)))
+    - X_min_y == mult(lf_min, mult(cap_year_y, mult(n_slices, n_periods)))
 
     # #production constraints
 

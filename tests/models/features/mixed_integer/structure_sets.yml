@@ -1,0 +1,28 @@
+# -----------------------------------------------------------------------------
+# sets
+
+years:
+    symbol: y
+    table_name: _set_YEARS
+    table_structure:
+        name: [y_Names, TEXT]
+
+tech_data:
+    symbol: td
+    table_name: _set_TECH_DATA
+    table_structure:
+        name: [td_Names, TEXT]
+        filters:
+            category:
+                header: [td_Category, TEXT]
+                values: [availability, capacity_unit]
+
+supply_category:
+    symbol: sc
+    table_name: _set_SUPPLY_CATEGORY
+    table_structure:
+        name: [sc_Names, TEXT]
+        filters:
+            category:
+                header: [sc_Category, TEXT]
+                values: [supply, curtailment]

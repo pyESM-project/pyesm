@@ -9,10 +9,10 @@
 #         name: [a_Names, TYPE]                   # header and type of the main set entry (defining set items names)
 #         aggregation: [a_Agg, TEXT]              # (optional) header of set entries that are matching another set (aggregation)
 #         filters:                                # (optional) add multiple filter columns if needed
-#             0:                                  # (int) index of the filter category
+#             filter_key_0:                       # (int, str) key of the filter category
 #                 header: [a_Cat_1, TEXT]         # header and type of the filter category
 #                 values: [a_1a, a_1b, a_1c]      # values that will be present in the filter category
-#             1: 
+#             filter_key_1:
 #                 header: [a_Cat_2, TEXT] 
 #                 values: [a_2a, a_2b]
 
