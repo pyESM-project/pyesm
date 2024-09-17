@@ -337,6 +337,8 @@ class Index:
         variables_info = DotDict({})
 
         for table_key, data_table in self.data.items():
+            data_table: DataTable
+
             for var_key, var_info in data_table.variables_info.items():
 
                 variable = DotDict({

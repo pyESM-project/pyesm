@@ -169,6 +169,7 @@ class Problem:
         self,
         var_type: str,
         shape: Tuple[int, ...],
+        integer: bool = False,
         name: Optional[str] = None,
         value: Optional[int | np.ndarray | np.matrix] = None,
     ) -> cp.Variable | cp.Parameter | cp.Constant:
@@ -181,6 +182,8 @@ class Problem:
                 values are 'endogenous', 'exogenous', or 'constant'.
             shape (Tuple[int, ...]): The shape of the Variable or Parameter to
                 be created.
+            integer (Optional[bool]): Define an endogenous variable to be
+                integer. Default to False.
             name (Optional[str]): The name assigned to the Variable or Parameter.
                 This is not used for Constants.
             value (Optional[int | np.ndarray | np.matrix]): The numeric value
@@ -192,8 +195,12 @@ class Problem:
         Raises:
             SettingsError: If an unsupported 'var_type' is provided.
         """
+        if var_type != 'endogenous' and integer == True:
+            msg = "Only endogenous data tables can be defined as integers."
+            raise exc.SettingsError(msg)
+
         if var_type == 'endogenous':
-            return cp.Variable(shape=shape, name=name)
+            return cp.Variable(shape=shape, integer=integer, name=name)
 
         if var_type == 'exogenous':
             return cp.Parameter(shape=shape, name=name)

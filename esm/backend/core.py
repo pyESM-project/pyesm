@@ -180,6 +180,7 @@ class Core:
 
                     cvxpy_var = self.problem.create_cvxpy_variable(
                         var_type='endogenous',
+                        integer=data_table.integer,
                         shape=(data_table.table_length, 1),
                         name=data_table_key,
                     )
@@ -194,6 +195,7 @@ class Core:
 
                         cvxpy_var[problem_key] = self.problem.create_cvxpy_variable(
                             var_type='endogenous',
+                            integer=data_table.integer,
                             shape=(len(variable_df), 1),
                             name=f"{data_table_key}_{problem_key}",
                         )

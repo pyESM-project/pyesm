@@ -108,7 +108,6 @@ class Variable:
 
         self.symbol: Optional[str] = None
         self.type: Optional[str] = None
-        self.integer: Optional[bool] = False
         self.rows: Dict[str, Any] = {}
         self.cols: Dict[str, Any] = {}
         self.value: Optional[str] = None

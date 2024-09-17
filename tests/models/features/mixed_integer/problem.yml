@@ -1,0 +1,15 @@
+# SYMBOLIC PROBLEM
+
+objective:
+    - Minimize(sum(X_c)) # minimizing total curtailment
+
+expressions: 
+    - C_op - mult(c,n) == 0 # capacity units
+    - mult(X_s, 1e6) - mult(C_op, a)*8760 == 0 # capacity to activity balance
+    - X_s - X_c - Y == 0 # supply/demand balance
+    - X_s >= 0 # supply is positive
+    - X_c >= 0 # curtailment is positive
+
+
+
+

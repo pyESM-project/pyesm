@@ -1,0 +1,64 @@
+
+
+# -----------------------------------------------------------------------------
+# exogenous variables
+
+Y:
+    name: power demand
+    type: exogenous
+    coordinates: [years]
+    variables_info:
+        Y:
+
+td:
+    name: technology data
+    type: exogenous
+    coordinates: [tech_data]
+    variables_info:
+        c:
+            tech_data:
+                dim: rows
+                filters: {category: capacity_unit}
+        a:
+            tech_data:
+                dim: rows
+                filters: {category: availability}
+
+
+# -----------------------------------------------------------------------------
+# endogenous variables
+
+X:
+    name: power supply/curtailment
+    type: endogenous
+    coordinates: [supply_category, years]
+    variables_info:
+        X_s:
+            supply_category:
+                dim: rows
+                filters: {category: supply}
+        X_c:
+            supply_category:
+                dim: rows
+                filters: {category: curtailment}
+
+C:
+    name: capacity, operative
+    type: endogenous
+    coordinates: [years]
+    variables_info:
+        C_op:
+
+n: 
+    name: number of units
+    type: endogenous
+    integer: True
+    coordinates: [years]
+    variables_info:
+        n:
+
+
+
+
+# -----------------------------------------------------------------------------
+# constants
