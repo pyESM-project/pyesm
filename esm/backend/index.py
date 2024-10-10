@@ -158,7 +158,7 @@ class Index:
 
         Raises:
             SettingsError: If any dictionary in the loaded data does not conform
-                to the validation structure.
+                to the validation structure or if the file is empty.
 
         Notes:
             This method assumes that the data file is structured as a dictionary
@@ -168,10 +168,17 @@ class Index:
             "Loading and validating data from file, "
             f"generating '{object_class.__name__}' objects.")
 
+        file_name = Constants.get('_SETUP_FILES')[file_key]
+
         data = self.files.load_file(
-            file_name=Constants.get('_SETUP_FILES')[file_key],
+            file_name=file_name,
             dir_path=self.paths['model_dir']
         )
+
+        if not data:
+            msg = f"File '{file_name}' is empty."
+            self.logger.error(msg)
+            raise exc.SettingsError(msg)
 
         invalid_entries = {}
         for key, dictionary in data.items():
@@ -182,7 +189,7 @@ class Index:
             msg = f"'{object_class.__name__}' data validation not successful " \
                 f"for entries {list(invalid_entries.keys())}." \
                 "Input data must comply with default structure. " \
-                f"Check setup file: '{Constants.get('_SETUP_FILES')[file_key]}'"
+                f"Check setup file: '{file_name}'"
             self.logger.error(msg)
             raise exc.SettingsError(msg)
 
