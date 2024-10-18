@@ -1,0 +1,9 @@
+# SYMBOLIC PROBLEM
+
+expressions:                # definition of additional expressions (equalities/inequalities)
+    - uh == mult(tran(u_f), dp_int)  
+    - uh_ty == mult(uh, tran(X))
+        
+
+
+

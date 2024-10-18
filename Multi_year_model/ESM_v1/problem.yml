@@ -1,0 +1,63 @@
+# SYMBOLIC PROBLEM
+
+0:                              
+
+    objective:                  
+    
+         - Minimize(1)
+        # - Minimize(sum(C_om_tot))     
+
+    expressions:   
+        # # supply = demand balances              
+        - Qagg == I_ff @ tran(Q)
+        - Qagg_h == I_ff_h @ tran(Qh)
+
+        - Qagg_fy - Y_fh - u_fy @ tran(X) == 0
+        - Qagg_h - Yh - uh_tot == 0
+
+        - X_th - mult((sum_matr_yh @ Xh), periods) == 0
+
+        - Q_fh - mult(sum_matr_yh @ Qh, periods) == 0
+
+        - tran(X) - d @ tran(Q) == 0
+        - Xh - d_hh @ tran(Qh) == 0
+
+        # # calculate hourly demand
+
+        - Yh == mult(Y_fh, mult(dp_Y, 1/periods))
+
+        - uh_tot_f == sum_vect_th @ uh_th  + sum_vect_ty @ uh_ty
+        
+        - uh_ty_t == mult(365,tran(X_ty))
+        
+        # uh_ty_t== mult(tran(X_ty), mult(dp_int, 1/periods))
+
+        # - uh_th == u_hh @ tran(X_th)
+
+        # #costs
+        # - C_om_y == mult(X, c_om) 
+
+        # #production limits
+
+        # - Xmax_h == mult(lf_max_h, c_start_h)
+        # - Xmin_h == mult(lf_min_h, c_start_h)
+        
+        # - X_max_y == mult(lf_max, mult(c_start_y, mult(n_slices, periods)))
+        # - X_min_y == mult(lf_min, mult(c_start_y, mult(n_slices, periods)))
+
+        # # #production constraints
+
+        # - X_h <= X_max_h
+        # - X_h >= X_min_h
+
+        # - X_y_y <= X_max_y
+        # - X_y_y >= X_min_y
+
+
+        
+
+
+
+
+
+

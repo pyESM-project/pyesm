@@ -525,6 +525,10 @@ class Variable:
             else:
                 msg = 'Summation vector must be a vector (one dimension). ' \
                     'Check variable shape.'
+                
+        elif value_type == 'sum_matrix':
+                return factory_function(self.shape_size, **args)
+
 
         elif value_type == 'identity':
             if self.is_vector:

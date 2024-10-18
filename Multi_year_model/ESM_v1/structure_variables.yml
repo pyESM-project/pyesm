@@ -1,0 +1,595 @@
+# variables of the model
+
+# table_key:                                      # name of the data table from which variables are defined
+#     name: table_name                            # description or full name of the table
+#     type: table_type                            # endogenous, exogenous, constant or dictionary 
+#     type:                                       # dictionary with keys as problem key and values as table_type 
+#         problem_key: table_type
+#     integer: True                               # (optional) if variables of the table are integers
+#     coordinates: [a, b, c, d]                   # list of table coordinates (set_key symbols)
+#     variables_info:                             # list of variables defined from the data_table
+#         var_key_1:                              # variable name
+#             value: constant_type                # (only for table type: constant) types list in constants.py
+#             set_key_a:                          # (optional) set_key symbol
+#                 dim: str                        # (optional) rows, cols or intra
+#                 filters: {index: values}        # (optional) filters for the set values
+
+# RULES:
+# - variables define SQLite tables (name case insensitive: two tables named 
+# 'e' and 'E' are not allowed. However, variables symbols are case sensitive).
+# - 
+
+u:
+  name: use matrix   # description or full name of the table
+  type: exogenous
+  coordinates: [scenarios, techs, flows_agg]   # list of coordinates with set_key symbols
+  variables_info:
+    u:
+      flows_agg:
+        dim: rows
+      techs:
+        dim: cols
+    u_hh:
+      flows_agg:
+        filters: {time_resolution: hour}
+      techs:
+        dim: cols
+        filters: {time_resolution: hour}
+    u_hy:
+      flows_agg:
+        filters: {time_resolution: hour}
+      techs:
+        dim: cols
+        filters: {time_resolution: year}
+    u_fy:
+      flows_agg:
+        dim: rows
+        filters: {time_resolution: year}
+      techs:
+        dim: cols
+
+
+d:
+  name: make matrix   # description or full name of the table
+  type: exogenous
+  coordinates: [scenarios, techs, flows]  # list of coordinates with set_key symbols
+  variables_info:
+    d:
+      techs:
+        dim: rows
+      flows:
+        dim: cols
+    d_hh:
+      techs:
+        dim: rows
+        filters: {time_resolution: hour}
+      flows:
+        dim: cols
+        filters: {time_resolution: hour}
+
+
+
+
+############# cost parameters #####################
+c_om:
+  name: operational_costs   # description or full name of the table
+  type: exogenous
+  coordinates: [scenarios, techs]  # list of coordinates with set_key symbols
+  variables_info:
+    c_om:
+      techs:
+        dim: cols
+
+# c_inv:
+#   name: investment_costs   # description or full name of the table
+#   type: exogenous
+#   coordinates: [scenarios, techs]  # list of coordinates with set_key symbols
+#   variables_info:
+#     c_inv:
+#       techs:
+#         dim: cols
+#         filters: {capacity: cap}
+
+
+
+lt_res:
+  name: residual lifetime of existing techs   # description or full name of the table
+  type: exogenous
+  coordinates: [scenarios, techs]  # list of coordinates with set_key symbols
+  variables_info:
+    lt_res:
+      techs:
+        dim: cols
+        filters: {capacity: cap}
+
+lt_new:
+  name: residual lifetime of new techs   # description or full name of the table
+  type: exogenous
+  coordinates: [scenarios, techs]  # list of coordinates with set_key symbols
+  variables_info:
+    lt_new:
+      techs:
+        dim: cols
+        filters: {capacity: cap}
+
+c_start:
+  name: initial installed capacity   # description or full name of the table
+  type: exogenous
+  coordinates: [scenarios, techs]  # list of coordinates with set_key symbols
+  variables_info:
+    c_start_h:
+      techs:
+        dim: cols
+        filters: {capacity: cap, time_resolution: hour}
+    c_start_y:
+      techs:
+        dim: cols
+        filters: {capacity: cap, time_resolution: year}
+
+sf:
+  name: shape factor for weibull function  # description or full name of the table
+  type: exogenous
+  coordinates: [scenarios, techs]  # list of coordinates with set_key symbols
+  variables_info:
+    sf:
+      techs:
+        dim: cols
+        filters: {capacity: cap}
+
+dr:
+  name: discount rate   # description or full name of the table
+  type: exogenous
+  coordinates: [scenarios]  # list of coordinates with set_key symbols
+  variables_info:
+    dr:
+
+########## technical parameters ################
+
+lf_max_h:
+  name: lf maximum   # description or full name of the table
+  type: exogenous
+  coordinates: [scenarios, techs, hours]  # list of coordinates with set_key symbols
+  variables_info:
+    lf_max_h:
+      hours:
+        dim: rows
+      techs:
+        dim: cols
+        filters: {time_resolution: hour, capacity: cap}
+
+lf_min_h:
+  name: lf minimum   # description or full name of the table
+  type: exogenous
+  coordinates: [scenarios, techs, hours]  # list of coordinates with set_key symbols
+  variables_info:
+    lf_min_h:
+      hours:
+        dim: rows
+      techs:
+        dim: cols
+        filters: {time_resolution: hour, capacity: cap}
+
+lf_max:
+  name: lf maximum   # description or full name of the table
+  type: exogenous
+  coordinates: [scenarios, techs]  # list of coordinates with set_key symbols
+  variables_info:
+    lf_max:
+      techs:
+        dim: cols
+        filters: {time_resolution: year, capacity: cap}
+
+lf_min:
+  name: lf minimum   # description or full name of the table
+  type: exogenous
+  coordinates: [scenarios, techs]  # list of coordinates with set_key symbols
+  variables_info:
+    lf_min:
+      techs:
+        dim: cols
+        filters: {time_resolution: year, capacity: cap}
+
+############# time resolution ####################
+
+periods:
+  name: time resolution
+  type: exogenous
+  coordinates: [scenarios]  
+  variables_info:
+    periods: #length of the planning horizon i.e. 1 year, unit: days
+
+n_days:
+  name: time resolution
+  type: exogenous
+  coordinates: [scenarios]  
+  variables_info:
+    n_days: #length of the planning horizon i.e. 1 year, unit: days
+
+n_slices:
+  name: time resolution
+  type: exogenous
+  coordinates: [scenarios]  
+  variables_info:
+    n_slices: #number of slices in a day, unit: number of hours
+       
+############## demand curves ######################
+Y:
+  name: final demand   # description or full name of the table
+  type: exogenous
+  coordinates: [scenarios, flows_agg, years]  # list of coordinates with set_key symbols
+  variables_info:
+    Y:
+      flows_agg:
+        dim: rows
+      years:
+        dim: cols
+    Y_fh:
+      flows_agg:
+        dim: rows
+        filters: {time_resolution: hour}
+
+dp_Y:
+  name: final demand profile  # description or full name of the table
+  type: exogenous
+  coordinates: [scenarios, flows_agg, hours]  # list of coordinates with set_key symbols
+  variables_info:
+    dp_Y:
+      hours:
+        dim: cols
+      flows_agg:
+        dim: rows
+        filters: {time_resolution: hour}
+
+dp_int:
+  name: intermediate demand profile  # description or full name of the table
+  type: exogenous
+  coordinates: [scenarios, flows_agg, techs, hours]  # list of coordinates with set_key symbols
+  variables_info:
+    dp_int:
+      hours:
+        dim: cols
+      techs:
+        filters: {time_resolution: year}
+      flows_agg:
+        filters: {time_resolution: hour}
+# -----------------------------------------------------------------------------
+# exogenous variables
+
+Qh:
+  name: hourly product output   # description or full name of the table
+  type: endogenous
+  coordinates: [scenarios, flows, hours, years]  # list of coordinates with set_key symbols
+  variables_info:
+    Qh:
+      hours:
+        dim: rows
+      flows:
+        dim: cols
+        filters: {time_resolution: hour}
+
+
+Q:
+  name: annual product output   # description or full name of the table
+  type: endogenous
+  coordinates: [scenarios, flows, years]   # list of coordinates with set_key symbols
+  variables_info:
+    Q:
+      years:
+        dim: rows  
+      flows:
+        dim: cols
+    Qy:
+      flows:
+        dim: cols
+    Q_fh:
+      years:
+        dim: rows
+      flows:
+        dim: cols
+        filters: {time_resolution: hour}
+
+Qagg_h:
+  name: aggregated hourly product output   # description or full name of the table
+  type: endogenous
+  coordinates: [scenarios, flows_agg, hours, years]  # list of coordinates with set_key symbols
+  variables_info:
+    Qagg_h:
+      flows_agg:
+        dim: rows
+        filters: {time_resolution: hour}
+      hours:
+        dim: cols
+Qagg:
+  name: aggregaten annual product otuput   # description or full name of the table
+  type: endogenous
+  coordinates: [scenarios, flows_agg, years]   # list of coordinates with set_key symbols
+  variables_info:
+    Qagg:
+      flows_agg:
+        dim: rows
+      years:
+        dim: cols
+    Qagg_fh:
+      flows_agg:
+        dim: rows
+        filters: {time_resolution: hour}
+      years:
+        dim: cols
+    Qagg_fy:
+      flows_agg:
+        dim: rows
+        filters: {time_resolution: year}
+      years:
+        dim: cols
+
+Xh:
+  name: hourly technology activity   # description or full name of the table
+  type: endogenous
+  coordinates: [scenarios, techs, hours]  # list of coordinates with set_key symbols
+  variables_info:
+    Xh:
+      hours:
+        dim: rows
+      techs:
+        dim: cols
+        filters: {time_resolution: hour}
+
+X:
+  name: annual technology production   # description or full name of the table
+  type: endogenous
+  coordinates: [scenarios, techs, years]   # list of coordinates with set_key symbols
+  variables_info:
+    X:
+      years:
+        dim: rows
+      techs:
+        dim: cols
+    X_th:
+      years:
+        dim: rows
+      techs:
+        dim: cols
+        filters: {time_resolution: hour}
+    X_ty:
+      techs:
+        dim: cols
+        filters: {time_resolution: year}
+
+
+Yh:
+  name: final demand by hour   # description or full name of the table
+  type: endogenous
+  coordinates: [scenarios, flows_agg, hours, years]   # list of coordinates with set_key symbols
+  variables_info:
+    Yh:
+      flows_agg:
+        dim: rows
+        filters: {time_resolution: hour}
+      hours:
+        dim: cols
+uh:
+  name: intermediate demand by hour   
+  type: endogenous
+  coordinates: [scenarios, flows_agg, techs, hours, years]   
+  variables_info:
+    uh_ty:
+      techs:
+        dim: rows
+        filters: {time_resolution: year}
+      hours:
+        dim: cols
+      flows_agg:
+        filters: {time_resolution: hour}
+    uh_th:
+      hours:
+        dim: cols
+      techs:
+        dim: rows
+        filters: {time_resolution: hour}
+      flows_agg:
+        filters: {time_resolution: hour}
+    uh_ty_t:
+      hours:
+        dim: cols
+      flows_agg:
+        filters: {time_resolution: hour}     
+      techs:
+        filters: {time_resolution: year}
+
+uh_tot:
+  name: intermediate demand by hour   
+  type: endogenous
+  coordinates: [scenarios, flows_agg, hours, years]   
+  variables_info:
+    uh_tot:
+      hours:
+        dim: cols
+      flows_agg:
+        dim: rows
+        filters: {time_resolution: hour}
+    uh_tot_f:
+      hours:
+        dim: cols
+      flows_agg:
+       filters: {time_resolution: hour}
+
+
+
+
+
+# ############# activity constiraints ################
+
+# Xmax_h:
+#   name: X max by hour   # description or full name of the table
+#   type: endogenous
+#   coordinates: [scenarios, techs, hours]  # list of coordinates with set_key symbols
+#   variables_info:
+#     Xmax_h:
+#       hours:
+#         dim: rows
+#       techs:
+#         dim: cols
+#         filters: {time_resolution: hour, capacity: cap}
+
+# Xmin_h:
+#   name: X min by hour   # description or full name of the table
+#   type: endogenous
+#   coordinates: [scenarios, techs, hours]  # list of coordinates with set_key symbols
+#   variables_info:
+#     X_min_h:
+#       hours:
+#         dim: rows
+#       techs:
+#         dim: cols
+#         filters: {time_resolution: hour, capacity: cap}
+
+# Xmax_y:
+#   name: X max by year   # description or full name of the table
+#   type: endogenous
+#   coordinates: [scenarios, techs]  # list of coordinates with set_key symbols
+#   variables_info:
+#     Xmax_y:
+#       techs:
+#         dim: cols
+#         filters: {time_resolution: yearly, capacity: cap}
+
+# Xmin_y:
+#   name: X min by year   # description or full name of the table
+#   type: endogenous
+#   coordinates: [scenarios, techs, years]  # list of coordinates with set_key symbols
+#   variables_info:
+#     Xmin_y:
+#       techs:
+#         dim: cols
+#         filters: {time_resolution: yearly, capacity: cap}
+
+
+
+# ############# capacity  ############################
+
+
+# # Capacity:
+# #   name: disposed capacity
+# #   type: endogenous
+# #   coordinates: [scenarios, techs, years]
+# #   variables_info:
+# #     C_disp_new:
+# #       years:
+# #         dim: rows
+# #       techs:
+# #         dim: cols
+# #         filters: {capacity: cap} 
+# #     C_disp_start:
+# #       years:
+# #         dim: rows
+# #       techs:
+# #         dim: cols
+# #         filters: {capacity: cap} 
+# #     C_new:
+# #       years:
+# #         dim: rows
+# #       techs:
+# #         dim: cols
+# #         filters: {capacity: cap} 
+# #       C_op:
+# #       years:
+# #         dim: rows
+# #       techs:
+# #         dim: cols
+# #         filters: {capacity: cap} 
+
+# ################ costs ############################
+
+# C_om_tot:
+#   name: total investment costs   # description or full name of the table
+#   type: endogenous
+#   coordinates: [scenarios, techs]  # list of coordinates with set_key symbols
+#   variables_info:
+#     C_om_tot:
+#       years:
+#         dim: rows
+#       techs:
+#         dim: cols
+#         filters: {capacity: cap}
+
+
+# # C_inv_tot:
+# #   name: total investment costs   # description or full name of the table
+# #   type: endogenous
+# #   coordinates: [scenarios, techs]  # list of coordinates with set_key symbols
+# #   variables_info:
+# #     C_inv_tot:
+# #       years:
+# #         dim: rows
+# #       techs:
+# #         dim: cols
+# #         filters: {capacity: cap}
+
+
+
+
+
+
+# # -----------------------------------------------------------------------------
+# # constants
+
+I_ff:
+  name: constant values
+  type: constant
+  coordinates: [scenarios, flows, flows_agg]
+  variables_info:
+    I_ff:
+      value: identity_rcot
+      flows_agg:
+        dim: rows
+      flows:
+        dim: cols
+
+I_ff_h:
+  name: constant values
+  type: constant
+  coordinates: [scenarios, flows, flows_agg]
+  variables_info:
+    I_ff_h:
+      value: identity_rcot
+      flows_agg:
+        dim: rows
+        filters: {time_resolution: hour}
+      flows:
+        dim: cols
+        filters: {time_resolution: hour}
+
+sum_matr_yh:
+  name: constant values repeated by year techs
+  type: constant
+  coordinates: [scenarios, hours, years]
+  variables_info:
+    sum_matr_yh:
+      value: sum_matrix
+      years:
+        dim: rows
+      hours:
+        dim: cols
+
+sum_vect_th:
+  name: constant values repeated by year techs
+  type: constant
+  coordinates: [scenarios, techs]
+  variables_info:
+    sum_vect_th:
+      value: sum_vector
+      techs:
+        dim: cols
+        filters: {time_resolution: hour}
+
+
+sum_vect_ty:
+  name: constant values repeated by year techs
+  type: constant
+  coordinates: [scenarios, techs]
+  variables_info:
+    sum_vect_ty:
+      value: sum_vector
+      techs:
+        dim: cols
+        filters: {time_resolution: year}
