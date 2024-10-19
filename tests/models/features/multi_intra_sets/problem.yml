@@ -1,8 +1,7 @@
 # SYMBOLIC PROBLEM
 
 expressions:
-    - V - V_end == 0
-
+    - U_h == mult(dp, tran(u)) @ diag(X)
 
 
 
