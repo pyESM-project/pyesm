@@ -3,47 +3,56 @@
 # -----------------------------------------------------------------------------
 # exogenous variables
 
-V:
-    name: transactions by product
+dp:
+    name: hourly demand profiles
     type: exogenous
-    coordinates: [products, technologies, years]
+    coordinates: [hours, technologies, products]
     variables_info:
-        V:
-            products:
+        dp:
+            hours:
                 dim: rows
             technologies: 
                 dim: cols
-                filters: {0: [not-detailed]}
-            years:
-                filters: {0: [warmup, run]}
+                filters: {0: [detailed]}
 
+u:
+    name: technical coefficients
+    type: exogenous
+    coordinates: [technologies, products]
+    variables_info:
+        u:
+            technologies: 
+                dim: rows
+                filters: {0: [detailed]}
+
+X:
+    name: technology activity
+    type: exogenous
+    coordinates: [technologies, years, scenarios]
+    variables_info:
+        X:
+            technologies: 
+                dim: rows
+                filters: {0: [detailed]}
+            years:
+                filters: {0: [run]}
+
+            
 
 # -----------------------------------------------------------------------------
 # endogenous variables
 
-V_end:
-    name: transactions by product
+U_h:
+    name: hourly technology activity
     type: endogenous
-    coordinates: [products, technologies, years]
+    coordinates: [products, technologies, years, hours, scenarios]
     variables_info:
-        V_end:
-            products:
+        U_h:
+            hours:
                 dim: rows
             technologies: 
                 dim: cols
-                filters: {0: [not-detailed]}
+                filters: {0: [detailed]}
             years:
-                filters: {0: [warmup, run]}
+                filters: {0: [run]}
 
-# -----------------------------------------------------------------------------
-# constants 
-
-C:
-    name: constants of the model
-    type: constant
-    coordinates: [products, technologies, years]
-    variables_info:
-        i_p:
-            value: sum_vector
-            products:
-                dim: rows

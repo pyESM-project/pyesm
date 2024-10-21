@@ -755,72 +755,36 @@ class Problem:
             self.logger.warning(msg)
             raise ValueError(msg)
 
-    def find_vars_common_sets_intra_problem(
+    def find_vars_sets_intra_problem(
         self,
         variables_subset: DotDict,
-        allow_none: bool = True,
     ) -> Dict[str, str]:
         """
-        Identifies common intra-problem sets for a subset of variables.
-        This method identifies the common intra-problem sets across all variables 
-        in the subset. If 'allow_none' is True, variables without specific 
-        intra-problem sets are considered constant across all other intra-problem 
-        sets. If all variables share the same intra-problem sets or none, 
-        the common sets are returned as a dictionary; otherwise, an error is raised.
+        Identifies intra-problem sets for a subset of variables.
+        This method identifies the intra-problem sets across all variables 
+        in the subset, returning the intra-problem sets keys and headers as a 
+        dictionary. 
 
         Parameters:
             variables_subset (DotDict): A subset of variables from which to find 
                 common intra-problem sets.
-            allow_none (bool): Specifies whether to treat variables with no defined 
-                intra-problem set as having a common set. Defaults to True.
 
         Returns:
-            Dict[str, str]: A dictionary representing the common intra-problem sets.
-
-        Raises:
-            ConceptualModelError: If no common intra-problem set is found and 
-                'allow_none' is False, or if the intra-problem sets are inconsistent.
+            Dict[str, str]: A dictionary representing all intra-problem sets.
         """
-        vars_sets_intra_problem = {}
-
-        for key, variable in variables_subset.items():
+        intra_problem_sets = {}
+        for variable in variables_subset.values():
             variable: Variable
-            vars_sets_intra_problem[key] = \
-                variable.coordinates_info.get('intra', None)
+            intra_problem_sets.update(
+                variable.coordinates_info.get('intra', {})
+            )
 
-        # in this case, a variable with no intra-problem sets is used as it is
-        # for all expressions
-        if allow_none:
-            vars_sets_intra_problem_list = [
-                value for value in vars_sets_intra_problem.values() if value
-            ]
-        else:
-            vars_sets_intra_problem_list = list(
-                vars_sets_intra_problem.values())
-
-        if not vars_sets_intra_problem_list:
-            return {}
-
-        if all(
-            d == vars_sets_intra_problem_list[0]
-            for d in vars_sets_intra_problem_list[1:]
-        ):
-            return vars_sets_intra_problem_list[0]
-        else:
-            msg = "Fore each problem, each expression must be defined for " \
-                "the same intra-problem sets (defined by 'sets_intra_problem'). "
-            if allow_none:
-                msg += "If a variable has no sets_intra_problem, it is " \
-                    "replicated for multiple expressions."
-
-            self.logger.error(msg)
-            raise exc.ConceptualModelError(msg)
+        return intra_problem_sets
 
     def find_common_vars_coords(
         self,
         variables_subset: DotDict,
         coord_category: str,
-        allow_empty_coord: bool,
     ) -> Dict[str, List[str]] | None:
         """
         Retrieves and verifies that a specific coordinate category is uniformly 
@@ -843,27 +807,30 @@ class Problem:
             SettingsError: If the coordinates for the specified category are 
                 not the same across all variables in the subset.
         """
+
         all_vars_coords = []
         for variable in variables_subset.values():
             variable: Variable
             all_vars_coords.append(
-                variable.coordinates.get(coord_category)
+                variable.coordinates.get(coord_category, {})
             )
 
-        # avoid check empty dictionaries
-        if allow_empty_coord:
-            all_vars_coords = [
-                item for item in all_vars_coords
-                if item != {}
-            ]
+        vars_coords_dict = {}
+        for dictionary in all_vars_coords:
+            dictionary: dict
 
-        if not util.compare_dicts_ignoring_order(all_vars_coords):
-            msg = "Passed variables are not defined with same coordinates " \
-                f"for category '{coord_category}'."
-            self.logger.error(msg)
-            raise exc.SettingsError(msg)
+            for set_key, set_items in dictionary.items():
 
-        return all_vars_coords[0]
+                if set_key in vars_coords_dict:
+                    if set(vars_coords_dict[set_key]) != set(set_items):
+                        msg = "Passed variables are not defined with same coordinates " \
+                            f"for category '{coord_category}'."
+                        self.logger.error(msg)
+                        raise exc.SettingsError(msg)
+                else:
+                    vars_coords_dict[set_key] = set_items
+
+        return vars_coords_dict
 
     def generate_numerical_problems(
             self,
@@ -1112,23 +1079,10 @@ class Problem:
                 variable_data = variable.data
 
             # filter variable data based on problem filter (inter-problem sets)
+            # if variable is defined for the current inter-problem sets
+            # filter the variable data
             if not problem_filter.empty:
-
-                # if variable is not defined for the current inter-problem sets,
-                # if a unique variable can be identified, ok
-                # if not raise an error
-                if set(problem_filter.columns).isdisjoint(variable_data.columns):
-                    if len(variable_data.index) > 1:
-                        filter_columns = list(problem_filter.columns)
-                        msg = f"Variable '{var_key}' is not defined for " \
-                            f"inter-problem sets {filter_columns}: however, a " \
-                            "unique Variable cannot be identified."
-                        self.logger.error(msg)
-                        raise exc.ConceptualModelError(msg)
-
-                # if variable is defined for the current inter-problem sets
-                # filter the variable data
-                else:
+                if not set(problem_filter.columns).isdisjoint(variable_data.columns):
                     variable_data = pd.merge(
                         left=variable_data,
                         right=problem_filter,
@@ -1150,26 +1104,40 @@ class Problem:
                     raise exc.ConceptualModelError(msg)
 
             # if sets_intra_problem is defined for the variable, the right
-            # cvxpy variable is fetched for the current problem
+            # cvxpy variable is fetched for the current problem.
+            # intra problem sets may be different for each variable
             elif variable.coordinates_info['intra'] \
                     and set_intra_problem_header and set_intra_problem_value:
 
-                # case of a single intra-problem set
-                if not all((
-                    isinstance(set_intra_problem_header, list),
-                    isinstance(set_intra_problem_value, list),
-                )):
-                    condition = variable_data[set_intra_problem_header] == \
-                        set_intra_problem_value
+                # filter only the headers that are in the intra-problem sets
+                intra_values = set(variable.coordinates_info['intra'].values())
 
-                # case of multiple intra-problem sets
-                else:
-                    condition = True
-                    for header, value in zip(
-                        set_intra_problem_header,
-                        set_intra_problem_value
-                    ):
-                        condition &= variable_data[header] == value
+                filtered_header_value_pairs = [
+                    (header, value) for header, value in zip(
+                        set_intra_problem_header, set_intra_problem_value
+                    )
+                    if header in intra_values
+                ]
+
+                if not filtered_header_value_pairs:
+                    msg = "No intra-problem sets found for variable " \
+                        f"'{var_key}' based on the current problem filter."
+                    self.logger.error(msg)
+                    raise exc.ConceptualModelError(msg)
+
+                filtered_header, filtered_value = map(
+                    list, zip(*filtered_header_value_pairs)
+                )
+
+                conditions = [
+                    variable_data[header] == value
+                    for header, value in zip(filtered_header, filtered_value)
+                ]
+                condition = np.logical_and.reduce(conditions)
+
+                # condition = True
+                # for header, value in zip(filtered_header, filtered_value):
+                #     condition &= variable_data[header] == value
 
                 allowed_variables[var_key] = variable_data.loc[
                     condition, cvxpy_var_header].iloc[0]
@@ -1307,7 +1275,7 @@ class Problem:
                 and variable.type == 'constant'
             })
 
-            sets_intra_problem = self.find_vars_common_sets_intra_problem(
+            sets_intra_problem = self.find_vars_sets_intra_problem(
                 variables_subset=vars_subset,
             )
 
@@ -1333,7 +1301,6 @@ class Problem:
                 sets_intra_problem_coords = self.find_common_vars_coords(
                     variables_subset=vars_subset,
                     coord_category='intra',
-                    allow_empty_coord=True,
                 )
 
                 # if filtered intra-problem set coordinates are not defined

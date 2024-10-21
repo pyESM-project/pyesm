@@ -32,3 +32,16 @@ years:
                 header: [y_category, TEXT]
                 values: [warmup, run]
 
+hours:
+    symbol: h
+    table_name: _set_hours
+    split_problem: False
+    table_structure:    
+        name: [h_Names, TYPE]
+
+scenarios:
+    symbol: s
+    table_name: _set_scenarios
+    split_problem: True
+    table_structure:    
+        name: [s_Names, TYPE]
