@@ -813,8 +813,8 @@ class Problem:
                 msg += "If a variable has no sets_intra_problem, it is " \
                     "replicated for multiple expressions."
 
-            self.logger.warning(msg)
-            # raise exc.ConceptualModelError(msg)
+            self.logger.error(msg)
+            raise exc.ConceptualModelError(msg)
 
     def find_common_vars_coords(
         self,
