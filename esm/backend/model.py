@@ -251,7 +251,10 @@ class Model:
         if self.settings['sqlite_database_foreign_keys']:
             self.core.index.fetch_foreign_keys_to_data_tables()
 
-    def initialize_blank_data_structure(self) -> None:
+    def initialize_blank_data_structure(
+            self,
+            generate_blank_xlsx_files: bool = True,
+    ) -> None:
         """
         Initializes the blank data structure for the model: create blank 
         SQLite database with set tables and data tables, and fills the latter
@@ -281,24 +284,29 @@ class Model:
             )
 
             if erased:
-                self.logger.info(
-                    f"Erasing SQLite database '{sqlite_db_name}'. Generating "
-                    "new database and excel input file/s.")
+                msg = f"Erasing and generatin SQLite database '{sqlite_db_name}'."
+                if generate_blank_xlsx_files:
+                    msg += " Generating new input excel file/s."
+                self.logger.info(msg)
+
             else:
                 self.logger.info(
                     f"Relying on existing SQLite database '{sqlite_db_name}' "
                     "and on existing input excel file/s.")
                 return
         else:
-            self.logger.info(
-                f"Generating new SQLite database '{sqlite_db_name}' and "
-                "input excel file/s.")
+            msg = f"Generating new SQLite database '{sqlite_db_name}'"
+            if generate_blank_xlsx_files:
+                msg += " and input excel file/s."
+            self.logger.info(msg)
 
         self.core.database.create_blank_sqlite_database()
         self.core.database.load_sets_to_sqlite_database()
         self.core.database.generate_blank_sqlite_data_tables()
         self.core.database.sets_data_to_sql_data_tables()
-        self.core.database.generate_blank_data_input_files()
+
+        if generate_blank_xlsx_files:
+            self.core.database.generate_blank_data_input_files()
 
     def load_exogenous_data_to_sqlite_database(
             self,
@@ -445,7 +453,7 @@ class Model:
 
     def load_results_to_database(
         self,
-        operation: str = 'update'
+        operation: str = 'update',
     ) -> None:
         """
         Loads the endogenous model results to a SQLite database. 
