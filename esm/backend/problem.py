@@ -1079,14 +1079,20 @@ class Problem:
                 variable_data = variable.data
 
             # filter variable data based on problem filter (inter-problem sets)
-            # if variable is defined for the current inter-problem sets
-            # filter the variable data
+            # if variable is defined for the current inter-problem sets, filter the variable data
+            # if variable is defined for a sub set of inter-problem sets, finter the sub-set only
+            # else, skip
             if not problem_filter.empty:
                 if not set(problem_filter.columns).isdisjoint(variable_data.columns):
+                    common_filter_cols = problem_filter.columns.intersection(
+                        variable_data.columns
+                    )
+                    problem_filter_intersection = problem_filter[common_filter_cols]
+
                     variable_data = pd.merge(
                         left=variable_data,
-                        right=problem_filter,
-                        on=list(problem_filter.columns),
+                        right=problem_filter_intersection,
+                        on=list(problem_filter_intersection.columns),
                         how='inner'
                     ).copy()
 
@@ -1134,10 +1140,6 @@ class Problem:
                     for header, value in zip(filtered_header, filtered_value)
                 ]
                 condition = np.logical_and.reduce(conditions)
-
-                # condition = True
-                # for header, value in zip(filtered_header, filtered_value):
-                #     condition &= variable_data[header] == value
 
                 allowed_variables[var_key] = variable_data.loc[
                     condition, cvxpy_var_header].iloc[0]
