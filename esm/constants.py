@@ -134,6 +134,8 @@ class Constants:
     }
 
     # ALLOWED ITEMS FOR DEFINING SYMBOLIC PROBLEMS
+
+    # constants are defined as properties of variables in variables.yml
     _ALLOWED_CONSTANTS = {
         'sum_vector': (np.ones, {}),  # vector of 1s
         'identity': (np.eye, {}),  # identity matrix
@@ -147,6 +149,8 @@ class Constants:
         'identity_rcot': (util_functions.identity_rcot, {}),
     }
 
+    # operators are defined as symbolic items that can be used in problem.yml
+    # (their arguments are defined as the variables names)
     _ALLOWED_OPERATORS = {
         '+': '+',
         '-': '-',
@@ -162,6 +166,7 @@ class Constants:
         'diag': cp.diag,
         'sum': cp.sum,
         'mult': cp.multiply,
+        'shift': util_functions.shift,
         'pow': util_functions.power,
         'minv': util_functions.matrix_inverse,
         'weib': util_functions.weibull_distribution,

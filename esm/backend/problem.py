@@ -1146,8 +1146,7 @@ class Problem:
 
             # other cases
             else:
-                msg = "Unable to fetch cvxpy variable for " \
-                    f"variable {var_key}."
+                msg = f"Unable to fetch cvxpy variable for variable {var_key}."
                 self.logger.error(msg)
                 raise exc.ConceptualModelError(msg)
 
@@ -1395,9 +1394,6 @@ class Problem:
                 module='cvxpy.reductions.solvers.solving_chain'
             )
 
-        # possible workaround: summing all problems into one and solve it
-        # other solution: at the moment of generating endogenous variables bound
-        # to tables, in case of set split problems, define a dictionary with different variables.
         for problem_num in problem_dataframe.index:
 
             problem_info: List[str] = problem_dataframe.at[
