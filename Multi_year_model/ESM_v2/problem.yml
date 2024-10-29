@@ -42,9 +42,21 @@
         - Qagg >= 0
         - Qagg_h >= 0 
 
-        # #production limits
+        #production contraints
+        - Xmax_h == mult(c_op_ts, lf_max_h)
+        - Xh_ts <= Xmax_h
 
-        # - Xmax_h == mult(lf_max_h, c_start_h)
+        - Xmin_h == mult(c_op_ts, lf_min_h)
+        - Xh_ts >= Xmin_h
+
+        - Xmax_y == mult(c_op_lf, mult(lf_max, mult(n_slices, periods)))
+        - X_lf <= Xmax_y
+
+        - Xmin_y == mult(c_op_lf, mult(lf_min, mult(n_slices, periods)))
+        - X_lf >= Xmin_y
+
+
+
         # - Xmin_h == mult(lf_min_h, c_start_h)
         
         # - X_max_y == mult(lf_max, mult(c_start_y, mult(n_slices, periods)))
