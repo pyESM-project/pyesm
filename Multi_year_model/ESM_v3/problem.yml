@@ -1,0 +1,76 @@
+# SYMBOLIC PROBLEM
+
+0:                              
+
+    objective:                  
+    
+        - Minimize(sum(C_inv_tot_disc)+sum(C_om_tot_disc))     
+
+    expressions:   
+        # aggregate flows
+        - Qagg == I_ff @ tran(Q)   #ok
+        - Qagg_h == I_ff_h @ tran(Qh) #ok
+        
+        # product supply = product demand
+        - Qagg_fy - Y_fy - u_fy @ tran(X) == 0 #ok
+        - Qagg_h - Yh - uh_tot == 0 #ok
+
+        # technology activity = product demand
+        - tran(Xy) - d @ tran(Qy) == 0 #ok
+        - Xh - Qh @ tran(d_hh) == 0  #ok 
+
+        # total hourly production = annual production
+        - X_th_y - mult((sum_vect_h @ Xh), 365) == 0 #ok
+        - Q_fh_y - mult(sum_vect_h @ Qh, periods) == 0  #ok
+        - Q_fh_y - mult(sum_vect_h @ Qh, periods) == 0  #ok
+        - Qagg_fh_y - mult(sum_vect_h @ tran(Qagg_h), periods) == 0  #ok
+        
+        #calculate hourly demand
+        - Yh == mult(Y_fh, mult(dp_Y, 1/periods))
+        - uh_tot_f == sum_vect_th @ uh_th  + sum_vect_ty @ uh_ty
+        - tran(uh_ty) == mult(X_ty, mult(u_hy, mult(tran(dp_int), 1/periods))) 
+        - tran(uh_th_t) == mult(Xh_t, u_hh)
+
+        # #costs
+        - C_om_tot == mult(X, c_om) 
+        - C_inv_tot == mult(c_new, c_inv)
+
+        - mult(C_inv_tot_disc, pow(1+dr, y_range)) == C_inv_tot
+        - mult(C_om_tot_disc, pow(1+dr, y_range)) == C_om_tot
+
+        # non-negativity of variables
+        - X >= 0
+        - Q >= 0
+        - Xh >= 0
+        - Qh >= 0
+        - Qagg >= 0
+        - Qagg_h >= 0 
+        - c_op >= 0
+        - c_new >= 0
+        - c_disp_new >= 0
+        - c_disp_start >= 0
+
+        #production contraints
+        - Xmax_h == mult(c_op_ts, lf_max_h)
+        - Xh_ts <= Xmax_h
+
+        - Xmin_h == mult(c_op_ts, lf_min_h)
+        - Xh_ts >= Xmin_h
+
+        - Xmax_y == mult(c_op_lf, mult(lf_max, mult(n_slices, periods)))
+        - X_lf <= Xmax_y
+
+        - Xmin_y == mult(c_op_lf, mult(lf_min, mult(n_slices, periods)))
+        - X_lf >= Xmin_y
+
+        #installed, operative and disposed capacity
+        - c_disp_new_t == weib(lt_new,sf,y_range,2) @ c_new_t
+        - c_disp_start_t == weib(lt_res,sf,y_range,1) @ c_start_t
+        - c_op == c_start + Tyy @ c_new - Tyy @ c_disp_new - Tyy @ c_disp_start
+
+
+
+
+
+
+
