@@ -40,6 +40,9 @@ techs:
             capacity:  # (int) index of the category in the set
                 header: [capacity, TEXT] 
                 values: [cap, non_cap]
+            productivity:
+                header: [productivity, TEXT]
+                values: [hourly_timeseries, yearly_load_factor]
               
 flows:
     symbol: flows  # symbol of the set 

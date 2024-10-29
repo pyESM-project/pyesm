@@ -42,6 +42,23 @@
         - Qagg >= 0
         - Qagg_h >= 0 
 
+        # #production limits
+
+        # - Xmax_h == mult(lf_max_h, c_start_h)
+        # - Xmin_h == mult(lf_min_h, c_start_h)
+        
+        # - X_max_y == mult(lf_max, mult(c_start_y, mult(n_slices, periods)))
+        # - X_min_y == mult(lf_min, mult(c_start_y, mult(n_slices, periods)))
+
+        # # #production constraints
+
+        # - X_h <= X_max_h
+        # - X_h >= X_min_h
+
+        # - X_y_y <= X_max_y
+        # - X_y_y >= X_min_y
+
+
 
 
 
