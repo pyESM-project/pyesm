@@ -470,8 +470,10 @@ def check_dataframes_equality(
         cols_order_matters: bool = False,
         rows_order_matters: bool = False,
 ) -> bool:
-    """Check the equality of multiple DataFrames while optionally skipping 
-    specified columns.
+    """
+    Check the equality of multiple DataFrames while optionally skipping 
+    specified columns. The function can also ignore the order of columns
+    and rows in the DataFrames.
 
     Args:
         df_list (List[pd.DataFrame]): A list of Pandas DataFrames to compare.
@@ -486,26 +488,28 @@ def check_dataframes_equality(
         bool: True if all DataFrames are equal, False otherwise.
 
     Raises:
-        None
+        ValueError: If any column in skip_columns is not present in all 
+            DataFrames.
     """
     df_list_copy = deepcopy(df_list)
 
-    if skip_columns is not None:
+    if skip_columns:
+        all_columns_set = set().union(*(df.columns for df in df_list_copy))
+        if not set(skip_columns).issubset(all_columns_set):
+            raise ValueError(
+                "One or more items in 'skip_columns' argument are never "
+                "present in any dataframe.")
+
         for dataframe in df_list_copy:
-            columns_to_drop = [
-                column
-                for column in skip_columns
-                if column in dataframe.columns
-            ]
-            dataframe.drop(columns=columns_to_drop, inplace=True)
+            dataframe.drop(columns=skip_columns, errors='ignore', inplace=True)
 
-    if len(set(df.shape for df in df_list_copy)) > 1:
-        raise ValueError(
-            "Passed dataframes have different shapes and cannot be compared.")
+    shapes = set(df.shape for df in df_list_copy)
+    if len(shapes) > 1:
+        return False
 
-    if len(set(tuple(sorted(df.columns)) for df in df_list_copy)) > 1:
-        raise ValueError(
-            "Passed dataframes have different headers and cannot be compared.")
+    columns = set(tuple(sorted(df.columns)) for df in df_list_copy)
+    if len(columns) > 1:
+        return False
 
     if not cols_order_matters:
         df_list_copy = [df.sort_index(axis=1) for df in df_list_copy]
@@ -516,7 +520,8 @@ def check_dataframes_equality(
             for df in df_list_copy
         ]
 
-    return all(df.equals(df_list_copy[0]) for df in df_list_copy[1:])
+    first_df = df_list_copy[0]
+    return all(first_df.equals(df) for df in df_list_copy[1:])
 
 
 def check_dataframe_columns_equality(
@@ -543,9 +548,6 @@ def check_dataframe_columns_equality(
 
     if any(not isinstance(df, pd.DataFrame) for df in df_list):
         raise TypeError("Passed list must include only Pandas DataFrames.")
-
-    if any(df.empty for df in df_list):
-        raise ValueError("DataFrames in passed list must not be empty.")
 
     if skip_columns is not None:
         modified_df_list = [
