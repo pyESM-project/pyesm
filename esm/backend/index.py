@@ -484,7 +484,6 @@ class Index:
             excel_file_name=excel_file_name,
             excel_file_dir_path=excel_file_dir_path,
             empty_data_fill=empty_data_fill,
-            dtype=str
         )
 
         sets_excel_keys = sets_excel_data.keys()

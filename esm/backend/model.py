@@ -310,7 +310,6 @@ class Model:
 
     def load_exogenous_data_to_sqlite_database(
             self,
-            operation: str = 'update',
             force_overwrite: bool = False,
             empty_data_fill: Any = 0,
     ) -> None:
@@ -318,17 +317,16 @@ class Model:
         Loads input (exogenous) data to the SQLite database. 
 
         Args:
-            operation (str, optional): The operation to perform on the 
-                database. Defaults to 'update'.
-            force_overwrite (bool, optional): Whether to force overwrite 
-                existing data. Defaults to False.
-            empty_data_fill (Any, optional): The value to fill empty data
-                cells with. Defaults to 0.
+            operation (str, optional): The operation to perform on the database. 
+                Defaults to 'update'.
+            force_overwrite (bool, optional): Whether to force overwrite existing 
+                data without asking for user permission. Defaults to False.
+            empty_data_fill (Any, optional): The value to fill empty data cells 
+                with. Defaults to 0.
         """
         self.logger.info('Loading input data to SQLite database.')
 
         self.core.database.load_data_input_files_to_database(
-            operation=operation,
             force_overwrite=force_overwrite,
             empty_data_fill=empty_data_fill,
         )
@@ -345,8 +343,8 @@ class Model:
 
         Args:
             force_overwrite (bool, optional): If True, forces the overwrite 
-                of existing numerical problems. Used for testing purpose. Defaults 
-                to False.
+                of existing numerical problems without asking for user 
+                    permission. Used for testing purpose. Defaults to False.
             allow_none_values (bool, optional): If True, allows None values in
                 the exogenous data. Defaults to True.
 
@@ -453,14 +451,17 @@ class Model:
 
     def load_results_to_database(
         self,
-        operation: str = 'update',
+        force_overwrite: bool = False,
+        suppress_warnings: bool = False,
     ) -> None:
         """
         Loads the endogenous model results to a SQLite database. 
 
         Args:
-            operation (str, optional): The operation to perform on the database.
-                Defaults to 'update'.
+            force_overwrite (bool): Whether to overwrite/update existing data
+                without asking user permission. Defaults to False.
+            suppress_warnings (bool): Whether to suppress warnings during the
+                data loading process. Defaults to False.
 
         Returns:
             None
@@ -468,11 +469,11 @@ class Model:
         self.logger.info(
             'Exporting endogenous model results to SQLite database.')
 
-        self.core.cvxpy_endogenous_data_to_database(operation)
+        self.core.cvxpy_endogenous_data_to_database(
+            force_overwrite, suppress_warnings)
 
     def update_database_and_problem(
             self,
-            operation: str = 'update',
             force_overwrite: bool = False,
     ) -> None:
         """
@@ -484,8 +485,8 @@ class Model:
         Args:
             operation (str, optional): The operation to perform on the 
                 database. Defaults to 'update'.
-            force_overwrite (bool, optional): Whether to force overwrite 
-                existing data. Used for testing purpose. Defaults to False.
+            force_overwrite (bool, optional): Whether to overwrite/update 
+                existing data without asking user permission. Defaults to False.
 
         Returns:
             None
@@ -494,12 +495,11 @@ class Model:
             f"Updating SQLite database '{self.settings['sqlite_database_file']}' "
             "and initialize problems.")
 
-        self.load_exogenous_data_to_sqlite_database(operation, force_overwrite)
+        self.load_exogenous_data_to_sqlite_database(force_overwrite)
         self.initialize_problems(force_overwrite)
 
     def reinitialize_sqlite_database(
             self,
-            operation: str = 'update',
             force_overwrite: bool = False,
     ) -> None:
         """Initialize endogenous tables in sqlite database to Null values, and
@@ -516,7 +516,7 @@ class Model:
             "endogenous tables.")
 
         self.core.database.reinit_sqlite_endogenous_tables(force_overwrite)
-        self.load_exogenous_data_to_sqlite_database(operation, force_overwrite)
+        self.load_exogenous_data_to_sqlite_database(force_overwrite)
 
     def generate_pbi_report(self) -> None:
         """
