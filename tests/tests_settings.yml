@@ -9,12 +9,12 @@ test_methods:
     update_database_and_problem: {force_overwrite: True}
     initialize_problems: {force_overwrite: True}
     run_model: {force_overwrite: True}
-    load_results_to_database: {}
+    load_results_to_database: {force_overwrite: True}
     check_model_results: {}
 
 test_methods_integrated:
     update_database_and_problem: {force_overwrite: True}
     initialize_problems: {force_overwrite: True}
     run_model: {force_overwrite: True, integrated_problems: True}
-    load_results_to_database: {}
+    load_results_to_database: {force_overwrite: True}
     check_model_results: {}

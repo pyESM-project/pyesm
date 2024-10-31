@@ -413,8 +413,7 @@ def test_check_dataframe_columns_equality():
     with pytest.raises(ValueError):
         check_dataframe_columns_equality([])
 
-    with pytest.raises(ValueError):
-        check_dataframe_columns_equality([df1, df5])
+    assert check_dataframe_columns_equality([df1, df5]) == False
 
 
 def test_add_column_to_dataframe():

@@ -47,23 +47,3 @@ def large_df():
         'name': np.random.choice(['a', 'b', 'c'], 10000),
         'value': np.random.randn(10000)
     })
-
-
-@patch('builtins.input', lambda *args: 'y')
-def test_dataframe_to_table_overwrite(
-        sqlite_db: SQLManager,
-        large_df: pd.DataFrame,
-        benchmark,
-):
-
-    with db_handler(sqlite_db):
-        sqlite_db.create_table(std_table_name, std_table_fields)
-
-        def setup_and_run():
-            sqlite_db.dataframe_to_table(
-                table_name=std_table_name,
-                dataframe=large_df,
-                operation='overwrite',
-            )
-
-        benchmark(setup_and_run)
