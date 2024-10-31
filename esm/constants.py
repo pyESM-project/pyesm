@@ -95,6 +95,7 @@ class Constants:
     _STD_ID_FIELD = {'id': ['id', 'INTEGER PRIMARY KEY']}
 
     _ALLOWED_VALUES_TYPES = (int, float)
+    _STD_VALUES_TYPE = float
 
     _CVXPY_VAR_HEADER = 'variable'
     _FILTER_DICT_HEADER = 'filter'
