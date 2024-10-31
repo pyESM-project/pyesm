@@ -28,7 +28,7 @@ u:
 X:
     name: technology activity
     type: exogenous
-    coordinates: [technologies, years, scenarios]
+    coordinates: [scenarios, technologies, years]
     variables_info:
         X:
             technologies: 
@@ -45,7 +45,7 @@ X:
 U_h:
     name: hourly technology activity
     type: endogenous
-    coordinates: [products, technologies, years, hours, scenarios]
+    coordinates: [scenarios, products, technologies, years, hours]
     variables_info:
         U_h:
             hours:
