@@ -520,7 +520,7 @@ class SQLManager:
             table_name (str): The name of the table from which to delete column entries.
             force_operation (bool, optional): If True, bypasses user confirmation
                 and deletes column entries.
-            column_name (str, optional): The name of the column from which to 
+            column_name (str, optional): The name of the column from which to
                 delete values.
 
         Returns:
@@ -639,134 +639,81 @@ class SQLManager:
         dataframe[primary_key_field] = merged_df[primary_key_field + '_from']
         return dataframe
 
-    def table_to_dataframe(
-            self,
-            table_name: str,
-    ) -> pd.DataFrame:
-        """Retrieve data from an SQLite table and convert it to a Pandas DataFrame.
-
-        Args:
-            table_name (str): The name of the SQLite table.
-
-        Returns:
-            pd.DataFrame: A DataFrame containing the table data.
-
-        Raises:
-            TableNotFoundError: If the specified table does not exist.
-            OperationalError: If there is an error during query execution.
-        """
-        self.check_table_exists(table_name)
-        table_fields = self.get_table_fields(table_name)
-        table_columns_labels = list(table_fields['labels'])
-
-        query = f"SELECT * FROM {table_name}"
-        table = self.execute_query(query, fetch=True)
-
-        return pd.DataFrame(data=table, columns=table_columns_labels)
-
     def dataframe_to_table(
         self,
         table_name: str,
         dataframe: pd.DataFrame,
-        operation: str = 'overwrite',
-        force_operation: bool = False,
+        force_overwrite: bool = False,
         suppress_warnings: bool = False,
     ) -> None:
         """
-        Converts the contents of a specified SQLite table into a pandas DataFrame.
-        This method fetches all data from the table and structures it as a DataFrame,
-        ensuring that the table exists before proceeding. It logs any issues
-        encountered during the fetch operation.
+        Inserts or updates the given DataFrame into the specified SQLite table.
 
         Args:
-            table_name (str): The name of the table to convert to a DataFrame.
-
-        Returns:
-            pd.DataFrame: A DataFrame containing the data from the specified table.
-
-        Raises:
-            exc.TableNotFoundError: If the specified table does not exist.
-            exc.OperationalError: If there is an error during query execution.
+            table_name (str): The name of the SQLite table.
+            dataframe (pd.DataFrame): The DataFrame to be inserted into the 
+                table.
+            force_overwrite (bool, optional): If True, existing table entries 
+                will be overwritten without asking user permission. Defaults to 
+                False.
+            suppress_warnings (bool, optional): If True, suppresses warning 
+                messages. Defaults to False.
         """
-        valid_operations = ['overwrite', 'update', ]
-        util.validate_selection(valid_operations, operation)
-
         self.check_table_exists(table_name)
         self.validate_table_dataframe_headers(table_name, dataframe)
 
+        id_field = Constants.get('_STD_ID_FIELD')['id'][0]
+        values_field = Constants.get('_STD_VALUES_FIELD')['values'][0]
         table_fields = self.get_table_fields(table_name)['labels']
-        num_entries = self.count_table_data_entries(table_name)
-        primary_column_label = self.get_primary_column_name(table_name)
+        table_primary_column = self.get_primary_column_name(table_name)
+        table_existing_entries = self.count_table_data_entries(table_name)
+        dataframe_existing = self.table_to_dataframe(table_name)
+        existing_values: pd.Series = dataframe_existing[values_field]
 
-        if primary_column_label not in dataframe.columns.tolist():
+        # add primary key column if not present
+        if table_primary_column not in dataframe.columns.tolist():
             dataframe.insert(
                 loc=0,
-                column=primary_column_label,
+                column=table_primary_column,
                 value=range(1, len(dataframe) + 1)
             )
 
-        if operation == 'overwrite' or \
-                (operation == 'update' and num_entries == 0):
+        # check if table is already up to date
+        if util.check_dataframes_equality(
+            df_list=[dataframe_existing, dataframe],
+            skip_columns=[id_field],
+        ):
+            if not suppress_warnings:
+                self.logger.warning(
+                    f"SQLite table {table_name} already up to date.")
+            return
 
-            if num_entries != 0:
-                data_erased = self.delete_table_entries(
-                    table_name,
-                    force_operation)
+        # reorder columns to match table schema
+        if not all(dataframe.columns == table_fields):
+            dataframe = dataframe[table_fields]
 
-                if not data_erased:
+        data = [tuple(row) for row in dataframe.values.tolist()]
+        placeholders = ', '.join(['?'] * len(table_fields))
+
+        # define appropriate query based on table state
+        if table_existing_entries == 0:
+            query = f"INSERT INTO {table_name} VALUES ({placeholders})"
+
+        elif table_existing_entries > 0:
+            if existing_values.isnull().all():
+                query = f"INSERT OR REPLACE INTO {table_name} VALUES ({placeholders})"
+            else:
+                if not self.delete_table_entries(table_name, force_overwrite):
                     self.logger.debug(
                         f"SQLite table '{table_name}' - original data NOT erased.")
                     return
+                query = f"INSERT INTO {table_name} VALUES ({placeholders})"
 
-            data = [tuple(row) for row in dataframe.values.tolist()]
-            placeholders = ', '.join(['?'] * len(table_fields))
-            query = f"INSERT INTO {table_name} VALUES ({placeholders})"
-            self.execute_query(query=query, params=data, many=True)
+        self.execute_query(query=query, params=data, many=True)
 
-            self.logger.debug(
-                f"SQLite table '{table_name}' - table overwritten and "
-                f"{len(data)} entries added.")
-
-        elif operation == 'update' and num_entries > 0:
-
-            values_field = Constants.get('_STD_VALUES_FIELD')['values'][0]
-            id_field = Constants.get('_STD_ID_FIELD')['id'][0]
-
-            dataframe_to_update = self.table_to_dataframe(table_name)
-
-            if util.check_dataframes_equality([dataframe_to_update, dataframe]):
-                if not suppress_warnings:
-                    self.logger.warning(
-                        f"SQLite table {table_name} already up to date.")
-                return
-
-            if not util.check_dataframe_columns_equality(
-                df_list=[dataframe_to_update, dataframe],
-                skip_columns=[id_field, values_field]
-            ):
-                msg = "Sets of the passed dataframe and the SQLite " \
-                    f"table '{table_name}' mismatch. SQLite table NOT updated."
-                self.logger.error(msg)
-                raise exc.OperationalError(msg)
-
-            data = [
-                tuple([row[-1], *row[:-1]])
-                for row in dataframe.drop(columns=id_field).values.tolist()
-            ]
-
-            query = f"""
-                UPDATE {table_name} SET "{values_field}" = ?
-                WHERE {' AND '.join([
-                    f'"{col}" = ?'
-                    for col in
-                    dataframe.drop(columns=[id_field, values_field]).columns
-                ])}
-            """
-
-            self.execute_query(query, data, many=True)
-
-            self.logger.debug(
-                f"SQLite table '{table_name}' - {len(data)} entries updated.")
+        self.logger.debug(
+            f"SQLite table '{table_name}' - table values overwritten: "
+            f"{len(data)} new entries added.")
 
     def table_to_excel(
             self,
@@ -821,10 +768,10 @@ class SQLManager:
             df = pd.read_sql_query(query, self.connection)
             df.to_excel(writer, sheet_name=table_name, index=False)
 
-    def filtered_table_to_dataframe(
+    def table_to_dataframe(
             self,
             table_name: str,
-            filters_dict: Dict[str, List[str]],
+            filters_dict: Optional[Dict[str, List[str]]] = None,
     ) -> pd.DataFrame:
         """
         Filters a specified SQLite table based on given conditions and returns
@@ -836,8 +783,8 @@ class SQLManager:
 
         Args:
             table_name (str): The name of the table to filter.
-            filters_dict (Dict[str, List[str]]): Conditions for filtering the
-                table, with column names as keys and lists of acceptable values
+            filters_dict (Optional[Dict[str, List[str]]]): Conditions for filtering 
+                the table, with column names as keys and lists of acceptable values
                 as values.
 
         Returns:
@@ -848,45 +795,51 @@ class SQLManager:
             TypeError: If the filters_dict is incorrectly structured.
             OperationalError: If there is an error during query execution.
         """
-        if not isinstance(filters_dict, dict):
-            raise TypeError(
-                f"Passed filters_dict must be a dictionary. {type(filters_dict)} "
-                "was passed instead.")
+        self.check_table_exists(table_name)
+        table_fields = self.get_table_fields(table_name)
+        table_columns_labels = list(table_fields['labels'])
 
-        for key, values in filters_dict.items():
-            if not isinstance(key, str) or not isinstance(values, list):
-                msg = "Keys of filters_dict must be strings, and values must be lists of strings."
-                self.logger.error(msg)
-                raise TypeError(msg)
+        if not filters_dict:
+            query = f"SELECT * FROM {table_name}"
+            flattened_values = []
+        else:
+            if not isinstance(filters_dict, dict):
+                raise TypeError(
+                    "Passed filters_dict must be a dictionary. "
+                    f"{type(filters_dict)} was passed instead.")
 
-        conditions = " AND ".join(
-            [f"{key} IN ({', '.join(['?']*len(values))})"
-             for key, values in filters_dict.items()]
+            for key, values in filters_dict.items():
+                if not isinstance(key, str) or not isinstance(values, list):
+                    msg = "Keys of filters_dict must be strings, and values " \
+                        "must be lists of strings."
+                    self.logger.error(msg)
+                    raise TypeError(msg)
+
+            conditions = " AND ".join(
+                [f"{key} IN ({', '.join(['?']*len(values))})"
+                 for key, values in filters_dict.items()]
+            )
+
+            flattened_values = [
+                str(value) for values in filters_dict.values()
+                for value in values
+            ]
+
+            query = f"SELECT * FROM {table_name} WHERE {conditions};"
+
+        table = self.execute_query(
+            query=query,
+            params=tuple(flattened_values),
+            fetch=True
         )
 
-        flattened_values = []
-        for list_values in filters_dict.values():
-            for value in list_values:
-                flattened_values.append(value)
+        dataframe = pd.DataFrame(data=table, columns=table_columns_labels)
 
-        query = f"SELECT * FROM {table_name} WHERE {conditions};"
-
-        try:
-            result = pd.read_sql_query(
-                sql=query,
-                con=self.connection,
-                params=flattened_values
-            )
-        except Exception as error:
-            msg = f"Error filtering table '{table_name}': {error}."
-            self.logger.error(msg)
-            raise exc.OperationalError(msg) from error
-
-        if result.empty:
+        if filters_dict and dataframe.empty:
             self.logger.warning(
                 f"Filtered table from '{table_name}' is empty.")
 
-        return result
+        return dataframe
 
     def get_related_table_keys(
             self,
