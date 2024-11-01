@@ -263,7 +263,8 @@ class Database:
                             column_values=None,
                         )
 
-                self.sqltools.dataframe_to_table(table_name, dataframe)
+                self.sqltools.dataframe_to_table(
+                    table_name, dataframe)
 
     def generate_blank_sqlite_data_tables(self) -> None:
         """
@@ -452,7 +453,6 @@ class Database:
 
     def load_data_input_files_to_database(
         self,
-        operation: str,
         empty_data_fill: Optional[Any] = None,
         file_extension: str = data_file_extension,
         force_overwrite: bool = False,
@@ -462,14 +462,12 @@ class Database:
         This method checks the 'multiple_input_files' setting to determine whether 
         to load data from multiple files or a single file. If 'multiple_input_files' 
         is True, the method iterates over each exogenous data table in the index, 
-        loads the table's data from the corresponding Excel file, and inserts or 
-        updates the data in the SQLite database. If 'multiple_input_files' is False, 
+        loads the table's data from the corresponding Excel file, and inserts  
+        the data in the SQLite database. If 'multiple_input_files' is False, 
         the method loads data from a single Excel file and inserts or updates the 
         data for each table in the SQLite database.
 
         Parameters:
-            operation (str): The SQL operation to be performed with the data 
-                ('insert', 'update', etc.).
             empty_data_fill (Any, optional): The value to fill empty data cells
                 with. Defaults to None.
             file_extension (str, optional): The extension of the data files to 
@@ -507,7 +505,7 @@ class Database:
                         self.sqltools.dataframe_to_table(
                             table_name=table_key,
                             dataframe=data[table_key],
-                            operation=operation,
+                            force_overwrite=force_overwrite,
                         )
 
         else:
@@ -522,8 +520,7 @@ class Database:
                     self.sqltools.dataframe_to_table(
                         table_name=table_key,
                         dataframe=table,
-                        operation=operation,
-                        force_operation=force_overwrite,
+                        force_overwrite=force_overwrite,
                     )
 
     def reinit_sqlite_endogenous_tables(

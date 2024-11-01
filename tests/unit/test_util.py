@@ -373,12 +373,15 @@ def test_check_dataframes_equality():
 
     # dataframes with different headers
     df7 = pd.DataFrame({'D': [1, 2, 3], 'E': [4, 5, 6]})
-    with pytest.raises(ValueError):
-        check_dataframes_equality([df1, df7])
+    assert check_dataframes_equality([df1, df7]) == False
 
-    # dataframes with different shapes
+    # empty dataframe with skipped column
+    df8 = pd.DataFrame()
+    assert check_dataframes_equality([df1, df8], skip_columns=['A']) == False
+
+    # skip column that does not exist
     with pytest.raises(ValueError):
-        check_dataframes_equality([df1, df6], skip_columns=['A'])
+        check_dataframes_equality([df1, df6], skip_columns=['column_2'])
 
 
 def test_check_dataframe_columns_equality():
@@ -410,8 +413,7 @@ def test_check_dataframe_columns_equality():
     with pytest.raises(ValueError):
         check_dataframe_columns_equality([])
 
-    with pytest.raises(ValueError):
-        check_dataframe_columns_equality([df1, df5])
+    assert check_dataframe_columns_equality([df1, df5]) == False
 
 
 def test_add_column_to_dataframe():

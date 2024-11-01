@@ -22,6 +22,7 @@ import yaml
 
 import pandas as pd
 
+from esm.constants import Constants
 from esm.log_exc import exceptions as exc
 from esm.log_exc.logger import Logger
 from esm.support import util
@@ -535,7 +536,7 @@ class FileManager:
             excel_file_name: str,
             excel_file_dir_path: Path | str,
             empty_data_fill: Optional[Any] = None,
-            dtype: Optional[type[str]] = None,
+            set_values_type: bool = True,
     ) -> Dict[str, pd.DataFrame]:
         """
         Reads an Excel file composed of multiple tabs and returns a dictionary 
@@ -548,8 +549,8 @@ class FileManager:
                 Excel file is located.
             empty_data_fill (Optional[Any], optional): Value to fill empty 
                 cells with in the DataFrames. Defaults to None.
-            dtype (Optional[type[str]], optional): Data type to force for the 
-                DataFrame columns. Defaults to None.
+            dtype_values (Optional[type[str]], optional): Data type to force 
+                for the values DataFrame columns. Defaults to None.
 
         Returns:
             Dict[str, pd.DataFrame]: A dictionary containing DataFrames for 
@@ -561,16 +562,24 @@ class FileManager:
 
         file_path = Path(excel_file_dir_path, excel_file_name)
 
+        if set_values_type:
+            values_dtype = Constants.get('_STD_VALUES_TYPE')
+            values_name = Constants.get('_STD_VALUES_FIELD')['values'][0]
+
         if not os.path.exists(file_path):
             self.logger.error(f'{excel_file_name} does not exist.')
             raise FileNotFoundError(f"{excel_file_name} does not exist.")
 
-        df_dict = pd.read_excel(io=file_path, sheet_name=None, dtype=dtype)
-        if empty_data_fill is not None:
-            df_dict = {
-                sheet_name: df.fillna(empty_data_fill)
-                for sheet_name, df in df_dict.items()
-            }
+        df_dict = pd.read_excel(io=file_path, sheet_name=None)
+
+        for dataframe in df_dict.values():
+            for col in dataframe.columns:
+
+                if col == values_name:
+                    dataframe[col] = dataframe[col].astype(values_dtype)
+
+                if empty_data_fill is not None:
+                    dataframe.fillna(empty_data_fill)
 
         self.logger.debug(f"Excel file '{excel_file_name}' loaded.")
         return df_dict
