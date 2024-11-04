@@ -668,7 +668,6 @@ class SQLManager:
         table_primary_column = self.get_primary_column_name(table_name)
         table_existing_entries = self.count_table_data_entries(table_name)
         dataframe_existing = self.table_to_dataframe(table_name)
-        existing_values: pd.Series = dataframe_existing[values_field]
 
         # add primary key column if not present
         if table_primary_column not in dataframe.columns.tolist():
@@ -692,6 +691,12 @@ class SQLManager:
         if not all(dataframe.columns == table_fields):
             dataframe = dataframe[table_fields]
 
+        # convert all entries to strings except for values field
+        for col in dataframe.columns:
+            if col not in (values_field, table_primary_column):
+                dataframe[col] = dataframe[col].astype(str)
+
+        # generate data tuples for insertion
         data = [tuple(row) for row in dataframe.values.tolist()]
         placeholders = ', '.join(['?'] * len(table_fields))
 
@@ -700,6 +705,8 @@ class SQLManager:
             query = f"INSERT INTO {table_name} VALUES ({placeholders})"
 
         elif table_existing_entries > 0:
+            existing_values: pd.Series = dataframe_existing[values_field]
+
             if existing_values.isnull().all():
                 query = f"INSERT OR REPLACE INTO {table_name} VALUES ({placeholders})"
             else:

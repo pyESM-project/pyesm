@@ -717,6 +717,9 @@ class Core:
                     force_overwrite=True, suppress_warnings=True,
                 )
 
+                if iter_count == 1:
+                    continue
+
                 with db_handler(self.sqltools):
                     relative_difference = \
                         self.sqltools.get_tables_values_relative_difference(
