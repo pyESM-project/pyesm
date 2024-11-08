@@ -251,62 +251,66 @@ class Model:
         if self.settings['sqlite_database_foreign_keys']:
             self.core.index.fetch_foreign_keys_to_data_tables()
 
-    def initialize_blank_data_structure(
-            self,
-            generate_blank_xlsx_files: bool = True,
-    ) -> None:
+    def initialize_blank_data_structure(self) -> None:
         """
-        Initializes the blank data structure for the model: create blank 
-        SQLite database with set tables and data tables, and fills the latter
-        SQLite tables with sets information. Finally, it created blank excel 
-        input data files.
+        Initializes the blank data structure for the model:
+            - Creates a blank SQLite database with set tables and data tables.
+            - Fills the SQLite tables with sets information.
+            - Creates blank Excel input data files.
+
         If the SQLite database already exists, it gives the option to erase it 
         and generate a new one, or to work with the existing SQLite database.
-
-        Returns:
-            None
+        Same for the input data directory.
         """
-        sqlite_db_name = self.settings['sqlite_database_file']
 
-        if self.settings['use_existing_data']:
+        use_existing_data = self.settings['use_existing_data']
+        sqlite_db_name = self.settings['sqlite_database_file']
+        sqlite_db_path = Path(self.paths['sqlite_database'])
+        input_files_dir_path = Path(self.paths['input_data_dir'])
+
+        erased_db = True
+        erased_input_dir = True
+
+        if use_existing_data:
             self.logger.info(
                 "Relying on existing SQLite database and input excel file/s.")
             return
 
-        if Path(self.paths['sqlite_database']).exists():
+        if sqlite_db_path.exists():
             self.logger.info(f"Database '{sqlite_db_name}' already exists.")
 
-            erased = self.files.erase_file(
+            erased_db = self.files.erase_file(
                 dir_path=self.paths['model_dir'],
                 file_name=sqlite_db_name,
                 force_erase=False,
                 confirm=True,
             )
 
-            if erased:
-                msg = f"Erasing and generatin SQLite database '{sqlite_db_name}'."
-                if generate_blank_xlsx_files:
-                    msg += " Generating new input excel file/s."
-                self.logger.info(msg)
-
-            else:
-                self.logger.info(
-                    f"Relying on existing SQLite database '{sqlite_db_name}' "
-                    "and on existing input excel file/s.")
-                return
+        if erased_db:
+            self.logger.info(
+                f"SQLite database '{sqlite_db_name}' erased and generated.")
+            self.core.database.create_blank_sqlite_database()
+            self.core.database.load_sets_to_sqlite_database()
+            self.core.database.generate_blank_sqlite_data_tables()
+            self.core.database.sets_data_to_sql_data_tables()
         else:
-            msg = f"Generating new SQLite database '{sqlite_db_name}'"
-            if generate_blank_xlsx_files:
-                msg += " and input excel file/s."
-            self.logger.info(msg)
+            self.logger.info(
+                f"Relying on existing SQLite database '{sqlite_db_name}' ")
 
-        self.core.database.create_blank_sqlite_database()
-        self.core.database.load_sets_to_sqlite_database()
-        self.core.database.generate_blank_sqlite_data_tables()
-        self.core.database.sets_data_to_sql_data_tables()
+        if input_files_dir_path.exists():
+            self.logger.info("Input data directory already exists.")
 
-        if generate_blank_xlsx_files:
+            erased_input_dir = self.files.erase_dir(
+                dir_path=input_files_dir_path,
+                force_erase=False,
+            )
+
+        if erased_input_dir:
+            self.logger.info(
+                "Input data directory erased. Blank excel file/s regenerated.")
             self.core.database.generate_blank_data_input_files()
+        else:
+            self.logger.info("Relying on existing input data directory.")
 
     def load_exogenous_data_to_sqlite_database(
             self,
@@ -357,6 +361,9 @@ class Model:
         self.core.initialize_problems_variables()
         self.core.data_to_cvxpy_exogenous_vars(allow_none_values)
         self.core.define_mathematical_problems(force_overwrite)
+
+        self.logger.info(
+            'Symbolic problem loaded, numerical problem initialized.')
 
     def run_model(
         self,

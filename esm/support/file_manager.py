@@ -147,7 +147,7 @@ class FileManager:
                 ).lower()
 
                 if response != 'y':
-                    self.logger.info(
+                    self.logger.debug(
                         f"Directory '{dir_name}' and its content not erased.")
                     return False
 
@@ -157,7 +157,7 @@ class FileManager:
                 self.logger.error(f"Error: '{dir_name}' : {error.strerror}")
                 return False
             else:
-                self.logger.info(f"Directory '{dir_name}' have been erased.")
+                self.logger.debug(f"Directory '{dir_name}' have been erased.")
                 return True
 
         else:
