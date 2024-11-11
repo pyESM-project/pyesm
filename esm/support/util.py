@@ -134,6 +134,7 @@ def prettify(item: dict) -> None:
 def validate_selection(
         valid_selections: Iterable[str],
         selection: str,
+        ignore_case: bool = False,
 ) -> None:
     """
     Validates if a provided selection is within a list of valid selections.
@@ -141,15 +142,27 @@ def validate_selection(
     Args:
         valid_selections (List[str]): A list containing all valid selections.
         selection (str): The selection to validate.
+        ignore_case (bool): If True, ignores the case of the selection. 
+            Works only with string selections. Default is False.
 
     Raises:
         ValueError: If the selection is not found within the list of valid selections.
+        ValueError: If no valid selections are available.
+        ValueError: If ignore_case is True but the selections are not strings.
 
     Returns:
         None: This function only performs validation and does not return any value.
     """
     if not valid_selections:
         raise ValueError("No valid selections are available.")
+
+    if ignore_case:
+        if all(isinstance(item, str) for item in valid_selections):
+            valid_selections = [item.lower() for item in valid_selections]
+            selection = selection.lower()
+        else:
+            raise ValueError(
+                "Ignore case option is only available for string selections.")
 
     if selection not in valid_selections:
         raise ValueError(
