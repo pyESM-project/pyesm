@@ -557,6 +557,13 @@ class Variable:
             else:
                 msg = 'Lower triangular matrix must be defined by a unique set '\
                     'as either rows or cols. Check variable shape.'
+                
+        elif value_type == 'special_diag':
+            if self.is_vector:
+                return factory_function(self.shape_size, **args)
+            else:
+                msg = 'Special diagonal matrix must be defined by a unique set '\
+                    'as either rows or cols. Check variable shape.'
 
         elif value_type == 'identity_rcot':
             if self.related_dims_map is not None and \

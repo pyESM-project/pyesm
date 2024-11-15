@@ -146,6 +146,10 @@ class Constants:
         'lower_triangular': (util_functions.tril, {}),
         # special identity matrix for rcot problems
         'identity_rcot': (util_functions.identity_rcot, {}),
+        # special diagonal for ramping
+        'special_diag' : (util_functions.special_diag, {}),
+
+
     }
 
     _ALLOWED_OPERATORS = {
@@ -168,6 +172,7 @@ class Constants:
         'weib': util_functions.weibull_distribution,
         'Minimize': cp.Minimize,
         'Maximize': cp.Maximize,
+        'absolute': cp.abs,
     }
 
     # NUMERICAL SETTINGS

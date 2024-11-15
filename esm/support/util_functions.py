@@ -379,3 +379,45 @@ def weibull_distribution(
         weib_parameter.value = weib_dist_matrix
 
     return weib_parameter
+
+def special_diag(dimension: Tuple[int]) -> np.array:
+    """
+    Generate a square matrix with ones in the lower triangular region
+    (including the diagonal) and zeros elsewhere.
+
+    Parameters:
+        dimension (Tuple[int]): The dimension of the matrix row/col.
+
+    Returns:
+        np.ndarray: A square matrix with ones in the lower triangular region 
+            and zeros elsewhere.
+
+    Raises:
+        ValueError: If passed dimension is not greater than zero.
+        TypeError: If passed dimension is not an iterable containing integers.
+    """
+
+    if not isinstance(dimension, Tuple) and not \
+            all(isinstance(i, int) for i in dimension):
+        raise TypeError(
+            "Passed dimension must be a tuple containing integers.")
+
+    if any(i < 0 for i in dimension):
+        raise ValueError(
+            "Passed dimension must be integers greater than zero.")
+
+    if len(dimension) != 2 or not any(i == 1 for i in dimension):
+        raise ValueError(
+            "Passed dimension must have at least one element equal to 1 (it "
+            "must represent a vector.")
+
+    size = max(dimension)
+
+    matrix = np.zeros((size, size), dtype=int)
+    for i in range(size):
+        matrix[i, i] = 1
+        if i > 0:
+            matrix[i, i - 1] = -1
+    return matrix
+
+
