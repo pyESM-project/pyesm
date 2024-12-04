@@ -19,7 +19,6 @@ import numpy as np
 import pandas as pd
 import cvxpy as cp
 
-from esm.backend import problem
 from esm.backend.data_table import DataTable
 from esm.backend.database import Database
 from esm.backend.index import Index, Variable
@@ -97,12 +96,13 @@ class Core:
         self.sqltools = SQLManager(
             logger=self.logger,
             database_path=self.paths['sqlite_database'],
-            database_name=self.settings['sqlite_database_file'],
+            database_name=Constants.ConfigFiles.SQLITE_DATABASE_FILE,
         )
 
         self.index = Index(
             logger=self.logger,
             files=self.files,
+            settings=self.settings,
             paths=self.paths,
         )
 
@@ -238,10 +238,8 @@ class Core:
                     )
 
             else:
-                setup_file = Constants.get('_SETUP_FILES')[1]
-                msg = f"Variable type '{variable.type}' not allowed. Check " \
-                    "definition of variable types in the model configuration " \
-                    f"file '{setup_file}'."
+                msg = f"Variable type '{variable.type}' not allowed. Available " \
+                    f"types: {Constants.SymbolicDefinitions.ALLOWED_VARIABLES_TYPES}"
                 self.logger.error(msg)
                 raise exc.SettingsError(msg)
 
@@ -395,11 +393,11 @@ class Core:
             f"Fetching data from '{self.settings['sqlite_database_file']}' "
             "to cvxpy exogenous variables.")
 
-        filter_header = Constants.get('_FILTER_DICT_HEADER')
-        cvxpy_var_header = Constants.get('_CVXPY_VAR_HEADER')
-        values_header = Constants.get('_STD_VALUES_FIELD')['values'][0]
-        id_header = Constants.get('_STD_ID_FIELD')['id'][0]
-        allowed_values_types = Constants.get('_ALLOWED_VALUES_TYPES')
+        filter_header = Constants.Headers.FILTER_DICT_HEADER
+        cvxpy_var_header = Constants.Headers.CVXPY_VAR_HEADER
+        values_header = Constants.Headers.VALUES_FIELD['values'][0]
+        id_header = Constants.Headers.ID_FIELD['id'][0]
+        allowed_values_types = Constants.NumericalSettings.ALLOWED_VALUES_TYPES
 
         with db_handler(self.sqltools):
             for var_key, variable in self.index.variables.items():
@@ -514,7 +512,7 @@ class Core:
             "Exporting data from cvxpy endogenous variable (in data table) "
             f"to SQLite database '{self.settings['sqlite_database_file']}' ")
 
-        values_headers = Constants.get('_STD_VALUES_FIELD')['values'][0]
+        values_headers = Constants.Headers.VALUES_FIELD['values'][0]
 
         with db_handler(self.sqltools):
             for data_table_key, data_table in self.index.data.items():
@@ -604,7 +602,7 @@ class Core:
         with db_handler(self.sqltools):
             self.sqltools.check_databases_equality(
                 other_db_dir_path=self.paths['model_dir'],
-                other_db_name=self.settings['sqlite_database_file_test'],
+                other_db_name=Constants.ConfigFiles.SQLITE_DATABASE_FILE_TEST,
                 tolerance_percentage=values_relative_diff_tolerance,
             )
 
@@ -651,15 +649,15 @@ class Core:
                 method of the SQLTools instance.
         """
         if maximum_iterations is None:
-            maximum_iterations = Constants.get(
-                '_MAXIMUM_ITERATIONS_MODEL_COUPLING')
+            maximum_iterations = \
+                Constants.NumericalSettings.MAXIMUM_ITERATIONS_MODEL_COUPLING
 
         if numerical_tolerance is None:
-            numerical_tolerance = Constants.get(
-                '_TOLERANCE_MODEL_COUPLING_CONVERGENCE')
+            numerical_tolerance = \
+                Constants.NumericalSettings.TOLERANCE_MODEL_COUPLING_CONVERGENCE
 
         sqlite_db_path = self.paths['model_dir']
-        sqlite_db_file_name = self.settings['sqlite_database_file']
+        sqlite_db_file_name = Constants.ConfigFiles.SQLITE_DATABASE_FILE
 
         base_name, extension = os.path.splitext(sqlite_db_file_name)
         sqlite_db_file_name_previous = f"{base_name}_previous_iter{extension}"
@@ -672,7 +670,6 @@ class Core:
         ]
 
         while True:
-
             try:
                 iter_count += 1
                 if iter_count > maximum_iterations:
@@ -703,7 +700,8 @@ class Core:
 
                 infeasible_problems = {
                     problem_key: problem_status
-                    for problem_key, problem_status in self.problem.problem_status.items()
+                    for problem_key, problem_status
+                    in self.problem.problem_status.items()
                     if problem_status != 'optimal'
                 }
 

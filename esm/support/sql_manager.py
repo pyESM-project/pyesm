@@ -623,7 +623,7 @@ class SQLManager:
 
         table_df = self.table_to_dataframe(table_name)
         primary_key_field = self.get_primary_column_name(table_name)
-        values_field = Constants.get('_STD_VALUES_FIELD')['values'][0]
+        values_field = Constants.Headers.VALUES_FIELD['values'][0]
         cols_common = [
             col for col in table_df.columns
             if col not in [primary_key_field, values_field]
@@ -662,8 +662,8 @@ class SQLManager:
         self.check_table_exists(table_name)
         self.validate_table_dataframe_headers(table_name, dataframe)
 
-        id_field = Constants.get('_STD_ID_FIELD')['id'][0]
-        values_field = Constants.get('_STD_VALUES_FIELD')['values'][0]
+        id_field = Constants.Headers.ID_FIELD['id'][0]
+        values_field = Constants.Headers.VALUES_FIELD['values'][0]
         table_fields = self.get_table_fields(table_name)['labels']
         table_primary_column = self.get_primary_column_name(table_name)
         table_existing_entries = self.count_table_data_entries(table_name)
@@ -1000,7 +1000,7 @@ class SQLManager:
 
             # 3. Compare table contents (except "values" column)
             tables_wrong_coordinates = []
-            values_header = Constants.get('_STD_VALUES_FIELD')['values'][0]
+            values_header = Constants.Headers.VALUES_FIELD['values'][0]
 
             for table in current_tables:
                 self.cursor.execute(f"PRAGMA table_info({table})")
@@ -1065,8 +1065,8 @@ class SQLManager:
                     for cv, ov in zip(current_values, other_values)
                 ]
 
-                rounding_digits = Constants.get(
-                    '_ROUNDING_DIGITS_RELATIVE_DIFFERENCE_DB')
+                rounding_digits = \
+                    Constants.NumericalSettings.ROUNDING_DIGITS_RELATIVE_DIFFERENCE_DB
 
                 if any([
                     rd > tolerance_percentage

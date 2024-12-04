@@ -9,7 +9,7 @@ facilitate the management of complex data processing and optimization tasks
 within a modeling environment.
 
 The Model class provides functionalities for SQLite database management, 
-numerical optimization using CVXPY, and visualization through Power BI reporting. 
+numerical optimization using CVXPY. 
 
 The primary focus of this module is to streamline operations across database 
 interactions, data file management, numerical problem formulation, and result 
@@ -25,25 +25,23 @@ based on user-defined settings.
 """
 
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Literal, Optional
 
 import pandas as pd
 
 from esm.constants import Constants
+from esm.backend.core import Core
 from esm.log_exc import exceptions as exc
 from esm.log_exc.logger import Logger
 from esm.support.dotdict import DotDict
 from esm.support.file_manager import FileManager
-from esm.support.pbi_manager import PBIManager
-from esm.backend.core import Core
 
 
 class Model:
     """
     Class representing a modeling environment that handles SQLite data 
     generation and processing, database interactions, numerical optimization 
-    model generation and handling with CVXPY, and PowerBi report generation 
-    for visualizing and inspecting exogenous and endogenous data. 
+    model generation and handling with CVXPY. 
 
     This class initializes with a configuration for managing directories, 
     logging, and file management for a specific model. It also sets up various
@@ -58,8 +56,6 @@ class Model:
             directories and associated files.
         core (Core): An instance of Core that manages the core functionality 
             of the model.
-        pbi_tools (PBIManager): An instance of PBIManager to manage Power BI 
-            report interactions.
 
     Parameters of settings attribute:
         model_dir_name (str): Name of the directory for the model (and name of 
@@ -84,8 +80,6 @@ class Model:
             Defaults to 'database.db'.
         sqlite_database_foreign_keys (bool, optional): Whether to enforce 
             foreign key constraints in SQLite. Defaults to True.
-        powerbi_report_file (str, optional): Name of the Power BI report file. 
-            Defaults to 'dataset.pbix'.
 
     Raises:
         ValueError: If any critical configurations are invalid or not found.
@@ -96,18 +90,15 @@ class Model:
             self,
             model_dir_name: str,
             main_dir_path: str,
+            model_settings_from: Literal['yaml', 'xlsx'] = 'yaml',
             use_existing_data: bool = False,
             multiple_input_files: bool = False,
-            log_level: str = 'info',
-            log_format: str = 'minimal',
-            sets_xlsx_file: str = 'sets.xlsx',
-            input_data_dir: str = 'input_data',
-            input_data_file: str = 'input_data.xlsx',
-            sqlite_database_file: str = 'database.db',
-            sqlite_database_file_test: str = 'database_expected.db',
-            sqlite_database_foreign_keys: bool = True,
-            powerbi_report_file: str = 'dataset.pbix',
+            log_level: Literal['info', 'debug', 'warning', 'error'] = 'info',
+            log_format: Literal['standard', 'minimal'] = 'minimal',
     ) -> None:
+
+        config = Constants.ConfigFiles
+        model_dir_path = Path(main_dir_path) / model_dir_name
 
         self.logger = Logger(
             logger_name=str(self),
@@ -116,32 +107,28 @@ class Model:
         )
 
         self.logger.debug(f"'{self}' object initialization...")
-        self.logger.info(
-            f"Generating '{model_dir_name}' pyESM model instance.")
+        self.logger.info(f"Generating '{model_dir_name}' model instance.")
 
         self.files = FileManager(logger=self.logger)
 
         self.settings = DotDict({
             'log_level': log_level,
             'model_name': model_dir_name,
+            'model_settings_from': model_settings_from,
             'use_existing_data': use_existing_data,
             'multiple_input_files': multiple_input_files,
-            'sets_xlsx_file': sets_xlsx_file,
-            'input_data_dir': input_data_dir,
-            'input_data_file': input_data_file,
-            'sqlite_database_file': sqlite_database_file,
-            'sqlite_database_file_test': sqlite_database_file_test,
-            'sqlite_database_foreign_keys': sqlite_database_foreign_keys,
-            'powerbi_report_file': powerbi_report_file,
+            'sets_xlsx_file': config.SETS_FILE,
+            'input_data_dir': config.INPUT_DATA_DIR,
+            'input_data_file': config.INPUT_DATA_FILE,
+            'sqlite_database_file': config.SQLITE_DATABASE_FILE,
+            'sqlite_database_file_test': config.SQLITE_DATABASE_FILE_TEST,
         })
 
-        model_dir_path = Path(main_dir_path) / model_dir_name
         self.paths = DotDict({
             'model_dir': model_dir_path,
-            'input_data_dir': model_dir_path / input_data_dir,
-            'sets_excel_file': model_dir_path / sets_xlsx_file,
-            'sqlite_database': model_dir_path / sqlite_database_file,
-            'pbi_report': model_dir_path / powerbi_report_file,
+            'input_data_dir': model_dir_path / config.INPUT_DATA_DIR,
+            'sets_excel_file': model_dir_path / config.SETS_FILE,
+            'sqlite_database': model_dir_path / config.SQLITE_DATABASE_FILE,
         })
 
         self.validate_model_dir()
@@ -156,12 +143,6 @@ class Model:
         if self.settings['use_existing_data']:
             self.load_model_coordinates()
             self.initialize_problems()
-
-        self.pbi_tools = PBIManager(
-            logger=self.logger,
-            settings=self.settings,
-            paths=self.paths,
-        )
 
         self.logger.debug(f"'{self}' object initialized.")
 
@@ -186,30 +167,56 @@ class Model:
             for var_key, variable in self.core.index.variables.items()
         }
 
+    @property
+    def is_problem_solved(self) -> bool:
+        if self.core.problem.problem_status is None:
+            return False
+        else:
+            return True
+
     def __repr__(self):
         class_name = type(self).__name__
         return f'{class_name}'
 
     def validate_model_dir(self) -> None:
         """
+        Validates the existence of the model directory and required setup files.
         This method checks if the model directory and all the required setup 
-        files exist. It uses the 'dir_files_check' method from the 'files' 
-        object to perform the check. 
+        files exist based on the 'model_settings_from' setting. It uses the 
+        'dir_files_check' method from the 'files' object to perform the check.
 
-        Returns:
-            None
+        Raises:
+            SettingsError: If the 'model_settings_from' parameter is not recognized.
         """
-        setup_files: Dict[int, str] = Constants.get('_SETUP_FILES')
+        files_type = self.settings['model_settings_from']
 
-        # modify to check if all necessary items are there in case of use existing data
+        if files_type == 'yaml':
+            setup_files = [
+                file + '.yml'
+                for file in Constants.ConfigFiles.SETUP_INFO.values()
+            ]
+        elif files_type == 'xlsx':
+            setup_files = [Constants.ConfigFiles.SETUP_XLSX_FILE]
+        else:
+            msg = "Parameter 'model_settings_from' not recognized."
+            self.logger.error(msg)
+            raise exc.SettingsError(msg)
+
         if self.files.dir_files_check(
             dir_path=self.paths['model_dir'],
-            files_names_list=list(setup_files.values()),
+            files_names_list=setup_files,
         ):
             self.logger.info(
-                'Model directory and required setup files validated.')
+                f"Model directory and setup '{files_type}' file/s validated.")
+        else:
+            msg = f"Model directory or setup '{files_type}' file/s missing."
+            self.logger.error(msg)
+            raise exc.SettingsError(msg)
 
-    def load_model_coordinates(self) -> None:
+    def load_model_coordinates(
+            self,
+            fetch_foreign_keys: bool = True,
+    ) -> None:
         """
         Loads sets data and variable coordinates to the Model.Index.
         If the 'use_existing_data' setting is True, it loads existing sets 
@@ -233,13 +240,14 @@ class Model:
                 'Loading new sets data and variable coordinates to Index.')
 
         try:
+            sets_xlsx_file = Constants.ConfigFiles.SETS_FILE
             self.core.index.load_sets_data_to_index(
-                excel_file_name=self.settings['sets_xlsx_file'],
+                excel_file_name=sets_xlsx_file,
                 excel_file_dir_path=self.paths['model_dir']
             )
         except FileNotFoundError as e:
-            msg = f"'{self.settings['sets_xlsx_file']}' file missing. " \
-                "Set 'use_existing_data' to False to generate a new settings file."
+            msg = f"'{sets_xlsx_file}' file missing. Set 'use_existing_data' " \
+                "to False to generate a new settings file."
             self.logger.error(msg)
             raise exc.SettingsError(msg) from e
 
@@ -248,7 +256,7 @@ class Model:
         self.core.index.filter_coordinates_in_variables_index()
         self.core.index.map_vars_aggregated_dims()
 
-        if self.settings['sqlite_database_foreign_keys']:
+        if fetch_foreign_keys:
             self.core.index.fetch_foreign_keys_to_data_tables()
 
     def initialize_blank_data_structure(self) -> None:
@@ -264,7 +272,7 @@ class Model:
         """
 
         use_existing_data = self.settings['use_existing_data']
-        sqlite_db_name = self.settings['sqlite_database_file']
+        sqlite_db_name = Constants.ConfigFiles.SQLITE_DATABASE_FILE
         sqlite_db_path = Path(self.paths['sqlite_database'])
         input_files_dir_path = Path(self.paths['input_data_dir'])
 
@@ -315,24 +323,19 @@ class Model:
     def load_exogenous_data_to_sqlite_database(
             self,
             force_overwrite: bool = False,
-            empty_data_fill: Any = 0,
     ) -> None:
         """
         Loads input (exogenous) data to the SQLite database. 
 
         Args:
-            operation (str, optional): The operation to perform on the database. 
-                Defaults to 'update'.
             force_overwrite (bool, optional): Whether to force overwrite existing 
                 data without asking for user permission. Defaults to False.
-            empty_data_fill (Any, optional): The value to fill empty data cells 
-                with. Defaults to 0.
         """
         self.logger.info('Loading input data to SQLite database.')
 
         self.core.database.load_data_input_files_to_database(
             force_overwrite=force_overwrite,
-            empty_data_fill=empty_data_fill,
+            empty_data_fill=Constants.NumericalSettings.DB_EMPTY_DATA_FILL,
         )
 
     def initialize_problems(
@@ -342,13 +345,13 @@ class Model:
     ) -> None:
         """
         Initializes numerical problems in the Model instance. Specifically, the
-        method initializes variables, fed data to exogenous variables, and
+        method initializes variables, feeds data to exogenous variables, and
         generates numerical problems based on the symbolic formulation.
 
         Args:
             force_overwrite (bool, optional): If True, forces the overwrite 
                 of existing numerical problems without asking for user 
-                    permission. Used for testing purpose. Defaults to False.
+                permission. Used for testing purposes. Defaults to False.
             allow_none_values (bool, optional): If True, allows None values in
                 the exogenous data. Defaults to True.
 
@@ -376,16 +379,15 @@ class Model:
         **kwargs: Any,
     ) -> None:
         """
-        This method is used to solve numerical problems defined by the model 
-        instance.
+        Solves numerical problems defined by the model instance.
 
         Parameters:
-            verbose (bool, optional): If True, the method will print verbose 
-                output during the model run. Defaults to False.
-            force_overwrite (bool, optional): If True, the method will overwrite 
-                existing results. Defaults to False.
-            integrated_problems (bool, optional): If True, the method will solve 
-                problems in an integrated manner. Defaults to False.
+            verbose (bool, optional): If True, prints verbose output during the 
+                model run. Defaults to False.
+            force_overwrite (bool, optional): If True, overwrites existing results. 
+                Defaults to False.
+            integrated_problems (bool, optional): If True, solves problems in 
+                an integrated manner. Defaults to False.
             solver (str, optional): The solver to use for solving numerical 
                 problems. Defaults to None, in which case the default solver 
                 specified in Constants is used.
@@ -403,17 +405,17 @@ class Model:
                 problem is found.
 
         Returns:
-            None: This method does not return any value. It modifies the model 
-                instance by solving the numerical problems.
+            None
         """
         n_problems = self.core.problem.number_of_problems
+        allowed_solvers = Constants.NumericalSettings.ALLOWED_SOLVERS
 
         if solver is None:
-            solver = Constants.get('_DEFAULT_SOLVER')
+            solver = Constants.NumericalSettings.DEFAULT_SOLVER
 
-        if solver not in Constants.get('_ALLOWED_SOLVERS'):
+        if solver not in allowed_solvers:
             msg = f"Solver '{solver}' not supported by current CVXPY version. " \
-                f"Available solvers: {Constants.get('_ALLOWED_SOLVERS')}"
+                f"Available solvers: {allowed_solvers}"
             self.logger.error(msg)
             raise exc.SettingsError(msg)
 
@@ -465,10 +467,10 @@ class Model:
         Loads the endogenous model results to a SQLite database. 
 
         Args:
-            force_overwrite (bool): Whether to overwrite/update existing data
-                without asking user permission. Defaults to False.
-            suppress_warnings (bool): Whether to suppress warnings during the
-                data loading process. Defaults to False.
+            force_overwrite (bool, optional): Whether to overwrite/update 
+                existing data without asking user permission. Defaults to False.
+            suppress_warnings (bool, optional): Whether to suppress warnings 
+                during the data loading process. Defaults to False.
 
         Returns:
             None
@@ -476,8 +478,13 @@ class Model:
         self.logger.info(
             'Exporting endogenous model results to SQLite database.')
 
-        self.core.cvxpy_endogenous_data_to_database(
-            force_overwrite, suppress_warnings)
+        if not self.is_problem_solved:
+            msg = 'Numerical problem has not solved yet and results cannot be ' \
+                'exported.'
+            self.logger.warning(msg)
+        else:
+            self.core.cvxpy_endogenous_data_to_database(
+                force_overwrite, suppress_warnings)
 
     def update_database_and_problem(
             self,
@@ -485,21 +492,21 @@ class Model:
     ) -> None:
         """
         Updates the SQLite database and initializes problems. To be used in 
-        case some changes in exogenous data have made, so that the SQLite 
+        case some changes in exogenous data have been made, so that the SQLite 
         database and the problems can be updated without re-generating the
         Model instance.
 
         Args:
-            operation (str, optional): The operation to perform on the 
-                database. Defaults to 'update'.
             force_overwrite (bool, optional): Whether to overwrite/update 
                 existing data without asking user permission. Defaults to False.
 
         Returns:
             None
         """
+        sqlite_db_file = Constants.ConfigFiles.SQLITE_DATABASE_FILE
+
         self.logger.info(
-            f"Updating SQLite database '{self.settings['sqlite_database_file']}' "
+            f"Updating SQLite database '{sqlite_db_file}' "
             "and initialize problems.")
 
         self.load_exogenous_data_to_sqlite_database(force_overwrite)
@@ -509,35 +516,22 @@ class Model:
             self,
             force_overwrite: bool = False,
     ) -> None:
-        """Initialize endogenous tables in sqlite database to Null values, and
-        reimport input data to exogenous tables.
+        """
+        Initializes endogenous tables in SQLite database to Null values, and
+        reimports input data to exogenous tables.
 
         Args:
-            operation (str, optional): The operation to perform on the 
-                database. Defaults to 'update'.
             force_overwrite (bool, optional): Whether to force overwrite 
-                existing data. Used for testing purpose. Defaults to False.
+                existing data. Used for testing purposes. Defaults to False.
         """
+        sqlite_db_file = Constants.ConfigFiles.SQLITE_DATABASE_FILE
+
         self.logger.info(
-            f"Reinitializing SQLite database '{self.settings['sqlite_database_file']}' "
+            f"Reinitializing SQLite database '{sqlite_db_file}' "
             "endogenous tables.")
 
         self.core.database.reinit_sqlite_endogenous_tables(force_overwrite)
         self.load_exogenous_data_to_sqlite_database(force_overwrite)
-
-    def generate_pbi_report(self) -> None:
-        """
-        This method generates the PowerBI report for inspecting input data
-        and results of the numerical models. 
-
-        Returns:
-            None
-        """
-        self.logger.info(
-            "Generating PowerBI report "
-            f"'{self.settings['powerbi_report_file']}'.")
-
-        self.pbi_tools.generate_powerbi_report()
 
     def check_model_results(
             self,
@@ -545,7 +539,7 @@ class Model:
     ) -> None:
         """
         Checks the results of the model's computations. This is mainly called
-        for testing purpose.
+        for testing purposes.
 
         This method uses the 'check_results_as_expected' method to compare the 
         results of the current model's computations with the expected results. 
@@ -553,8 +547,9 @@ class Model:
         'sqlite_database_file_test' setting and located in the model directory.
 
         Args:
-            numerical_tolerance (float): The relative difference (non-percentage) 
-                tolerance for comparing numerical values in different databases.
+            numerical_tolerance (float, optional): The relative difference 
+                (non-percentage) tolerance for comparing numerical values in 
+                different databases.
 
         Raises:
             OperationalError: If the connection or cursor of the database to be 
@@ -566,7 +561,7 @@ class Model:
         """
         if not numerical_tolerance:
             numerical_tolerance = \
-                Constants.get('_TOLERANCE_TESTS_RESULTS_CHECK')
+                Constants.NumericalSettings.TOLERANCE_TESTS_RESULTS_CHECK
 
         self.core.check_results_as_expected(
             values_relative_diff_tolerance=numerical_tolerance)
@@ -579,7 +574,18 @@ class Model:
             problem_key: Optional[int] = None,
             sub_problem_key: Optional[int] = None,
     ) -> Optional[pd.DataFrame]:
+        """
+        Fetches data for a specific variable.
 
+        Args:
+            name (str): The name of the variable.
+            problem_key (int, optional): The problem index. Defaults to None.
+            sub_problem_key (int, optional): The sub-problem index. Defaults 
+                to None.
+
+        Returns:
+            Optional[pd.DataFrame]: The data for the specified variable.
+        """
         return self.core.index.fetch_variable_data(
             var_key=name,
             problem_index=problem_key,
@@ -587,6 +593,15 @@ class Model:
         )
 
     def set(self, name: str) -> Optional[pd.DataFrame]:
+        """
+        Fetches data for a specific set.
+
+        Args:
+            name (str): The name of the set.
+
+        Returns:
+            Optional[pd.DataFrame]: The data for the specified set.
+        """
         return self.core.index.fetch_set_data(set_key=name)
 
     def erase_model(self) -> None:

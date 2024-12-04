@@ -104,7 +104,8 @@ class Problem:
             problems and updates their statuses.
     """
 
-    allowed_operators: Dict[str, Any] = Constants.get('_ALLOWED_OPERATORS')
+    allowed_operators: Dict[str, Any] = \
+        Constants.SymbolicDefinitions.ALLOWED_OPERATORS
 
     def __init__(
             self,
@@ -450,9 +451,9 @@ class Problem:
             "(cvxpy object, filter dictionary, sub problem key).")
 
         headers = {
-            'cvxpy': Constants.get('_CVXPY_VAR_HEADER'),
-            'filter': Constants.get('_FILTER_DICT_HEADER'),
-            'sub_problem_key': Constants.get('_SUB_PROBLEM_KEY_HEADER')
+            'cvxpy': Constants.Headers.CVXPY_VAR_HEADER,
+            'filter': Constants.Headers.FILTER_DICT_HEADER,
+            'sub_problem_key': Constants.Headers.SUB_PROBLEM_KEY_HEADER,
         }
 
         if variable.sets_parsing_hierarchy:
@@ -594,10 +595,10 @@ class Problem:
         Raises:
             SettingsError: If the symbolic problem structure is invalid.
         """
-        problem_file_name = Constants.get('_SETUP_FILES')[2]
+        problem_file_name = Constants.ConfigFiles.SETUP_INFO[2] + '.yml'
         problem_keys = [
-            Constants.get('_OBJECTIVE_HEADER'),
-            Constants.get('_CONSTRAINTS_HEADER'),
+            Constants.Headers.OBJECTIVE_HEADER,
+            Constants.Headers.CONSTRAINTS_HEADER,
         ]
 
         if self.symbolic_problem is not None:
@@ -667,7 +668,7 @@ class Problem:
             self,
             expression: str,
             non_allowed_tokens: Optional[List[str]] = None,
-            standard_pattern: str = r'\b[a-zA-Z_][a-zA-Z0-9_]*\b'
+            standard_pattern: str = Constants.SymbolicDefinitions.REGEX_PATTERN
     ) -> List[str]:
         """
         Parses and extracts variable names from a symbolic expression, excluding
@@ -925,11 +926,11 @@ class Problem:
             'problem' (the cvxpy Problem object), and 'status' (the solution status, initially set to None).
         """
         headers = {
-            'info': Constants.get('_PROBLEM_INFO_HEADER'),
-            'objective': Constants.get('_OBJECTIVE_HEADER'),
-            'constraints': Constants.get('_CONSTRAINTS_HEADER'),
-            'problem': Constants.get('_PROBLEM_HEADER'),
-            'status': Constants.get('_PROBLEM_STATUS_HEADER'),
+            'info': Constants.Headers.PROBLEM_INFO_HEADER,
+            'objective': Constants.Headers.OBJECTIVE_HEADER,
+            'constraints': Constants.Headers.CONSTRAINTS_HEADER,
+            'problem': Constants.Headers.PROBLEM_HEADER,
+            'status': Constants.Headers.PROBLEM_STATUS_HEADER,
         }
 
         dict_to_unpivot = {}
@@ -1052,7 +1053,7 @@ class Problem:
                 variables.
         """
         allowed_variables = {}
-        cvxpy_var_header = Constants.get('_CVXPY_VAR_HEADER')
+        cvxpy_var_header = Constants.Headers.CVXPY_VAR_HEADER
 
         for var_key, variable in variables_set_dict.items():
             variable: Variable
@@ -1193,7 +1194,7 @@ class Problem:
 
         local_vars = {}
         if allowed_operators is None:
-            allowed_operators = dict(Constants.get('_ALLOWED_OPERATORS'))
+            allowed_operators = Constants.SymbolicDefinitions.ALLOWED_OPERATORS
 
         try:
             # pylint: disable-next=exec-used
@@ -1397,7 +1398,7 @@ class Problem:
         for problem_num in problem_dataframe.index:
 
             problem_info: List[str] = problem_dataframe.at[
-                problem_num, Constants.get('_PROBLEM_INFO_HEADER')]
+                problem_num, Constants.Headers.PROBLEM_INFO_HEADER]
 
             msg = "Solving numerical problem"
             if problem_name:
@@ -1407,7 +1408,7 @@ class Problem:
             self.logger.info(msg)
 
             numerical_problem: cp.Problem = problem_dataframe.at[
-                problem_num, Constants.get('_PROBLEM_HEADER')]
+                problem_num, Constants.Headers.PROBLEM_HEADER]
 
             numerical_problem.solve(
                 solver=solver,
@@ -1416,7 +1417,7 @@ class Problem:
             )
 
             problem_dataframe.at[
-                problem_num, Constants.get('_PROBLEM_STATUS_HEADER')
+                problem_num, Constants.Headers.PROBLEM_STATUS_HEADER
             ] = numerical_problem.status
 
             self.logger.debug(f"Problem status: '{numerical_problem.status}'")
@@ -1434,15 +1435,17 @@ class Problem:
             self.logger.warning(msg)
             raise exc.OperationalError(msg)
 
-        status_header = Constants.get('_PROBLEM_STATUS_HEADER')
-        info_header = Constants.get('_PROBLEM_INFO_HEADER')
+        status_header = Constants.Headers.PROBLEM_STATUS_HEADER
+        info_header = Constants.Headers.PROBLEM_INFO_HEADER
 
         if isinstance(self.numerical_problems, pd.DataFrame):
             problem_df = self.numerical_problems
 
             problem_status = {
-                f'sub-problem {info}' if len(problem_df) > 1 else 'problem': status
-                for info, status in zip(problem_df[info_header], problem_df[status_header])
+                f'sub-problem {info}'
+                if len(problem_df) > 1 else 'problem': status
+                for info, status
+                in zip(problem_df[info_header], problem_df[status_header])
             }
 
         elif isinstance(self.numerical_problems, dict):
@@ -1451,7 +1454,8 @@ class Problem:
                 f'Problem [{problem_key}]' +
                 (f' - Sub-problem {info}' if len(problem_df) > 1 else ''): status
                 for problem_key, problem_df in self.numerical_problems.items()
-                for info, status in zip(problem_df[info_header], problem_df[status_header])
+                for info, status
+                in zip(problem_df[info_header], problem_df[status_header])
             }
 
         self.problem_status = problem_status

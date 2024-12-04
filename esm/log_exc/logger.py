@@ -115,7 +115,3 @@ class Logger:
     def error(self, message: str):
         """ERROR log message."""
         self.logger.log(msg=message, level=logging.ERROR)
-
-    def critical(self, message: str):
-        """CRITICAL log message."""
-        self.logger.log(msg=message, level=logging.CRITICAL)
