@@ -105,8 +105,8 @@ def test_validate_dict_structure():
 
     for key in test_items:
         assert validate_dict_structure(
-            dictionary=test_items[key],
-            validation_structure=validation_structures[key]
+            data=test_items[key],
+            structure=validation_structures[key]
         ) == expected_outputs[key]
 
 
@@ -793,3 +793,67 @@ def test_calulate_values_difference():
         calculate_values_difference(10, 'a', True, False, False)
     with pytest.raises(ValueError):
         calculate_values_difference('a', 'b', True, False, False)
+
+
+def test_remove_empty_items_from_dict():
+    """
+    Test the remove_empty_items_from_dict function.
+
+    This test verifies that the remove_empty_items_from_dict function correctly removes
+    empty items from a nested dictionary based on default empty values and custom empty values.
+    """
+    input_dict = {
+        'a': 1,
+        'b': '',
+        'c': None,
+        'd': {
+            'e': 2,
+            'f': '',
+            'g': {
+                'h': 3,
+                'i': None
+            },
+            'j': [],
+        },
+        'k': {},
+        'l': 'non-empty',
+    }
+
+    expected_output_1 = {
+        'a': 1,
+        'd': {
+            'e': 2,
+            'g': {
+                'h': 3,
+            },
+        },
+        'l': 'non-empty',
+    }
+
+    expected_output_2 = {
+        'a': 1,
+        'b': '',
+        'c': None,
+        'd': {
+            'e': 2,
+            'f': '',
+            'g': {
+                'h': 3,
+                'i': None
+            },
+            'j': [],
+        },
+        'l': 'non-empty',
+    }
+
+    assert remove_empty_items_from_dict(input_dict) == expected_output_1
+    assert remove_empty_items_from_dict(
+        dictionary=input_dict, empty_values=[{}]
+    ) == expected_output_2
+
+    with pytest.raises(TypeError):
+        remove_empty_items_from_dict('not a dictionary')
+
+    with pytest.raises(ValueError):
+        remove_empty_items_from_dict(
+            input_dict, empty_values=['not in default'])

@@ -25,6 +25,7 @@ import itertools as it
 import pandas as pd
 
 from copy import deepcopy
+from esm.backend import problem
 from esm.constants import Constants
 from esm.log_exc.logger import Logger
 from esm.support.file_manager import FileManager
@@ -33,7 +34,6 @@ from esm.support.file_manager import FileManager
 def create_model_dir(
     model_dir_name: str,
     main_dir_path: str,
-    default_model: Optional[str] = None,
     force_overwrite: bool = False,
     export_tutorial: bool = False,
     default_files_prefix: str = 'template_'
@@ -72,42 +72,24 @@ def create_model_dir(
     files.create_dir(model_dir_path, force_overwrite)
 
     if export_tutorial:
-        file_name = Constants.get('_TUTORIAL_FILE_NAME')
+        file_name = Constants.ConfigFiles.TUTORIAL_FILE_NAME
         files.copy_file_to_destination(
-            path_source=Constants.get('_DEFAULT_MODELS_DIR_PATH'),
+            path_source=Constants.ConfigFiles.DEFAULT_MODELS_DIR_PATH,
             path_destination=model_dir_path,
             file_name=default_files_prefix + file_name,
             file_new_name=file_name,
             force_overwrite=True,
         )
 
-    if default_model is None:
-        files.logger.info(f"Generating model '{model_dir_name}' directory.")
+    files.logger.info(f"Generating model '{model_dir_name}' directory.")
 
-        for file_name in Constants.get('_SETUP_FILES').values():
-            files.copy_file_to_destination(
-                path_destination=model_dir_path,
-                path_source=Constants.get('_DEFAULT_MODELS_DIR_PATH'),
-                file_name=default_files_prefix+file_name,
-                file_new_name=file_name,
-                force_overwrite=force_overwrite,
-            )
-
-    else:
-        files.logger.info(
-            f"Directory of model '{model_dir_name}' "
-            f"generated based on default model '{default_model}'.")
-
-        validate_selection(
-            valid_selections=list(Constants.get('_DEFAULT_MODELS_LIST')),
-            selection=default_model)
-
-        template_dir_path = \
-            Path(Constants.get('_DEFAULT_MODELS_DIR_PATH')) / default_model
-
-        files.copy_all_files_to_destination(
-            path_source=template_dir_path,
+    for file_name in Constants.ConfigFiles.SETUP_INFO.values():
+        file_name = file_name + '.yml'
+        files.copy_file_to_destination(
             path_destination=model_dir_path,
+            path_source=Constants.ConfigFiles.DEFAULT_MODELS_DIR_PATH,
+            file_name=default_files_prefix+file_name,
+            file_new_name=file_name,
             force_overwrite=force_overwrite,
         )
 
@@ -168,29 +150,6 @@ def validate_selection(
         raise ValueError(
             "Invalid selection. Please choose one "
             f"of: {', '.join(valid_selections)}.")
-
-
-def validate_dict_structure(
-        dictionary: Dict[str, Any],
-        validation_structure: Dict[str, Any],
-) -> bool:
-    """
-    Validates the structure of a dictionary against a predefined schema.
-
-    Args:
-        dictionary (Dict[str, Any]): The dictionary to be validated.
-        validation_structure (Dict[str, Any]): A schema dictionary where 
-            each key corresponds to expected data types.
-
-    Returns:
-        bool: True if the dictionary matches the schema, False otherwise.
-    """
-    for key, value in dictionary.items():
-        if key not in validation_structure:
-            return False
-        if not isinstance(value, validation_structure[key]):
-            return False
-    return True
 
 
 def items_in_list(
@@ -968,3 +927,47 @@ def calculate_values_difference(
 
     else:
         return difference
+
+
+def remove_empty_items_from_dict(
+        dictionary: Dict,
+        empty_values: List = [None, '', [], {}],
+):
+    """
+    Recursively removes keys with empty values from a dictionary.
+
+    Args:
+        dictionary (Dict): The dictionary to clean.
+
+    Returns:
+        Dict: A new dictionary with all keys that had empty values removed.
+
+    Raises:
+        TypeError: If the passed argument is not a dictionary.
+    """
+    if not isinstance(dictionary, dict):
+        raise TypeError(
+            "Passed argument must be a dictionary. "
+            f"{type(dictionary).__name__} was passed instead")
+
+    if not [value for value in empty_values if value in (None, '', [], {})]:
+        raise ValueError(
+            "Passed empty_values tuple must include at least one type of the "
+            "default empty values (None, '', [], {}).")
+
+    def _remove_items(d: Dict) -> Dict:
+        cleaned_dict = {}
+
+        for key, value in d.items():
+
+            if isinstance(value, dict):
+                nested = _remove_items(value)
+                if nested:
+                    cleaned_dict[key] = nested
+
+            elif value not in empty_values:
+                cleaned_dict[key] = value
+
+        return cleaned_dict
+
+    return _remove_items(dictionary)
