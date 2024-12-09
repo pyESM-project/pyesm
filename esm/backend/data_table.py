@@ -18,6 +18,7 @@ from typing import Any, Dict, Iterator, List, Optional, Tuple
 import cvxpy as cp
 import pandas as pd
 
+from esm.constants import Constants
 from esm.log_exc import exceptions as exc
 from esm.log_exc.logger import Logger
 from esm.support import util
@@ -59,7 +60,7 @@ class DataTable:
     def __init__(
             self,
             logger: Logger,
-            **kwargs,
+            **table_info,
     ) -> None:
         """
         Initializes a new instance of the DataTable class.
@@ -71,21 +72,22 @@ class DataTable:
         """
         self.logger = logger.get_child(__name__)
 
-        self.name: Optional[str] = None
-        self.type: Optional[str | dict] = None
-        self.integer: Optional[bool] = False
-        self.coordinates: List[str] = []
+        self.name: str
+        self.type: str | dict
+        self.integer: Optional[bool] = None
+        self.coordinates: str
+        self.variables_info: Dict[str, Any]
+
+        for key, value in table_info.items():
+            setattr(self, key, value)
+
         self.coordinates_headers: Dict[str, str] = {}
         self.coordinates_values: Dict[str, Any] = {}
         self.coordinates_dataframe: Optional[dict | pd.DataFrame] = None
         self.table_headers: Dict[str, Any] = {}
-        self.variables_info: Dict[str, Any] = {}
         self.foreign_keys: Dict[str, Any] = {}
         self.cvxpy_var: Optional[
             pd.DataFrame[Any, cp.Variable] | cp.Variable] = None
-
-        for key, value in kwargs.items():
-            setattr(self, key, value)
 
         self.variables_list: List[str] = list(self.variables_info.keys())
 

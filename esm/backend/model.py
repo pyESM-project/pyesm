@@ -95,6 +95,7 @@ class Model:
             multiple_input_files: bool = False,
             log_level: Literal['info', 'debug', 'warning', 'error'] = 'info',
             log_format: Literal['standard', 'minimal'] = 'minimal',
+            detailed_validation: bool = False,
     ) -> None:
 
         config = Constants.ConfigFiles
@@ -117,6 +118,7 @@ class Model:
             'model_settings_from': model_settings_from,
             'use_existing_data': use_existing_data,
             'multiple_input_files': multiple_input_files,
+            'detailed_validation': detailed_validation,
             'sets_xlsx_file': config.SETS_FILE,
             'input_data_dir': config.INPUT_DATA_DIR,
             'input_data_file': config.INPUT_DATA_FILE,
@@ -131,7 +133,7 @@ class Model:
             'sqlite_database': model_dir_path / config.SQLITE_DATABASE_FILE,
         })
 
-        self.validate_model_dir()
+        self.check_model_dir()
 
         self.core = Core(
             logger=self.logger,
@@ -178,7 +180,7 @@ class Model:
         class_name = type(self).__name__
         return f'{class_name}'
 
-    def validate_model_dir(self) -> None:
+    def check_model_dir(self) -> None:
         """
         Validates the existence of the model directory and required setup files.
         This method checks if the model directory and all the required setup 
@@ -207,7 +209,7 @@ class Model:
             files_names_list=setup_files,
         ):
             self.logger.info(
-                f"Model directory and setup '{files_type}' file/s validated.")
+                f"Model directory and setup '{files_type}' file/s exist.")
         else:
             msg = f"Model directory or setup '{files_type}' file/s missing."
             self.logger.error(msg)

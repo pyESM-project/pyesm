@@ -16,6 +16,8 @@ import pandas as pd
 
 from esm.constants import Constants
 from esm.log_exc.logger import Logger
+from esm.log_exc import exceptions as exc
+from esm.support import util
 
 
 class SetTable:
@@ -69,8 +71,7 @@ class SetTable:
     def __init__(
             self,
             logger: Logger,
-            data: Optional[pd.DataFrame] = None,
-            **kwargs,
+            **set_info,
     ) -> None:
 
         self.logger = logger.get_child(__name__)
@@ -81,13 +82,13 @@ class SetTable:
         self.split_problem: bool = False
         self.table_structure: Dict[str, Any]
 
-        for key, value in kwargs.items():
+        for key, value in set_info.items():
             setattr(self, key, value)
 
         self.table_headers: Optional[Dict[str, List[str]]] = None
         self.table_filters: Optional[Dict[int, Any]] = None
         self.set_categories: Optional[Dict[str, Any]] = None
-        self.data = data
+        self.data: Optional[pd.DataFrame] = None
 
         self.fetching_headers_and_filters()
 
@@ -101,7 +102,7 @@ class SetTable:
             str | None: The standard name header if available, otherwise None.
         """
         if self.table_headers is not None:
-            return self.table_headers[Constants.get('_STD_NAME_HEADER')][0]
+            return self.table_headers[Constants.Headers.NAME_HEADER][0]
         return None
 
     @property
@@ -115,7 +116,7 @@ class SetTable:
                 otherwise None.
         """
         if self.table_headers is not None:
-            aggregation_key = Constants.get('_STD_AGGREGATION_HEADER')
+            aggregation_key = Constants.Headers.AGGREGATION_HEADER
 
             if aggregation_key in self.table_headers:
                 return self.table_headers[aggregation_key][0]
@@ -150,7 +151,7 @@ class SetTable:
         """
         if self.table_filters:
             return {
-                filter_items['header'][0]: filter_items['values']
+                filter_items['header']: filter_items['values']
                 for filter_items in self.table_filters.values()
             }
         return None
@@ -167,7 +168,7 @@ class SetTable:
         """
         if self.table_filters:
             return {
-                key: value['header'][0]
+                key: value['header']
                 for key, value in self.table_filters.items()
             }
         return None
@@ -198,9 +199,10 @@ class SetTable:
         Side Effects:
             Modifies the table_headers and table_filters attributes of the instance.
         """
-        name_key = Constants.get('_STD_NAME_HEADER')
-        filters_key = Constants.get('_STD_FILTERS_HEADERS')
-        aggregation_key = Constants.get('_STD_AGGREGATION_HEADER')
+        name_key = Constants.Headers.NAME_HEADER
+        filters_key = Constants.Headers.FILTERS_HEADERS
+        aggregation_key = Constants.Headers.AGGREGATION_HEADER
+        generic_field_type = Constants.Headers.GENERIC_FIELD_TYPE
 
         # Fetching filters
         self.table_filters = self.table_structure.get(filters_key, None)
@@ -216,12 +218,14 @@ class SetTable:
         }
 
         self.table_headers = {
-            name_key: name_header,
-            **filters_headers
+            key: [value, generic_field_type]
+            for key, value in {name_key: name_header, **filters_headers}.items()
         }
 
         if aggregation_header:
-            self.table_headers[aggregation_key] = aggregation_header
+            self.table_headers[aggregation_key] = [
+                aggregation_header, generic_field_type
+            ]
 
     def __repr__(self) -> str:
         output = ''

@@ -39,6 +39,7 @@ class Constants:
         }
         SETUP_XLSX_FILE = 'model_settings.xlsx'
         SETS_FILE = 'sets.xlsx'
+        AVAILABLE_SOURCES = ['yaml', 'xlsx']
         INPUT_DATA_DIR = 'input_data'
         INPUT_DATA_FILE = 'input_data.xlsx'
         DATA_FILES_EXTENSION = '.xlsx'
@@ -52,6 +53,7 @@ class Constants:
         NAME_HEADER = 'name'
         FILTERS_HEADERS = 'filters'
         AGGREGATION_HEADER = 'aggregation'
+        GENERIC_FIELD_TYPE = 'TEXT'
         VALUES_FIELD = {'values': ['values', 'REAL']}
         ID_FIELD = {'id': ['id', 'INTEGER PRIMARY KEY']}
         CVXPY_VAR_HEADER = 'variable'
@@ -66,6 +68,7 @@ class Constants:
     class DefaultStructures:
         """Default structures for data validation."""
         OPTIONAL = object()
+        ANY = object()
 
         SET_STRUCTURE = {
             'symbol': str,
@@ -73,32 +76,35 @@ class Constants:
             'split_problem': (OPTIONAL, bool),
             'copy_from': (OPTIONAL, str),
             'table_structure': {
-                'name': [str, str],
-                'aggregation': (OPTIONAL, [str, str]),
+                'name': str,
+                'aggregation': (OPTIONAL, str),
                 'filters': (OPTIONAL, {
-                    str | int: {
-                        'headers': [str, str],
-                        'values': [str | int | bool, str],
+                    ANY: {
+                        'headers': str,
+                        'values': list,
                     }
                 })
             }
         }
         DATA_TABLE_STRUCTURE = {
             'name': str,
-            'type': str | dict[int | str, str],
-            'integer': bool,
-            'coordinates': list[str],
+            'type': (str, dict),
+            'integer': (OPTIONAL, bool),
+            'coordinates': list,
             'variables_info': {
-                str: {
-                    'value': str,
-                    'dim': str,
-                    'filters': dict[str | int, str | int | bool]
+                ANY: {
+                    'value': (OPTIONAL, str),
+                    ANY: (OPTIONAL, {
+                        'dim': (OPTIONAL, str),
+                        'filters': (OPTIONAL, dict),
+                    })
                 }
             }
         }
 
     class SymbolicDefinitions:
         """Allowed constants and operators for symbolic problem definitions."""
+        ALLOWED_DIMENSIONS = ['rows', 'cols', 'intra', 'inter']
         ALLOWED_VARIABLES_TYPES = ['constant', 'exogenous', 'endogenous']
         REGEX_PATTERN = r'\b[a-zA-Z_][a-zA-Z0-9_]*\b'
         ALLOWED_CONSTANTS = {
