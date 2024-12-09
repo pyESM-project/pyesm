@@ -1,51 +1,33 @@
-# structure of sets
-
-# set_key:
-#     symbol: a  # symbol of the set 
-#     table_name: _set_a # name of the table of the set in the database
-#     split_problem: False # (optional) if the items of the set defines separate problems 
-#     table_headers:
-#         name: [a_Names, TYPE] # header of set entries names in database set table
-#         aggregation: [a_Agg, TEXT] # (optional) header of set entries that are matching another set (aggregation)
-#         filters:
-#             0:  # (int) index of the category in the set
-#                 header: [a_Cat_1, TEXT] 
-#                 values: [a_1a, a_1b, a_1c]
-#             1: 
-#                 header: [a_Cat_2, TEXT] 
-#                 values: [a_2a, a_2b]
-
-
 # -----------------------------------------------------------------------------
 # sets
 scenarios:
-    symbol: scen  # symbol of the set 
-    table_name: _set_SCENARIOS # name of the table of the set in the database
-    split_problem: True # (optional) if the items of the set defines separate problems 
+    symbol: scen
+    table_name: _set_SCENARIOS
+    split_problem: True
     table_structure:
-        name: [scen_Names, TEXT] # header of set entries names in database set table
+        name: scen_Names
 
 sensitivities:
     symbol: sens   
     table_name: _set_SENSITIVITIES 
     split_problem: True 
     table_structure:
-        name: [sens_Names, TEXT] 
+        name: sens_Names 
 
 techs:
     symbol: techs  
     table_name: _set_TECHS 
     table_structure:
-        name: [techs_Names, TEXT] 
+        name: techs_Names 
 
 flows_from:
     symbol: flows_from   
     table_name: _set_FLOWS_FROM 
     table_structure:
-        name: [ff_Names, TEXT] 
+        name: ff_Names 
 
 flows_to:
     symbol: flows_to   
     table_name: _set_FLOWS_TO 
     table_structure:
-        name: [ft_Names, TEXT] 
+        name: ft_Names 

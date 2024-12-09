@@ -71,45 +71,6 @@ def test_validate_selection():
             validate_selection(valid_selections, selection)
 
 
-def test_validate_dict_structure():
-    """
-    Test the 'validate_dict_structure' method.
-
-    This test function checks the behavior of the validate_dict_structure
-    function against various dictionaries and validation structures. It asserts
-    that the function returns the expected output based on the provided input.
-
-    Test cases:
-    - A dictionary with valid structure should return True.
-    - A dictionary with an invalid structure should return False.
-    - A dictionary with extra keys not present in the validation structure 
-        should return False.
-    """
-    test_items = {
-        1: {"key1": 1, "key2": "value"},
-        2: {"key1": True, "key2": 2},
-        3: {"key1": 1, "key2": {"subkey1": 1, "subkey2": 2}},
-    }
-
-    validation_structures = {
-        1: {"key1": int, "key2": str},
-        2: {"key1": bool, "key2": int},
-        3: {"key1": int, "key2": dict},
-    }
-
-    expected_outputs = {
-        1: True,
-        2: True,
-        3: True,
-    }
-
-    for key in test_items:
-        assert validate_dict_structure(
-            data=test_items[key],
-            structure=validation_structures[key]
-        ) == expected_outputs[key]
-
-
 def test_confirm_action(monkeypatch):
     """
     Test the function 'confirm_action'.

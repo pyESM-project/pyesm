@@ -5,38 +5,38 @@ scenarios:
     table_name: _set_SCENARIOS
     split_problem: True
     table_structure:
-        name: ['s_Name', 'TEXT']
+        name: 's_Name'
 
 sensitivity:
     symbol: e
     table_name: _set_SENSITIVITY
     split_problem: True
     table_structure:
-        name: ['e_Name', 'TEXT']
+        name: 'e_Name'
 
 time:
     symbol: y 
     table_name: _set_TIME
     table_structure:
-        name: ['y_Name', 'TEXT']
+        name: 'y_Name'
 
 technologies:
     symbol: t
     table_name: _set_TECHNOLOGIES
     table_structure:
-        name: ['t_Name', 'TEXT']
+        name: 't_Name'
         filters: 
             0: 
-                header: ['t_Category', 'TEXT']
+                header: 't_Category'
                 values: ['Supply technology', 'Demand technology']
 
 flows:
     symbol: f
     table_name: _set_FLOWS
     table_structure:
-        name: ['f_Name', 'TEXT']
-        aggregation: ['f_Aggregation', 'TEXT']
+        name: 'f_Name'
+        aggregation: 'f_Aggregation'
         filters: 
             0:
-                header: ['f_Category', 'TEXT']
+                header: 'f_Category'
                 values: ['Product flow', 'Cost flow']
