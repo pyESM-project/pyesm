@@ -141,7 +141,7 @@ class Problem:
         self.index = index
         self.paths = paths
 
-        self.symbolic_problem = None
+        self.symbolic_problem = {}
         self.numerical_problems = None
         self.problem_status = None
 
@@ -646,6 +646,11 @@ class Problem:
                 self.symbolic_problem[key] = DotDict(problem)
                 self.logger.debug(
                     f"Symbolic problem '{key}' successfully loaded.")
+
+        else:
+            msg = f"Invalid symbolic problem structure. Check '{source}' file."
+            self.logger.error(msg)
+            raise exc.SettingsError(msg)
 
     def load_symbolic_problem_from_file_bkp(
             self,
