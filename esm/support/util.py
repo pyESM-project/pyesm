@@ -18,80 +18,12 @@ manipulation and validation.
 
 from collections.abc import Iterable
 import pprint as pp
-from pathlib import Path
 from typing import Dict, List, Any, Literal, Optional, Tuple
 
 import itertools as it
 import pandas as pd
 
 from copy import deepcopy
-from esm.backend import problem
-from esm.constants import Constants
-from esm.log_exc.logger import Logger
-from esm.support.file_manager import FileManager
-
-
-def create_model_dir(
-    model_dir_name: str,
-    main_dir_path: str,
-    force_overwrite: bool = False,
-    export_tutorial: bool = False,
-    default_files_prefix: str = 'template_'
-):
-    """
-    Creates a directory structure for a new model instance, optionally using a 
-    default model as a template, and can include a tutorial notebook if specified.
-
-    Args:
-        model_dir_name (str): The name for the new model directory.
-        main_dir_path (str): The directory path where the new model directory 
-            will be created.
-        default_model (Optional[str]): The template model name from which to 
-            copy files.
-        force_overwrite (bool): If True, existing files or directories will be 
-            overwritten without confirmation.
-        export_tutorial (bool): If True, includes a Jupyter notebook tutorial 
-            in the model directory.
-        default_files_prefix (str): Prefix for files to be copied from the 
-            template, defaults to 'template_'.
-
-    Returns:
-        None: The function creates directories and copies files but does not 
-            return any value.
-    """
-
-    files = FileManager(Logger())
-    model_dir_path = Path(main_dir_path) / model_dir_name
-
-    if model_dir_path.exists():
-        if not files.erase_dir(
-                dir_path=model_dir_path,
-                force_erase=force_overwrite):
-            return
-
-    files.create_dir(model_dir_path, force_overwrite)
-
-    if export_tutorial:
-        file_name = Constants.ConfigFiles.TUTORIAL_FILE_NAME
-        files.copy_file_to_destination(
-            path_source=Constants.ConfigFiles.DEFAULT_MODELS_DIR_PATH,
-            path_destination=model_dir_path,
-            file_name=default_files_prefix + file_name,
-            file_new_name=file_name,
-            force_overwrite=True,
-        )
-
-    files.logger.info(f"Generating model '{model_dir_name}' directory.")
-
-    for file_name in Constants.ConfigFiles.SETUP_INFO.values():
-        file_name = file_name + '.yml'
-        files.copy_file_to_destination(
-            path_destination=model_dir_path,
-            path_source=Constants.ConfigFiles.DEFAULT_MODELS_DIR_PATH,
-            file_name=default_files_prefix+file_name,
-            file_new_name=file_name,
-            force_overwrite=force_overwrite,
-        )
 
 
 def prettify(item: dict) -> None:
