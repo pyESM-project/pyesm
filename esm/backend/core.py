@@ -393,10 +393,10 @@ class Core:
             f"Fetching data from '{self.settings['sqlite_database_file']}' "
             "to cvxpy exogenous variables.")
 
-        filter_header = Constants.Headers.FILTER_DICT_HEADER
-        cvxpy_var_header = Constants.Headers.CVXPY_VAR_HEADER
-        values_header = Constants.Headers.VALUES_FIELD['values'][0]
-        id_header = Constants.Headers.ID_FIELD['id'][0]
+        filter_header = Constants.Labels.FILTER_DICT_KEY
+        cvxpy_var_header = Constants.Labels.CVXPY_VAR
+        values_header = Constants.Labels.VALUES_FIELD['values'][0]
+        id_header = Constants.Labels.ID_FIELD['id'][0]
         allowed_values_types = Constants.NumericalSettings.ALLOWED_VALUES_TYPES
 
         with db_handler(self.sqltools):
@@ -512,7 +512,7 @@ class Core:
             "Exporting data from cvxpy endogenous variable (in data table) "
             f"to SQLite database '{self.settings['sqlite_database_file']}' ")
 
-        values_headers = Constants.Headers.VALUES_FIELD['values'][0]
+        values_headers = Constants.Labels.VALUES_FIELD['values'][0]
 
         with db_handler(self.sqltools):
             for data_table_key, data_table in self.index.data.items():

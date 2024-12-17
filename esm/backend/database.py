@@ -197,12 +197,12 @@ class Database:
 
                 table_name = set_instance.table_name
                 table_headers = set_instance.table_headers
-                table_id_header = Constants.Headers.ID_FIELD['id']
+                table_id_header = Constants.Labels.ID_FIELD['id']
 
                 if table_headers is not None:
                     if table_id_header not in table_headers.values():
                         table_headers = {
-                            **Constants.Headers.ID_FIELD, **table_headers}
+                            **Constants.Labels.ID_FIELD, **table_headers}
 
                     self.sqltools.create_table(table_name, table_headers)
 
@@ -246,7 +246,7 @@ class Database:
                     table_name = set_instance.table_name
                     dataframe = set_instance.data.copy()
                     table_headers = set_instance.table_headers
-                    table_id_header = Constants.Headers.ID_FIELD['id']
+                    table_id_header = Constants.Labels.ID_FIELD['id']
                 else:
                     msg = f"Data of set '{set_instance.symbol}' are not defined."
                     self.logger.error(msg)
@@ -351,8 +351,8 @@ class Database:
 
                 self.sqltools.add_table_column(
                     table_name=table_key,
-                    column_name=Constants.Headers.VALUES_FIELD['values'][0],
-                    column_type=Constants.Headers.VALUES_FIELD['values'][1],
+                    column_name=Constants.Labels.VALUES_FIELD['values'][0],
+                    column_type=Constants.Labels.VALUES_FIELD['values'][1],
                 )
 
     def clear_database_tables(
@@ -547,5 +547,5 @@ class Database:
                     self.sqltools.delete_table_entries(
                         table_name=table_key,
                         force_operation=force_overwrite,
-                        column_name=Constants.Headers.VALUES_FIELD['values'][0],
+                        column_name=Constants.Labels.VALUES_FIELD['values'][0],
                     )

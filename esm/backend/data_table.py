@@ -60,6 +60,7 @@ class DataTable:
     def __init__(
             self,
             logger: Logger,
+            key_name: str,
             **table_info,
     ) -> None:
         """
@@ -72,11 +73,13 @@ class DataTable:
         """
         self.logger = logger.get_child(__name__)
 
-        self.name: str
-        self.type: str | dict
+        self.name: str = key_name
+
+        self.description: Optional[str] = None
+        self.type: Optional[str | dict] = None
         self.integer: Optional[bool] = None
-        self.coordinates: str
-        self.variables_info: Dict[str, Any]
+        self.coordinates: Optional[list] = None
+        self.variables_info: Optional[Dict[str, Any]] = None
 
         for key, value in table_info.items():
             setattr(self, key, value)

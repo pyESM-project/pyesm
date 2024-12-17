@@ -408,7 +408,7 @@ class Variable:
         Raises:
             KeyError: If the passed row number is out of bounds.
         """
-        cvxpy_var_header = Constants.Headers.CVXPY_VAR_HEADER
+        cvxpy_var_header = Constants.Labels.CVXPY_VAR
 
         if self.data is None \
                 or not isinstance(self.data, pd.DataFrame) \
@@ -453,7 +453,7 @@ class Variable:
         Returns:
             pd.DataFrame: data reshaped and pivoted to be used as cvxpy values.
         """
-        values_header = Constants.Headers.VALUES_FIELD['values'][0]
+        values_header = Constants.Labels.VALUES_FIELD['values'][0]
 
         # case of a scalar with no rows/cols labels (scalars)
         if all(item is None for item in self.dims_labels):

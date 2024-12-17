@@ -90,7 +90,7 @@ class Model:
             self,
             model_dir_name: str,
             main_dir_path: str,
-            model_settings_from: Literal['yaml', 'xlsx'] = 'yaml',
+            model_settings_from: Literal['yml', 'xlsx'] = 'yml',
             use_existing_data: bool = False,
             multiple_input_files: bool = False,
             log_level: Literal['info', 'debug', 'warning', 'error'] = 'info',
@@ -192,7 +192,7 @@ class Model:
         """
         files_type = self.settings['model_settings_from']
 
-        if files_type == 'yaml':
+        if files_type == 'yml':
             setup_files = [
                 file + '.yml'
                 for file in Constants.ConfigFiles.SETUP_INFO.values()
