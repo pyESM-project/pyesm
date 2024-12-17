@@ -451,9 +451,9 @@ class Problem:
             "(cvxpy object, filter dictionary, sub problem key).")
 
         headers = {
-            'cvxpy': Constants.Headers.CVXPY_VAR_HEADER,
-            'filter': Constants.Headers.FILTER_DICT_HEADER,
-            'sub_problem_key': Constants.Headers.SUB_PROBLEM_KEY_HEADER,
+            'cvxpy': Constants.Labels.CVXPY_VAR,
+            'filter': Constants.Labels.FILTER_DICT_KEY,
+            'sub_problem_key': Constants.Labels.SUB_PROBLEM_KEY,
         }
 
         if variable.sets_parsing_hierarchy:
@@ -569,6 +569,88 @@ class Problem:
             self,
             force_overwrite: bool = False,
     ) -> None:
+
+        source = self.settings['model_settings_from']
+        problem_key = Constants.ConfigFiles.SETUP_INFO[2]
+        problem_structure = Constants.DefaultStructures.PROBLEM_STRUCTURE[1]
+
+        if self.symbolic_problem is not None:
+            if not force_overwrite:
+                self.logger.warning("Symbolic problem already loaded.")
+                user_input = input("Update symbolic problem? (y/[n]): ")
+
+                if user_input.lower() != 'y':
+                    self.logger.info("Symbolic problem NOT updated.")
+                    return
+            else:
+                self.logger.info("Symbolic problem updated.")
+
+        self.logger.debug(
+            f"Loading symbolic problem from '{source}' file.")
+
+        data = self.files.load_data_structure(
+            structure_key=problem_key,
+            source=source,
+            dir_path=self.paths['model_dir'],
+        )
+
+        invalid_entries = {}
+
+        if util.find_dict_depth(data) == 1:
+            invalid_entries = self.files.validate_data_structure(
+                data, problem_structure)
+
+        elif util.find_dict_depth(data) == 2:
+            invalid_entries = {
+                key: problems
+                for key, value in data.items()
+                if (
+                    problems := self.files.validate_data_structure(
+                        value, problem_structure
+                    )
+                )
+            }
+
+        else:
+            msg = "Invalid symbolic problem structure. " \
+                f"Check problem '{source}' file."
+            self.logger.error(msg)
+            raise exc.SettingsError(msg)
+
+        if invalid_entries:
+            self.logger.error(
+                f"Validation error report ===================================")
+            if self.settings['detailed_validation']:
+                for key, error_log in invalid_entries.items():
+                    self.logger.error(
+                        f"Validation error | {problem_key} | '{key}' | {error_log}")
+            else:
+                self.logger.error(
+                    f"Validation | {problem_key} | Entries: "
+                    f"{list(invalid_entries.keys())}")
+
+            msg = f"'{problem_key}' data validation not successful. " \
+                f"Check setup '{source}' file. "
+            if not self.settings['detailed_validation']:
+                msg += "Set 'detailed_validation=True' for more information."
+
+            self.logger.error(msg)
+            raise exc.SettingsError(msg)
+
+        if util.find_dict_depth(data) == 1:
+            self.symbolic_problem = DotDict(data)
+            self.logger.debug("Symbolic problem successfully loaded.")
+
+        elif util.find_dict_depth(data) == 2:
+            for key, problem in data.items():
+                self.symbolic_problem[key] = DotDict(problem)
+                self.logger.debug(
+                    f"Symbolic problem '{key}' successfully loaded.")
+
+    def load_symbolic_problem_from_file_bkp(
+            self,
+            force_overwrite: bool = False,
+    ) -> None:
         """
         Loads a symbolic problem from a specified file into the system. The 
         symbolic problem defines the mathematical expressions and constraints 
@@ -597,8 +679,8 @@ class Problem:
         """
         problem_file_name = Constants.ConfigFiles.SETUP_INFO[2] + '.yml'
         problem_keys = [
-            Constants.Headers.OBJECTIVE_HEADER,
-            Constants.Headers.CONSTRAINTS_HEADER,
+            Constants.Labels.OBJECTIVE,
+            Constants.Labels.CONSTRAINTS,
         ]
 
         if self.symbolic_problem is not None:
@@ -926,11 +1008,11 @@ class Problem:
             'problem' (the cvxpy Problem object), and 'status' (the solution status, initially set to None).
         """
         headers = {
-            'info': Constants.Headers.PROBLEM_INFO_HEADER,
-            'objective': Constants.Headers.OBJECTIVE_HEADER,
-            'constraints': Constants.Headers.CONSTRAINTS_HEADER,
-            'problem': Constants.Headers.PROBLEM_HEADER,
-            'status': Constants.Headers.PROBLEM_STATUS_HEADER,
+            'info': Constants.Labels.PROBLEM_INFO,
+            'objective': Constants.Labels.OBJECTIVE,
+            'constraints': Constants.Labels.CONSTRAINTS,
+            'problem': Constants.Labels.PROBLEM,
+            'status': Constants.Labels.PROBLEM_STATUS,
         }
 
         dict_to_unpivot = {}
@@ -1053,7 +1135,7 @@ class Problem:
                 variables.
         """
         allowed_variables = {}
-        cvxpy_var_header = Constants.Headers.CVXPY_VAR_HEADER
+        cvxpy_var_header = Constants.Labels.CVXPY_VAR
 
         for var_key, variable in variables_set_dict.items():
             variable: Variable
@@ -1398,7 +1480,7 @@ class Problem:
         for problem_num in problem_dataframe.index:
 
             problem_info: List[str] = problem_dataframe.at[
-                problem_num, Constants.Headers.PROBLEM_INFO_HEADER]
+                problem_num, Constants.Labels.PROBLEM_INFO]
 
             msg = "Solving numerical problem"
             if problem_name:
@@ -1408,7 +1490,7 @@ class Problem:
             self.logger.info(msg)
 
             numerical_problem: cp.Problem = problem_dataframe.at[
-                problem_num, Constants.Headers.PROBLEM_HEADER]
+                problem_num, Constants.Labels.PROBLEM]
 
             numerical_problem.solve(
                 solver=solver,
@@ -1417,7 +1499,7 @@ class Problem:
             )
 
             problem_dataframe.at[
-                problem_num, Constants.Headers.PROBLEM_STATUS_HEADER
+                problem_num, Constants.Labels.PROBLEM_STATUS
             ] = numerical_problem.status
 
             self.logger.debug(f"Problem status: '{numerical_problem.status}'")
@@ -1435,8 +1517,8 @@ class Problem:
             self.logger.warning(msg)
             raise exc.OperationalError(msg)
 
-        status_header = Constants.Headers.PROBLEM_STATUS_HEADER
-        info_header = Constants.Headers.PROBLEM_INFO_HEADER
+        status_header = Constants.Labels.PROBLEM_STATUS
+        info_header = Constants.Labels.PROBLEM_INFO
 
         if isinstance(self.numerical_problems, pd.DataFrame):
             problem_df = self.numerical_problems

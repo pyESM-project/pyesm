@@ -15,7 +15,6 @@ operational characteristics related to these entities.
 from pathlib import Path
 from typing import Dict, List, Optional
 
-from numpy import isin
 import pandas as pd
 import cvxpy as cp
 
@@ -66,8 +65,9 @@ class Index:
         self.settings = settings
         self.paths = paths
 
-        self.sets = self.load_and_validate_structure(data_structure_key=0)
-        self.data = self.load_and_validate_structure(data_structure_key=1)
+        structures = Constants.ConfigFiles.SETUP_INFO
+        self.sets = self.load_and_validate_structure(structures[0])
+        self.data = self.load_and_validate_structure(structures[1])
 
         self.check_data_coherence()
         self.data_tables_completion()
@@ -94,7 +94,7 @@ class Index:
                 dictionary if the required information is not available or applicable.
         """
         sets_split_problem_list = {}
-        name_header = Constants.Headers.NAME_HEADER
+        name_header = Constants.Labels.NAME
 
         for key, set_table in self.sets.items():
             set_table: SetTable
@@ -142,169 +142,63 @@ class Index:
         """
         return list(self.variables.keys()) if self.variables else []
 
-    def _load_structure(
-            self,
-            structure_key: int
-    ) -> Dict:
-
-        available_sources = Constants.ConfigFiles.AVAILABLE_SOURCES
-        source = self.settings['model_settings_from']
-        dir_path = self.paths['model_dir']
-
-        if source == available_sources[0]:
-            file_name = Constants.ConfigFiles.SETUP_INFO[structure_key] + '.yml'
-            data = self.files.load_file(file_name, dir_path)
-            if not data:
-                msg = f"File '{file_name}' is empty."
-                self.logger.error(msg)
-                raise exc.SettingsError(msg)
-
-            return data
-
-        elif source == available_sources[1]:
-            # modificare la struttura perchè sia come lo yml (metodo a parte?)
-            # return dict con struttura come yml
-            raise ValueError("Excel source not yet implemented.")
-
-        else:
-            msg = "Model settings source not recognized. Available sources: " \
-                f"{available_sources}."
-            self.logger.error(msg)
-            raise exc.SettingsError(msg)
-
-    def _validate_structure(
-            self,
-            data: Dict,
-            validation_structure: Dict,
-            path: str = '',
-    ) -> Dict[str, str]:
-
-        problems = {}
-        optional_label = Constants.DefaultStructures.OPTIONAL
-        any_label = Constants.DefaultStructures.ANY
-
-        for k_exp, v_exp in validation_structure.items():
-            current_path = f"{path}.{k_exp}" if path else k_exp
-
-            # generic keys are checked in the other for loop
-            if k_exp == any_label:
-                continue
-
-            # check if mandatory keys are missing
-            elif k_exp not in data:
-                if isinstance(v_exp, tuple) and v_exp[0] == optional_label:
-                    continue
-                problems[current_path] = f"Missing key-value pair."
-
-            # check values types and content
-            else:
-                value = data[k_exp]
-
-                if isinstance(v_exp, tuple) and optional_label in v_exp:
-                    expected_value = v_exp[1:]
-                else:
-                    expected_value = v_exp
-
-                if isinstance(expected_value, type):
-                    if not isinstance(value, expected_value):
-                        problems[current_path] = \
-                            f"Expected {expected_value}, got {type(value)}"
-                    if not value:
-                        problems[current_path] = "Empty value."
-                elif isinstance(expected_value, tuple):
-                    if all(isinstance(v, type) for v in expected_value):
-                        if not any(isinstance(value, v) for v in expected_value):
-                            problems[current_path] = \
-                                f"Expected {expected_value}, got {type(value)}"
-
-                # check for nested dictionaries
-                elif isinstance(expected_value, dict):
-                    if isinstance(value, dict):
-                        problems.update(
-                            self._validate_structure(
-                                value, expected_value, current_path)
-                        )
-                    else:
-                        problems[current_path] = \
-                            f"Expected dict, got {type(value).__name__}"
-
-                else:
-                    problems[current_path] = "Unexpected value."
-
-        for key, value in data.items():
-            current_path = f"{path}.{key}" if path else key
-
-            if key not in validation_structure:
-
-                # check for unexpected keys
-                if any_label not in validation_structure:
-                    problems[current_path] = "Unexpected key-value pair."
-
-                # check for nested dictionaries
-                else:
-                    if isinstance(validation_structure[any_label], tuple) \
-                            and validation_structure[any_label][0] == optional_label:
-                        expected_value = validation_structure[any_label][1]
-                    else:
-                        expected_value = validation_structure[any_label]
-
-                    if isinstance(value, dict):
-                        problems.update(
-                            self._validate_structure(
-                                value, expected_value, current_path)
-                        )
-
-        problems = util.remove_empty_items_from_dict(
-            problems, empty_values=[{}])
-
-        return problems
-
     def load_and_validate_structure(
             self,
-            data_structure_key: int,
+            data_structure_key: str,
     ) -> DotDict[str, SetTable | DataTable]:
 
-        source = self.settings['model_settings_from']
         structures = Constants.DefaultStructures
         config = Constants.ConfigFiles
 
-        structure_mapping = {
-            0: (SetTable, config.SETUP_INFO[0], structures.SET_STRUCTURE),
-            1: (DataTable, config.SETUP_INFO[1], structures.DATA_TABLE_STRUCTURE),
+        source = self.settings['model_settings_from']
+
+        structures_mapping = {
+            config.SETUP_INFO[0]: (SetTable, structures.SET_STRUCTURE[1]),
+            config.SETUP_INFO[1]: (DataTable, structures.DATA_TABLE_STRUCTURE[1]),
         }
 
-        if data_structure_key in structure_mapping:
-            object_class, object_source, validation_structure = \
-                structure_mapping[data_structure_key]
+        if data_structure_key in structures_mapping:
+            object_class, validation_structure = \
+                structures_mapping[data_structure_key]
         else:
             msg = "Data structure key not recognized. Available keys: " \
-                "0 (Sets), 1 (Data/Variables tables)."
+                f"{config.SETUP_INFO}."
             self.logger.error(msg)
             raise exc.SettingsError(msg)
 
         self.logger.debug(
-            f"Loading and validating '{object_source}' data structure "
+            f"Loading and validating '{data_structure_key}' data structure "
             f"from '{source}' source.")
 
-        data = self._load_structure(data_structure_key)
+        data = self.files.load_data_structure(
+            structure_key=data_structure_key,
+            source=source,
+            dir_path=self.paths['model_dir'],
+        )
 
         invalid_entries = {
             key: problems
             for key, value in data.items()
-            if (problems := self._validate_structure(value, validation_structure))
+            if (
+                problems := self.files.validate_data_structure(
+                    value, validation_structure
+                )
+            )
         }
 
         if invalid_entries:
             if self.settings['detailed_validation']:
+                self.logger.error(
+                    f"Validation error report ===================================")
                 for key, error_log in invalid_entries.items():
                     self.logger.error(
-                        f"Validation error | {object_source} | '{key}' | {error_log}")
+                        f"Validation error | {data_structure_key} | '{key}' | {error_log}")
             else:
                 self.logger.error(
-                    f"Validation | {object_source} | Entries: "
+                    f"Validation | {data_structure_key} | Entries: "
                     f"{list(invalid_entries.keys())}")
 
-            msg = f"'{object_source}' data validation not successful. " \
+            msg = f"'{data_structure_key}' data validation not successful. " \
                 f"Check setup '{source}' file. "
             if not self.settings['detailed_validation']:
                 msg += "Set 'detailed_validation=True' for more information."
@@ -313,12 +207,12 @@ class Index:
             raise exc.SettingsError(msg)
 
         validated_structure = DotDict({
-            key: object_class(logger=self.logger, **value)
+            key: object_class(logger=self.logger, key_name=key, **value)
             for key, value in data.items()
         })
 
         self.logger.info(
-            f"Data structure '{object_source}' loaded and validated "
+            f"Data structure '{data_structure_key}' loaded and validated "
             f"successfully from '{source}' source.")
 
         return validated_structure
@@ -438,7 +332,7 @@ class Index:
 
         for table in self.data.values():
             table: DataTable
-            set_headers_key = Constants.Headers.NAME_HEADER
+            set_headers_key = Constants.Labels.NAME
 
             table.table_headers = {}
             for set_key in table.coordinates:
@@ -453,7 +347,7 @@ class Index:
 
             table.table_headers = util.add_item_to_dict(
                 dictionary=table.table_headers,
-                item=Constants.Headers.ID_FIELD,
+                item=Constants.Labels.ID_FIELD,
                 position=0,
             )
             table.coordinates_headers = {
@@ -539,7 +433,7 @@ class Index:
             for key, value in related_table_headers.items():
                 table_header = value[0]
 
-                if key in Constants.Headers.ID_FIELD:
+                if key in Constants.Labels.ID_FIELD:
                     continue
                 if key == variable.shape_sets[0]:
                     rows[key] = table_header
@@ -837,15 +731,15 @@ class Index:
                 if not dim_set:
                     break
 
-                key_name = Constants.Headers.NAME_HEADER
-                key_aggregation = Constants.Headers.AGGREGATION_HEADER
+                name_label = Constants.Labels.NAME
+                aggregation_label = Constants.Labels.AGGREGATION
 
                 if dim_set.table_headers is not None:
                     name_header_filter = dim_set.table_headers.get(
-                        key_name, [None])[0]
+                        name_label, [None])[0]
 
                     aggregation_header_filter = dim_set.table_headers.get(
-                        key_aggregation, [None])[0]
+                        aggregation_label, [None])[0]
                 else:
                     name_header_filter = None
                     aggregation_header_filter = None
@@ -855,7 +749,8 @@ class Index:
                     self.logger.error(msg)
                     raise exc.MissingDataError(msg)
 
-                if key_aggregation in dim_set.table_headers:
+                if aggregation_label in dim_set.table_headers and \
+                        not all(dim_set.data[aggregation_header_filter].isna()):
                     set_items_agg_map = dim_set.data[[
                         name_header_filter, aggregation_header_filter]].copy()
                     set_items_agg_map.rename(
@@ -935,7 +830,7 @@ class Index:
                 when required, or any provided indices are out of bounds.
         """
 
-        variable_header = Constants.Headers.CVXPY_VAR_HEADER
+        variable_header = Constants.Labels.CVXPY_VAR
 
         if var_key not in self.variables:
             self.logger.warning(
