@@ -3,52 +3,26 @@
 # sets
 
 case:
-    symbol: c
-    table_name: _set_CASES
+    description: scenarios included in the model
     split_problem: True
-    table_structure:
-        name: c_Name
 
 years:
-    symbol: y
-    table_name: _set_YEARS
-    table_structure:
-        name: y_Name
-        filters:
-            0:
-                header: y_Category_1
-                values: [warm-up, run]
+    description: years in the modelling horizon
+    filters:
+        Category_1: [warm-up, run]
     
 technologies:
-    symbol: t
-    table_name: _set_TECHNOLOGIES
-    table_structure:
-        name: t_Name
-        filters:
-            0:
-                header: t_Category_1
-                values: [Supply, Demand]
-            1:
-                header: t_Category_2
-                values: [Non-Renewable, Renewable, Elon-Musk-Approved]
+    description: technologies
+    filters:
+        Category_1: [Supply, Demand]
+        Category_2: [Non-Renewable, Renewable, Elon-Musk-Approved]
 
 flows:
-    symbol: f
-    table_name: _set_FLOWS
-    table_structure:
-        name: f_Name
-        aggregation: f_agg_Name
-        filters: 
-            0:
-                header: f_Category_1
-                values: [Physical, Economic]
+    description: flows
+    filters: 
+        Category_1: [Physical, Economic]
 
 flows_agg:
-    symbol: f_agg
-    table_name: _set_FLOWS_AGG
-    table_structure:
-        name: f_agg_Name
-        filters: 
-            0:
-                header: f_agg_Category
-                values: [Physical, Economic]
+    description: aggregated flows (for rcot)
+    filters: 
+        Category_1: [Physical, Economic]

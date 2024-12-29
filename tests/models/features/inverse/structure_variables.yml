@@ -4,9 +4,9 @@
 # exogenous variables
 
 Technical_coeffs:
-    name: technical coefficients
+    description: technical coefficients
     type: exogenous
-    coordinates: [case, products, technologies]
+    coordinates: [cases, products, technologies]
     variables_info:
         A:
             products: 
@@ -18,9 +18,9 @@ Technical_coeffs:
 # endogenous variables
 
 Leontief_inverse_coeffs:
-    name: Leontief inverse coefficients
+    description: Leontief inverse coefficients
     type: endogenous
-    coordinates: [case, products, technologies]
+    coordinates: [cases, products, technologies]
     variables_info:
         L:
             products: 
@@ -33,7 +33,7 @@ Leontief_inverse_coeffs:
 # constants
 
 Constants:
-    name: constants variables
+    description: constants variables
     type: constant
     coordinates: [products, technologies]
     variables_info:

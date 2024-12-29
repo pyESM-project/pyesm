@@ -1,32 +1,13 @@
-# -----------------------------------------------------------------------------
-# sets
-
-# technology_mix:
-#     symbol: tm  # symbol of the set 
-#     table_name: _set_TECHS_MIX # name of the table of the set in the database
-#     split_problem: True # (optional) if the items of the set defines separate problems 
-#     table_structure:
-#         name: [tm_Names, TYPE] # header of set entries names in database set table
 
 resources:
-    symbol: r  
+    description: environmental transactions
     split_problem: True
-    table_name: _set_RESOURCES 
-    table_structure:
-        name: r_Names
+
 
 products:
-    symbol: p  
-    table_name: _set_PRODUCTS 
-    table_structure:
-        name: p_Names
+    description: products of the system
 
 product_data:
-    symbol: pd  
-    table_name: _set_PRODUCT_DATA 
-    table_structure:
-        name: pd_Names
-        filters:
-            0: 
-                header: pd_Category 
-                values: [energy_use_0, learning_rate, profit]
+    description: ancillary data
+    filters:
+        category: [energy_use_0, learning_rate, profit]

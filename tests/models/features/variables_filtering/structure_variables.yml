@@ -4,7 +4,7 @@
 # exogenous variables
 
 ex:
-    name: flow by tech variable, exogenous
+    description: flow by tech variable, exogenous
     type: exogenous
     coordinates: [case, years, technologies, flows]
     variables_info:
@@ -18,7 +18,7 @@ ex:
         ex_tf_y:
             years:
                 dim: intra
-                filters: {0: warm-up}
+                filters: {Category_1: warm-up}
             technologies: 
                 dim: rows
             flows:
@@ -27,21 +27,21 @@ ex:
         ex_tf_1:
             technologies: 
                 dim: rows
-                filters: {0: Supply}
+                filters: {Category_1: Supply}
             flows:
                 dim: cols
-                filters: {0: Physical}
+                filters: {Category_1: Physical}
         # filtering variable based on a double category
         ex_tf_2:
             technologies: 
                 dim: rows
-                filters: {0: Supply, 1: [Non-Renewable, Elon-Musk-Approved]}
+                filters: {Category_1: Supply, Category_2: [Non-Renewable, Elon-Musk-Approved]}
             flows:
                 dim: cols
-                filters: {0: Physical}
+                filters: {Category_1: Physical}
 
 ex_agg:
-    name: aggregated flow by tech variable, exogenous
+    description: aggregated flow by tech variable, exogenous
     type: exogenous
     coordinates: [case, years, technologies, flows_agg]
     variables_info:
@@ -49,10 +49,10 @@ ex_agg:
         ex_tf_agg:
             technologies: 
                 dim: rows
-                filters: {0: Supply, 1: [Non-Renewable, Elon-Musk-Approved]}
+                filters: {Category_1: Supply, Category_2: [Non-Renewable, Elon-Musk-Approved]}
             flows_agg:
                 dim: cols
-                filters: {0: Physical}
+                filters: {Category_1: Physical}
         
 
 
@@ -60,7 +60,7 @@ ex_agg:
 # endogenous variables
 
 en:
-    name: flow by tech variable, endogenous
+    description: flow by tech variable, endogenous
     type: endogenous
     coordinates: [case, years, technologies, flows]
     variables_info:
@@ -74,7 +74,7 @@ en:
         en_tf_y:
             years:
                 dim: intra
-                filters: {0: warm-up}
+                filters: {Category_1: warm-up}
             technologies: 
                 dim: rows
             flows:
@@ -83,22 +83,22 @@ en:
         en_tf_1:
             technologies: 
                 dim: rows
-                filters: {0: Supply}
+                filters: {Category_1: Supply}
             flows:
                 dim: cols
-                filters: {0: Physical}
+                filters: {Category_1: Physical}
         # filtering variable based on a double category
         en_tf_2:
             technologies: 
                 dim: rows
-                filters: {0: Supply, 1: [Non-Renewable, Elon-Musk-Approved]}
+                filters: {Category_1: Supply, Category_2: [Non-Renewable, Elon-Musk-Approved]}
             flows:
                 dim: cols
-                filters: {0: Physical}
+                filters: {Category_1: Physical}
             
 
 en_agg:
-    name: aggregated flow by tech variable, exogenous
+    description: aggregated flow by tech variable, exogenous
     type: endogenous
     coordinates: [case, years, technologies, flows_agg]
     variables_info:
@@ -106,7 +106,7 @@ en_agg:
         en_tf_agg:
             technologies: 
                 dim: rows
-                filters: {0: Supply, 1: [Non-Renewable, Elon-Musk-Approved]}
+                filters: {Category_1: Supply, Category_2: [Non-Renewable, Elon-Musk-Approved]}
             flows_agg:
                 dim: cols
-                filters: {0: Physical}
+                filters: {Category_1: Physical}

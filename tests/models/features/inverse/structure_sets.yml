@@ -1,21 +1,12 @@
 # -----------------------------------------------------------------------------
 # sets
 
-case:
-    symbol: c
-    table_name: _set_CASES
+cases:
+    description: cases of the problem
     split_problem: True
-    table_structure:
-        name: c_Name
 
 products:
-    symbol: p
-    table_name: _set_PRODUCTS
-    table_structure:
-        name: p_Name
+    description: products names
 
 technologies:
-    symbol: t
-    table_name: _set_TECHNOLOGIES
-    table_structure:
-        name: t_Name
+    description: technologies names

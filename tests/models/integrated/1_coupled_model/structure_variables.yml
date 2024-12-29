@@ -1,7 +1,7 @@
 # variables of the model
 
 x:
-    name: products supply
+    description: products supply
     type: 
         1: endogenous
         2: exogenous
@@ -12,7 +12,7 @@ x:
                 dim: cols 
 
 a:
-    name: energy use
+    description: energy use
     type: 
         1: exogenous
         2: endogenous
@@ -23,33 +23,33 @@ a:
                 dim: cols 
 
 products_data:
-    name: product data
+    description: product data
     type: exogenous
     coordinates: [products, product_data] 
     variables_info:
         c: 
             product_data:
                 dim: rows
-                filters: {0: profit}
+                filters: {category: profit}
             products: 
                 dim: cols 
         a_0: 
             product_data:
                 dim: rows
-                filters: {0: energy_use_0}
+                filters: {category: energy_use_0}
             products: 
                 dim: cols 
         lr:
             product_data:
                 dim: rows
-                filters: {0: learning_rate}
+                filters: {category: learning_rate}
             products: 
                 dim: cols 
 
 b:  
-    name: energy availability
+    description: energy availability
     type: exogenous
-    coordinates: [resources] 
+    coordinates: resources 
     variables_info:
         b: 
             

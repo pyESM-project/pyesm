@@ -4,7 +4,7 @@
 # exogenous variables
 
 Q:
-    name: demand by flow
+    description: demand by flow
     type: exogenous
     coordinates: [flows]
     variables_info:
@@ -14,14 +14,14 @@ Q:
         Q_h:
             flows: 
                 dim: cols
-                filters: {0: Hourly dispatched}
+                filters: {dispatch: Hourly dispatched}
 
 
 # -----------------------------------------------------------------------------
 # constants
 
 special_identity: 
-    name: special identity matrix
+    description: special identity matrix
     type: constant
     coordinates: [flows, flows_aggregated]
     variables_info:
@@ -35,13 +35,13 @@ special_identity:
             value: identity_rcot
             flows_aggregated:
                 dim: rows
-                filters: {0: Hourly dispatched}
+                filters: {dispatch: Hourly dispatched}
             flows:
                 dim: cols
-                filters: {0: Hourly dispatched}
+                filters: {dispatch: Hourly dispatched}
 
 lower_triangular_matrix:
-    name: lower triangular matrix
+    description: lower triangular matrix
     type: constant
     coordinates: [flows]
     variables_info:
@@ -53,10 +53,10 @@ lower_triangular_matrix:
             value: lower_triangular
             flows:
                 dim: rows
-                filters: {0: Hourly dispatched}
+                filters: {dispatch: Hourly dispatched}
 
 summation_vector:
-    name: sum vector
+    description: sum vector
     type: constant
     coordinates: [flows]
     variables_info:
@@ -69,7 +69,7 @@ summation_vector:
 # endogenous variables
 
 I_ff_exp:
-    name: special identity matrix, expected
+    description: special identity matrix, expected
     type: endogenous
     coordinates: [flows, flows_aggregated]
     variables_info:
@@ -81,13 +81,13 @@ I_ff_exp:
         I_ff_h_exp:
             flows_aggregated: 
                 dim: rows 
-                filters: {0: Hourly dispatched}
+                filters: {dispatch: Hourly dispatched}
             flows: 
                 dim: cols
-                filters: {0: Hourly dispatched}
+                filters: {dispatch: Hourly dispatched}
 
 T_sum:
-    name: sum of lower triangular matrix
+    description: sum of lower triangular matrix
     type: endogenous
     coordinates: [flows]
     variables_info:
@@ -96,7 +96,7 @@ T_sum:
                 dim: rows
 
 Q_agg:
-    name: demand by flow
+    description: demand by flow
     type: endogenous
     coordinates: [flows_aggregated]
     variables_info:
@@ -106,4 +106,4 @@ Q_agg:
         Q_agg_h:
             flows_aggregated: 
                 dim: rows 
-                filters: {0: Hourly dispatched}
+                filters: {dispatch: Hourly dispatched}

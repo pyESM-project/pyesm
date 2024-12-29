@@ -818,3 +818,140 @@ def test_remove_empty_items_from_dict():
     with pytest.raises(ValueError):
         remove_empty_items_from_dict(
             input_dict, empty_values=['not in default'])
+
+
+def test_pivot_dataframe_to_data_structure():
+
+    data = {
+        'set_structure': {
+            'set_key': ['resources', 'products', 'product_data'],
+            'description': ['environmental transactions', 'products of the system', 'ancillary data'],
+            'split_problem': ['TRUE', None, None],
+            'copy_from': [None, None, None],
+            'filters': [None, None, "{category: [energy_use_0, learning_rate, profit]}"]
+        },
+
+        'data_table_structure': {
+            'table_key': ['x', 'a', 'product_data', 'product_data', 'product_data', 'b'],
+            'description': [
+                'products supply',
+                'energy_use',
+                'product data',
+                'product data',
+                'product data',
+                'energy availability',
+            ],
+            'type': [
+                "1: 'endogenous', 2: 'exogenous'",
+                "1: 'endogenous', 2: 'exogenous'",
+                'exogenous',
+                'exogenous',
+                'exogenous',
+                'exogenous',
+            ],
+            'integer': [None, None, None, None, None, None],
+            'coordinates': [
+                'resources, products',
+                'resources, products',
+                'products, product_data',
+                'products, product_data',
+                'products, product_data',
+                'resources',
+            ],
+            'variables_info': ['x', 'a', 'c', 'a_0', 'lr', 'b'],
+            'value': [None, None, None, None, None, None],
+            'products': [
+                "dim: cols",
+                "dim: cols",
+                "dim: cols",
+                "dim: cols",
+                "dim: cols",
+                None,
+            ],
+            'resources': [None, None, None, None, None, None],
+            'product_data': [
+                None,
+                None,
+                "dim: rows, filters: {category: profit}",
+                "dim: rows, filters: {category: energy_use_0}",
+                "dim: rows, filters: {category: learning_rate}",
+                None,
+            ],
+        },
+        'problem_structure': {},
+    }
+
+    parameters = {
+        'set_structure': {'primary_key': 'set_key', 'secondary_key': None, 'merge_dict': None},
+        'data_table_structure': {'primary_key': 'table_key', 'secondary_key': 'variables_info', 'merge_dict': None},
+        'problem_structure': {'primary_key': 'problem_key', 'secondary_key': None, 'merge_dict': True},
+    }
+
+    expected_structure = {
+        'set_structure': {
+            'resources': {
+                'description': 'environmental transactions',
+                'split_problem': True
+            },
+            'products': {
+                'description': 'products of the system'
+            },
+            'product_data': {
+                'description': 'ancillary data',
+                'filters': {
+                    'category': ['energy_use_0', 'learning_rate', 'profit']
+                }
+            }
+        },
+        'data_table_structure': {
+            'x': {
+                'description': 'products supply',
+                'type': "{1: 'endogenous', 2: 'exogenous'}",
+                'coordinates': ['resources', 'products'],
+                'variables_info': {'x': {'products': {'dim': 'cols'}}}
+            },
+            'a': {
+                'description': 'energy use',
+                'type': {1: 'endogenous', 2: 'exogenous'},
+                'coordinates': ['resources', 'products'],
+                'variables_info': {'a': {'products': {'dim': 'cols'}}}
+            },
+            'c': {
+                'description': 'product data',
+                'type': 'exogenous',
+                'coordinates': ['products', 'product_data'],
+                'variables_info': {
+                    'c': {
+                        'product_data': {'dim': 'rows', 'filters': {'category': 'profit'}},
+                        'products': {'dim': 'cols'}
+                    },
+                    'a_0': {
+                        'product_data': {'dim': 'rows', 'filters': {'category': 'energy_use_0'}},
+                        'products': {'dim': 'cols'}
+                    },
+                    'lr': {
+                        'product_data': {'dim': 'rows', 'filters': {'category': 'learning_rate'}},
+                        'products': {'dim': 'cols'}
+                    }
+                },
+            },
+            'b': {
+                'description': 'energy availability',
+                'type': 'exogenous',
+                'coordinates': ['resources'],
+                'variables_info': {'b': {}},
+            },
+        },
+        'problem_structure': {}
+    }
+
+    for key, value in data.items():
+
+        structure = pivot_dataframe_to_data_structure(
+            data=pd.DataFrame(value),
+            primary_key=parameters[key].get('primary_key'),
+            secondary_key=parameters[key].get('secondary_key'),
+            merge_dict=parameters[key].get('merge_dict'),
+        )
+
+        assert structure == expected_structure[key]
