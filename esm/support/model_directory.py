@@ -50,9 +50,10 @@ def create_model_dir(
             )
 
     elif template_file_type == 'xlsx':
-        msg = "Excel template generation is not yet supported."
-        files.logger.error(msg)
-        raise NotImplementedError(msg)
+        for tab_name, structure_template in structure_mapping.items():
+            generate_xlsx_template(
+
+            )
 
     else:
         msg = f"Unsupported template file type '{template_file_type}'."
@@ -135,3 +136,7 @@ def generate_yaml_template(
             file.write('\n'.join(yaml_content))
     except IOError as e:
         raise IOError(f"Error writing to file '{file_name}': {e}") from e
+
+
+def generate_xlsx_template() -> None:
+    pass

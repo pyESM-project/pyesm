@@ -62,6 +62,10 @@ class Constants:
         OBJECTIVE = 'objective'
         CONSTRAINTS = 'expressions'
 
+        COORDINATES_KEY = 'coordinates'
+        VARIABLES_INFO_KEY = 'variables_info'
+        VALUE_KEY = 'value'
+
         GENERIC_FIELD_TYPE = 'TEXT'
         VALUES_FIELD = {'values': ['values', 'REAL']}
         ID_FIELD = {'id': ['id', 'INTEGER PRIMARY KEY']}
@@ -103,7 +107,7 @@ class Constants:
                 # if variables of the table are integers (default: False)
                 'integer': (OPTIONAL, bool),
                 # list of table coordinates (set_key symbols)
-                'coordinates': list,
+                'coordinates': (str, list),
                 # definition of the variables based on the same data table
                 'variables_info': {
                     # dictionary with keys as variables names and values as dict
@@ -136,11 +140,18 @@ class Constants:
             }
         )
 
+        XLSX_PIVOT_KEYS = {
+            'structure_sets': ('set_key', None),
+            'structure_variables': ('table_key', 'variables_info'),
+            'problem': ('problem_key', None),
+        }
+
     class SymbolicDefinitions:
         """Allowed constants and operators for symbolic problem definitions."""
         ALLOWED_DIMENSIONS = ['rows', 'cols', 'intra', 'inter']
         ALLOWED_VARIABLES_TYPES = ['constant', 'exogenous', 'endogenous']
         REGEX_PATTERN = r'\b[a-zA-Z_][a-zA-Z0-9_]*\b'
+        NONE_SYMBOLS = [None, 'nan', 'None', 'null', '', [], {}]
 
         ALLOWED_CONSTANTS = {
             'sum_vector': (np.ones, {}),

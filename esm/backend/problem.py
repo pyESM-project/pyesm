@@ -574,7 +574,7 @@ class Problem:
         problem_key = Constants.ConfigFiles.SETUP_INFO[2]
         problem_structure = Constants.DefaultStructures.PROBLEM_STRUCTURE[1]
 
-        if self.symbolic_problem is not None:
+        if self.symbolic_problem:
             if not force_overwrite:
                 self.logger.warning("Symbolic problem already loaded.")
                 user_input = input("Update symbolic problem? (y/[n]): ")
@@ -1298,8 +1298,9 @@ class Problem:
             raise exc.NumericalProblemError(msg) from e
 
         except NameError as msg:
-            self.logger.error(f'NameError: {msg}')
-            raise exc.NumericalProblemError(f'NameError: {msg}')
+            error = f'NameError in reading literal expression: {msg}'
+            self.logger.error(error)
+            raise exc.NumericalProblemError(error) from msg
 
         return local_vars['output']
 
