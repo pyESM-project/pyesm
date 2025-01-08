@@ -16,14 +16,15 @@ required for successful model operation, providing robust tools for data
 manipulation and validation.
 """
 
-from collections.abc import Iterable
 import pprint as pp
-from typing import Dict, List, Any, Literal, Optional, Tuple
-
 import itertools as it
 import pandas as pd
 
+from collections.abc import Iterable
 from copy import deepcopy
+from typing import Dict, List, Any, Literal, Optional, Tuple
+
+from esm.support import util_text
 
 
 def prettify(item: dict) -> None:
@@ -863,8 +864,8 @@ def calculate_values_difference(
 
 def remove_empty_items_from_dict(
         dictionary: Dict,
-        empty_values: List = [None, '', [], {}],
-):
+        empty_values: List = [None, 'nan', 'None', 'null', '', 'NaN', [], {}],
+) -> Dict:
     """
     Recursively removes keys with empty values from a dictionary.
 
@@ -877,29 +878,128 @@ def remove_empty_items_from_dict(
     Raises:
         TypeError: If the passed argument is not a dictionary.
     """
+    empty_values_list = [None, 'nan', 'None', 'null', '', 'NaN', [], {}]
+
     if not isinstance(dictionary, dict):
         raise TypeError(
             "Passed argument must be a dictionary. "
             f"{type(dictionary).__name__} was passed instead")
 
-    if not [value for value in empty_values if value in (None, '', [], {})]:
+    if not [value for value in empty_values if value in empty_values_list]:
         raise ValueError(
             "Passed empty_values tuple must include at least one type of the "
-            "default empty values (None, '', [], {}).")
+            f"default empty values {empty_values_list}.")
 
     def _remove_items(d: Dict) -> Dict:
         cleaned_dict = {}
 
         for key, value in d.items():
-
             if isinstance(value, dict):
                 nested = _remove_items(value)
                 if nested:
                     cleaned_dict[key] = nested
-
             elif value not in empty_values:
                 cleaned_dict[key] = value
 
         return cleaned_dict
 
     return _remove_items(dictionary)
+
+
+def merge_dicts(dicts_list: List[Dict]) -> Dict:
+    """
+    Merge a list of dictionaries into a single dictionary. If a key appears in 
+    multiple dictionaries, its values are combined into a list.
+
+    Args:
+        dicts_list (List[Dict]): A list of dictionaries to merge.
+
+    Returns:
+        Dict: A single dictionary with merged keys and values.
+    """
+    merged = {}
+
+    for d in dicts_list:
+        if d is None:
+            d = {}
+
+        for key, value in d.items():
+            if value is not None:
+                if key in merged:
+                    if isinstance(merged[key], list):
+                        merged[key].append(value)
+                    else:
+                        merged[key] = [merged[key], value]
+                else:
+                    if not isinstance(value, list):
+                        merged[key] = list([value])
+                    else:
+                        merged[key] = value
+
+    return merged
+
+
+def pivot_dataframe_to_data_structure(
+    data: pd.DataFrame,
+    primary_key: Optional[str | int] = None,
+    secondary_key: Optional[str | int] = None,
+    merge_dict: bool = False,
+) -> dict:
+
+    data_structure = {}
+
+    for _, row in data.iterrows():
+        if primary_key not in data.columns:
+            raise ValueError(
+                f"Primary key '{primary_key}' not found in DataFrame columns.")
+
+        if not primary_key:
+            primary_key = data.columns[0]
+
+        key = row[primary_key]
+        if key not in data_structure:
+            data_structure[key] = {}
+
+        inner_dict = {}
+        for column in data.columns:
+            if column == primary_key:
+                continue
+
+            if column == secondary_key:
+                break
+
+            value = row[column]
+            inner_dict[column] = util_text.process_str(value)
+
+        if merge_dict:
+            data_structure[key] = merge_dicts(
+                [data_structure[key], inner_dict])
+        else:
+            data_structure[key] = inner_dict
+
+    if secondary_key:
+        if secondary_key not in data.columns:
+            raise ValueError(
+                f"Secondary key '{secondary_key}' not found in DataFrame columns.")
+
+        secondary_key_index = data.columns.get_loc(secondary_key)
+        secondary_keys_list = data.columns[secondary_key_index:]
+
+        for _, row in data.iterrows():
+            outern_key = row[primary_key]
+            inner_key = row[secondary_key]
+
+            data_structure[outern_key].setdefault(secondary_key, {})
+
+            inner_dict = {}
+
+            for column in secondary_keys_list:
+                if column == secondary_key:
+                    continue
+
+                value = row[column]
+                inner_dict[column] = util_text.process_str(value)
+
+            data_structure[outern_key][secondary_key][inner_key] = inner_dict
+
+    return data_structure
