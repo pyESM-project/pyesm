@@ -18,7 +18,6 @@ from typing import Any, Dict, Iterator, List, Optional, Tuple
 import cvxpy as cp
 import pandas as pd
 
-from esm.constants import Constants
 from esm.log_exc import exceptions as exc
 from esm.log_exc.logger import Logger
 from esm.support import util
@@ -81,8 +80,8 @@ class DataTable:
         self.coordinates: Optional[list] = None
         self.variables_info: Optional[Dict[str, Any]] = None
 
-        for key, value in table_info.items():
-            setattr(self, key, value)
+        self.fetch_attributes(table_info)
+        self.fix_coordinates_type()
 
         self.coordinates_headers: Dict[str, str] = {}
         self.coordinates_values: Dict[str, Any] = {}
@@ -127,6 +126,22 @@ class DataTable:
             msg = f"Lenght of data table '{self.name}' unknown."
             self.logger.error(msg)
             raise exc.MissingDataError(msg)
+
+    def fetch_attributes(self, table_info: Dict[str, Any]) -> None:
+
+        for key, value in table_info.items():
+            if value is not None:
+                setattr(self, key, value)
+
+    def fix_coordinates_type(self) -> None:
+        """
+        Ensures that the coordinates attribute is a list of strings. If the
+        coordinates attribute is a string, it is converted to a list with the
+        string as the only element.
+        """
+        if self.coordinates:
+            if isinstance(self.coordinates, str):
+                self.coordinates = [self.coordinates]
 
     def generate_coordinates_dataframes(
             self,

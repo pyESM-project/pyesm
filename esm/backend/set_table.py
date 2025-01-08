@@ -201,7 +201,7 @@ class SetTable:
         aggregation_header = Constants.Labels.AGGREGATION
 
         for key, value in set_info.items():
-            if key != filters_header:
+            if key != filters_header and value is not None:
                 setattr(self, key, value)
 
         self.table_structure[name_header] = self.name + col_name_suffix
@@ -214,11 +214,12 @@ class SetTable:
             self.table_structure[filters_header] = {}
             filters_info: dict = set_info[filters_header]
 
-            for filter_key, filter_values in filters_info.items():
-                self.table_structure[filters_header][filter_key] = {
-                    'header': self.name + '_' + filter_key,
-                    'values': filter_values
-                }
+            if filters_info:
+                for filter_key, filter_values in filters_info.items():
+                    self.table_structure[filters_header][filter_key] = {
+                        'header': self.name + '_' + filter_key,
+                        'values': filter_values
+                    }
 
     def fetch_headers_and_filters(self) -> None:
         """

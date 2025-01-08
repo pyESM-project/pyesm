@@ -88,7 +88,7 @@ class Variable:
     def __init__(
             self,
             logger: Logger,
-            **kwargs,
+            **variable_info,
     ) -> None:
         """
         Initializes a new instance of the Variable class with optional settings 
@@ -115,10 +115,8 @@ class Variable:
         self.related_dims_map: Optional[pd.DataFrame] = None
         self.var_info: Optional[Dict[str, Any]] = None
 
-        for key, value in kwargs.items():
-            setattr(self, key, value)
-
-        self._rearrange_var_info()
+        self.fetch_attributes(variable_info)
+        self.rearrange_var_info()
 
         self.coordinates_info: Dict[str, Any] = {}
         self.coordinates: Dict[str, Any] = {}
@@ -138,7 +136,13 @@ class Variable:
             if key not in ('data', 'logger'):
                 yield key, value
 
-    def _rearrange_var_info(self) -> None:
+    def fetch_attributes(self, variable_info: Dict[str, Any]) -> None:
+
+        for key, value in variable_info.items():
+            if value is not None:
+                setattr(self, key, value)
+
+    def rearrange_var_info(self) -> None:
         """
         Rearranges the information from .yaml variables file (var_info attribute) 
         to the corresponding attributes of the Variable class. This method is
