@@ -12,6 +12,8 @@ in model setups, ensuring data integrity and ease of data manipulation across
 various components of the application.
 """
 
+from ast import Constant
+from types import NoneType
 from typing import List, Dict, Any, Literal, Optional
 from pathlib import Path
 
@@ -589,6 +591,7 @@ class FileManager:
             excel_file_name: str,
             excel_file_dir_path: Path | str,
             tab_name: str = None,
+            all_str_types: bool = True,
     ) -> pd.DataFrame:
         """
         Reads a specific tab from an Excel file and returns the data as a 
@@ -632,15 +635,19 @@ class FileManager:
                 self.logger.error(msg)
                 raise ValueError(msg)
 
-        self.logger.debug(f"Excel tab '{tab_name}' loaded.")
-        return pd.read_excel(file_path, sheet_name=tab_name)
+        dataframe = xlsx_file.parse(tab_name)
+        dataframe = dataframe.astype(object).where(pd.notna(dataframe), None)
+
+        self.logger.debug(
+            f"Excel tab '{tab_name}' loaded from '{excel_file_name}'.")
+
+        return dataframe
 
     def load_data_structure(
             self,
             structure_key: str,
             source: str,
             dir_path: Path | str,
-
     ) -> Dict:
 
         available_sources = Constants.ConfigFiles.AVAILABLE_SOURCES
@@ -652,23 +659,40 @@ class FileManager:
         if source == 'yml':
             file_name = structure_key + '.yml'
             data = self.load_file(file_name, dir_path)
+
             if not data:
                 msg = f"File '{file_name}' is empty."
                 self.logger.error(msg)
                 raise exc.SettingsError(msg)
 
-            return data
-
         elif source == 'xlsx':
-            msg = "Excel data source input is not yet supported."
-            self.logger.error(msg)
-            raise NotImplementedError(msg)
+            file_name = Constants.ConfigFiles.SETUP_XLSX_FILE
+            raw_data = self.excel_tab_to_dataframe(
+                file_name, dir_path, structure_key)
+
+            if raw_data.empty:
+                msg = f"Excel tab '{structure_key}' is empty."
+                self.logger.error(msg)
+                raise exc.SettingsError(msg)
+
+            data_pivot_keys = Constants.DefaultStructures.XLSX_PIVOT_KEYS
+            merge_dict = True if \
+                structure_key == Constants.ConfigFiles.SETUP_INFO[2] else False
+
+            data = util.pivot_dataframe_to_data_structure(
+                data=raw_data,
+                primary_key=data_pivot_keys[structure_key][0],
+                secondary_key=data_pivot_keys[structure_key][1],
+                merge_dict=merge_dict,
+            )
 
         else:
             msg = "Model settings source not recognized. Available sources: " \
                 f"{available_sources}."
             self.logger.error(msg)
             raise exc.SettingsError(msg)
+
+        return data
 
     def validate_data_structure(
             self,
@@ -684,36 +708,42 @@ class FileManager:
         for k_exp, v_exp in validation_structure.items():
             current_path = f"{path}.{k_exp}" if path else k_exp
 
+            # check for keys and related values
+            if isinstance(v_exp, tuple) and v_exp[0] == optional_label:
+                optional = True
+                expected_value = v_exp[1:]
+            else:
+                optional = False
+                expected_value = v_exp
+
             # generic keys are checked in the other for loop
             if k_exp == any_label:
                 continue
 
             # check if mandatory keys are missing
             elif k_exp not in data:
-                if isinstance(v_exp, tuple) and v_exp[0] == optional_label:
+                if optional:
                     continue
                 problems[current_path] = f"Missing key-value pair."
 
-            # check values types and content
+            # check values types and content for mandatory keys
             else:
                 value = data[k_exp]
 
-                if isinstance(v_exp, tuple) and optional_label in v_exp:
-                    expected_value = v_exp[1:]
-                else:
-                    expected_value = v_exp
-
                 if isinstance(expected_value, type):
-                    if not isinstance(value, expected_value):
+                    if not isinstance(value, expected_value | NoneType):
                         problems[current_path] = \
                             f"Expected {expected_value}, got {type(value)}"
-                    if not value:
+                    if not optional and not value:
                         problems[current_path] = "Empty value."
+
                 elif isinstance(expected_value, tuple):
                     if all(isinstance(v, type) for v in expected_value):
-                        if not any(isinstance(value, v) for v in expected_value):
+                        if not any(isinstance(value, v | NoneType) for v in expected_value):
                             problems[current_path] = \
                                 f"Expected {expected_value}, got {type(value)}"
+                        if not optional and not value:
+                            problems[current_path] = "Empty value."
 
                 # check for nested dictionaries
                 elif isinstance(expected_value, dict):

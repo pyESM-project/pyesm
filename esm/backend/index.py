@@ -218,9 +218,14 @@ class Index:
         return validated_structure
 
     def check_data_coherence(self) -> None:
-        allowed_types = Constants.SymbolicDefinitions.ALLOWED_VARIABLES_TYPES
+        allowed_var_types = Constants.SymbolicDefinitions.ALLOWED_VARIABLES_TYPES
         allowed_constants = Constants.SymbolicDefinitions.ALLOWED_CONSTANTS.keys()
         allowed_dims = Constants.SymbolicDefinitions.ALLOWED_DIMENSIONS
+
+        coordinates_key = Constants.Labels.COORDINATES_KEY
+        filters_key = Constants.Labels.FILTERS
+        variables_info_key = Constants.Labels.VARIABLES_INFO_KEY
+        value_key = Constants.Labels.VALUE_KEY
 
         problems = {}
 
@@ -233,7 +238,7 @@ class Index:
             else:
                 table_type = [data_table.type]
 
-            if not all(type in allowed_types for type in table_type):
+            if not all(type in allowed_var_types for type in table_type):
                 problems[table_key] = f"Variable type not allowed."
 
             # coordinates in data table must be coherent with sets
@@ -242,26 +247,30 @@ class Index:
                 if coord not in self.sets
             ]
             if invalid_coordinates:
-                path = f"{table_key}.coordinates"
+                path = f"{table_key}.{coordinates_key}"
                 problems[path] = f"Invalid coordinates: {invalid_coordinates}"
 
             # for each variable in data table
             for var_key, var_info in data_table.variables_info.items():
-                var_info: dict
+                var_info: dict | None
 
                 # variable can be defined without specifying dimensions
-                # (will be parsed as scalar)
+                # (will be parsed as scalars)
                 if not var_info:
                     continue
 
-                path = f"{table_key}.variables_info.{var_key}"
+                path = f"{table_key}.{variables_info_key}.{var_key}"
 
                 for property_key, property_value in var_info.items():
 
+                    # if there are no values to be parsed, continue
+                    if not property_value:
+                        continue
+
                     # value field must be allowed
-                    if property_key == 'value':
-                        if property_value not in allowed_constants:
-                            problems[f"{path}.value"] = \
+                    elif property_key == value_key:
+                        if property_value and property_value not in allowed_constants:
+                            problems[f"{path}.{value_key}"] = \
                                 f"Constant type '{property_value}' not allowed."
 
                     # other properties must be allowed coordinates
@@ -269,7 +278,7 @@ class Index:
                         problems[path] = f"Coordinate '{property_key}' not found in coordinates."
 
                     # for each var coordinate
-                    if property_key in data_table.coordinates \
+                    elif property_key in data_table.coordinates \
                             and isinstance(property_value, dict):
 
                         # check if dim is allowed
@@ -280,11 +289,11 @@ class Index:
                                     f"dimension '{property_value['dim']}' not allowed."
 
                         # check if filters are allowed
-                        if 'filters' in property_value:
-                            var_filters = dict(property_value['filters'])
+                        if filters_key in property_value:
+                            var_filters = dict(property_value[filters_key])
                             set_filters = {
                                 key: list(value['values']) for key, value
-                                in self.sets[property_key].table_structure['filters'].items()
+                                in self.sets[property_key].table_structure[filters_key].items()
                             }
 
                             for filter_key, filter_value in var_filters.items():
@@ -292,7 +301,7 @@ class Index:
                                     filter_value = [filter_value]
 
                                 if filter_key not in set_filters:
-                                    problems[f"{path}.filters.{filter_key}"] = \
+                                    problems[f"{path}.{filters_key}.{filter_key}"] = \
                                         f"Filter '{filter_key}' not found in available " \
                                         f"'{property_key}' set filters."
 
