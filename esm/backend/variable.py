@@ -176,6 +176,12 @@ class Variable:
             elif dimension == 'cols':
                 self.cols = dim_info
 
+        # cleanup var_info
+        self.var_info = {
+            key: value for key, value in self.var_info.items()
+            if value
+        }
+
     @property
     def shape_sets(self) -> List[str | int]:
         """
