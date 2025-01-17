@@ -947,16 +947,15 @@ def pivot_dataframe_to_data_structure(
 ) -> dict:
 
     data_structure = {}
+    primary_key = primary_key or data.columns[0]
+
+    if primary_key not in data.columns:
+        raise ValueError(
+            f"Primary key '{primary_key}' not found in DataFrame columns.")
 
     for _, row in data.iterrows():
-        if primary_key not in data.columns:
-            raise ValueError(
-                f"Primary key '{primary_key}' not found in DataFrame columns.")
-
-        if not primary_key:
-            primary_key = data.columns[0]
-
         key = row[primary_key]
+
         if key not in data_structure:
             data_structure[key] = {}
 
@@ -969,7 +968,8 @@ def pivot_dataframe_to_data_structure(
                 break
 
             value = row[column]
-            inner_dict[column] = util_text.process_str(value)
+            if value:
+                inner_dict[column] = util_text.process_str(value)
 
         if merge_dict:
             data_structure[key] = merge_dicts(
@@ -998,8 +998,12 @@ def pivot_dataframe_to_data_structure(
                     continue
 
                 value = row[column]
-                inner_dict[column] = util_text.process_str(value)
+                if value:
+                    inner_dict[column] = util_text.process_str(value)
 
             data_structure[outern_key][secondary_key][inner_key] = inner_dict
+
+    if None in data_structure:
+        return data_structure[None]
 
     return data_structure
