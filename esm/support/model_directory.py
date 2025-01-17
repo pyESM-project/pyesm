@@ -10,8 +10,8 @@ def create_model_dir(
     model_dir_name: str,
     main_dir_path: str,
     force_overwrite: bool = False,
+    export_tutorial: bool = True,
     template_file_type: str = 'yml',
-    export_tutorial: bool = False,
 ) -> None:
 
     files = FileManager(Logger())
@@ -31,16 +31,16 @@ def create_model_dir(
 
     files.create_dir(model_dir_path, force_overwrite)
 
-    structure_name = Constants.ConfigFiles.SETUP_INFO
-    structures = Constants.DefaultStructures
-
-    structure_mapping = {
-        structure_name[0]: structures.SET_STRUCTURE,
-        structure_name[1]: structures.DATA_TABLE_STRUCTURE,
-        structure_name[2]: structures.PROBLEM_STRUCTURE,
-    }
-
     if template_file_type == 'yml':
+        structure_name = Constants.ConfigFiles.SETUP_INFO
+        structures = Constants.DefaultStructures
+
+        structure_mapping = {
+            structure_name[0]: structures.SET_STRUCTURE,
+            structure_name[1]: structures.DATA_TABLE_STRUCTURE,
+            structure_name[2]: structures.PROBLEM_STRUCTURE,
+        }
+
         for file_name, structure_template in structure_mapping.items():
             generate_yaml_template(
                 structure=structure_template[1],
@@ -50,10 +50,14 @@ def create_model_dir(
             )
 
     elif template_file_type == 'xlsx':
-        for tab_name, structure_template in structure_mapping.items():
-            generate_xlsx_template(
+        structure_mapping = Constants.DefaultStructures.XLSX_TEMPLATE_COLUMNS
+        template_file_name = Constants.ConfigFiles.SETUP_XLSX_FILE
 
-            )
+        files.dict_to_excel_headers(
+            dict_name=structure_mapping,
+            excel_dir_path=model_dir_path,
+            excel_file_name=template_file_name,
+        )
 
     else:
         msg = f"Unsupported template file type '{template_file_type}'."
@@ -63,7 +67,7 @@ def create_model_dir(
     if export_tutorial:
         file_name = Constants.ConfigFiles.TUTORIAL_FILE_NAME
         files.copy_file_to_destination(
-            path_source=Constants.ConfigFiles.DEFAULT_MODELS_DIR_PATH,
+            path_source='',
             path_destination=model_dir_path,
             file_name=file_name,
             file_new_name=file_name,
@@ -136,7 +140,3 @@ def generate_yaml_template(
             file.write('\n'.join(yaml_content))
     except IOError as e:
         raise IOError(f"Error writing to file '{file_name}': {e}") from e
-
-
-def generate_xlsx_template() -> None:
-    pass

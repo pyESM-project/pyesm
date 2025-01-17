@@ -45,8 +45,8 @@ class Constants:
         DATA_FILES_EXTENSION = '.xlsx'
         SQLITE_DATABASE_FILE = 'database.db'
         SQLITE_DATABASE_FILE_TEST = 'database_expected.db'
-        TUTORIAL_FILE_NAME = 'tutorial.ipynb'
-        DEFAULT_MODELS_DIR_PATH = 'default'
+        TUTORIAL_FILE_NAME = 'API_usage_guide.ipynb'
+        TEMPLATES_DIR = 'default'
 
     class Labels:
         """Standard headers and field names."""
@@ -146,6 +146,12 @@ class Constants:
             'structure_sets': ('set_key', None),
             'structure_variables': ('table_key', 'variables_info'),
             'problem': ('problem_key', None),
+        }
+
+        XLSX_TEMPLATE_COLUMNS = {
+            'structure_sets': ['set_key', *SET_STRUCTURE[1].keys()],
+            'structure_variables': ['table_key', *DATA_TABLE_STRUCTURE[1].keys(), 'set_keys ...'],
+            'problem': ['problem_key', *PROBLEM_STRUCTURE[1].keys()],
         }
 
     class SymbolicDefinitions:
