@@ -100,7 +100,7 @@ class Constants:
             'table_key:',
             {
                 # metadata
-                'description': str,
+                'description': (OPTIONAL, str),
                 # ALLOWED_VARIABLES_TYPES (or dictionary with keys as problem
                 # name and corresponding values as allowed types)
                 'type': (str, dict),
@@ -137,6 +137,8 @@ class Constants:
                 'objective': (OPTIONAL, list),
                 # definition of additional expressions (equalities/inequalities)
                 'expressions': list,
+                # metadata
+                'description': (OPTIONAL, list),
             }
         )
 
