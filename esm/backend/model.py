@@ -107,7 +107,6 @@ class Model:
             log_format=log_format,
         )
 
-        self.logger.debug(f"'{self}' object initialization...")
         self.logger.info(f"Generating '{model_dir_name}' model instance.")
 
         self.files = FileManager(logger=self.logger)
@@ -146,7 +145,7 @@ class Model:
             self.load_model_coordinates()
             self.initialize_problems()
 
-        self.logger.debug(f"'{self}' object initialized.")
+        self.logger.info(f"Model '{model_dir_name}' successfully generated.")
 
     @property
     def sets(self) -> List[str]:
@@ -208,8 +207,9 @@ class Model:
             dir_path=self.paths['model_dir'],
             files_names_list=setup_files,
         ):
-            self.logger.info(
-                f"Model directory and setup '{files_type}' file/s exist.")
+            if not self.settings['use_existing_data']:
+                self.logger.warning(
+                    f"Model directory and setup '{files_type}' file/s exist.")
         else:
             msg = f"Model directory or setup '{files_type}' file/s missing."
             self.logger.error(msg)
@@ -256,6 +256,7 @@ class Model:
         self.core.index.load_coordinates_to_data_index()
         self.core.index.load_all_coordinates_to_variables_index()
         self.core.index.filter_coordinates_in_variables_index()
+        self.core.index.check_variables_coherence()
         self.core.index.map_vars_aggregated_dims()
 
         if fetch_foreign_keys:
@@ -361,14 +362,14 @@ class Model:
             None
         """
         self.logger.info(
-            'Loading symbolic problem, initializing numerical problem.')
+            "Loading and validating symbolic problem, initializing "
+            "numerical problem.")
 
-        self.core.initialize_problems_variables()
-        self.core.data_to_cvxpy_exogenous_vars(allow_none_values)
-        self.core.define_mathematical_problems(force_overwrite)
+        self.core.load_and_validate_symbolic_problem(force_overwrite)
+        self.core.generate_numerical_problem(
+            allow_none_values, force_overwrite)
 
-        self.logger.info(
-            'Symbolic problem loaded, numerical problem initialized.')
+        self.logger.info('Numerical problem successfully initialized.')
 
     def run_model(
         self,

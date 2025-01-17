@@ -59,7 +59,6 @@ class Index:
         Initializes the Index object, loads sets, data tables, and variables.
         """
         self.logger = logger.get_child(__name__)
-        self.logger.debug("Object initialization...")
 
         self.files = files
         self.settings = settings
@@ -72,10 +71,8 @@ class Index:
         self.check_data_coherence()
         self.data_tables_completion()
 
-        self.variables: DotDict[str, Variable] = self.fetch_vars_data()
+        self.variables: DotDict[str, Variable] = self.generate_variables()
         self.fetch_vars_coordinates_info()
-
-        self.logger.debug("Object initialized.")
 
     def __repr__(self):
         class_name = type(self).__name__
@@ -211,10 +208,6 @@ class Index:
             for key, value in data.items()
         })
 
-        self.logger.info(
-            f"Data structure '{data_structure_key}' loaded and validated "
-            f"successfully from '{source}' source.")
-
         return validated_structure
 
     def check_data_coherence(self) -> None:
@@ -331,9 +324,6 @@ class Index:
             self.logger.error(msg)
             raise exc.SettingsError(msg)
 
-        self.logger.info(
-            f"Sets and Data tables information succesfully validated.")
-
     def data_tables_completion(self) -> None:
 
         self.logger.debug(
@@ -364,7 +354,7 @@ class Index:
                 if key in table.coordinates
             }
 
-    def fetch_vars_data(self) -> DotDict[str, Variable]:
+    def generate_variables(self) -> DotDict[str, Variable]:
         """
         Fetches and validates variable information from all loaded data tables,
         generating 'Variable' objects for each valid entry.
@@ -381,7 +371,7 @@ class Index:
                 failure.
         """
         self.logger.debug(
-            "Fetching and validating variables data, generating "
+            "Fetching and validating variables from data tables, generating "
             f"'{Variable.__name__}' objects.")
 
         variables_info = DotDict({})
@@ -460,6 +450,52 @@ class Index:
                 'intra': intra,
                 'inter': inter,
             }
+
+    def check_variables_coherence(self) -> None:
+        """Various checks in how variables have defined. For the moment only
+        checks if the variable coordinates are present for all dimensions.
+        """
+        self.logger.debug(f"Validating variables coherence with coordinates.")
+
+        problems = {}
+
+        for var_key, variable in self.variables.items():
+            variable: Variable
+
+            # if variable coordinates are defined for any dimension, their values
+            # must be not empty, otherwise the variable will have no dimensions.
+            for dimension, coordinates in variable.coordinates.items():
+                if not coordinates:
+                    continue
+
+                for coord_key, coord_list in coordinates.items():
+                    if not coord_list:
+                        path = f"{var_key}.coordinates.{dimension}"
+                        problems[path] = "Empty list of coordinates for " \
+                            f"'{coord_key}' set. Check related sets and filters."
+
+            # other checks can be added
+            # ...
+
+        if problems:
+            if self.settings['detailed_validation']:
+                self.logger.error(
+                    f"Validation error report ===================================")
+                for key, error_log in problems.items():
+                    self.logger.error(
+                        f"Variables coherence check | {key} | {error_log}")
+            else:
+                self.logger.error(
+                    f"Variables coherence error | Entries: "
+                    f"{list(problems.keys())}")
+
+            msg = "Variables coherence check not successful. " \
+                "Check setup files and sets information."
+            if not self.settings['detailed_validation']:
+                msg += "Set 'detailed_validation=True' for more information."
+
+            self.logger.error(msg)
+            raise exc.SettingsError(msg)
 
     def fetch_foreign_keys_to_data_tables(self) -> None:
         """

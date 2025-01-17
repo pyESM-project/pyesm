@@ -87,7 +87,6 @@ class Core:
                 with the provided logger, files, paths, and settings.
         """
         self.logger = logger.get_child(__name__)
-        self.logger.debug(f"'{self}' object initialization...")
 
         self.files = files
         self.settings = settings
@@ -122,8 +121,6 @@ class Core:
             settings=self.settings,
             index=self.index
         )
-
-        self.logger.debug(f"'{self}' initialized.")
 
     def __repr__(self):
         class_name = type(self).__name__
@@ -164,6 +161,7 @@ class Core:
         # generate dataframes and cvxpy var for endogenous data tables
         # and for variables whth type defined by problem linking logic
         for data_table_key, data_table in self.index.data.items():
+            data_table: DataTable
 
             if data_table.type == 'endogenous' or \
                     isinstance(data_table.type, dict):
@@ -208,6 +206,7 @@ class Core:
             "Generating data structures for all variables and constants.")
 
         for var_key, variable in self.index.variables.items():
+            variable: Variable
 
             # for constants, values are directly generated (no dataframes needed)
             if variable.type == 'constant':
@@ -242,120 +241,6 @@ class Core:
                     f"types: {Constants.SymbolicDefinitions.ALLOWED_VARIABLES_TYPES}"
                 self.logger.error(msg)
                 raise exc.SettingsError(msg)
-
-    def define_mathematical_problems(
-            self,
-            force_overwrite: bool = False,
-    ) -> None:
-        """
-        Defines and initializes numerical problems based on the loaded symbolic 
-        definitions.
-        This method loads the symbolic problem from a file and generates numerical 
-        problems based on the symbolic definitions. The method can optionally 
-        overwrite existing problem definitions.
-
-        Args:
-            force_overwrite (bool, optional): If True, forces the redefinition 
-                of problems even if they already exist. Defaults to False.
-
-        Returns:
-            None
-
-        Notes:
-            The method logs information about the problem definition process.
-            The symbolic problem is loaded using the 'load_symbolic_problem_from_file' 
-                method of the Problem instance.
-            The numerical problems are generated using the 'generate_numerical_problems' 
-                method of the Problem instance.
-        """
-        self.logger.debug(
-            "Load symbolic problem, initialize dataframes with cvxpy problem.")
-
-        self.problem.load_symbolic_problem_from_file(force_overwrite)
-        self.problem.generate_numerical_problems(force_overwrite)
-
-    def solve_numerical_problems(
-            self,
-            solver: str,
-            verbose: bool,
-            integrated_problems: bool,
-            force_overwrite: bool,
-            maximum_iterations: Optional[int] = None,
-            numerical_tolerance: Optional[float] = None,
-            **kwargs: Any,
-    ) -> None:
-        """
-        Solves all defined numerical problems using the specified solver and 
-        verbosity settings.
-        This method checks if numerical problems have been defined and if they 
-        have already been solved. If the problems have not been solved or if 
-        'force_overwrite' is True, the method solves the problems using the 
-        specified solver. The method can solve the problems individually or as 
-        an integrated problem, depending on the 'integrated_problems' setting.
-
-        Args:
-            solver (str): The solver to use for solving the problems.
-            verbose (bool): If True, enables verbose output during problem solving.
-            integrated_problems (bool): If True, solves the problems as an 
-                integrated problem. If False, solves the problems individually.
-            force_overwrite (bool): If True, forces the re-solution of problems 
-                even if they have already been solved.
-            maximum_iterations (Optional[int], optional): The maximum number of 
-                iterations for the solver. Defaults to None.
-            numerical_tolerance (Optional[float], optional): The numerical 
-                tolerance for the solver. Defaults to None.
-            **kwargs: Additional keyword arguments to pass to the solver.
-
-        Returns:
-            None
-
-        Raises:
-            OperationalError: If numerical problems have not been defined.
-
-        Notes:
-            The method logs information about the problem solving process.
-            The problems are solved using the 'solve_problems' or 
-                'solve_integrated_problems' method of the Problem instance, 
-                depending on the 'integrated_problems' setting.
-            The method fetches the problem status after solving the problems.
-        """
-        if self.problem.numerical_problems is None:
-            msg = "Numerical problems must be defined first."
-            self.logger.warning(msg)
-            raise exc.OperationalError(msg)
-
-        # check if problems have already been solved
-        problem_status = self.problem.problem_status
-        if (isinstance(problem_status, dict) and
-            not all(value is None for value in problem_status.values())) or \
-                (problem_status is not None and not isinstance(problem_status, dict)):
-
-            if not force_overwrite:
-                self.logger.warning("Numeric problems already solved.")
-                user_input = input("Solve again numeric problems? (y/[n]): ")
-
-                if user_input.lower() != 'y':
-                    self.logger.info("Numeric problem NOT solved.")
-                    return
-
-            self.logger.info(
-                "Solving numeric problem and overwriting existing "
-                "variables numerical values.")
-
-        if not integrated_problems:
-            self.problem.solve_problems(
-                solver=solver,
-                verbose=verbose,
-                **kwargs
-            )
-        else:
-            self.solve_integrated_problems(
-                solver=solver,
-                verbose=verbose,
-                numerical_tolerance=numerical_tolerance,
-                maximum_iterations=maximum_iterations,
-                **kwargs,
-            )
 
     def data_to_cvxpy_exogenous_vars(
             self,
@@ -438,7 +323,7 @@ class Core:
 
                 for problem_key in problem_keys:
 
-                    if problem_key:
+                    if problem_key is not None:
                         variable_data = variable.data[problem_key]
                     else:
                         variable_data = variable.data
@@ -575,6 +460,133 @@ class Core:
                     force_overwrite=force_overwrite,
                     suppress_warnings=suppress_warnings,
                 )
+
+    def load_and_validate_symbolic_problem(
+            self,
+            force_overwrite: bool = False,
+    ) -> None:
+
+        self.problem.load_symbolic_problem_from_file(force_overwrite)
+        self.problem.check_symbolic_problem_coherence()
+
+        self.logger.debug(
+            "Symbolic problem successfully loaded and validated.")
+
+    def generate_numerical_problem(
+            self,
+            force_overwrite: bool,
+            allow_none_values: bool,
+    ) -> None:
+        """
+        Defines and initializes numerical problems based on the loaded symbolic 
+        definitions.
+        This method loads the symbolic problem from a file and generates numerical 
+        problems based on the symbolic definitions. The method can optionally 
+        overwrite existing problem definitions.
+
+        Args:
+            force_overwrite (bool, optional): If True, forces the redefinition 
+                of problems even if they already exist. Defaults to False.
+
+        Returns:
+            None
+
+        Notes:
+            The method logs information about the problem definition process.
+            The symbolic problem is loaded using the 'load_symbolic_problem_from_file' 
+                method of the Problem instance.
+            The numerical problems are generated using the 'generate_numerical_problems' 
+                method of the Problem instance.
+        """
+        self.logger.debug("Generating dataframes with cvxpy problems.")
+
+        self.initialize_problems_variables()
+        self.data_to_cvxpy_exogenous_vars(allow_none_values)
+
+        self.problem.generate_numerical_problems(force_overwrite)
+
+    def solve_numerical_problems(
+            self,
+            solver: str,
+            verbose: bool,
+            integrated_problems: bool,
+            force_overwrite: bool,
+            maximum_iterations: Optional[int] = None,
+            numerical_tolerance: Optional[float] = None,
+            **kwargs: Any,
+    ) -> None:
+        """
+        Solves all defined numerical problems using the specified solver and 
+        verbosity settings.
+        This method checks if numerical problems have been defined and if they 
+        have already been solved. If the problems have not been solved or if 
+        'force_overwrite' is True, the method solves the problems using the 
+        specified solver. The method can solve the problems individually or as 
+        an integrated problem, depending on the 'integrated_problems' setting.
+
+        Args:
+            solver (str): The solver to use for solving the problems.
+            verbose (bool): If True, enables verbose output during problem solving.
+            integrated_problems (bool): If True, solves the problems as an 
+                integrated problem. If False, solves the problems individually.
+            force_overwrite (bool): If True, forces the re-solution of problems 
+                even if they have already been solved.
+            maximum_iterations (Optional[int], optional): The maximum number of 
+                iterations for the solver. Defaults to None.
+            numerical_tolerance (Optional[float], optional): The numerical 
+                tolerance for the solver. Defaults to None.
+            **kwargs: Additional keyword arguments to pass to the solver.
+
+        Returns:
+            None
+
+        Raises:
+            OperationalError: If numerical problems have not been defined.
+
+        Notes:
+            The method logs information about the problem solving process.
+            The problems are solved using the 'solve_problems' or 
+                'solve_integrated_problems' method of the Problem instance, 
+                depending on the 'integrated_problems' setting.
+            The method fetches the problem status after solving the problems.
+        """
+        if self.problem.numerical_problems is None:
+            msg = "Numerical problems must be defined first."
+            self.logger.warning(msg)
+            raise exc.OperationalError(msg)
+
+        # check if problems have already been solved
+        problem_status = self.problem.problem_status
+        if (isinstance(problem_status, dict) and
+            not all(value is None for value in problem_status.values())) or \
+                (problem_status is not None and not isinstance(problem_status, dict)):
+
+            if not force_overwrite:
+                self.logger.warning("Numeric problems already solved.")
+                user_input = input("Solve again numeric problems? (y/[n]): ")
+
+                if user_input.lower() != 'y':
+                    self.logger.info("Numeric problem NOT solved.")
+                    return
+
+            self.logger.info(
+                "Solving numeric problem and overwriting existing "
+                "variables numerical values.")
+
+        if not integrated_problems:
+            self.problem.solve_problems(
+                solver=solver,
+                verbose=verbose,
+                **kwargs
+            )
+        else:
+            self.solve_integrated_problems(
+                solver=solver,
+                verbose=verbose,
+                numerical_tolerance=numerical_tolerance,
+                maximum_iterations=maximum_iterations,
+                **kwargs,
+            )
 
     def check_results_as_expected(
             self,
