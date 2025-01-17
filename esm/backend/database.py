@@ -85,7 +85,6 @@ class Database:
                 is created for defining sets.
         """
         self.logger = logger.get_child(__name__)
-        self.logger.debug(f"'{self}' object initialization...")
 
         self.files = files
         self.sqltools = sqltools
@@ -95,8 +94,6 @@ class Database:
 
         if not self.settings['use_existing_data']:
             self.create_blank_sets_xlsx_file()
-
-        self.logger.debug(f"'{self}' object initialized.")
 
     def __repr__(self):
         class_name = type(self).__name__

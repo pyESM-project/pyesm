@@ -78,8 +78,6 @@ class FileManager:
         else:
             self.xls_engine: Literal['openpyxl', 'xlsxwriter'] = xls_engine
 
-        self.logger.debug(f"'{self}' object generated.")
-
     def __repr__(self):
         class_name = type(self).__name__
         return f'{class_name}'
@@ -591,7 +589,6 @@ class FileManager:
             excel_file_name: str,
             excel_file_dir_path: Path | str,
             tab_name: str = None,
-            all_str_types: bool = True,
     ) -> pd.DataFrame:
         """
         Reads a specific tab from an Excel file and returns the data as a 

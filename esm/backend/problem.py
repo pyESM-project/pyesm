@@ -134,7 +134,6 @@ class Problem:
                 data related to optimization variables and tables.
         """
         self.logger = logger.get_child(__name__)
-        self.logger.debug(f"'{self}' object initialization...")
 
         self.files = files
         self.settings = settings
@@ -144,8 +143,6 @@ class Problem:
         self.symbolic_problem = {}
         self.numerical_problems = None
         self.problem_status = None
-
-        self.logger.debug(f"'{self}' object initialized.")
 
     def __repr__(self):
         class_name = type(self).__name__
@@ -586,7 +583,8 @@ class Problem:
                 self.logger.info("Symbolic problem updated.")
 
         self.logger.debug(
-            f"Loading symbolic problem from '{source}' file.")
+            "Loading and validating structure of symbolic problem from "
+            f"'{source}' file.")
 
         data = self.files.load_data_structure(
             structure_key=problem_key,
@@ -639,18 +637,22 @@ class Problem:
 
         if util.find_dict_depth(data) == 1:
             self.symbolic_problem = DotDict(data)
-            self.logger.debug("Symbolic problem successfully loaded.")
 
         elif util.find_dict_depth(data) == 2:
             for key, problem in data.items():
                 self.symbolic_problem[key] = DotDict(problem)
-                self.logger.debug(
-                    f"Symbolic problem '{key}' successfully loaded.")
 
         else:
             msg = f"Invalid symbolic problem structure. Check '{source}' file."
             self.logger.error(msg)
             raise exc.SettingsError(msg)
+
+    def check_symbolic_problem_coherence(self) -> None:
+
+        self.logger.debug(
+            f"Validating symbolic problem expressions coherence with variables [TBD].")
+
+        pass
 
     def load_symbolic_problem_from_file_bkp(
             self,
@@ -1048,7 +1050,7 @@ class Problem:
             ]
 
             msg = "Defining numeric problem"
-            if problem_key:
+            if problem_key is not None:
                 msg += f" '{problem_key}'"
             if problem_info:
                 msg += f" for combination of sets: {problem_info}."
@@ -1156,7 +1158,7 @@ class Problem:
                 continue
 
             if isinstance(variable.data, dict):
-                if problem_key:
+                if problem_key is not None:
                     variable_data = variable.data[problem_key]
                 else:
                     msg = "Problem key must be provided in case variables type " \

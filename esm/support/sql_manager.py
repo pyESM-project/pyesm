@@ -109,7 +109,6 @@ class SQLManager:
             operations. It logs the creation of the SQLManager instance.
         """
         self.logger = logger.get_child(__name__)
-        self.logger.debug(f"'{self}' object generation.")
 
         self.database_sql_path: Path = database_path
         self.database_name: str = database_name
