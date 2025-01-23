@@ -57,7 +57,7 @@ class Constants:
         SUB_PROBLEM_KEY = 'sub_problem_key'
         FILTER_DICT_KEY = 'filter'
         PROBLEM = 'problem'
-        PROBLEM_INFO = 'info'
+        SCENARIO_COORDINATES = 'info'
         PROBLEM_STATUS = 'status'
         OBJECTIVE = 'objective'
         CONSTRAINTS = 'expressions'

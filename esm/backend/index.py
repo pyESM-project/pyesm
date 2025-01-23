@@ -74,6 +74,8 @@ class Index:
         self.variables: DotDict[str, Variable] = self.generate_variables()
         self.fetch_vars_coordinates_info()
 
+        self.scenarios_info: pd.DataFrame = None
+
     def __repr__(self):
         class_name = type(self).__name__
         return f'{class_name}'
@@ -202,6 +204,8 @@ class Index:
 
             self.logger.error(msg)
             raise exc.SettingsError(msg)
+
+        data = util.transform_dict_none_to_values(data, none_to={})
 
         validated_structure = DotDict({
             key: object_class(logger=self.logger, key_name=key, **value)
@@ -965,3 +969,42 @@ class Index:
             )
 
         return values_dataframe
+
+    def fetch_scenarios_info(self) -> None:
+        """ 
+        Fetch scenarios information (these will be the same for all problems and 
+        sub-problems). This dataframes serves as the base for building the problems
+        dataframes.
+        """
+        self.logger.info("Fetching scenario/s information to Index.")
+
+        scenarios_coordinates = {}
+        list_sets_split_problem = list(self.sets_split_problem_dict.values())
+        scenarios_coords_header = Constants.Labels.SCENARIO_COORDINATES
+
+        for set_key, set_header in self.sets_split_problem_dict.items():
+            set_table: SetTable = self.sets[set_key]
+            set_values = set_table.data[set_header]
+            scenarios_coordinates[set_header] = list(set_values)
+
+        scenarios_df = util.unpivot_dict_to_dataframe(
+            data_dict=scenarios_coordinates,
+            key_order=list_sets_split_problem,
+        )
+
+        util.add_column_to_dataframe(
+            dataframe=scenarios_df,
+            column_header=scenarios_coords_header,
+            column_values=None,
+        )
+
+        for scenario_idx in scenarios_df.index:
+            scenarios_coords = [
+                scenarios_df.loc[scenario_idx][set_key]
+                for set_key in list_sets_split_problem
+            ]
+            scenarios_df.at[
+                scenario_idx, scenarios_coords_header
+            ] = scenarios_coords
+
+        self.scenarios_info = scenarios_df

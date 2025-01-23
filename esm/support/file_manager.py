@@ -323,7 +323,8 @@ class FileManager:
 
         if source_path.exists() and source_path.is_file():
             shutil.copy2(source_path, destination_file_path)
-            self.logger.debug(f"File '{file_name}' successfully generated.")
+            self.logger.debug(
+                f"File '{file_name}' successfully copied as '{file_new_name}'.")
         else:
             msg = f"The source file '{source_path}' does not exist."
             self.logger.error(msg)
@@ -701,9 +702,24 @@ class FileManager:
         problems = {}
         optional_label = Constants.DefaultStructures.OPTIONAL
         any_label = Constants.DefaultStructures.ANY
+        all_optional_fields = False
+
+        if all(
+            isinstance(v_exp, tuple) and v_exp[0] == optional_label
+            for v_exp in validation_structure.values()
+        ):
+            all_optional_fields = True
 
         for k_exp, v_exp in validation_structure.items():
             current_path = f"{path}.{k_exp}" if path else k_exp
+
+            # if no data are passed, all keys must be optional
+            if not data:
+                if all_optional_fields:
+                    continue
+                else:
+                    problems[current_path] = f"Data structure is empty, but " \
+                        "there are mandatory key-value pairs."
 
             # check for keys and related values
             if isinstance(v_exp, tuple) and v_exp[0] == optional_label:
@@ -756,28 +772,30 @@ class FileManager:
                 else:
                     problems[current_path] = "Unexpected value."
 
-        for key, value in data.items():
-            current_path = f"{path}.{key}" if path else key
+        # in case data is empty, no further checks required
+        if isinstance(data, dict):
+            for key, value in data.items():
+                current_path = f"{path}.{key}" if path else key
 
-            if key not in validation_structure:
+                if key not in validation_structure:
 
-                # check for unexpected keys
-                if any_label not in validation_structure:
-                    problems[current_path] = "Unexpected key-value pair."
+                    # check for unexpected keys
+                    if any_label not in validation_structure:
+                        problems[current_path] = "Unexpected key-value pair."
 
-                # check for nested dictionaries
-                else:
-                    if isinstance(validation_structure[any_label], tuple) \
-                            and validation_structure[any_label][0] == optional_label:
-                        expected_value = validation_structure[any_label][1]
+                    # check for nested dictionaries
                     else:
-                        expected_value = validation_structure[any_label]
+                        if isinstance(validation_structure[any_label], tuple) \
+                                and validation_structure[any_label][0] == optional_label:
+                            expected_value = validation_structure[any_label][1]
+                        else:
+                            expected_value = validation_structure[any_label]
 
-                    if isinstance(value, dict):
-                        problems.update(
-                            self.validate_data_structure(
-                                value, expected_value, current_path)
-                        )
+                        if isinstance(value, dict):
+                            problems.update(
+                                self.validate_data_structure(
+                                    value, expected_value, current_path)
+                            )
 
         problems = util.remove_empty_items_from_dict(
             problems, empty_values=[{}])

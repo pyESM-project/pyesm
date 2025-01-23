@@ -28,6 +28,7 @@ import pandas as pd
 import numpy as np
 import cvxpy as cp
 
+from esm.backend.data_table import DataTable
 from esm.constants import Constants
 from esm.log_exc import exceptions as exc
 from esm.log_exc.logger import Logger
@@ -149,9 +150,9 @@ class Problem:
         return f'{class_name}'
 
     @property
-    def number_of_problems(self) -> int:
+    def number_of_sub_problems(self) -> int:
         """
-        Returns the number of numerical problems defined in the system.
+        Returns the number of sub-problems defined in the numerical model.
         """
         if self.numerical_problems is None:
             self.logger.warning("No numerical problems defined.")
@@ -162,6 +163,19 @@ class Problem:
 
         if isinstance(self.numerical_problems, dict):
             return len(self.numerical_problems)
+
+    @property
+    def endogenous_tables(self) -> list:
+        """
+        Returns a list with keys of the data tables that are endogenous.
+        """
+        endogenous_tables_keys = []
+        for table_key, data_table in self.index.data.items():
+            data_table: DataTable
+            if data_table.type not in ['exogenous', 'constant']:
+                endogenous_tables_keys.append(table_key)
+
+        return endogenous_tables_keys
 
     def create_cvxpy_variable(
         self,
@@ -1015,25 +1029,17 @@ class Problem:
             'problem' (the cvxpy Problem object), and 'status' (the solution status, initially set to None).
         """
         headers = {
-            'info': Constants.Labels.PROBLEM_INFO,
             'objective': Constants.Labels.OBJECTIVE,
             'constraints': Constants.Labels.CONSTRAINTS,
             'problem': Constants.Labels.PROBLEM,
             'status': Constants.Labels.PROBLEM_STATUS,
         }
 
-        dict_to_unpivot = {}
-        for set_name, set_header in self.index.sets_split_problem_dict.items():
-            set_values = self.index.sets[set_name].data[set_header]
-            dict_to_unpivot[set_header] = list(set_values)
-
+        scenarios_coords_header = Constants.Labels.SCENARIO_COORDINATES
         list_sets_split_problem = list(
             self.index.sets_split_problem_dict.values())
 
-        problems_df = util.unpivot_dict_to_dataframe(
-            data_dict=dict_to_unpivot,
-            key_order=list_sets_split_problem,
-        )
+        problems_df = self.index.scenarios_info.copy()
 
         for item in headers.values():
             util.add_column_to_dataframe(
@@ -1042,22 +1048,22 @@ class Problem:
                 column_values=None,
             )
 
-        for sub_problem in problems_df.index:
+        for scenario in problems_df.index:
 
-            problem_info = [
-                problems_df.loc[sub_problem][set_name]
-                for set_name in list_sets_split_problem
-            ]
+            scenario_coords = problems_df.loc[scenario,
+                                              scenarios_coords_header]
 
-            msg = "Defining numeric problem"
             if problem_key is not None:
-                msg += f" '{problem_key}'"
-            if problem_info:
-                msg += f" for combination of sets: {problem_info}."
+                msg = f"Defining sub-problem '{problem_key}'"
+            else:
+                msg = "Defining problem"
+
+            if scenario_coords:
+                msg += f" for scenario: {scenario_coords}."
             self.logger.debug(msg)
 
             problem_filter = problems_df.loc[
-                [sub_problem],
+                [scenario],
                 list_sets_split_problem
             ]
 
@@ -1086,11 +1092,10 @@ class Problem:
 
             problem = cp.Problem(objective, constraints)
 
-            problems_df.at[sub_problem, headers['info']] = problem_info
-            problems_df.at[sub_problem, headers['constraints']] = constraints
-            problems_df.at[sub_problem, headers['objective']] = objective
-            problems_df.at[sub_problem, headers['problem']] = problem
-            problems_df.at[sub_problem, headers['status']] = None
+            problems_df.at[scenario, headers['constraints']] = constraints
+            problems_df.at[scenario, headers['objective']] = objective
+            problems_df.at[scenario, headers['problem']] = problem
+            problems_df.at[scenario, headers['status']] = None
 
         return problems_df
 
@@ -1442,11 +1447,12 @@ class Problem:
 
         return numerical_expressions
 
-    def solve_single_problem(
+    def solve_problem_dataframe(
             self,
             problem_dataframe: pd.DataFrame,
             problem_name: Optional[str] = None,
-            verbose: Optional[bool] = True,
+            scenarios_idx: Optional[List[int] | int] = None,
+            solver_verbose: Optional[bool] = True,
             solver: Optional[str] = None,
             **kwargs: Any,
     ) -> None:
@@ -1477,40 +1483,56 @@ class Problem:
             The method updates the 'status' field of the input DataFrame in-place 
                 to reflect the solution status of each problem.
         """
-
-        if verbose == False:
+        if solver_verbose == False:
+            with warnings.catch_warnings():
+                warnings.simplefilter('ignore')
             warnings.filterwarnings(
                 'ignore',
                 category=UserWarning,
                 module='cvxpy.reductions.solvers.solving_chain'
             )
 
-        for problem_num in problem_dataframe.index:
+        scenarios_info_header = Constants.Labels.SCENARIO_COORDINATES
+        problem_header = Constants.Labels.PROBLEM
+        status_header = Constants.Labels.PROBLEM_STATUS
 
-            problem_info: List[str] = problem_dataframe.at[
-                problem_num, Constants.Labels.PROBLEM_INFO]
-
-            msg = "Solving numerical problem"
-            if problem_name:
-                msg += f" [{problem_name}]"
-            if problem_info:
-                msg += f" - Sub-problem {problem_info}."
-            self.logger.info(msg)
-
-            numerical_problem: cp.Problem = problem_dataframe.at[
-                problem_num, Constants.Labels.PROBLEM]
-
-            numerical_problem.solve(
-                solver=solver,
-                verbose=verbose,
-                **kwargs,
+        if scenarios_idx is None:
+            scenarios_idx = list(self.index.scenarios_info.index)
+        elif isinstance(scenarios_idx, int):
+            scenarios_idx = [scenarios_idx]
+        else:
+            util.items_in_list(
+                items=scenarios_idx,
+                list_to_check=list(self.index.scenarios_info.index),
             )
 
-            problem_dataframe.at[
-                problem_num, Constants.Labels.PROBLEM_STATUS
-            ] = numerical_problem.status
+        for scenario in scenarios_idx:
 
-            self.logger.debug(f"Problem status: '{numerical_problem.status}'")
+            scenario_info: List[str] = problem_dataframe.at[
+                scenario, scenarios_info_header]
+
+            cvxpy_problem: cp.Problem = problem_dataframe.at[
+                scenario, problem_header]
+
+            if problem_name:
+                msg = f"Solving cvxpy sub-problem '{problem_name}'"
+            else:
+                msg = "Solving cvxpy problem"
+
+            if scenario_info:
+                msg += f" - Scenario {scenario_info}."
+
+            self.logger.info(msg)
+
+            cvxpy_problem.solve(
+                solver=solver, verbose=solver_verbose, **kwargs)
+
+            # an optional informative solution report should be printed (independent from logger)
+            # self.logger.debug(f"Problem status: '{cvxpy_problem.status}'")
+
+            problem_dataframe.at[
+                scenario, status_header
+            ] = cvxpy_problem.status
 
     def fetch_problem_status(self) -> None:
         """
@@ -1526,82 +1548,26 @@ class Problem:
             raise exc.OperationalError(msg)
 
         status_header = Constants.Labels.PROBLEM_STATUS
-        info_header = Constants.Labels.PROBLEM_INFO
+        scenario_header = Constants.Labels.SCENARIO_COORDINATES
 
         if isinstance(self.numerical_problems, pd.DataFrame):
             problem_df = self.numerical_problems
 
             problem_status = {
-                f'sub-problem {info}'
-                if len(problem_df) > 1 else 'problem': status
+                f'Scenario {info}'
+                if len(problem_df) > 1 else '': status
                 for info, status
-                in zip(problem_df[info_header], problem_df[status_header])
+                in zip(problem_df[scenario_header], problem_df[status_header])
             }
 
         elif isinstance(self.numerical_problems, dict):
 
             problem_status = {
-                f'Problem [{problem_key}]' +
-                (f' - Sub-problem {info}' if len(problem_df) > 1 else ''): status
-                for problem_key, problem_df in self.numerical_problems.items()
+                f'Sub-problem [{sub_problem_key}]' +
+                (f' - Scenario {info}' if len(problem_df) > 1 else ''): status
+                for sub_problem_key, problem_df in self.numerical_problems.items()
                 for info, status
-                in zip(problem_df[info_header], problem_df[status_header])
+                in zip(problem_df[scenario_header], problem_df[status_header])
             }
 
         self.problem_status = problem_status
-
-    def solve_problems(
-            self,
-            solver: str,
-            verbose: bool,
-            **kwargs: Any,
-    ) -> None:
-        """
-        Solves all optimization problems defined in the 'numerical_problems' attribute.
-
-        This method checks the type of 'numerical_problems'. If it's a DataFrame, 
-        it treats it as a single problem and solves it. If it's a dictionary, it 
-        treats each value as a separate problem and solves them independently.
-
-        Parameters:
-            solver (str): The solver to use. If None, CVXPY will choose a solver 
-                automatically.
-            verbose (bool): If set to True, the solver will print progress information.
-            **kwargs (Any): Additional arguments to pass to the solver.
-
-        Returns:
-            None
-
-        Raises:
-            exc.OperationalError: If 'numerical_problems' is None.
-
-        Notes:
-            The method updates the 'status' field of the input DataFrame(s) in-place 
-                to reflect the solution status of each problem.
-            If 'numerical_problems' is a dictionary, the keys are used as problem 
-                names.
-        """
-        if isinstance(self.numerical_problems, pd.DataFrame):
-            self.solve_single_problem(
-                problem_dataframe=self.numerical_problems,
-                verbose=verbose,
-                solver=solver,
-                **kwargs
-            )
-
-        elif isinstance(self.numerical_problems, dict):
-            for problem_name in self.numerical_problems.keys():
-                self.solve_single_problem(
-                    problem_dataframe=self.numerical_problems[problem_name],
-                    problem_name=problem_name,
-                    verbose=verbose,
-                    solver=solver,
-                    **kwargs
-                )
-        else:
-            if self.numerical_problems is None:
-                msg = "Numerical problems must be defined first."
-                self.logger.warning(msg)
-                raise exc.OperationalError(msg)
-
-        self.fetch_problem_status()

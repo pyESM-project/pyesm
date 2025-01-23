@@ -1007,3 +1007,22 @@ def pivot_dataframe_to_data_structure(
         return data_structure[None]
 
     return data_structure
+
+
+def transform_dict_none_to_values(dictionary: Dict, none_to: Any) -> Dict:
+    """ 
+    Parse dictionary values, and in case such values are None transform them
+    to value_to.
+    """
+    if not isinstance(dictionary, Dict):
+        raise TypeError(f"Dict type expected, '{type(dictionary)}' passed.")
+
+    result = {}
+
+    for key, value in dictionary.items():
+        if value is None:
+            result[key] = none_to
+        else:
+            result[key] = value
+
+    return result

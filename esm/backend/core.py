@@ -12,7 +12,7 @@ the modeling environment.
 """
 
 import os
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional
 from pathlib import Path
 
 import numpy as np
@@ -244,6 +244,7 @@ class Core:
 
     def data_to_cvxpy_exogenous_vars(
             self,
+            scenarios_idx: Optional[List[int] | int] = None,
             allow_none_values: bool = True,
     ) -> None:
         """
@@ -315,6 +316,7 @@ class Core:
 
                 # for variables whose type is end/exo depending on the problem,
                 # fetch exogenous variable data.
+                # notice that a variable may be exogenous for more than one problem.
                 if isinstance(variable.type, dict):
                     problem_keys = util.find_dict_keys_corresponding_to_value(
                         variable.type, 'exogenous')
@@ -328,11 +330,25 @@ class Core:
                     else:
                         variable_data = variable.data
 
-                    for row in variable_data.index:
+                    # determine the scenarios for which the variable is defined.
+                    # handle the case when a variable is the same for all scenarios.
+                    # in this case, parse all variable data independently by scenarios.
+                    if not variable.coordinates['inter']:
+                        scenarios_list = list(variable_data.index)
+                    else:
+                        if scenarios_idx is None:
+                            scenarios_list = list(
+                                self.index.scenarios_info.index)
+                        else:
+                            if isinstance(scenarios_idx, int):
+                                scenarios_list = [scenarios_idx]
+
+                    for scenario in scenarios_list:
                         # get raw data from database
                         raw_data = self.database.sqltools.table_to_dataframe(
                             table_name=variable.related_table,
-                            filters_dict=variable_data[filter_header][row])
+                            filters_dict=variable_data[filter_header][scenario]
+                        )
 
                         # check if variable data are int or float
                         non_allowed_ids = util.find_non_allowed_types(
@@ -358,12 +374,13 @@ class Core:
                         )
 
                         self.problem.data_to_cvxpy_variable(
-                            cvxpy_var=variable_data[cvxpy_var_header][row],
+                            cvxpy_var=variable_data[cvxpy_var_header][scenario],
                             data=pivoted_data
                         )
 
     def cvxpy_endogenous_data_to_database(
             self,
+            scenarios_idx: Optional[List[int] | int] = None,
             force_overwrite: bool = False,
             suppress_warnings: bool = False,
     ) -> None:
@@ -399,6 +416,12 @@ class Core:
 
         values_headers = Constants.Labels.VALUES_FIELD['values'][0]
 
+        if scenarios_idx is None:
+            scenarios_list = list(self.index.scenarios_info.index)
+        else:
+            if isinstance(scenarios_idx, int):
+                scenarios_list = [scenarios_idx]
+
         with db_handler(self.sqltools):
             for data_table_key, data_table in self.index.data.items():
 
@@ -418,8 +441,13 @@ class Core:
                     data_table_dataframe = data_table.coordinates_dataframe
 
                 elif isinstance(data_table.coordinates_dataframe, dict):
+                    dataframes_list = [
+                        dataframe for df_key, dataframe
+                        in data_table.coordinates_dataframe.items()
+                        if df_key in scenarios_list
+                    ]
                     data_table_dataframe = pd.concat(
-                        data_table.coordinates_dataframe.values(),
+                        objs=dataframes_list,
                         ignore_index=True
                     )
 
@@ -441,11 +469,11 @@ class Core:
                     continue
 
                 if isinstance(data_table.cvxpy_var, dict):
-
                     cvxpy_var_values_list = []
-                    for cvxpy_var in data_table.cvxpy_var.values():
+                    for cvxpy_var_key, cvxpy_var in data_table.cvxpy_var.items():
                         cvxpy_var: cp.Variable
-                        cvxpy_var_values_list.append(cvxpy_var.value)
+                        if cvxpy_var_key in scenarios_list:
+                            cvxpy_var_values_list.append(cvxpy_var.value)
 
                     cvxpy_var_data = np.vstack(cvxpy_var_values_list)
 
@@ -457,6 +485,7 @@ class Core:
                 self.sqltools.dataframe_to_table(
                     table_name=data_table_key,
                     dataframe=data_table_dataframe,
+                    action='update',
                     force_overwrite=force_overwrite,
                     suppress_warnings=suppress_warnings,
                 )
@@ -501,14 +530,16 @@ class Core:
         self.logger.debug("Generating dataframes with cvxpy problems.")
 
         self.initialize_problems_variables()
-        self.data_to_cvxpy_exogenous_vars(allow_none_values)
+        self.data_to_cvxpy_exogenous_vars(
+            allow_none_values=allow_none_values)
 
         self.problem.generate_numerical_problems(force_overwrite)
 
     def solve_numerical_problems(
             self,
             solver: str,
-            verbose: bool,
+            iterations_log: bool,
+            solver_verbose: bool,
             integrated_problems: bool,
             force_overwrite: bool,
             maximum_iterations: Optional[int] = None,
@@ -555,8 +586,8 @@ class Core:
             self.logger.warning(msg)
             raise exc.OperationalError(msg)
 
-        # check if problems have already been solved
         problem_status = self.problem.problem_status
+
         if (isinstance(problem_status, dict) and
             not all(value is None for value in problem_status.values())) or \
                 (problem_status is not None and not isinstance(problem_status, dict)):
@@ -573,20 +604,23 @@ class Core:
                 "Solving numeric problem and overwriting existing "
                 "variables numerical values.")
 
-        if not integrated_problems:
-            self.problem.solve_problems(
-                solver=solver,
-                verbose=verbose,
-                **kwargs
-            )
-        else:
+        if integrated_problems:
             self.solve_integrated_problems(
                 solver=solver,
-                verbose=verbose,
+                solver_verbose=solver_verbose,
+                iterations_log=iterations_log,
                 numerical_tolerance=numerical_tolerance,
                 maximum_iterations=maximum_iterations,
                 **kwargs,
             )
+        else:
+            self.solve_independent_problems(
+                solver=solver,
+                solver_verbose=solver_verbose,
+                **kwargs
+            )
+
+        self.problem.fetch_problem_status()
 
     def check_results_as_expected(
             self,
@@ -618,10 +652,66 @@ class Core:
                 tolerance_percentage=values_relative_diff_tolerance,
             )
 
+    def solve_independent_problems(
+            self,
+            solver: str,
+            solver_verbose: bool,
+            **kwargs: Any,
+    ) -> None:
+        """
+        Solves all optimization problems defined in the 'numerical_problems' attribute.
+
+        This method checks the type of 'numerical_problems'. If it's a DataFrame, 
+        it treats it as a single problem and solves it. If it's a dictionary, it 
+        treats each value as a separate problem and solves them independently.
+
+        Parameters:
+            solver (str): The solver to use. If None, CVXPY will choose a solver 
+                automatically.
+            verbose (bool): If set to True, the solver will print progress information.
+            **kwargs (Any): Additional arguments to pass to the solver.
+
+        Returns:
+            None
+
+        Raises:
+            exc.OperationalError: If 'numerical_problems' is None.
+
+        Notes:
+            The method updates the 'status' field of the input DataFrame(s) in-place 
+                to reflect the solution status of each problem.
+            If 'numerical_problems' is a dictionary, the keys are used as problem 
+                names.
+        """
+        numerical_problems = self.problem.numerical_problems
+
+        if isinstance(numerical_problems, pd.DataFrame):
+            self.problem.solve_problem_dataframe(
+                problem_dataframe=numerical_problems,
+                solver_verbose=solver_verbose,
+                solver=solver,
+                **kwargs
+            )
+        elif isinstance(numerical_problems, dict):
+            for sub_problem in numerical_problems.keys():
+                self.problem.solve_problem_dataframe(
+                    problem_dataframe=numerical_problems[sub_problem],
+                    problem_name=sub_problem,
+                    solver_verbose=solver_verbose,
+                    solver=solver,
+                    **kwargs
+                )
+        else:
+            if numerical_problems is None:
+                msg = "Numerical problems must be defined first."
+                self.logger.warning(msg)
+                raise exc.OperationalError(msg)
+
     def solve_integrated_problems(
             self,
             solver: str,
-            verbose: bool,
+            solver_verbose: bool,
+            iterations_log: bool = False,
             numerical_tolerance: Optional[float] = None,
             maximum_iterations: Optional[int] = None,
             **kwargs: Any,
@@ -635,6 +725,8 @@ class Core:
         The method handles the database operations required for each iteration, 
         including updating the data for exogenous variables and exporting the 
         data for endogenous variables.
+        Differently with respect to solve_independent_problems() method, this method
+        solve all sub-problems iteratively for the same case (combination of sets).
 
         Parameters:
             solver (str): The solver to use for solving the problems.
@@ -668,98 +760,132 @@ class Core:
             numerical_tolerance = \
                 Constants.NumericalSettings.TOLERANCE_MODEL_COUPLING_CONVERGENCE
 
-        sqlite_db_path = self.paths['model_dir']
         sqlite_db_file_name = Constants.ConfigFiles.SQLITE_DATABASE_FILE
+        scenarios_header = Constants.Labels.SCENARIO_COORDINATES
+        problem_status_header = Constants.Labels.PROBLEM_STATUS
 
+        sqlite_db_path = self.paths['model_dir']
         base_name, extension = os.path.splitext(sqlite_db_file_name)
         sqlite_db_file_name_previous = f"{base_name}_previous_iter{extension}"
+        tables_to_check = self.problem.endogenous_tables
+        sub_problems_keys = list(self.problem.numerical_problems.keys())
+        scenarios_df = self.index.scenarios_info
 
-        iter_count = 0
+        problems_status = pd.DataFrame(
+            index=scenarios_df.index,
+            columns=sub_problems_keys,
+        )
 
-        tables_to_check = [
-            table_key for table_key in self.index.data.keys()
-            if self.index.data[table_key].type not in ['exogenous', 'constant']
-        ]
+        for scenario_idx in scenarios_df.index:
 
-        while True:
-            try:
-                iter_count += 1
-                if iter_count > maximum_iterations:
-                    self.logger.warning(
-                        f"Maximum number of iterations reached before reaching "
-                        "convergence to numerical_tolerance.")
-                    break
+            scenario_coords = scenarios_df.loc[scenario_idx, scenarios_header]
 
-                self.logger.info(f"=====================")
-                self.logger.info(f"Iteration number '{iter_count}'")
+            self.logger.info("=================================")
+            self.logger.info(
+                f"Solving integrated problems for scenario {scenario_coords}")
 
-                if iter_count > 1:
-                    self.data_to_cvxpy_exogenous_vars()
+            iter_count = 0
 
-                self.files.copy_file_to_destination(
-                    path_destination=sqlite_db_path,
-                    path_source=sqlite_db_path,
-                    file_name=sqlite_db_file_name,
-                    file_new_name=sqlite_db_file_name_previous,
-                    force_overwrite=True,
-                )
+            while True:
+                try:
+                    iter_count += 1
+                    if iter_count > maximum_iterations:
+                        self.logger.warning(
+                            "Maximum number of iterations hit before reaching "
+                            f"convergence (tolerance: {numerical_tolerance*100}%).")
+                        break
 
-                self.problem.solve_problems(
-                    solver=solver,
-                    verbose=verbose,
-                    **kwargs
-                )
+                    # make a method in log class to log such table
+                    # if iterations_log and iter_count == 1:
+                    #     print('\n')
+                    #     print('iter # \t|error \t|other \t')
+                    # if iterations_log:
+                    #     print(f'{iter_count}\tcc \t dd')
 
-                infeasible_problems = {
-                    problem_key: problem_status
-                    for problem_key, problem_status
-                    in self.problem.problem_status.items()
-                    if problem_status != 'optimal'
-                }
+                    if iter_count > 1:
+                        self.data_to_cvxpy_exogenous_vars(
+                            scenarios_idx=scenario_idx)
 
-                if infeasible_problems:
-                    self.logger.warning(
-                        "Infeasible problems: "
-                        f"'{list(infeasible_problems.keys())}'.")
-                    break
+                    self.files.copy_file_to_destination(
+                        path_destination=sqlite_db_path,
+                        path_source=sqlite_db_path,
+                        file_name=sqlite_db_file_name,
+                        file_new_name=sqlite_db_file_name_previous,
+                        force_overwrite=True,
+                    )
 
-                self.cvxpy_endogenous_data_to_database(
-                    force_overwrite=True, suppress_warnings=True,
-                )
-
-                if iter_count == 1:
-                    continue
-
-                with db_handler(self.sqltools):
-                    relative_difference = \
-                        self.sqltools.get_tables_values_relative_difference(
-                            other_db_dir_path=sqlite_db_path,
-                            other_db_name=sqlite_db_file_name_previous,
-                            tables_names=tables_to_check,
+                    for sub_problem, problem_df in self.problem.numerical_problems.items():
+                        self.problem.solve_problem_dataframe(
+                            problem_name=sub_problem,
+                            problem_dataframe=problem_df,
+                            scenarios_idx=scenario_idx,
+                            solver=solver,
+                            solver_verbose=solver_verbose,
+                            **kwargs
                         )
 
-                relative_difference_above = {
-                    table: value
-                    for table, value in relative_difference.items()
-                    if value > numerical_tolerance
-                }
+                        status = problem_df.loc[
+                            scenario_idx,
+                            problem_status_header
+                        ]
 
-                if relative_difference_above:
-                    self.logger.info(
-                        "Data tables with highest relative difference above "
-                        f"treshold ({numerical_tolerance}):"
+                        problems_status.at[scenario_idx, sub_problem] = \
+                            status
+
+                    if not all(
+                        problems_status.loc[scenario_idx] == 'optimal'
+                    ):
+                        self.logger.warning(
+                            "One or more sub-problems infeasible for scenario "
+                            f"{scenario_coords}."
+                        )
+                        break
+
+                    self.cvxpy_endogenous_data_to_database(
+                        scenarios_idx=scenario_idx,
+                        force_overwrite=True,
+                        suppress_warnings=True,
                     )
-                    for table, value in relative_difference_above.items():
-                        self.logger.info(
-                            f"Data table '{table}': {round(value, 5)}")
-                else:
-                    self.logger.info("Numerical convergence reached.")
-                    break
 
-            finally:
-                self.files.erase_file(
-                    dir_path=sqlite_db_path,
-                    file_name=sqlite_db_file_name_previous,
-                    force_erase=True,
-                    confirm=False,
-                )
+                    if iter_count == 1:
+                        continue
+
+                    # relative error must be computed for scenarios_idx only
+                    # funziona lo stesso, perchè se il problema è infeasible i
+                    # risultati non vengono esportati (break qui sopra) e il
+                    # database rimane sempre uguale
+                    with db_handler(self.sqltools):
+                        relative_difference = \
+                            self.sqltools.get_tables_values_relative_difference(
+                                other_db_dir_path=sqlite_db_path,
+                                other_db_name=sqlite_db_file_name_previous,
+                                tables_names=tables_to_check,
+                            )
+
+                    relative_difference_above = {
+                        table: value
+                        for table, value in relative_difference.items()
+                        if value > numerical_tolerance
+                    }
+
+                    if relative_difference_above:
+                        self.logger.info(
+                            "Data tables with highest relative difference above "
+                            f"treshold ({numerical_tolerance}):"
+                        )
+                        for table, value in relative_difference_above.items():
+                            self.logger.info(
+                                f"Data table '{table}': {round(value, 5)}")
+                    else:
+                        self.logger.info(
+                            "Numerical convergence reached - Scenario "
+                            f"{scenario_coords}.")
+                        break
+
+                finally:
+                    self.files.erase_file(
+                        dir_path=sqlite_db_path,
+                        file_name=sqlite_db_file_name_previous,
+                        force_erase=True,
+                        confirm=False,
+                    )

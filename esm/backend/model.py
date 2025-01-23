@@ -258,6 +258,7 @@ class Model:
         self.core.index.filter_coordinates_in_variables_index()
         self.core.index.check_variables_coherence()
         self.core.index.map_vars_aggregated_dims()
+        self.core.index.fetch_scenarios_info()
 
         if fetch_foreign_keys:
             self.core.index.fetch_foreign_keys_to_data_tables()
@@ -376,6 +377,7 @@ class Model:
         verbose: bool = False,
         force_overwrite: bool = False,
         integrated_problems: bool = False,
+        iterations_log: bool = False,
         solver: Optional[str] = None,
         numerical_tolerance: Optional[float] = None,
         maximum_iterations: Optional[int] = None,
@@ -410,7 +412,8 @@ class Model:
         Returns:
             None
         """
-        n_problems = self.core.problem.number_of_problems
+        sub_problems = self.core.problem.number_of_sub_problems
+        problem_scenarios = len(self.core.index.scenarios_info)
         allowed_solvers = Constants.NumericalSettings.ALLOWED_SOLVERS
 
         if solver is None:
@@ -422,33 +425,31 @@ class Model:
             self.logger.error(msg)
             raise exc.SettingsError(msg)
 
-        if n_problems == 0:
-            msg = "No numerical problems found. Initialize problems first."
+        if sub_problems == 0:
+            msg = "Numerical problem not found. Initialize problem first."
             self.logger.error(msg)
             raise exc.OperationalError(msg)
 
-        if integrated_problems and n_problems == 1:
+        if integrated_problems and sub_problems == 1:
             msg = "Only one problem found. Integrated problems not possible."
             self.logger.error(msg)
             raise exc.SettingsError(msg)
 
-        if not integrated_problems:
-            if n_problems == 1:
-                self.logger.info(
-                    f"Solving numerical problem with '{solver}' solver")
-            else:
-                self.logger.info(
-                    f"Solving '{n_problems}' independent numerical problems "
-                    f"with '{solver}' solver.")
+        if integrated_problems and sub_problems > 1:
+            problem_type = 'integrated'
+        else:
+            problem_type = 'independent'
 
-        elif integrated_problems and n_problems > 1:
-            self.logger.info(
-                f"Solving '{n_problems}' integrated numerical problems "
-                f"with '{solver}' solver.")
+        problem_count = '1' if sub_problems == 1 else f'{sub_problems}'
+
+        self.logger.info(
+            f"Solving '{problem_count}' {problem_type} numerical problem(s) "
+            f"for '{problem_scenarios}' scenarios with '{solver}' solver.")
 
         self.core.solve_numerical_problems(
             solver=solver,
-            verbose=verbose,
+            solver_verbose=verbose,
+            iterations_log=iterations_log,
             force_overwrite=force_overwrite,
             integrated_problems=integrated_problems,
             numerical_tolerance=numerical_tolerance,
