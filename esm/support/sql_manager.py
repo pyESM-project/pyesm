@@ -642,6 +642,7 @@ class SQLManager:
         self,
         table_name: str,
         dataframe: pd.DataFrame,
+        action: Literal['update', 'overwrite'] = 'overwrite',
         force_overwrite: bool = False,
         suppress_warnings: bool = False,
     ) -> None:
@@ -695,31 +696,68 @@ class SQLManager:
             if col not in (values_field, table_primary_column):
                 dataframe[col] = dataframe[col].astype(str)
 
-        # generate data tuples for insertion
-        data = [tuple(row) for row in dataframe.values.tolist()]
-        placeholders = ', '.join(['?'] * len(table_fields))
-
         # define appropriate query based on table state
         if table_existing_entries == 0:
-            query = f"INSERT INTO {table_name} VALUES ({placeholders})"
+            data = [tuple(row) for row in dataframe.values.tolist()]
+            placeholders = ', '.join(['?'] * len(table_fields))
+            query = f"INSERT INTO {table_name} ({', '.join(table_fields)}) VALUES ({placeholders})"
 
         elif table_existing_entries > 0:
-            existing_values: pd.Series = dataframe_existing[values_field]
 
-            if existing_values.isnull().all():
-                query = f"INSERT OR REPLACE INTO {table_name} VALUES ({placeholders})"
-            else:
+            if action == 'update':
+                # case of passed dataframe has more entry then existing table not possible
+                if len(dataframe) > len(dataframe_existing):
+                    msg = "Passed dataframe length greater than existing data table."
+                    self.logger.error(msg)
+                    raise exc.OperationalError(msg)
+
+                # case where all data entries need to be replaced
+                elif len(dataframe) == len(dataframe_existing):
+                    data = [tuple(row) for row in dataframe.values.tolist()]
+                    placeholders = ', '.join(['?'] * len(table_fields))
+                    query = f"INSERT OR REPLACE INTO {table_name} VALUES ({placeholders})"
+
+                # case where only some data entries need to be updated
+                else:
+                    shared_cols = [
+                        col for col in dataframe.columns
+                        if col not in (id_field, values_field)
+                    ]
+
+                    set_statements = ' AND '.join(
+                        [f"{col} = ?" for col in shared_cols])
+
+                    data = [
+                        (row[values_field], *[row[col] for col in shared_cols])
+                        for _, row in dataframe.iterrows()
+                    ]
+
+                    query = f"UPDATE {table_name} SET `{values_field}` = ? WHERE {set_statements}"
+
+            elif action == 'overwrite':
                 if not self.delete_table_entries(table_name, force_overwrite):
                     self.logger.debug(
                         f"SQLite table '{table_name}' - original data NOT erased.")
                     return
+
+                data = [tuple(row) for row in dataframe.values.tolist()]
+                placeholders = ', '.join(['?'] * len(table_fields))
                 query = f"INSERT INTO {table_name} VALUES ({placeholders})"
+
+            else:
+                msg = f"Action '{action}' not allowed. Available actions: "\
+                    "'update', 'overwrite'."
+                self.logger.error(msg)
+                raise exc.SettingsError(msg)
 
         self.execute_query(query=query, params=data, many=True)
 
-        self.logger.debug(
-            f"SQLite table '{table_name}' - table values overwritten: "
-            f"{len(data)} new entries added.")
+        msg = f"SQLite table '{table_name}' - "
+        if action == 'update':
+            msg += f"{len(data)} entries updated."
+        elif action == 'overwrite':
+            msg += f"existing entries deleted, {len(data)} new entries added."
+        self.logger.debug(msg)
 
     def table_to_excel(
             self,
