@@ -4,7 +4,7 @@
 # exogenous variables
 
 products_constraints:
-    name: products_constraints
+    description: products_constraints
     type: exogenous
     coordinates: [products]
     variables_info:
@@ -18,7 +18,7 @@ products_constraints:
 # endogenous variables
 
 production:
-    name: production
+    description: production
     type: endogenous
     coordinates: [scenarios, uncertainty, products]
     variables_info:
