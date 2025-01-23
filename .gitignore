@@ -139,7 +139,7 @@ dmypy.json
 # Specific files
 launch.json
 settings.json
-tutorial.ipynb
+my_notebook.ipynb
 pyesm_sourcetrail.srctrlbm
 pyesm_sourcetrail.srctrldb
 pyesm_sourcetrail.srctrlprj
