@@ -519,7 +519,7 @@ class FileManager:
         if_sheet_exists = 'replace' if mode == 'a' else None
 
         self.logger.debug(
-            f"Exporting dataframe {sheet_name} to {excel_filename}.")
+            f"Exporting dataframe '{sheet_name}' to '{excel_filename}'.")
 
         if sheet_name is None:
             sheet_name = str(dataframe)
