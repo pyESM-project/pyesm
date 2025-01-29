@@ -1,22 +1,3 @@
-# structure of sets
-
-# set_key:
-#     symbol: a  # symbol of the set 
-#     table_name: _set_a # name of the table of the set in the database
-#     split_problem: False # (optional) if the items of the set defines separate problems 
-#     copy_from: another_set_key # (optional) key of another set to copy the data from (table_headers must be filled anyway)
-#     table_structure:
-#         name: [a_Names, TYPE] # header of set entries names in database set table
-#         aggregation: [a_Agg, TEXT] # (optional) header of set entries that are matching another set (aggregation)
-#         filters:
-#             0:  # (int) index of the category in the set
-#                 header: [a_Cat_1, TEXT] 
-#                 values: [a_1a, a_1b, a_1c]
-#             1: 
-#                 header: [a_Cat_2, TEXT] 
-#                 values: [a_2a, a_2b]
-
-
 # -----------------------------------------------------------------------------
 # sets
 
@@ -25,37 +6,37 @@
 #     table_name: _set_TECHS_MIX # name of the table of the set in the database
 #     split_problem: True # (optional) if the items of the set defines separate problems 
 #     table_structure:
-#         name: [tm_Names, TYPE] # header of set entries names in database set table
+#         name: [tm_Names# header of set entries names in database set table
 
 technologies:
     symbol: t  
     table_name: _set_TECHNOLOGIES 
     table_structure:
-        name: [t_Names, TYPE]
+        name: t_Names
         filters:
             0: 
-                header: [t_Assumption, TEXT] 
+                header: t_Assumption 
                 values: [product-technology, industry-technology]
             1: 
-                header: [t_Mix, TEXT] 
+                header: t_Mix 
                 values: [electricity]
 
 products:
     symbol: p  
     table_name: _set_PRODUCTS 
     table_structure:
-        name: [p_Names, TYPE] 
+        name: p_Names
         filters:
             0: 
-                header: [p_Assumption, TEXT] 
+                header: p_Assumption 
                 values: [product-technology, industry-technology]
             1: 
-                header: [p_Mix, TEXT] 
+                header: p_Mix 
                 values: [electricity]
 
 emissions:
     symbol: e  
     table_name: _set_AIR_EMISSIONS 
     table_structure:
-        name: [e_Names, TYPE] 
+        name: e_Names
         

@@ -49,8 +49,6 @@ class Database:
         index (Index): Index instance for accessing and managing data structures.
     """
 
-    data_file_extension = '.xlsx'
-
     def __init__(
             self,
             logger: Logger,
@@ -87,7 +85,6 @@ class Database:
                 is created for defining sets.
         """
         self.logger = logger.get_child(__name__)
-        self.logger.debug(f"'{self}' object initialization...")
 
         self.files = files
         self.sqltools = sqltools
@@ -97,8 +94,6 @@ class Database:
 
         if not self.settings['use_existing_data']:
             self.create_blank_sets_xlsx_file()
-
-        self.logger.debug(f"'{self}' object initialized.")
 
     def __repr__(self):
         class_name = type(self).__name__
@@ -124,7 +119,7 @@ class Database:
             Sets that have a 'copy_from' attribute are not included in the new 
                 Excel file.
         """
-        sets_file_name = self.settings['sets_xlsx_file']
+        sets_file_name = Constants.ConfigFiles.SETS_FILE
 
         if Path(self.paths['sets_excel_file']).exists():
             if not self.settings['use_existing_data']:
@@ -163,7 +158,7 @@ class Database:
         self.files.dict_to_excel_headers(
             dict_name=dict_headers,
             excel_dir_path=self.paths['model_dir'],
-            excel_file_name=self.settings['sets_xlsx_file'],
+            excel_file_name=sets_file_name,
         )
 
     def create_blank_sqlite_database(self) -> None:
@@ -199,12 +194,12 @@ class Database:
 
                 table_name = set_instance.table_name
                 table_headers = set_instance.table_headers
-                table_id_header = Constants.get('_STD_ID_FIELD')['id']
+                table_id_header = Constants.Labels.ID_FIELD['id']
 
                 if table_headers is not None:
                     if table_id_header not in table_headers.values():
                         table_headers = {
-                            **Constants.get('_STD_ID_FIELD'), **table_headers}
+                            **Constants.Labels.ID_FIELD, **table_headers}
 
                     self.sqltools.create_table(table_name, table_headers)
 
@@ -248,7 +243,7 @@ class Database:
                     table_name = set_instance.table_name
                     dataframe = set_instance.data.copy()
                     table_headers = set_instance.table_headers
-                    table_id_header = Constants.get('_STD_ID_FIELD')['id']
+                    table_id_header = Constants.Labels.ID_FIELD['id']
                 else:
                     msg = f"Data of set '{set_instance.symbol}' are not defined."
                     self.logger.error(msg)
@@ -263,7 +258,8 @@ class Database:
                             column_values=None,
                         )
 
-                self.sqltools.dataframe_to_table(table_name, dataframe)
+                self.sqltools.dataframe_to_table(
+                    table_name, dataframe)
 
     def generate_blank_sqlite_data_tables(self) -> None:
         """
@@ -284,7 +280,7 @@ class Database:
         """
         self.logger.debug(
             "Generation of empty data tables in "
-            f"'{self.settings['sqlite_database_file']}'.")
+            f"'{Constants.ConfigFiles.SQLITE_DATABASE_FILE}'.")
 
         with db_handler(self.sqltools):
             for table_key, table in self.index.data.items():
@@ -321,7 +317,7 @@ class Database:
         """
         self.logger.debug(
             "Adding sets information to sqlite data tables in "
-            f"'{self.settings['sqlite_database_file']}'.")
+            f"'{Constants.ConfigFiles.SQLITE_DATABASE_FILE}'.")
 
         with db_handler(self.sqltools):
             for table_key, table in self.index.data.items():
@@ -352,10 +348,8 @@ class Database:
 
                 self.sqltools.add_table_column(
                     table_name=table_key,
-                    column_name=Constants.get('_STD_VALUES_FIELD')[
-                        'values'][0],
-                    column_type=Constants.get('_STD_VALUES_FIELD')[
-                        'values'][1],
+                    column_name=Constants.Labels.VALUES_FIELD['values'][0],
+                    column_type=Constants.Labels.VALUES_FIELD['values'][1],
                 )
 
     def clear_database_tables(
@@ -388,14 +382,14 @@ class Database:
                 tables_to_clear = existing_tables
                 self.logger.info(
                     "Clearing all tables from SQLite database "
-                    f"{self.settings['sqlite_database_file']}"
+                    f"{Constants.ConfigFiles.SQLITE_DATABASE_FILE}"
                 )
 
             else:
                 tables_to_clear = list(table_names)
                 self.logger.info(
                     f"Clearing tables '{tables_to_clear}' from SQLite database "
-                    f"{self.settings['sqlite_database_file']}"
+                    f"{Constants.ConfigFiles.SQLITE_DATABASE_FILE}"
                 )
 
             for table_name in tables_to_clear:
@@ -404,7 +398,7 @@ class Database:
 
     def generate_blank_data_input_files(
         self,
-        file_extension: str = data_file_extension,
+        file_extension: str = Constants.ConfigFiles.DATA_FILES_EXTENSION,
     ) -> None:
         """
         Generates blank data input files for exogenous data tables.
@@ -442,7 +436,7 @@ class Database:
                 if self.settings['multiple_input_files']:
                     output_file_name = table_key + file_extension
                 else:
-                    output_file_name = self.settings['input_data_file']
+                    output_file_name = Constants.ConfigFiles.INPUT_DATA_FILE
 
                 self.sqltools.table_to_excel(
                     excel_filename=output_file_name,
@@ -452,9 +446,8 @@ class Database:
 
     def load_data_input_files_to_database(
         self,
-        operation: str,
         empty_data_fill: Optional[Any] = None,
-        file_extension: str = data_file_extension,
+        file_extension: str = Constants.ConfigFiles.DATA_FILES_EXTENSION,
         force_overwrite: bool = False,
     ) -> None:
         """
@@ -462,14 +455,12 @@ class Database:
         This method checks the 'multiple_input_files' setting to determine whether 
         to load data from multiple files or a single file. If 'multiple_input_files' 
         is True, the method iterates over each exogenous data table in the index, 
-        loads the table's data from the corresponding Excel file, and inserts or 
-        updates the data in the SQLite database. If 'multiple_input_files' is False, 
+        loads the table's data from the corresponding Excel file, and inserts  
+        the data in the SQLite database. If 'multiple_input_files' is False, 
         the method loads data from a single Excel file and inserts or updates the 
         data for each table in the SQLite database.
 
         Parameters:
-            operation (str): The SQL operation to be performed with the data 
-                ('insert', 'update', etc.).
             empty_data_fill (Any, optional): The value to fill empty data cells
                 with. Defaults to None.
             file_extension (str, optional): The extension of the data files to 
@@ -507,13 +498,13 @@ class Database:
                         self.sqltools.dataframe_to_table(
                             table_name=table_key,
                             dataframe=data[table_key],
-                            operation=operation,
+                            force_overwrite=force_overwrite,
                         )
 
         else:
             data = self.files.excel_to_dataframes_dict(
                 excel_file_dir_path=self.paths['input_data_dir'],
-                excel_file_name=self.settings['input_data_file'],
+                excel_file_name=Constants.ConfigFiles.INPUT_DATA_FILE,
                 empty_data_fill=empty_data_fill,
             )
 
@@ -522,8 +513,7 @@ class Database:
                     self.sqltools.dataframe_to_table(
                         table_name=table_key,
                         dataframe=table,
-                        operation=operation,
-                        force_operation=force_overwrite,
+                        force_overwrite=force_overwrite,
                     )
 
     def reinit_sqlite_endogenous_tables(
@@ -554,6 +544,5 @@ class Database:
                     self.sqltools.delete_table_entries(
                         table_name=table_key,
                         force_operation=force_overwrite,
-                        column_name=Constants.get(
-                            '_STD_VALUES_FIELD')['values'][0],
+                        column_name=Constants.Labels.VALUES_FIELD['values'][0],
                     )

@@ -88,7 +88,7 @@ class Variable:
     def __init__(
             self,
             logger: Logger,
-            **kwargs,
+            **variable_info,
     ) -> None:
         """
         Initializes a new instance of the Variable class with optional settings 
@@ -115,10 +115,8 @@ class Variable:
         self.related_dims_map: Optional[pd.DataFrame] = None
         self.var_info: Optional[Dict[str, Any]] = None
 
-        for key, value in kwargs.items():
-            setattr(self, key, value)
-
-        self._rearrange_var_info()
+        self.fetch_attributes(variable_info)
+        self.rearrange_var_info()
 
         self.coordinates_info: Dict[str, Any] = {}
         self.coordinates: Dict[str, Any] = {}
@@ -138,7 +136,13 @@ class Variable:
             if key not in ('data', 'logger'):
                 yield key, value
 
-    def _rearrange_var_info(self) -> None:
+    def fetch_attributes(self, variable_info: Dict[str, Any]) -> None:
+
+        for key, value in variable_info.items():
+            if value is not None:
+                setattr(self, key, value)
+
+    def rearrange_var_info(self) -> None:
         """
         Rearranges the information from .yaml variables file (var_info attribute) 
         to the corresponding attributes of the Variable class. This method is
@@ -148,8 +152,8 @@ class Variable:
             return
 
         constant_value = self.var_info.get('value', None)
-        if constant_value and \
-                constant_value in Constants.get('_ALLOWED_CONSTANTS'):
+        if constant_value and constant_value \
+                in Constants.SymbolicDefinitions.ALLOWED_CONSTANTS:
             self.value = constant_value
 
         for dimension in ['rows', 'cols']:
@@ -408,7 +412,7 @@ class Variable:
         Raises:
             KeyError: If the passed row number is out of bounds.
         """
-        cvxpy_var_header = Constants.get('_CVXPY_VAR_HEADER')
+        cvxpy_var_header = Constants.Labels.CVXPY_VAR
 
         if self.data is None \
                 or not isinstance(self.data, pd.DataFrame) \
@@ -453,7 +457,7 @@ class Variable:
         Returns:
             pd.DataFrame: data reshaped and pivoted to be used as cvxpy values.
         """
-        values_header = Constants.get('_STD_VALUES_FIELD')['values'][0]
+        values_header = Constants.Labels.VALUES_FIELD['values'][0]
 
         # case of a scalar with no rows/cols labels (scalars)
         if all(item is None for item in self.dims_labels):
@@ -511,13 +515,14 @@ class Variable:
             exc.ConceptualModelError: If the shape of the variable is not 
                 suitable for creating the constant.
         """
+        allowed_constants = Constants.SymbolicDefinitions.ALLOWED_CONSTANTS
+
         util.validate_selection(
-            valid_selections=Constants.get('_ALLOWED_CONSTANTS'),
+            valid_selections=allowed_constants,
             selection=value_type,
         )
 
-        factory_function, args = \
-            Constants.get('_ALLOWED_CONSTANTS')[value_type]
+        factory_function, args = allowed_constants[value_type]
 
         if value_type == 'sum_vector':
             if self.is_vector:
@@ -570,7 +575,7 @@ class Variable:
 
         else:
             msg = f"Variable 'value': '{value_type}' not supported. " \
-                f"Supported value types: {Constants.get('_ALLOWED_CONSTANTS').keys()}"
+                f"Supported value types: {allowed_constants.keys()}"
             self.logger.error(msg)
             raise exc.SettingsError(msg)
 

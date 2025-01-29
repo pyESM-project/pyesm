@@ -12,14 +12,13 @@ the modeling environment.
 """
 
 import os
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional
 from pathlib import Path
 
 import numpy as np
 import pandas as pd
 import cvxpy as cp
 
-from esm.backend import problem
 from esm.backend.data_table import DataTable
 from esm.backend.database import Database
 from esm.backend.index import Index, Variable
@@ -88,7 +87,6 @@ class Core:
                 with the provided logger, files, paths, and settings.
         """
         self.logger = logger.get_child(__name__)
-        self.logger.debug(f"'{self}' object initialization...")
 
         self.files = files
         self.settings = settings
@@ -97,12 +95,13 @@ class Core:
         self.sqltools = SQLManager(
             logger=self.logger,
             database_path=self.paths['sqlite_database'],
-            database_name=self.settings['sqlite_database_file'],
+            database_name=Constants.ConfigFiles.SQLITE_DATABASE_FILE,
         )
 
         self.index = Index(
             logger=self.logger,
             files=self.files,
+            settings=self.settings,
             paths=self.paths,
         )
 
@@ -122,8 +121,6 @@ class Core:
             settings=self.settings,
             index=self.index
         )
-
-        self.logger.debug(f"'{self}' initialized.")
 
     def __repr__(self):
         class_name = type(self).__name__
@@ -164,6 +161,7 @@ class Core:
         # generate dataframes and cvxpy var for endogenous data tables
         # and for variables whth type defined by problem linking logic
         for data_table_key, data_table in self.index.data.items():
+            data_table: DataTable
 
             if data_table.type == 'endogenous' or \
                     isinstance(data_table.type, dict):
@@ -208,6 +206,7 @@ class Core:
             "Generating data structures for all variables and constants.")
 
         for var_key, variable in self.index.variables.items():
+            variable: Variable
 
             # for constants, values are directly generated (no dataframes needed)
             if variable.type == 'constant':
@@ -238,16 +237,274 @@ class Core:
                     )
 
             else:
-                setup_file = Constants.get('_SETUP_FILES')[1]
-                msg = f"Variable type '{variable.type}' not allowed. Check " \
-                    "definition of variable types in the model configuration " \
-                    f"file '{setup_file}'."
+                msg = f"Variable type '{variable.type}' not allowed. Available " \
+                    f"types: {Constants.SymbolicDefinitions.ALLOWED_VARIABLES_TYPES}"
                 self.logger.error(msg)
                 raise exc.SettingsError(msg)
 
-    def define_mathematical_problems(
+    def data_to_cvxpy_exogenous_vars(
+            self,
+            scenarios_idx: Optional[List[int] | int] = None,
+            allow_none_values: bool = True,
+    ) -> None:
+        """
+        Fetches data from the SQLite database and assigns it to cvxpy exogenous 
+        variables.
+        This method iterates over each variable in the index. If the variable's 
+        type is not 'endogenous' or 'constant', the method fetches the variable's 
+        data from the SQLite database and assigns it to the cvxpy variable. 
+        The method handles variables whose type is defined by the problem separately.
+
+        Args:
+            allow_none_values (bool, optional): If True, allows None values in 
+                the data for the variable. Defaults to True.
+
+        Returns:
+            None
+
+        Raises:
+            TypeError: If a passed item is not an instance of the 'Variable' class.
+            MissingDataError: If no data or related table is defined for a variable, 
+                or if the data for a variable contains non-allowed values types.
+
+        Notes:
+            The method logs information about the data fetching process.
+            The method uses a context manager to handle the database connection.
+            The data is fetched using the 'filtered_table_to_dataframe' method 
+                of the SQLTools instance.
+            The data is assigned to the cvxpy variable using the 'data_to_cvxpy_variable' 
+                method of the Problem instance.
+        """
+        self.logger.debug(
+            f"Fetching data from '{self.settings['sqlite_database_file']}' "
+            "to cvxpy exogenous variables.")
+
+        filter_header = Constants.Labels.FILTER_DICT_KEY
+        cvxpy_var_header = Constants.Labels.CVXPY_VAR
+        values_header = Constants.Labels.VALUES_FIELD['values'][0]
+        id_header = Constants.Labels.ID_FIELD['id'][0]
+        allowed_values_types = Constants.NumericalSettings.ALLOWED_VALUES_TYPES
+
+        with db_handler(self.sqltools):
+            for var_key, variable in self.index.variables.items():
+
+                if not isinstance(variable, Variable):
+                    msg = "Passed item is not a 'Variable' class instance."
+                    self.logger.error(msg)
+                    raise TypeError(msg)
+
+                if variable.type in ['endogenous', 'constant']:
+                    continue
+
+                self.logger.debug(
+                    f"Fetching data from table '{var_key}' "
+                    "to cvxpy exogenous variable.")
+
+                err_msg = []
+
+                if variable.data is None:
+                    err_msg.append(
+                        f"No data defined for variable '{var_key}'.")
+
+                if variable.related_table is None:
+                    err_msg.append(
+                        f"No related table defined for variable '{var_key}'.")
+
+                if err_msg:
+                    self.logger.error("\n".join(err_msg))
+                    raise exc.MissingDataError("\n".join(err_msg))
+
+                # for variables whose type is end/exo depending on the problem,
+                # fetch exogenous variable data.
+                # notice that a variable may be exogenous for more than one problem.
+                if isinstance(variable.type, dict):
+                    problem_keys = util.find_dict_keys_corresponding_to_value(
+                        variable.type, 'exogenous')
+                else:
+                    problem_keys = [None]
+
+                for problem_key in problem_keys:
+
+                    if problem_key is not None:
+                        variable_data = variable.data[problem_key]
+                    else:
+                        variable_data = variable.data
+
+                    # determine the scenarios for which the variable is defined.
+                    # handle the case when a variable is the same for all scenarios.
+                    # in this case, parse all variable data independently by scenarios.
+                    if not variable.coordinates['inter']:
+                        scenarios_list = list(variable_data.index)
+                    else:
+                        if scenarios_idx is None:
+                            scenarios_list = list(
+                                self.index.scenarios_info.index)
+                        else:
+                            if isinstance(scenarios_idx, int):
+                                scenarios_list = [scenarios_idx]
+
+                    for scenario in scenarios_list:
+                        # get raw data from database
+                        raw_data = self.database.sqltools.table_to_dataframe(
+                            table_name=variable.related_table,
+                            filters_dict=variable_data[filter_header][scenario]
+                        )
+
+                        # check if variable data are int or float
+                        non_allowed_ids = util.find_non_allowed_types(
+                            dataframe=raw_data,
+                            allowed_types=allowed_values_types,
+                            target_col_header=values_header,
+                            return_col_header=id_header,
+                            allow_none=allow_none_values,
+                        )
+
+                        if non_allowed_ids:
+                            msg = f"Data for variable '{var_key}' in table " \
+                                f"'{variable.related_table}' contains " \
+                                f"non-allowed values types in rows: " \
+                                f"{non_allowed_ids}."
+                            self.logger.error(msg)
+                            raise exc.MissingDataError(msg)
+
+                        # pivoting and reshaping data to fit variables
+                        pivoted_data = variable.reshaping_sqlite_table_data(
+                            data=raw_data,
+                            nan_to_zero=allow_none_values,
+                        )
+
+                        self.problem.data_to_cvxpy_variable(
+                            cvxpy_var=variable_data[cvxpy_var_header][scenario],
+                            data=pivoted_data
+                        )
+
+    def cvxpy_endogenous_data_to_database(
+            self,
+            scenarios_idx: Optional[List[int] | int] = None,
+            force_overwrite: bool = False,
+            suppress_warnings: bool = False,
+    ) -> None:
+        """
+        Exports data from cvxpy endogenous variables back to data tables in the 
+        SQLite database.
+        This method iterates over each data table in the index. If the table's 
+        type is not 'exogenous' or 'constant', the method exports the data from 
+        the cvxpy variable to the corresponding data table in the SQLite database. 
+
+        Parameters:
+            force_overwrite (bool, optional): If True, forces the re-export of 
+                data even if the data table already exists. Defaults to False.
+            suppress_warnings (bool, optional): If True, suppresses warnings 
+                during the data export process. Defaults to False.
+
+        Returns:
+            None
+
+        Raises:
+            TypeError: If a passed item is not an instance of the 'DataTable' class.
+            OperationalError: If no coordinates DataFrame is defined for a data table.
+
+        Notes:
+            The method logs information about the data export process.
+            The method uses a context manager to handle the database connection.
+            The data is exported using the 'dataframe_to_table' method of the 
+                SQLTools instance.
+        """
+        self.logger.debug(
+            "Exporting data from cvxpy endogenous variable (in data table) "
+            f"to SQLite database '{self.settings['sqlite_database_file']}' ")
+
+        values_headers = Constants.Labels.VALUES_FIELD['values'][0]
+
+        if scenarios_idx is None:
+            scenarios_list = list(self.index.scenarios_info.index)
+        else:
+            if isinstance(scenarios_idx, int):
+                scenarios_list = [scenarios_idx]
+
+        with db_handler(self.sqltools):
+            for data_table_key, data_table in self.index.data.items():
+
+                if not isinstance(data_table, DataTable):
+                    msg = "Passed item is not a 'DataTable' class instance."
+                    self.logger.error(msg)
+                    raise TypeError(msg)
+
+                if data_table.type in ['exogenous', 'constant']:
+                    continue
+
+                self.logger.debug(
+                    "Exporting data from cvxpy variable to the related "
+                    f"data table '{data_table_key}'. ")
+
+                if isinstance(data_table.coordinates_dataframe, pd.DataFrame):
+                    data_table_dataframe = data_table.coordinates_dataframe
+
+                elif isinstance(data_table.coordinates_dataframe, dict):
+                    dataframes_list = [
+                        dataframe for df_key, dataframe
+                        in data_table.coordinates_dataframe.items()
+                        if df_key in scenarios_list
+                    ]
+                    data_table_dataframe = pd.concat(
+                        objs=dataframes_list,
+                        ignore_index=True
+                    )
+
+                if not util.add_column_to_dataframe(
+                    dataframe=data_table_dataframe,
+                    column_header=values_headers,
+                ):
+                    if self.settings['log_level'] == 'debug' or \
+                            not suppress_warnings:
+                        self.logger.warning(
+                            f"Column '{values_headers}' already exists in data "
+                            f"table '{data_table_key}'")
+
+                if data_table.cvxpy_var is None:
+                    if self.settings['log_level'] == 'debug' or \
+                            not suppress_warnings:
+                        self.logger.warning(
+                            f"No data available in cvxpy variable '{data_table_key}'")
+                    continue
+
+                if isinstance(data_table.cvxpy_var, dict):
+                    cvxpy_var_values_list = []
+                    for cvxpy_var_key, cvxpy_var in data_table.cvxpy_var.items():
+                        cvxpy_var: cp.Variable
+                        if cvxpy_var_key in scenarios_list:
+                            cvxpy_var_values_list.append(cvxpy_var.value)
+
+                    cvxpy_var_data = np.vstack(cvxpy_var_values_list)
+
+                else:
+                    cvxpy_var_data = data_table.cvxpy_var.value
+
+                data_table_dataframe[values_headers] = cvxpy_var_data
+
+                self.sqltools.dataframe_to_table(
+                    table_name=data_table_key,
+                    dataframe=data_table_dataframe,
+                    action='update',
+                    force_overwrite=force_overwrite,
+                    suppress_warnings=suppress_warnings,
+                )
+
+    def load_and_validate_symbolic_problem(
             self,
             force_overwrite: bool = False,
+    ) -> None:
+
+        self.problem.load_symbolic_problem_from_file(force_overwrite)
+        self.problem.check_symbolic_problem_coherence()
+
+        self.logger.debug(
+            "Symbolic problem successfully loaded and validated.")
+
+    def generate_numerical_problem(
+            self,
+            force_overwrite: bool,
+            allow_none_values: bool,
     ) -> None:
         """
         Defines and initializes numerical problems based on the loaded symbolic 
@@ -270,16 +527,19 @@ class Core:
             The numerical problems are generated using the 'generate_numerical_problems' 
                 method of the Problem instance.
         """
-        self.logger.debug(
-            "Load symbolic problem, initialize dataframes with cvxpy problem.")
+        self.logger.debug("Generating dataframes with cvxpy problems.")
 
-        self.problem.load_symbolic_problem_from_file(force_overwrite)
+        self.initialize_problems_variables()
+        self.data_to_cvxpy_exogenous_vars(
+            allow_none_values=allow_none_values)
+
         self.problem.generate_numerical_problems(force_overwrite)
 
     def solve_numerical_problems(
             self,
             solver: str,
-            verbose: bool,
+            iterations_log: bool,
+            solver_verbose: bool,
             integrated_problems: bool,
             force_overwrite: bool,
             maximum_iterations: Optional[int] = None,
@@ -326,8 +586,8 @@ class Core:
             self.logger.warning(msg)
             raise exc.OperationalError(msg)
 
-        # check if problems have already been solved
         problem_status = self.problem.problem_status
+
         if (isinstance(problem_status, dict) and
             not all(value is None for value in problem_status.values())) or \
                 (problem_status is not None and not isinstance(problem_status, dict)):
@@ -344,238 +604,23 @@ class Core:
                 "Solving numeric problem and overwriting existing "
                 "variables numerical values.")
 
-        if not integrated_problems:
-            self.problem.solve_problems(
-                solver=solver,
-                verbose=verbose,
-                **kwargs
-            )
-        else:
+        if integrated_problems:
             self.solve_integrated_problems(
                 solver=solver,
-                verbose=verbose,
+                solver_verbose=solver_verbose,
+                iterations_log=iterations_log,
                 numerical_tolerance=numerical_tolerance,
                 maximum_iterations=maximum_iterations,
                 **kwargs,
             )
+        else:
+            self.solve_independent_problems(
+                solver=solver,
+                solver_verbose=solver_verbose,
+                **kwargs
+            )
 
-    def data_to_cvxpy_exogenous_vars(
-            self,
-            allow_none_values: bool = True,
-    ) -> None:
-        """
-        Fetches data from the SQLite database and assigns it to cvxpy exogenous 
-        variables.
-        This method iterates over each variable in the index. If the variable's 
-        type is not 'endogenous' or 'constant', the method fetches the variable's 
-        data from the SQLite database and assigns it to the cvxpy variable. 
-        The method handles variables whose type is defined by the problem separately.
-
-        Args:
-            allow_none_values (bool, optional): If True, allows None values in 
-                the data for the variable. Defaults to True.
-
-        Returns:
-            None
-
-        Raises:
-            TypeError: If a passed item is not an instance of the 'Variable' class.
-            MissingDataError: If no data or related table is defined for a variable, 
-                or if the data for a variable contains non-allowed values types.
-
-        Notes:
-            The method logs information about the data fetching process.
-            The method uses a context manager to handle the database connection.
-            The data is fetched using the 'filtered_table_to_dataframe' method 
-                of the SQLTools instance.
-            The data is assigned to the cvxpy variable using the 'data_to_cvxpy_variable' 
-                method of the Problem instance.
-        """
-        self.logger.debug(
-            f"Fetching data from '{self.settings['sqlite_database_file']}' "
-            "to cvxpy exogenous variables.")
-
-        with db_handler(self.sqltools):
-            for var_key, variable in self.index.variables.items():
-
-                if not isinstance(variable, Variable):
-                    msg = "Passed item is not a 'Variable' class instance."
-                    self.logger.error(msg)
-                    raise TypeError(msg)
-
-                if variable.type in ['endogenous', 'constant']:
-                    continue
-
-                self.logger.debug(
-                    f"Fetching data from table '{var_key}' "
-                    "to cvxpy exogenous variable.")
-
-                filter_header = Constants.get('_FILTER_DICT_HEADER')
-                cvxpy_var_header = Constants.get('_CVXPY_VAR_HEADER')
-                values_header = Constants.get('_STD_VALUES_FIELD')['values'][0]
-                id_header = Constants.get('_STD_ID_FIELD')['id'][0]
-                allowed_values_types = Constants.get('_ALLOWED_VALUES_TYPES')
-
-                err_msg = []
-
-                if variable.data is None:
-                    err_msg.append(
-                        f"No data defined for variable '{var_key}'.")
-
-                if variable.related_table is None:
-                    err_msg.append(
-                        f"No related table defined for variable '{var_key}'.")
-
-                if err_msg:
-                    self.logger.error("\n".join(err_msg))
-                    raise exc.MissingDataError("\n".join(err_msg))
-
-                # for variables whose type is end/exo depending on the problem,
-                # fetch exogenous variable data.
-                if isinstance(variable.type, dict):
-                    problem_keys = util.find_dict_keys_corresponding_to_value(
-                        variable.type, 'exogenous')
-                else:
-                    problem_keys = [None]
-
-                for problem_key in problem_keys:
-
-                    if problem_key:
-                        variable_data = variable.data[problem_key]
-                    else:
-                        variable_data = variable.data
-
-                    for row in variable_data.index:
-                        # get raw data from database
-                        raw_data = self.database.sqltools.filtered_table_to_dataframe(
-                            table_name=variable.related_table,
-                            filters_dict=variable_data[filter_header][row])
-
-                        # check if variable data are int or float
-                        non_allowed_ids = util.find_non_allowed_types(
-                            dataframe=raw_data,
-                            allowed_types=allowed_values_types,
-                            target_col_header=values_header,
-                            return_col_header=id_header,
-                            allow_none=allow_none_values,
-                        )
-
-                        if non_allowed_ids:
-                            msg = f"Data for variable '{var_key}' in table " \
-                                f"'{variable.related_table}' contains " \
-                                f"non-allowed values types in rows: " \
-                                f"{non_allowed_ids}."
-                            self.logger.error(msg)
-                            raise exc.MissingDataError(msg)
-
-                        # pivoting and reshaping data to fit variables
-                        pivoted_data = variable.reshaping_sqlite_table_data(
-                            data=raw_data,
-                            nan_to_zero=allow_none_values,
-                        )
-
-                        self.problem.data_to_cvxpy_variable(
-                            cvxpy_var=variable_data[cvxpy_var_header][row],
-                            data=pivoted_data
-                        )
-
-    def cvxpy_endogenous_data_to_database(
-            self,
-            operation: str,
-            suppress_warnings: bool = False,
-    ) -> None:
-        """
-        Exports data from cvxpy endogenous variables back to data tables in the 
-        SQLite database.
-        This method iterates over each data table in the index. If the table's 
-        type is not 'exogenous' or 'constant', the method exports the data from 
-        the cvxpy variable to the corresponding data table in the SQLite database. 
-
-        Parameters:
-            operation (str): The type of database operation to perform.
-            suppress_warnings (bool, optional): If True, suppresses warnings 
-                during the data export process. Defaults to False.
-
-        Returns:
-            None
-
-        Raises:
-            TypeError: If a passed item is not an instance of the 'DataTable' class.
-            OperationalError: If no coordinates DataFrame is defined for a data table.
-
-        Notes:
-            The method logs information about the data export process.
-            The method uses a context manager to handle the database connection.
-            The data is exported using the 'dataframe_to_table' method of the 
-                SQLTools instance.
-        """
-        self.logger.debug(
-            "Exporting data from cvxpy endogenous variable (in data table) "
-            f"to SQLite database '{self.settings['sqlite_database_file']}' ")
-
-        values_headers = Constants.get('_STD_VALUES_FIELD')['values'][0]
-
-        with db_handler(self.sqltools):
-            for data_table_key, data_table in self.index.data.items():
-
-                if not isinstance(data_table, DataTable):
-                    msg = "Passed item is not a 'DataTable' class instance."
-                    self.logger.error(msg)
-                    raise TypeError(msg)
-
-                if data_table.type in ['exogenous', 'constant']:
-                    continue
-
-                self.logger.debug(
-                    "Exporting data from cvxpy variable to the related "
-                    f"data table '{data_table_key}'. ")
-
-                if isinstance(data_table.coordinates_dataframe, pd.DataFrame):
-                    data_table_dataframe = data_table.coordinates_dataframe
-
-                elif isinstance(data_table.coordinates_dataframe, dict):
-                    data_table_dataframe = pd.concat(
-                        data_table.coordinates_dataframe.values(),
-                        ignore_index=True
-                    )
-
-                if not util.add_column_to_dataframe(
-                    dataframe=data_table_dataframe,
-                    column_header=values_headers,
-                ):
-                    if self.settings['log_level'] == 'debug' or \
-                            not suppress_warnings:
-                        self.logger.warning(
-                            f"Column '{values_headers}' already exists in data "
-                            f"table '{data_table_key}'")
-
-                if data_table.cvxpy_var is None:
-                    if self.settings['log_level'] == 'debug' or \
-                            not suppress_warnings:
-                        self.logger.warning(
-                            f"No data available in cvxpy variable '{data_table_key}'")
-                    continue
-
-                if isinstance(data_table.cvxpy_var, dict):
-
-                    cvxpy_var_values_list = []
-                    for cvxpy_var in data_table.cvxpy_var.values():
-                        cvxpy_var: cp.Variable
-                        cvxpy_var_values_list.append(cvxpy_var.value)
-
-                    cvxpy_var_data = np.vstack(cvxpy_var_values_list)
-
-                else:
-                    cvxpy_var_data = data_table.cvxpy_var.value
-
-                data_table_dataframe[values_headers] = cvxpy_var_data
-
-                self.sqltools.dataframe_to_table(
-                    table_name=data_table_key,
-                    dataframe=data_table_dataframe,
-                    operation=operation,
-                    suppress_warnings=suppress_warnings,
-                )
+        self.problem.fetch_problem_status()
 
     def check_results_as_expected(
             self,
@@ -603,14 +648,70 @@ class Core:
         with db_handler(self.sqltools):
             self.sqltools.check_databases_equality(
                 other_db_dir_path=self.paths['model_dir'],
-                other_db_name=self.settings['sqlite_database_file_test'],
+                other_db_name=Constants.ConfigFiles.SQLITE_DATABASE_FILE_TEST,
                 tolerance_percentage=values_relative_diff_tolerance,
             )
+
+    def solve_independent_problems(
+            self,
+            solver: str,
+            solver_verbose: bool,
+            **kwargs: Any,
+    ) -> None:
+        """
+        Solves all optimization problems defined in the 'numerical_problems' attribute.
+
+        This method checks the type of 'numerical_problems'. If it's a DataFrame, 
+        it treats it as a single problem and solves it. If it's a dictionary, it 
+        treats each value as a separate problem and solves them independently.
+
+        Parameters:
+            solver (str): The solver to use. If None, CVXPY will choose a solver 
+                automatically.
+            verbose (bool): If set to True, the solver will print progress information.
+            **kwargs (Any): Additional arguments to pass to the solver.
+
+        Returns:
+            None
+
+        Raises:
+            exc.OperationalError: If 'numerical_problems' is None.
+
+        Notes:
+            The method updates the 'status' field of the input DataFrame(s) in-place 
+                to reflect the solution status of each problem.
+            If 'numerical_problems' is a dictionary, the keys are used as problem 
+                names.
+        """
+        numerical_problems = self.problem.numerical_problems
+
+        if isinstance(numerical_problems, pd.DataFrame):
+            self.problem.solve_problem_dataframe(
+                problem_dataframe=numerical_problems,
+                solver_verbose=solver_verbose,
+                solver=solver,
+                **kwargs
+            )
+        elif isinstance(numerical_problems, dict):
+            for sub_problem in numerical_problems.keys():
+                self.problem.solve_problem_dataframe(
+                    problem_dataframe=numerical_problems[sub_problem],
+                    problem_name=sub_problem,
+                    solver_verbose=solver_verbose,
+                    solver=solver,
+                    **kwargs
+                )
+        else:
+            if numerical_problems is None:
+                msg = "Numerical problems must be defined first."
+                self.logger.warning(msg)
+                raise exc.OperationalError(msg)
 
     def solve_integrated_problems(
             self,
             solver: str,
-            verbose: bool,
+            solver_verbose: bool,
+            iterations_log: bool = False,
             numerical_tolerance: Optional[float] = None,
             maximum_iterations: Optional[int] = None,
             **kwargs: Any,
@@ -624,6 +725,8 @@ class Core:
         The method handles the database operations required for each iteration, 
         including updating the data for exogenous variables and exporting the 
         data for endogenous variables.
+        Differently with respect to solve_independent_problems() method, this method
+        solve all sub-problems iteratively for the same case (combination of sets).
 
         Parameters:
             solver (str): The solver to use for solving the problems.
@@ -650,103 +753,139 @@ class Core:
                 method of the SQLTools instance.
         """
         if maximum_iterations is None:
-            maximum_iterations = Constants.get(
-                '_MAXIMUM_ITERATIONS_MODEL_COUPLING')
+            maximum_iterations = \
+                Constants.NumericalSettings.MAXIMUM_ITERATIONS_MODEL_COUPLING
 
         if numerical_tolerance is None:
-            numerical_tolerance = Constants.get(
-                '_TOLERANCE_MODEL_COUPLING_CONVERGENCE')
+            numerical_tolerance = \
+                Constants.NumericalSettings.TOLERANCE_MODEL_COUPLING_CONVERGENCE
+
+        sqlite_db_file_name = Constants.ConfigFiles.SQLITE_DATABASE_FILE
+        scenarios_header = Constants.Labels.SCENARIO_COORDINATES
+        problem_status_header = Constants.Labels.PROBLEM_STATUS
 
         sqlite_db_path = self.paths['model_dir']
-        sqlite_db_file_name = self.settings['sqlite_database_file']
-
         base_name, extension = os.path.splitext(sqlite_db_file_name)
         sqlite_db_file_name_previous = f"{base_name}_previous_iter{extension}"
+        tables_to_check = self.problem.endogenous_tables
+        sub_problems_keys = list(self.problem.numerical_problems.keys())
+        scenarios_df = self.index.scenarios_info
 
-        iter_count = 0
+        problems_status = pd.DataFrame(
+            index=scenarios_df.index,
+            columns=sub_problems_keys,
+        )
 
-        tables_to_check = [
-            table_key for table_key in self.index.data.keys()
-            if self.index.data[table_key].type not in ['exogenous', 'constant']
-        ]
+        for scenario_idx in scenarios_df.index:
 
-        while True:
+            scenario_coords = scenarios_df.loc[scenario_idx, scenarios_header]
 
-            try:
-                iter_count += 1
-                if iter_count > maximum_iterations:
-                    self.logger.warning(
-                        f"Maximum number of iterations reached before reaching "
-                        "convergence to numerical_tolerance.")
-                    break
+            self.logger.info("=================================")
+            self.logger.info(
+                f"Solving integrated problems for scenario {scenario_coords}")
 
-                self.logger.info(f"=====================")
-                self.logger.info(f"Iteration number '{iter_count}'")
+            iter_count = 0
 
-                if iter_count > 1:
-                    self.data_to_cvxpy_exogenous_vars()
+            while True:
+                try:
+                    iter_count += 1
+                    if iter_count > maximum_iterations:
+                        self.logger.warning(
+                            "Maximum number of iterations hit before reaching "
+                            f"convergence (tolerance: {numerical_tolerance*100}%).")
+                        break
 
-                self.files.copy_file_to_destination(
-                    path_destination=sqlite_db_path,
-                    path_source=sqlite_db_path,
-                    file_name=sqlite_db_file_name,
-                    file_new_name=sqlite_db_file_name_previous,
-                    force_overwrite=True,
-                )
+                    # make a method in log class to log such table
+                    # if iterations_log and iter_count == 1:
+                    #     print('\n')
+                    #     print('iter # \t|error \t|other \t')
+                    # if iterations_log:
+                    #     print(f'{iter_count}\tcc \t dd')
 
-                self.problem.solve_problems(
-                    solver=solver,
-                    verbose=verbose,
-                    **kwargs
-                )
+                    if iter_count > 1:
+                        self.data_to_cvxpy_exogenous_vars(
+                            scenarios_idx=scenario_idx)
 
-                infeasible_problems = {
-                    problem_key: problem_status
-                    for problem_key, problem_status in self.problem.problem_status.items()
-                    if problem_status != 'optimal'
-                }
+                    self.files.copy_file_to_destination(
+                        path_destination=sqlite_db_path,
+                        path_source=sqlite_db_path,
+                        file_name=sqlite_db_file_name,
+                        file_new_name=sqlite_db_file_name_previous,
+                        force_overwrite=True,
+                    )
 
-                if infeasible_problems:
-                    self.logger.warning(
-                        "Infeasible problems: "
-                        f"'{list(infeasible_problems.keys())}'.")
-                    break
-
-                self.cvxpy_endogenous_data_to_database(
-                    operation='update',
-                    suppress_warnings=True,
-                )
-
-                with db_handler(self.sqltools):
-                    relative_difference = \
-                        self.sqltools.get_tables_values_relative_difference(
-                            other_db_dir_path=sqlite_db_path,
-                            other_db_name=sqlite_db_file_name_previous,
-                            tables_names=tables_to_check,
+                    for sub_problem, problem_df in self.problem.numerical_problems.items():
+                        self.problem.solve_problem_dataframe(
+                            problem_name=sub_problem,
+                            problem_dataframe=problem_df,
+                            scenarios_idx=scenario_idx,
+                            solver=solver,
+                            solver_verbose=solver_verbose,
+                            **kwargs
                         )
 
-                relative_difference_above = {
-                    table: value
-                    for table, value in relative_difference.items()
-                    if value > numerical_tolerance
-                }
+                        status = problem_df.loc[
+                            scenario_idx,
+                            problem_status_header
+                        ]
 
-                if relative_difference_above:
-                    self.logger.info(
-                        "Data tables with highest relative difference above "
-                        f"treshold ({numerical_tolerance}):"
+                        problems_status.at[scenario_idx, sub_problem] = \
+                            status
+
+                    if not all(
+                        problems_status.loc[scenario_idx] == 'optimal'
+                    ):
+                        self.logger.warning(
+                            "One or more sub-problems infeasible for scenario "
+                            f"{scenario_coords}."
+                        )
+                        break
+
+                    self.cvxpy_endogenous_data_to_database(
+                        scenarios_idx=scenario_idx,
+                        force_overwrite=True,
+                        suppress_warnings=True,
                     )
-                    for table, value in relative_difference_above.items():
-                        self.logger.info(
-                            f"Data table '{table}': {round(value, 5)}")
-                else:
-                    self.logger.info("Numerical convergence reached.")
-                    break
 
-            finally:
-                self.files.erase_file(
-                    dir_path=sqlite_db_path,
-                    file_name=sqlite_db_file_name_previous,
-                    force_erase=True,
-                    confirm=False,
-                )
+                    if iter_count == 1:
+                        continue
+
+                    # relative error must be computed for scenarios_idx only
+                    # funziona lo stesso, perchè se il problema è infeasible i
+                    # risultati non vengono esportati (break qui sopra) e il
+                    # database rimane sempre uguale
+                    with db_handler(self.sqltools):
+                        relative_difference = \
+                            self.sqltools.get_tables_values_relative_difference(
+                                other_db_dir_path=sqlite_db_path,
+                                other_db_name=sqlite_db_file_name_previous,
+                                tables_names=tables_to_check,
+                            )
+
+                    relative_difference_above = {
+                        table: value
+                        for table, value in relative_difference.items()
+                        if value > numerical_tolerance
+                    }
+
+                    if relative_difference_above:
+                        self.logger.info(
+                            "Data tables with highest relative difference above "
+                            f"treshold ({numerical_tolerance}):"
+                        )
+                        for table, value in relative_difference_above.items():
+                            self.logger.info(
+                                f"Data table '{table}': {round(value, 5)}")
+                    else:
+                        self.logger.info(
+                            "Numerical convergence reached - Scenario "
+                            f"{scenario_coords}.")
+                        break
+
+                finally:
+                    self.files.erase_file(
+                        dir_path=sqlite_db_path,
+                        file_name=sqlite_db_file_name_previous,
+                        force_erase=True,
+                        confirm=False,
+                    )

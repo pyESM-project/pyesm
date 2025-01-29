@@ -1,37 +1,37 @@
 # structure of sets
 
 scenarios:
-    symbol: s  # symbol of the set 
-    table_name: _set_scenario # name of the table of the set in the database
-    split_problem: True # (optional) if the items of the set defines separate problems 
+    symbol: s
+    table_name: _set_scenario
+    split_problem: True
     table_structure:
-        name: [scenario_Names, TEXT] # header of set entries names in database set table
+        name: scenario_Names
 
 
 
 techs:
-    symbol: techs  # symbol of the set 
-    table_name: _set_techs # name of the table of the set in the database
+    symbol: techs
+    table_name: _set_techs
     table_structure:
-        name: [techs_Names, TEXT] # header of set entries names in database set table
+        name: techs_Names
 
 flows:
-    symbol: flows  # symbol of the set 
-    table_name: _set_flows # name of the table of the set in the database
+    symbol: flows
+    table_name: _set_flows
     table_structure:
-        name: [flows_Names, TEXT] # header of set entries names in database set table
-        aggregation: [flows_Agg, TEXT] # (optional) header of set entries that are matching another set (aggregation)
+        name: flows_Names
+        aggregation: flows_Agg 
 
 
 flows_Agg:
-    symbol: flows_Agg # symbol of the set 
-    table_name: _set_flows_Agg # name of the table of the set in the database
+    symbol: flows_Agg
+    table_name: _set_flows_Agg
     table_structure:
-        name: [flows_Agg_Names, TEXT] # header of set entries names in database set table
+        name: flows_Agg_Names
 
 Years:
-    symbol: Y # symbol of the set 
-    table_name: _set_Y # name of the table of the set in the database
+    symbol: Y 
+    table_name: _set_Y
     table_structure:
-        name: [Y, TEXT] # header of set entries names in database set table
+        name: Y
 

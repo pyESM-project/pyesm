@@ -1,41 +1,10 @@
-# structure of sets
-
-# set_key:
-#     symbol: a  # symbol of the set 
-#     table_name: _set_a # name of the table of the set in the database
-#     split_problem: False # (optional) if the items of the set defines separate problems 
-#     copy_from: another_set_key # (optional) key of another set to copy the data from (table_headers must be filled anyway)
-#     table_structure:
-#         name: [a_Names, TYPE] # header of set entries names in database set table
-#         aggregation: [a_Agg, TEXT] # (optional) header of set entries that are matching another set (aggregation)
-#         filters:
-#             0:  # (int) index of the category in the set
-#                 header: [a_Cat_1, TEXT] 
-#                 values: [a_1a, a_1b, a_1c]
-#             1: 
-#                 header: [a_Cat_2, TEXT] 
-#                 values: [a_2a, a_2b]
-
-
 # -----------------------------------------------------------------------------
 # sets
 
 scenarios:
-    symbol: s
-    table_name: _set_scenarios
     split_problem: True
-    table_structure:
-        name: [s_Names, TEXT]
 
 uncertainty:
-    symbol: u
-    table_name: _set_uncertainty
     split_problem: True
-    table_structure:
-        name: [u_Names, TEXT]
 
 products:
-    symbol: p
-    table_name: _set_products
-    table_structure:
-        name: [p_Names, TEXT]

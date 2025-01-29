@@ -69,27 +69,28 @@ class SetTable:
     def __init__(
             self,
             logger: Logger,
-            data: Optional[pd.DataFrame] = None,
-            **kwargs,
+            key_name: str,
+            **set_info,
     ) -> None:
 
         self.logger = logger.get_child(__name__)
 
-        self.symbol: str
-        self.table_name: str
-        self.copy_from: str
+        self.name: Optional[str] = None
+        self.table_name: Optional[str] = None
+
         self.split_problem: bool = False
-        self.table_structure: Dict[str, Any]
+        self.description: Optional[str] = None
+        self.copy_from: Optional[str] = None
 
-        for key, value in kwargs.items():
-            setattr(self, key, value)
+        self.table_structure: Dict[str, Any] = {}
+        self.table_headers: Dict[str, List[str]] = {}
+        self.table_filters: Dict[int, Any] = {}
+        self.set_categories: Dict[str, Any] = {}
+        self.data: Optional[pd.DataFrame] = None
 
-        self.table_headers: Optional[Dict[str, List[str]]] = None
-        self.table_filters: Optional[Dict[int, Any]] = None
-        self.set_categories: Optional[Dict[str, Any]] = None
-        self.data = data
-
-        self.fetching_headers_and_filters()
+        self.fetch_names(key_name)
+        self.fetch_attributes(set_info)
+        self.fetch_headers_and_filters()
 
     @property
     def set_name_header(self) -> str | None:
@@ -101,7 +102,7 @@ class SetTable:
             str | None: The standard name header if available, otherwise None.
         """
         if self.table_headers is not None:
-            return self.table_headers[Constants.get('_STD_NAME_HEADER')][0]
+            return self.table_headers[Constants.Labels.NAME][0]
         return None
 
     @property
@@ -115,7 +116,7 @@ class SetTable:
                 otherwise None.
         """
         if self.table_headers is not None:
-            aggregation_key = Constants.get('_STD_AGGREGATION_HEADER')
+            aggregation_key = Constants.Labels.AGGREGATION
 
             if aggregation_key in self.table_headers:
                 return self.table_headers[aggregation_key][0]
@@ -150,7 +151,7 @@ class SetTable:
         """
         if self.table_filters:
             return {
-                filter_items['header'][0]: filter_items['values']
+                filter_items['header']: filter_items['values']
                 for filter_items in self.table_filters.values()
             }
         return None
@@ -167,7 +168,7 @@ class SetTable:
         """
         if self.table_filters:
             return {
-                key: value['header'][0]
+                key: value['header']
                 for key, value in self.table_filters.items()
             }
         return None
@@ -186,7 +187,41 @@ class SetTable:
             return list(self.data[self.set_name_header])
         return None
 
-    def fetching_headers_and_filters(self) -> None:
+    def fetch_names(self, set_key: str) -> None:
+        prefix = Constants.Labels.SET_TABLE_NAME_PREFIX
+        self.name = set_key
+        self.table_name = prefix+set_key.upper()
+
+    def fetch_attributes(self, set_info: dict) -> None:
+
+        col_name_suffix = Constants.Labels.COLUMN_NAME_SUFFIX
+        col_agg_suffix = Constants.Labels.COLUMN_AGGREGATION_SUFFIX
+        filters_header = Constants.Labels.FILTERS
+        name_header = Constants.Labels.NAME
+        aggregation_header = Constants.Labels.AGGREGATION
+
+        for key, value in set_info.items():
+            if key != filters_header and value is not None:
+                setattr(self, key, value)
+
+        self.table_structure[name_header] = self.name + col_name_suffix
+
+        if not self.split_problem:
+            self.table_structure[aggregation_header] = \
+                self.name + col_agg_suffix
+
+        if filters_header in set_info:
+            self.table_structure[filters_header] = {}
+            filters_info: dict = set_info[filters_header]
+
+            if filters_info:
+                for filter_key, filter_values in filters_info.items():
+                    self.table_structure[filters_header][filter_key] = {
+                        'header': self.name + '_' + filter_key,
+                        'values': filter_values
+                    }
+
+    def fetch_headers_and_filters(self) -> None:
         """
         Fetches and initializes the table headers and filters based on the 
         predefined table structure. This method updates the instance's 
@@ -198,9 +233,10 @@ class SetTable:
         Side Effects:
             Modifies the table_headers and table_filters attributes of the instance.
         """
-        name_key = Constants.get('_STD_NAME_HEADER')
-        filters_key = Constants.get('_STD_FILTERS_HEADERS')
-        aggregation_key = Constants.get('_STD_AGGREGATION_HEADER')
+        name_key = Constants.Labels.NAME
+        filters_key = Constants.Labels.FILTERS
+        aggregation_key = Constants.Labels.AGGREGATION
+        generic_field_type = Constants.Labels.GENERIC_FIELD_TYPE
 
         # Fetching filters
         self.table_filters = self.table_structure.get(filters_key, None)
@@ -216,12 +252,14 @@ class SetTable:
         }
 
         self.table_headers = {
-            name_key: name_header,
-            **filters_headers
+            key: [value, generic_field_type]
+            for key, value in {name_key: name_header, **filters_headers}.items()
         }
 
         if aggregation_header:
-            self.table_headers[aggregation_key] = aggregation_header
+            self.table_headers[aggregation_key] = [
+                aggregation_header, generic_field_type
+            ]
 
     def __repr__(self) -> str:
         output = ''

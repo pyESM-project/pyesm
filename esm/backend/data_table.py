@@ -59,7 +59,8 @@ class DataTable:
     def __init__(
             self,
             logger: Logger,
-            **kwargs,
+            key_name: str,
+            **table_info,
     ) -> None:
         """
         Initializes a new instance of the DataTable class.
@@ -71,21 +72,24 @@ class DataTable:
         """
         self.logger = logger.get_child(__name__)
 
-        self.name: Optional[str] = None
+        self.name: str = key_name
+
+        self.description: Optional[str] = None
         self.type: Optional[str | dict] = None
-        self.integer: Optional[bool] = False
-        self.coordinates: List[str] = []
+        self.integer: Optional[bool] = None
+        self.coordinates: Optional[list] = None
+        self.variables_info: Optional[Dict[str, Any]] = None
+
+        self.fetch_attributes(table_info)
+        self.fix_coordinates_type()
+
         self.coordinates_headers: Dict[str, str] = {}
         self.coordinates_values: Dict[str, Any] = {}
         self.coordinates_dataframe: Optional[dict | pd.DataFrame] = None
         self.table_headers: Dict[str, Any] = {}
-        self.variables_info: Dict[str, Any] = {}
         self.foreign_keys: Dict[str, Any] = {}
         self.cvxpy_var: Optional[
             pd.DataFrame[Any, cp.Variable] | cp.Variable] = None
-
-        for key, value in kwargs.items():
-            setattr(self, key, value)
 
         self.variables_list: List[str] = list(self.variables_info.keys())
 
@@ -122,6 +126,22 @@ class DataTable:
             msg = f"Lenght of data table '{self.name}' unknown."
             self.logger.error(msg)
             raise exc.MissingDataError(msg)
+
+    def fetch_attributes(self, table_info: Dict[str, Any]) -> None:
+
+        for key, value in table_info.items():
+            if value is not None:
+                setattr(self, key, value)
+
+    def fix_coordinates_type(self) -> None:
+        """
+        Ensures that the coordinates attribute is a list of strings. If the
+        coordinates attribute is a string, it is converted to a list with the
+        string as the only element.
+        """
+        if self.coordinates:
+            if isinstance(self.coordinates, str):
+                self.coordinates = [self.coordinates]
 
     def generate_coordinates_dataframes(
             self,

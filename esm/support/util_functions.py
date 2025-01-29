@@ -32,7 +32,6 @@ def tril(dimension: Tuple[int]) -> np.array:
         ValueError: If passed dimension is not greater than zero.
         TypeError: If passed dimension is not an iterable containing integers.
     """
-
     if not isinstance(dimension, Tuple) and not \
             all(isinstance(i, int) for i in dimension):
         raise TypeError(
@@ -247,6 +246,60 @@ def matrix_inverse(matrix: cp.Parameter | cp.Expression) -> cp.Parameter:
             "Passed matrix is singular and cannot be inverted.") from exc
 
     return cp.Parameter(shape=matrix_val.shape, value=inverse)
+
+# cambiare gli argomenti in parameters keys
+
+
+def shift(
+        dimension: Tuple[int],
+        shift_value: int,
+) -> np.array:
+    """
+    Generate a square matrix of specified dimension, with all zeros except a
+    diagonal of ones that is shifted with respect to the main diagonal by a 
+    specified shift_value. A positive shift_value results in a downward shift, 
+    while a negative shift_value results in an upward shift. If shift_value is 0, 
+    the function returns an identity matrix.
+
+    Parameters:
+        dimension (Tuple[int]): The dimension of the matrix row/col.
+        shift_value (int): The number of positions to shift the diagonal.
+
+    Returns:
+        np.ndarray: A square matrix with a diagonal of ones downward shifted by 
+            the specified shift_value.
+
+    Raises:
+        ValueError: If passed dimension is not greater than zero.
+        TypeError: If passed dimension is not an iterable containing integers.
+    """
+    
+    if not isinstance(dimension, Tuple) and not \
+            all(isinstance(i, int) for i in dimension):
+        raise TypeError(
+            "Passed dimension must be a tuple containing integers.")
+
+    if not isinstance(shift_value, int):
+        raise TypeError("Shift value must be an integer.")
+
+    if any(i < 0 for i in dimension):
+        raise ValueError(
+            "Passed dimension must be integers greater than zero.")
+
+    if len(dimension) != 2 or not any(i == 1 for i in dimension):
+        raise ValueError(
+            "Passed dimension must have at least one element equal to 1 (it "
+            "must represent a vector.")
+
+    size = max(dimension)
+
+    if abs(shift_value) >= size:
+        raise ValueError(
+            "Absolute value of shift_value must be less than the matrix order.")
+
+    matrix = np.eye(size, k=-shift_value)
+
+    return matrix
 
 
 def weibull_distribution(

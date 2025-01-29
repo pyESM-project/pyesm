@@ -6,23 +6,23 @@ scenarios:
     table_name: _set_scenario
     split_problem: True
     table_structure:
-        name: [scenario_Names, TEXT]
+        name: scenario_Names
 
 techs:
     symbol: techs
     table_name: _set_techs
     table_structure:
-        name: [techs_Names, TEXT]
-        aggregation: [tech_agg, TEXT]
+        name: techs_Names
+        aggregation: tech_agg
 
 flows:
     symbol: flows
     table_name: _set_flows
     table_structure:
-        name: [flows_Names, TEXT]
+        name: flows_Names
 
 techs_agg:
     symbol: techs_agg
     table_name: _set_techs_agg
     table_structure:
-        name: [techs_agg_Names, TEXT]
+        name: techs_agg_Names

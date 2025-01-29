@@ -71,45 +71,6 @@ def test_validate_selection():
             validate_selection(valid_selections, selection)
 
 
-def test_validate_dict_structure():
-    """
-    Test the 'validate_dict_structure' method.
-
-    This test function checks the behavior of the validate_dict_structure
-    function against various dictionaries and validation structures. It asserts
-    that the function returns the expected output based on the provided input.
-
-    Test cases:
-    - A dictionary with valid structure should return True.
-    - A dictionary with an invalid structure should return False.
-    - A dictionary with extra keys not present in the validation structure 
-        should return False.
-    """
-    test_items = {
-        1: {"key1": 1, "key2": "value"},
-        2: {"key1": True, "key2": 2},
-        3: {"key1": 1, "key2": {"subkey1": 1, "subkey2": 2}},
-    }
-
-    validation_structures = {
-        1: {"key1": int, "key2": str},
-        2: {"key1": bool, "key2": int},
-        3: {"key1": int, "key2": dict},
-    }
-
-    expected_outputs = {
-        1: True,
-        2: True,
-        3: True,
-    }
-
-    for key in test_items:
-        assert validate_dict_structure(
-            dictionary=test_items[key],
-            validation_structure=validation_structures[key]
-        ) == expected_outputs[key]
-
-
 def test_confirm_action(monkeypatch):
     """
     Test the function 'confirm_action'.
@@ -373,12 +334,15 @@ def test_check_dataframes_equality():
 
     # dataframes with different headers
     df7 = pd.DataFrame({'D': [1, 2, 3], 'E': [4, 5, 6]})
-    with pytest.raises(ValueError):
-        check_dataframes_equality([df1, df7])
+    assert check_dataframes_equality([df1, df7]) == False
 
-    # dataframes with different shapes
+    # empty dataframe with skipped column
+    df8 = pd.DataFrame()
+    assert check_dataframes_equality([df1, df8], skip_columns=['A']) == False
+
+    # skip column that does not exist
     with pytest.raises(ValueError):
-        check_dataframes_equality([df1, df6], skip_columns=['A'])
+        check_dataframes_equality([df1, df6], skip_columns=['column_2'])
 
 
 def test_check_dataframe_columns_equality():
@@ -410,8 +374,7 @@ def test_check_dataframe_columns_equality():
     with pytest.raises(ValueError):
         check_dataframe_columns_equality([])
 
-    with pytest.raises(ValueError):
-        check_dataframe_columns_equality([df1, df5])
+    assert check_dataframe_columns_equality([df1, df5]) == False
 
 
 def test_add_column_to_dataframe():
@@ -791,3 +754,204 @@ def test_calulate_values_difference():
         calculate_values_difference(10, 'a', True, False, False)
     with pytest.raises(ValueError):
         calculate_values_difference('a', 'b', True, False, False)
+
+
+def test_remove_empty_items_from_dict():
+    """
+    Test the remove_empty_items_from_dict function.
+
+    This test verifies that the remove_empty_items_from_dict function correctly removes
+    empty items from a nested dictionary based on default empty values and custom empty values.
+    """
+    input_dict = {
+        'a': 1,
+        'b': '',
+        'c': None,
+        'd': {
+            'e': 2,
+            'f': '',
+            'g': {
+                'h': 3,
+                'i': None
+            },
+            'j': [],
+        },
+        'k': {},
+        'l': 'non-empty',
+    }
+
+    expected_output_1 = {
+        'a': 1,
+        'd': {
+            'e': 2,
+            'g': {
+                'h': 3,
+            },
+        },
+        'l': 'non-empty',
+    }
+
+    expected_output_2 = {
+        'a': 1,
+        'b': '',
+        'c': None,
+        'd': {
+            'e': 2,
+            'f': '',
+            'g': {
+                'h': 3,
+                'i': None
+            },
+            'j': [],
+        },
+        'l': 'non-empty',
+    }
+
+    assert remove_empty_items_from_dict(input_dict) == expected_output_1
+    assert remove_empty_items_from_dict(
+        dictionary=input_dict, empty_values=[{}]
+    ) == expected_output_2
+
+    with pytest.raises(TypeError):
+        remove_empty_items_from_dict('not a dictionary')
+
+    with pytest.raises(ValueError):
+        remove_empty_items_from_dict(
+            input_dict, empty_values=['not in default'])
+
+
+def test_pivot_dataframe_to_data_structure():
+
+    data = {
+        'set_structure': {
+            'set_key': ['resources', 'products', 'product_data'],
+            'description': ['environmental transactions', 'products of the system', 'ancillary data'],
+            'split_problem': ['TRUE', None, None],
+            'copy_from': [None, None, None],
+            'filters': [None, None, "{category: [energy_use_0, learning_rate, profit]}"]
+        },
+
+        'data_table_structure': {
+            'table_key': ['x', 'a', 'product_data', 'product_data', 'product_data', 'b'],
+            'description': [
+                'products supply',
+                'energy_use',
+                'product data',
+                'product data',
+                'product data',
+                'energy availability',
+            ],
+            'type': [
+                "1: 'endogenous', 2: 'exogenous'",
+                "1: 'endogenous', 2: 'exogenous'",
+                'exogenous',
+                'exogenous',
+                'exogenous',
+                'exogenous',
+            ],
+            'integer': [None, None, None, None, None, None],
+            'coordinates': [
+                'resources, products',
+                'resources, products',
+                'products, product_data',
+                'products, product_data',
+                'products, product_data',
+                'resources',
+            ],
+            'variables_info': ['x', 'a', 'c', 'a_0', 'lr', 'b'],
+            'value': [None, None, None, None, None, None],
+            'products': [
+                "dim: cols",
+                "dim: cols",
+                "dim: cols",
+                "dim: cols",
+                "dim: cols",
+                None,
+            ],
+            'resources': [None, None, None, None, None, None],
+            'product_data': [
+                None,
+                None,
+                "dim: rows, filters: {category: profit}",
+                "dim: rows, filters: {category: energy_use_0}",
+                "dim: rows, filters: {category: learning_rate}",
+                None,
+            ],
+        },
+        'problem_structure': {},
+    }
+
+    parameters = {
+        'set_structure': {'primary_key': 'set_key', 'secondary_key': None, 'merge_dict': None},
+        'data_table_structure': {'primary_key': 'table_key', 'secondary_key': 'variables_info', 'merge_dict': None},
+        'problem_structure': {'primary_key': 'problem_key', 'secondary_key': None, 'merge_dict': True},
+    }
+
+    expected_structure = {
+        'set_structure': {
+            'resources': {
+                'description': 'environmental transactions',
+                'split_problem': True
+            },
+            'products': {
+                'description': 'products of the system'
+            },
+            'product_data': {
+                'description': 'ancillary data',
+                'filters': {
+                    'category': ['energy_use_0', 'learning_rate', 'profit']
+                }
+            }
+        },
+        'data_table_structure': {
+            'x': {
+                'description': 'products supply',
+                'type': "{1: 'endogenous', 2: 'exogenous'}",
+                'coordinates': ['resources', 'products'],
+                'variables_info': {'x': {'products': {'dim': 'cols'}}}
+            },
+            'a': {
+                'description': 'energy use',
+                'type': {1: 'endogenous', 2: 'exogenous'},
+                'coordinates': ['resources', 'products'],
+                'variables_info': {'a': {'products': {'dim': 'cols'}}}
+            },
+            'c': {
+                'description': 'product data',
+                'type': 'exogenous',
+                'coordinates': ['products', 'product_data'],
+                'variables_info': {
+                    'c': {
+                        'product_data': {'dim': 'rows', 'filters': {'category': 'profit'}},
+                        'products': {'dim': 'cols'}
+                    },
+                    'a_0': {
+                        'product_data': {'dim': 'rows', 'filters': {'category': 'energy_use_0'}},
+                        'products': {'dim': 'cols'}
+                    },
+                    'lr': {
+                        'product_data': {'dim': 'rows', 'filters': {'category': 'learning_rate'}},
+                        'products': {'dim': 'cols'}
+                    }
+                },
+            },
+            'b': {
+                'description': 'energy availability',
+                'type': 'exogenous',
+                'coordinates': ['resources'],
+                'variables_info': {'b': {}},
+            },
+        },
+        'problem_structure': {}
+    }
+
+    for key, value in data.items():
+
+        structure = pivot_dataframe_to_data_structure(
+            data=pd.DataFrame(value),
+            primary_key=parameters[key].get('primary_key'),
+            secondary_key=parameters[key].get('secondary_key'),
+            merge_dict=parameters[key].get('merge_dict'),
+        )
+
+        assert structure == expected_structure[key]

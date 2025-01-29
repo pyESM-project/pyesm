@@ -43,14 +43,12 @@ c:
     ci:
       costs:
         dim: rows
-      filters:
         filters: {item: inv}
       techs:
         dim: cols
     com:
       costs:
         dim: rows
-      filters:
         filters: {item: om}
       techs:
         dim: cols
@@ -63,14 +61,12 @@ lf:
     lf_min:
       load_factors:
         dim: rows
-      filters:
         filters: {range: min}
       techs:
         dim: cols
     lf_max:
       load_factors:
         dim: rows
-      filters:
         filters: {range: max}
       techs:
         dim: cols

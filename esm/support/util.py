@@ -16,100 +16,15 @@ required for successful model operation, providing robust tools for data
 manipulation and validation.
 """
 
-from collections.abc import Iterable
 import pprint as pp
-from pathlib import Path
-from typing import Dict, List, Any, Literal, Optional, Tuple
-
 import itertools as it
 import pandas as pd
 
+from collections.abc import Iterable
 from copy import deepcopy
-from esm.constants import Constants
-from esm.log_exc.logger import Logger
-from esm.support.file_manager import FileManager
+from typing import Dict, List, Any, Literal, Optional, Tuple
 
-
-def create_model_dir(
-    model_dir_name: str,
-    main_dir_path: str,
-    default_model: Optional[str] = None,
-    force_overwrite: bool = False,
-    export_tutorial: bool = False,
-    default_files_prefix: str = 'template_'
-):
-    """
-    Creates a directory structure for a new model instance, optionally using a 
-    default model as a template, and can include a tutorial notebook if specified.
-
-    Args:
-        model_dir_name (str): The name for the new model directory.
-        main_dir_path (str): The directory path where the new model directory 
-            will be created.
-        default_model (Optional[str]): The template model name from which to 
-            copy files.
-        force_overwrite (bool): If True, existing files or directories will be 
-            overwritten without confirmation.
-        export_tutorial (bool): If True, includes a Jupyter notebook tutorial 
-            in the model directory.
-        default_files_prefix (str): Prefix for files to be copied from the 
-            template, defaults to 'template_'.
-
-    Returns:
-        None: The function creates directories and copies files but does not 
-            return any value.
-    """
-
-    files = FileManager(Logger())
-    model_dir_path = Path(main_dir_path) / model_dir_name
-
-    if model_dir_path.exists():
-        if not files.erase_dir(
-                dir_path=model_dir_path,
-                force_erase=force_overwrite):
-            return
-
-    files.create_dir(model_dir_path, force_overwrite)
-
-    if export_tutorial:
-        file_name = Constants.get('_TUTORIAL_FILE_NAME')
-        files.copy_file_to_destination(
-            path_source=Constants.get('_DEFAULT_MODELS_DIR_PATH'),
-            path_destination=model_dir_path,
-            file_name=default_files_prefix + file_name,
-            file_new_name=file_name,
-            force_overwrite=True,
-        )
-
-    if default_model is None:
-        files.logger.info(f"Generating model '{model_dir_name}' directory.")
-
-        for file_name in Constants.get('_SETUP_FILES').values():
-            files.copy_file_to_destination(
-                path_destination=model_dir_path,
-                path_source=Constants.get('_DEFAULT_MODELS_DIR_PATH'),
-                file_name=default_files_prefix+file_name,
-                file_new_name=file_name,
-                force_overwrite=force_overwrite,
-            )
-
-    else:
-        files.logger.info(
-            f"Directory of model '{model_dir_name}' "
-            f"generated based on default model '{default_model}'.")
-
-        validate_selection(
-            valid_selections=list(Constants.get('_DEFAULT_MODELS_LIST')),
-            selection=default_model)
-
-        template_dir_path = \
-            Path(Constants.get('_DEFAULT_MODELS_DIR_PATH')) / default_model
-
-        files.copy_all_files_to_destination(
-            path_source=template_dir_path,
-            path_destination=model_dir_path,
-            force_overwrite=force_overwrite,
-        )
+from esm.support import util_text
 
 
 def prettify(item: dict) -> None:
@@ -134,6 +49,7 @@ def prettify(item: dict) -> None:
 def validate_selection(
         valid_selections: Iterable[str],
         selection: str,
+        ignore_case: bool = False,
 ) -> None:
     """
     Validates if a provided selection is within a list of valid selections.
@@ -141,9 +57,13 @@ def validate_selection(
     Args:
         valid_selections (List[str]): A list containing all valid selections.
         selection (str): The selection to validate.
+        ignore_case (bool): If True, ignores the case of the selection. 
+            Works only with string selections. Default is False.
 
     Raises:
         ValueError: If the selection is not found within the list of valid selections.
+        ValueError: If no valid selections are available.
+        ValueError: If ignore_case is True but the selections are not strings.
 
     Returns:
         None: This function only performs validation and does not return any value.
@@ -151,33 +71,18 @@ def validate_selection(
     if not valid_selections:
         raise ValueError("No valid selections are available.")
 
+    if ignore_case:
+        if all(isinstance(item, str) for item in valid_selections):
+            valid_selections = [item.lower() for item in valid_selections]
+            selection = selection.lower()
+        else:
+            raise ValueError(
+                "Ignore case option is only available for string selections.")
+
     if selection not in valid_selections:
         raise ValueError(
             "Invalid selection. Please choose one "
             f"of: {', '.join(valid_selections)}.")
-
-
-def validate_dict_structure(
-        dictionary: Dict[str, Any],
-        validation_structure: Dict[str, Any],
-) -> bool:
-    """
-    Validates the structure of a dictionary against a predefined schema.
-
-    Args:
-        dictionary (Dict[str, Any]): The dictionary to be validated.
-        validation_structure (Dict[str, Any]): A schema dictionary where 
-            each key corresponds to expected data types.
-
-    Returns:
-        bool: True if the dictionary matches the schema, False otherwise.
-    """
-    for key, value in dictionary.items():
-        if key not in validation_structure:
-            return False
-        if not isinstance(value, validation_structure[key]):
-            return False
-    return True
 
 
 def items_in_list(
@@ -470,8 +375,10 @@ def check_dataframes_equality(
         cols_order_matters: bool = False,
         rows_order_matters: bool = False,
 ) -> bool:
-    """Check the equality of multiple DataFrames while optionally skipping 
-    specified columns.
+    """
+    Check the equality of multiple DataFrames while optionally skipping 
+    specified columns. The function can also ignore the order of columns
+    and rows in the DataFrames.
 
     Args:
         df_list (List[pd.DataFrame]): A list of Pandas DataFrames to compare.
@@ -486,26 +393,28 @@ def check_dataframes_equality(
         bool: True if all DataFrames are equal, False otherwise.
 
     Raises:
-        None
+        ValueError: If any column in skip_columns is not present in all 
+            DataFrames.
     """
     df_list_copy = deepcopy(df_list)
 
-    if skip_columns is not None:
+    if skip_columns:
+        all_columns_set = set().union(*(df.columns for df in df_list_copy))
+        if not set(skip_columns).issubset(all_columns_set):
+            raise ValueError(
+                "One or more items in 'skip_columns' argument are never "
+                "present in any dataframe.")
+
         for dataframe in df_list_copy:
-            columns_to_drop = [
-                column
-                for column in skip_columns
-                if column in dataframe.columns
-            ]
-            dataframe.drop(columns=columns_to_drop, inplace=True)
+            dataframe.drop(columns=skip_columns, errors='ignore', inplace=True)
 
-    if len(set(df.shape for df in df_list_copy)) > 1:
-        raise ValueError(
-            "Passed dataframes have different shapes and cannot be compared.")
+    shapes = set(df.shape for df in df_list_copy)
+    if len(shapes) > 1:
+        return False
 
-    if len(set(tuple(sorted(df.columns)) for df in df_list_copy)) > 1:
-        raise ValueError(
-            "Passed dataframes have different headers and cannot be compared.")
+    columns = set(tuple(sorted(df.columns)) for df in df_list_copy)
+    if len(columns) > 1:
+        return False
 
     if not cols_order_matters:
         df_list_copy = [df.sort_index(axis=1) for df in df_list_copy]
@@ -516,7 +425,8 @@ def check_dataframes_equality(
             for df in df_list_copy
         ]
 
-    return all(df.equals(df_list_copy[0]) for df in df_list_copy[1:])
+    first_df = df_list_copy[0]
+    return all(first_df.equals(df) for df in df_list_copy[1:])
 
 
 def check_dataframe_columns_equality(
@@ -543,9 +453,6 @@ def check_dataframe_columns_equality(
 
     if any(not isinstance(df, pd.DataFrame) for df in df_list):
         raise TypeError("Passed list must include only Pandas DataFrames.")
-
-    if any(df.empty for df in df_list):
-        raise ValueError("DataFrames in passed list must not be empty.")
 
     if skip_columns is not None:
         modified_df_list = [
@@ -953,3 +860,169 @@ def calculate_values_difference(
 
     else:
         return difference
+
+
+def remove_empty_items_from_dict(
+        dictionary: Dict,
+        empty_values: List = [None, 'nan', 'None', 'null', '', 'NaN', [], {}],
+) -> Dict:
+    """
+    Recursively removes keys with empty values from a dictionary.
+
+    Args:
+        dictionary (Dict): The dictionary to clean.
+
+    Returns:
+        Dict: A new dictionary with all keys that had empty values removed.
+
+    Raises:
+        TypeError: If the passed argument is not a dictionary.
+    """
+    empty_values_list = [None, 'nan', 'None', 'null', '', 'NaN', [], {}]
+
+    if not isinstance(dictionary, dict):
+        raise TypeError(
+            "Passed argument must be a dictionary. "
+            f"{type(dictionary).__name__} was passed instead")
+
+    if not [value for value in empty_values if value in empty_values_list]:
+        raise ValueError(
+            "Passed empty_values tuple must include at least one type of the "
+            f"default empty values {empty_values_list}.")
+
+    def _remove_items(d: Dict) -> Dict:
+        cleaned_dict = {}
+
+        for key, value in d.items():
+            if isinstance(value, dict):
+                nested = _remove_items(value)
+                if nested:
+                    cleaned_dict[key] = nested
+            elif value not in empty_values:
+                cleaned_dict[key] = value
+
+        return cleaned_dict
+
+    return _remove_items(dictionary)
+
+
+def merge_dicts(dicts_list: List[Dict]) -> Dict:
+    """
+    Merge a list of dictionaries into a single dictionary. If a key appears in 
+    multiple dictionaries, its values are combined into a list.
+
+    Args:
+        dicts_list (List[Dict]): A list of dictionaries to merge.
+
+    Returns:
+        Dict: A single dictionary with merged keys and values.
+    """
+    merged = {}
+
+    for d in dicts_list:
+        if d is None:
+            d = {}
+
+        for key, value in d.items():
+            if value is not None:
+                if key in merged:
+                    if isinstance(merged[key], list):
+                        merged[key].append(value)
+                    else:
+                        merged[key] = [merged[key], value]
+                else:
+                    if not isinstance(value, list):
+                        merged[key] = list([value])
+                    else:
+                        merged[key] = value
+
+    return merged
+
+
+def pivot_dataframe_to_data_structure(
+    data: pd.DataFrame,
+    primary_key: Optional[str | int] = None,
+    secondary_key: Optional[str | int] = None,
+    merge_dict: bool = False,
+) -> dict:
+
+    data_structure = {}
+    primary_key = primary_key or data.columns[0]
+
+    if primary_key not in data.columns:
+        raise ValueError(
+            f"Primary key '{primary_key}' not found in DataFrame columns.")
+
+    for _, row in data.iterrows():
+        key = row[primary_key]
+
+        if key not in data_structure:
+            data_structure[key] = {}
+
+        inner_dict = {}
+        for column in data.columns:
+            if column == primary_key:
+                continue
+
+            if column == secondary_key:
+                break
+
+            value = row[column]
+            if value:
+                inner_dict[column] = util_text.process_str(value)
+
+        if merge_dict:
+            data_structure[key] = merge_dicts(
+                [data_structure[key], inner_dict])
+        else:
+            data_structure[key] = inner_dict
+
+    if secondary_key:
+        if secondary_key not in data.columns:
+            raise ValueError(
+                f"Secondary key '{secondary_key}' not found in DataFrame columns.")
+
+        secondary_key_index = data.columns.get_loc(secondary_key)
+        secondary_keys_list = data.columns[secondary_key_index:]
+
+        for _, row in data.iterrows():
+            outern_key = row[primary_key]
+            inner_key = row[secondary_key]
+
+            data_structure[outern_key].setdefault(secondary_key, {})
+
+            inner_dict = {}
+
+            for column in secondary_keys_list:
+                if column == secondary_key:
+                    continue
+
+                value = row[column]
+                if value:
+                    inner_dict[column] = util_text.process_str(value)
+
+            data_structure[outern_key][secondary_key][inner_key] = inner_dict
+
+    if None in data_structure:
+        return data_structure[None]
+
+    return data_structure
+
+
+def transform_dict_none_to_values(dictionary: Dict, none_to: Any) -> Dict:
+    """ 
+    Parse dictionary values, and in case such values are None transform them
+    to value_to.
+    """
+    if not isinstance(dictionary, Dict):
+        raise TypeError(f"Dict type expected, '{type(dictionary)}' passed.")
+
+    result = {}
+
+    for key, value in dictionary.items():
+        if value is None:
+            result[key] = none_to
+        else:
+            result[key] = value
+
+    return result

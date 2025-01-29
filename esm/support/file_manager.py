@@ -12,6 +12,8 @@ in model setups, ensuring data integrity and ease of data manipulation across
 various components of the application.
 """
 
+from ast import Constant
+from types import NoneType
 from typing import List, Dict, Any, Literal, Optional
 from pathlib import Path
 
@@ -22,6 +24,7 @@ import yaml
 
 import pandas as pd
 
+from esm.constants import Constants
 from esm.log_exc import exceptions as exc
 from esm.log_exc.logger import Logger
 from esm.support import util
@@ -74,8 +77,6 @@ class FileManager:
             self.xls_engine: Literal['openpyxl', 'xlsxwriter'] = 'openpyxl'
         else:
             self.xls_engine: Literal['openpyxl', 'xlsxwriter'] = xls_engine
-
-        self.logger.debug(f"'{self}' object generated.")
 
     def __repr__(self):
         class_name = type(self).__name__
@@ -146,7 +147,7 @@ class FileManager:
                 ).lower()
 
                 if response != 'y':
-                    self.logger.info(
+                    self.logger.debug(
                         f"Directory '{dir_name}' and its content not erased.")
                     return False
 
@@ -156,7 +157,7 @@ class FileManager:
                 self.logger.error(f"Error: '{dir_name}' : {error.strerror}")
                 return False
             else:
-                self.logger.info(f"Directory '{dir_name}' have been erased.")
+                self.logger.debug(f"Directory '{dir_name}' have been erased.")
                 return True
 
         else:
@@ -176,7 +177,7 @@ class FileManager:
         Args:
             file_name (str): The name of the file to load.
             dir_path (Path): The path to the directory containing the file.
-            file_type (str): The format of the file ('json' or 'yaml').
+            file_type (str): The format of the file ('json' or 'yml').
 
         Returns:
             Dict[str, Any]: The contents of the file loaded into a dictionary.
@@ -322,7 +323,8 @@ class FileManager:
 
         if source_path.exists() and source_path.is_file():
             shutil.copy2(source_path, destination_file_path)
-            self.logger.debug(f"File '{file_name}' successfully generated.")
+            self.logger.debug(
+                f"File '{file_name}' successfully copied as '{file_new_name}'.")
         else:
             msg = f"The source file '{source_path}' does not exist."
             self.logger.error(msg)
@@ -517,7 +519,7 @@ class FileManager:
         if_sheet_exists = 'replace' if mode == 'a' else None
 
         self.logger.debug(
-            f"Exporting dataframe {sheet_name} to {excel_filename}.")
+            f"Exporting dataframe '{sheet_name}' to '{excel_filename}'.")
 
         if sheet_name is None:
             sheet_name = str(dataframe)
@@ -535,7 +537,7 @@ class FileManager:
             excel_file_name: str,
             excel_file_dir_path: Path | str,
             empty_data_fill: Optional[Any] = None,
-            dtype: Optional[type[str]] = None,
+            set_values_type: bool = True,
     ) -> Dict[str, pd.DataFrame]:
         """
         Reads an Excel file composed of multiple tabs and returns a dictionary 
@@ -548,8 +550,8 @@ class FileManager:
                 Excel file is located.
             empty_data_fill (Optional[Any], optional): Value to fill empty 
                 cells with in the DataFrames. Defaults to None.
-            dtype (Optional[type[str]], optional): Data type to force for the 
-                DataFrame columns. Defaults to None.
+            dtype_values (Optional[type[str]], optional): Data type to force 
+                for the values DataFrame columns. Defaults to None.
 
         Returns:
             Dict[str, pd.DataFrame]: A dictionary containing DataFrames for 
@@ -561,16 +563,241 @@ class FileManager:
 
         file_path = Path(excel_file_dir_path, excel_file_name)
 
+        if set_values_type:
+            values_dtype = Constants.NumericalSettings.STD_VALUES_TYPE
+            values_name = Constants.Labels.VALUES_FIELD['values'][0]
+
         if not os.path.exists(file_path):
             self.logger.error(f'{excel_file_name} does not exist.')
             raise FileNotFoundError(f"{excel_file_name} does not exist.")
 
-        df_dict = pd.read_excel(io=file_path, sheet_name=None, dtype=dtype)
-        if empty_data_fill is not None:
-            df_dict = {
-                sheet_name: df.fillna(empty_data_fill)
-                for sheet_name, df in df_dict.items()
-            }
+        df_dict = pd.read_excel(io=file_path, sheet_name=None)
+
+        for dataframe in df_dict.values():
+            for col in dataframe.columns:
+
+                if col == values_name:
+                    dataframe[col] = dataframe[col].astype(values_dtype)
+
+                if empty_data_fill is not None:
+                    dataframe.fillna(empty_data_fill)
 
         self.logger.debug(f"Excel file '{excel_file_name}' loaded.")
         return df_dict
+
+    def excel_tab_to_dataframe(
+            self,
+            excel_file_name: str,
+            excel_file_dir_path: Path | str,
+            tab_name: str = None,
+    ) -> pd.DataFrame:
+        """
+        Reads a specific tab from an Excel file and returns the data as a 
+        Pandas DataFrame.
+
+        Args:
+            excel_file_name (str): The name of the Excel file to read.
+            excel_file_dir_path (Path | str): The directory path where the 
+                Excel file is located.
+            tab_name (str, optional): The name of the tab to read. If None, 
+                reads the first tab. Defaults to None.
+
+        Returns:
+            pd.DataFrame: DataFrame containing data from a specified tab.
+
+        Raises:
+            FileNotFoundError: If the specified Excel file does not exist.
+        """
+
+        file_path = Path(excel_file_dir_path, excel_file_name)
+
+        if not os.path.exists(file_path):
+            msg = f"{excel_file_name} does not exist."
+            self.logger.error(msg)
+            raise FileNotFoundError(msg)
+
+        xlsx_file = pd.ExcelFile(file_path)
+        sheet_names = xlsx_file.sheet_names
+
+        if tab_name is None:
+            if len(sheet_names) > 1:
+                msg = f"Multiple tabs found in '{excel_file_name}'. Specify " \
+                    f"one of the following tabs: '{sheet_names}'."
+                self.logger.error(msg)
+                raise ValueError(msg)
+            tab_name = sheet_names[0]
+        else:
+            if tab_name not in sheet_names:
+                msg = f"Tab '{tab_name}' not found in '{excel_file_name}'. " \
+                    f"Available tabs: '{sheet_names}'."
+                self.logger.error(msg)
+                raise ValueError(msg)
+
+        dataframe = xlsx_file.parse(tab_name)
+        dataframe = dataframe.astype(object).where(pd.notna(dataframe), None)
+
+        self.logger.debug(
+            f"Excel tab '{tab_name}' loaded from '{excel_file_name}'.")
+
+        return dataframe
+
+    def load_data_structure(
+            self,
+            structure_key: str,
+            source: str,
+            dir_path: Path | str,
+    ) -> Dict:
+
+        available_sources = Constants.ConfigFiles.AVAILABLE_SOURCES
+        util.validate_selection(
+            selection=source,
+            valid_selections=available_sources
+        )
+
+        if source == 'yml':
+            file_name = structure_key + '.yml'
+            data = self.load_file(file_name, dir_path)
+
+            if not data:
+                msg = f"File '{file_name}' is empty."
+                self.logger.error(msg)
+                raise exc.SettingsError(msg)
+
+        elif source == 'xlsx':
+            file_name = Constants.ConfigFiles.SETUP_XLSX_FILE
+            raw_data = self.excel_tab_to_dataframe(
+                file_name, dir_path, structure_key)
+
+            if raw_data.empty:
+                msg = f"Excel tab '{structure_key}' is empty."
+                self.logger.error(msg)
+                raise exc.SettingsError(msg)
+
+            data_pivot_keys = Constants.DefaultStructures.XLSX_PIVOT_KEYS
+            merge_dict = True if \
+                structure_key == Constants.ConfigFiles.SETUP_INFO[2] else False
+
+            data = util.pivot_dataframe_to_data_structure(
+                data=raw_data,
+                primary_key=data_pivot_keys[structure_key][0],
+                secondary_key=data_pivot_keys[structure_key][1],
+                merge_dict=merge_dict,
+            )
+
+        else:
+            msg = "Model settings source not recognized. Available sources: " \
+                f"{available_sources}."
+            self.logger.error(msg)
+            raise exc.SettingsError(msg)
+
+        return data
+
+    def validate_data_structure(
+            self,
+            data: Dict,
+            validation_structure: Dict,
+            path: str = '',
+    ) -> Dict[str, str]:
+
+        problems = {}
+        optional_label = Constants.DefaultStructures.OPTIONAL
+        any_label = Constants.DefaultStructures.ANY
+        all_optional_fields = False
+
+        if all(
+            isinstance(v_exp, tuple) and v_exp[0] == optional_label
+            for v_exp in validation_structure.values()
+        ):
+            all_optional_fields = True
+
+        for k_exp, v_exp in validation_structure.items():
+            current_path = f"{path}.{k_exp}" if path else k_exp
+
+            # if no data are passed, all keys must be optional
+            if not data:
+                if all_optional_fields:
+                    continue
+                else:
+                    problems[current_path] = f"Data structure is empty, but " \
+                        "there are mandatory key-value pairs."
+
+            # check for keys and related values
+            if isinstance(v_exp, tuple) and v_exp[0] == optional_label:
+                optional = True
+                expected_value = v_exp[1:]
+            else:
+                optional = False
+                expected_value = v_exp
+
+            # generic keys are checked in the other for loop
+            if k_exp == any_label:
+                continue
+
+            # check if mandatory keys are missing
+            elif k_exp not in data:
+                if optional:
+                    continue
+                problems[current_path] = f"Missing key-value pair."
+
+            # check values types and content for mandatory keys
+            else:
+                value = data[k_exp]
+
+                if isinstance(expected_value, type):
+                    if not isinstance(value, expected_value | NoneType):
+                        problems[current_path] = \
+                            f"Expected {expected_value}, got {type(value)}"
+                    if not optional and not value:
+                        problems[current_path] = "Empty value."
+
+                elif isinstance(expected_value, tuple):
+                    if all(isinstance(v, type) for v in expected_value):
+                        if not any(isinstance(value, v | NoneType) for v in expected_value):
+                            problems[current_path] = \
+                                f"Expected {expected_value}, got {type(value)}"
+                        if not optional and not value:
+                            problems[current_path] = "Empty value."
+
+                # check for nested dictionaries
+                elif isinstance(expected_value, dict):
+                    if isinstance(value, dict):
+                        problems.update(
+                            self.validate_data_structure(
+                                value, expected_value, current_path)
+                        )
+                    else:
+                        problems[current_path] = \
+                            f"Expected dict, got {type(value).__name__}"
+
+                else:
+                    problems[current_path] = "Unexpected value."
+
+        # in case data is empty, no further checks required
+        if isinstance(data, dict):
+            for key, value in data.items():
+                current_path = f"{path}.{key}" if path else key
+
+                if key not in validation_structure:
+
+                    # check for unexpected keys
+                    if any_label not in validation_structure:
+                        problems[current_path] = "Unexpected key-value pair."
+
+                    # check for nested dictionaries
+                    else:
+                        if isinstance(validation_structure[any_label], tuple) \
+                                and validation_structure[any_label][0] == optional_label:
+                            expected_value = validation_structure[any_label][1]
+                        else:
+                            expected_value = validation_structure[any_label]
+
+                        if isinstance(value, dict):
+                            problems.update(
+                                self.validate_data_structure(
+                                    value, expected_value, current_path)
+                            )
+
+        problems = util.remove_empty_items_from_dict(
+            problems, empty_values=[{}])
+
+        return problems

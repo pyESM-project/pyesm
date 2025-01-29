@@ -28,6 +28,7 @@ import pandas as pd
 import numpy as np
 import cvxpy as cp
 
+from esm.backend.data_table import DataTable
 from esm.constants import Constants
 from esm.log_exc import exceptions as exc
 from esm.log_exc.logger import Logger
@@ -104,7 +105,8 @@ class Problem:
             problems and updates their statuses.
     """
 
-    allowed_operators: Dict[str, Any] = Constants.get('_ALLOWED_OPERATORS')
+    allowed_operators: Dict[str, Any] = \
+        Constants.SymbolicDefinitions.ALLOWED_OPERATORS
 
     def __init__(
             self,
@@ -133,27 +135,24 @@ class Problem:
                 data related to optimization variables and tables.
         """
         self.logger = logger.get_child(__name__)
-        self.logger.debug(f"'{self}' object initialization...")
 
         self.files = files
         self.settings = settings
         self.index = index
         self.paths = paths
 
-        self.symbolic_problem = None
+        self.symbolic_problem = {}
         self.numerical_problems = None
         self.problem_status = None
-
-        self.logger.debug(f"'{self}' object initialized.")
 
     def __repr__(self):
         class_name = type(self).__name__
         return f'{class_name}'
 
     @property
-    def number_of_problems(self) -> int:
+    def number_of_sub_problems(self) -> int:
         """
-        Returns the number of numerical problems defined in the system.
+        Returns the number of sub-problems defined in the numerical model.
         """
         if self.numerical_problems is None:
             self.logger.warning("No numerical problems defined.")
@@ -164,6 +163,19 @@ class Problem:
 
         if isinstance(self.numerical_problems, dict):
             return len(self.numerical_problems)
+
+    @property
+    def endogenous_tables(self) -> list:
+        """
+        Returns a list with keys of the data tables that are endogenous.
+        """
+        endogenous_tables_keys = []
+        for table_key, data_table in self.index.data.items():
+            data_table: DataTable
+            if data_table.type not in ['exogenous', 'constant']:
+                endogenous_tables_keys.append(table_key)
+
+        return endogenous_tables_keys
 
     def create_cvxpy_variable(
         self,
@@ -450,9 +462,9 @@ class Problem:
             "(cvxpy object, filter dictionary, sub problem key).")
 
         headers = {
-            'cvxpy': Constants.get('_CVXPY_VAR_HEADER'),
-            'filter': Constants.get('_FILTER_DICT_HEADER'),
-            'sub_problem_key': Constants.get('_SUB_PROBLEM_KEY_HEADER')
+            'cvxpy': Constants.Labels.CVXPY_VAR,
+            'filter': Constants.Labels.FILTER_DICT_KEY,
+            'sub_problem_key': Constants.Labels.SUB_PROBLEM_KEY,
         }
 
         if variable.sets_parsing_hierarchy:
@@ -568,6 +580,98 @@ class Problem:
             self,
             force_overwrite: bool = False,
     ) -> None:
+
+        source = self.settings['model_settings_from']
+        problem_key = Constants.ConfigFiles.SETUP_INFO[2]
+        problem_structure = Constants.DefaultStructures.PROBLEM_STRUCTURE[1]
+
+        if self.symbolic_problem:
+            if not force_overwrite:
+                self.logger.warning("Symbolic problem already loaded.")
+                user_input = input("Update symbolic problem? (y/[n]): ")
+
+                if user_input.lower() != 'y':
+                    self.logger.info("Symbolic problem NOT updated.")
+                    return
+            else:
+                self.logger.info("Symbolic problem updated.")
+
+        self.logger.debug(
+            "Loading and validating structure of symbolic problem from "
+            f"'{source}' file.")
+
+        data = self.files.load_data_structure(
+            structure_key=problem_key,
+            source=source,
+            dir_path=self.paths['model_dir'],
+        )
+
+        invalid_entries = {}
+
+        if util.find_dict_depth(data) == 1:
+            invalid_entries = self.files.validate_data_structure(
+                data, problem_structure)
+
+        elif util.find_dict_depth(data) == 2:
+            invalid_entries = {
+                key: problems
+                for key, value in data.items()
+                if (
+                    problems := self.files.validate_data_structure(
+                        value, problem_structure
+                    )
+                )
+            }
+
+        else:
+            msg = "Invalid symbolic problem structure. " \
+                f"Check problem '{source}' file."
+            self.logger.error(msg)
+            raise exc.SettingsError(msg)
+
+        if invalid_entries:
+            self.logger.error(
+                f"Validation error report ===================================")
+            if self.settings['detailed_validation']:
+                for key, error_log in invalid_entries.items():
+                    self.logger.error(
+                        f"Validation error | {problem_key} | '{key}' | {error_log}")
+            else:
+                self.logger.error(
+                    f"Validation | {problem_key} | Entries: "
+                    f"{list(invalid_entries.keys())}")
+
+            msg = f"'{problem_key}' data validation not successful. " \
+                f"Check setup '{source}' file. "
+            if not self.settings['detailed_validation']:
+                msg += "Set 'detailed_validation=True' for more information."
+
+            self.logger.error(msg)
+            raise exc.SettingsError(msg)
+
+        if util.find_dict_depth(data) == 1:
+            self.symbolic_problem = DotDict(data)
+
+        elif util.find_dict_depth(data) == 2:
+            for key, problem in data.items():
+                self.symbolic_problem[key] = DotDict(problem)
+
+        else:
+            msg = f"Invalid symbolic problem structure. Check '{source}' file."
+            self.logger.error(msg)
+            raise exc.SettingsError(msg)
+
+    def check_symbolic_problem_coherence(self) -> None:
+
+        self.logger.debug(
+            f"Validating symbolic problem expressions coherence with variables [TBD].")
+
+        pass
+
+    def load_symbolic_problem_from_file_bkp(
+            self,
+            force_overwrite: bool = False,
+    ) -> None:
         """
         Loads a symbolic problem from a specified file into the system. The 
         symbolic problem defines the mathematical expressions and constraints 
@@ -594,10 +698,10 @@ class Problem:
         Raises:
             SettingsError: If the symbolic problem structure is invalid.
         """
-        problem_file_name = Constants.get('_SETUP_FILES')[2]
+        problem_file_name = Constants.ConfigFiles.SETUP_INFO[2] + '.yml'
         problem_keys = [
-            Constants.get('_OBJECTIVE_HEADER'),
-            Constants.get('_CONSTRAINTS_HEADER'),
+            Constants.Labels.OBJECTIVE,
+            Constants.Labels.CONSTRAINTS,
         ]
 
         if self.symbolic_problem is not None:
@@ -667,7 +771,7 @@ class Problem:
             self,
             expression: str,
             non_allowed_tokens: Optional[List[str]] = None,
-            standard_pattern: str = r'\b[a-zA-Z_][a-zA-Z0-9_]*\b'
+            standard_pattern: str = Constants.SymbolicDefinitions.REGEX_PATTERN
     ) -> List[str]:
         """
         Parses and extracts variable names from a symbolic expression, excluding
@@ -755,72 +859,36 @@ class Problem:
             self.logger.warning(msg)
             raise ValueError(msg)
 
-    def find_vars_common_sets_intra_problem(
+    def find_vars_sets_intra_problem(
         self,
         variables_subset: DotDict,
-        allow_none: bool = True,
     ) -> Dict[str, str]:
         """
-        Identifies common intra-problem sets for a subset of variables.
-        This method identifies the common intra-problem sets across all variables 
-        in the subset. If 'allow_none' is True, variables without specific 
-        intra-problem sets are considered constant across all other intra-problem 
-        sets. If all variables share the same intra-problem sets or none, 
-        the common sets are returned as a dictionary; otherwise, an error is raised.
+        Identifies intra-problem sets for a subset of variables.
+        This method identifies the intra-problem sets across all variables 
+        in the subset, returning the intra-problem sets keys and headers as a 
+        dictionary. 
 
         Parameters:
             variables_subset (DotDict): A subset of variables from which to find 
                 common intra-problem sets.
-            allow_none (bool): Specifies whether to treat variables with no defined 
-                intra-problem set as having a common set. Defaults to True.
 
         Returns:
-            Dict[str, str]: A dictionary representing the common intra-problem sets.
-
-        Raises:
-            ConceptualModelError: If no common intra-problem set is found and 
-                'allow_none' is False, or if the intra-problem sets are inconsistent.
+            Dict[str, str]: A dictionary representing all intra-problem sets.
         """
-        vars_sets_intra_problem = {}
-
-        for key, variable in variables_subset.items():
+        intra_problem_sets = {}
+        for variable in variables_subset.values():
             variable: Variable
-            vars_sets_intra_problem[key] = \
-                variable.coordinates_info.get('intra', None)
+            intra_problem_sets.update(
+                variable.coordinates_info.get('intra', {})
+            )
 
-        # in this case, a variable with no intra-problem sets is used as it is
-        # for all expressions
-        if allow_none:
-            vars_sets_intra_problem_list = [
-                value for value in vars_sets_intra_problem.values() if value
-            ]
-        else:
-            vars_sets_intra_problem_list = list(
-                vars_sets_intra_problem.values())
-
-        if not vars_sets_intra_problem_list:
-            return {}
-
-        if all(
-            d == vars_sets_intra_problem_list[0]
-            for d in vars_sets_intra_problem_list[1:]
-        ):
-            return vars_sets_intra_problem_list[0]
-        else:
-            msg = "Fore each problem, each expression must be defined for " \
-                "the same intra-problem sets (defined by 'sets_intra_problem'). "
-            if allow_none:
-                msg += "If a variable has no sets_intra_problem, it is " \
-                    "replicated for multiple expressions."
-
-            self.logger.error(msg)
-            raise exc.ConceptualModelError(msg)
+        return intra_problem_sets
 
     def find_common_vars_coords(
         self,
         variables_subset: DotDict,
         coord_category: str,
-        allow_empty_coord: bool,
     ) -> Dict[str, List[str]] | None:
         """
         Retrieves and verifies that a specific coordinate category is uniformly 
@@ -843,27 +911,30 @@ class Problem:
             SettingsError: If the coordinates for the specified category are 
                 not the same across all variables in the subset.
         """
+
         all_vars_coords = []
         for variable in variables_subset.values():
             variable: Variable
             all_vars_coords.append(
-                variable.coordinates.get(coord_category)
+                variable.coordinates.get(coord_category, {})
             )
 
-        # avoid check empty dictionaries
-        if allow_empty_coord:
-            all_vars_coords = [
-                item for item in all_vars_coords
-                if item != {}
-            ]
+        vars_coords_dict = {}
+        for dictionary in all_vars_coords:
+            dictionary: dict
 
-        if not util.compare_dicts_ignoring_order(all_vars_coords):
-            msg = "Passed variables are not defined with same coordinates " \
-                f"for category '{coord_category}'."
-            self.logger.error(msg)
-            raise exc.SettingsError(msg)
+            for set_key, set_items in dictionary.items():
 
-        return all_vars_coords[0]
+                if set_key in vars_coords_dict:
+                    if set(vars_coords_dict[set_key]) != set(set_items):
+                        msg = "Passed variables are not defined with same coordinates " \
+                            f"for category '{coord_category}'."
+                        self.logger.error(msg)
+                        raise exc.SettingsError(msg)
+                else:
+                    vars_coords_dict[set_key] = set_items
+
+        return vars_coords_dict
 
     def generate_numerical_problems(
             self,
@@ -958,25 +1029,17 @@ class Problem:
             'problem' (the cvxpy Problem object), and 'status' (the solution status, initially set to None).
         """
         headers = {
-            'info': Constants.get('_PROBLEM_INFO_HEADER'),
-            'objective': Constants.get('_OBJECTIVE_HEADER'),
-            'constraints': Constants.get('_CONSTRAINTS_HEADER'),
-            'problem': Constants.get('_PROBLEM_HEADER'),
-            'status': Constants.get('_PROBLEM_STATUS_HEADER'),
+            'objective': Constants.Labels.OBJECTIVE,
+            'constraints': Constants.Labels.CONSTRAINTS,
+            'problem': Constants.Labels.PROBLEM,
+            'status': Constants.Labels.PROBLEM_STATUS,
         }
 
-        dict_to_unpivot = {}
-        for set_name, set_header in self.index.sets_split_problem_dict.items():
-            set_values = self.index.sets[set_name].data[set_header]
-            dict_to_unpivot[set_header] = list(set_values)
-
+        scenarios_coords_header = Constants.Labels.SCENARIO_COORDINATES
         list_sets_split_problem = list(
             self.index.sets_split_problem_dict.values())
 
-        problems_df = util.unpivot_dict_to_dataframe(
-            data_dict=dict_to_unpivot,
-            key_order=list_sets_split_problem,
-        )
+        problems_df = self.index.scenarios_info.copy()
 
         for item in headers.values():
             util.add_column_to_dataframe(
@@ -985,22 +1048,22 @@ class Problem:
                 column_values=None,
             )
 
-        for sub_problem in problems_df.index:
+        for scenario in problems_df.index:
 
-            problem_info = [
-                problems_df.loc[sub_problem][set_name]
-                for set_name in list_sets_split_problem
-            ]
+            scenario_coords = problems_df.loc[scenario,
+                                              scenarios_coords_header]
 
-            msg = "Defining numeric problem"
-            if problem_key:
-                msg += f" '{problem_key}'"
-            if problem_info:
-                msg += f" for combination of sets: {problem_info}."
+            if problem_key is not None:
+                msg = f"Defining sub-problem '{problem_key}'"
+            else:
+                msg = "Defining problem"
+
+            if scenario_coords:
+                msg += f" for scenario: {scenario_coords}."
             self.logger.debug(msg)
 
             problem_filter = problems_df.loc[
-                [sub_problem],
+                [scenario],
                 list_sets_split_problem
             ]
 
@@ -1029,11 +1092,10 @@ class Problem:
 
             problem = cp.Problem(objective, constraints)
 
-            problems_df.at[sub_problem, headers['info']] = problem_info
-            problems_df.at[sub_problem, headers['constraints']] = constraints
-            problems_df.at[sub_problem, headers['objective']] = objective
-            problems_df.at[sub_problem, headers['problem']] = problem
-            problems_df.at[sub_problem, headers['status']] = None
+            problems_df.at[scenario, headers['constraints']] = constraints
+            problems_df.at[scenario, headers['objective']] = objective
+            problems_df.at[scenario, headers['problem']] = problem
+            problems_df.at[scenario, headers['status']] = None
 
         return problems_df
 
@@ -1085,7 +1147,7 @@ class Problem:
                 variables.
         """
         allowed_variables = {}
-        cvxpy_var_header = Constants.get('_CVXPY_VAR_HEADER')
+        cvxpy_var_header = Constants.Labels.CVXPY_VAR
 
         for var_key, variable in variables_set_dict.items():
             variable: Variable
@@ -1101,7 +1163,7 @@ class Problem:
                 continue
 
             if isinstance(variable.data, dict):
-                if problem_key:
+                if problem_key is not None:
                     variable_data = variable.data[problem_key]
                 else:
                     msg = "Problem key must be provided in case variables type " \
@@ -1112,27 +1174,20 @@ class Problem:
                 variable_data = variable.data
 
             # filter variable data based on problem filter (inter-problem sets)
+            # if variable is defined for the current inter-problem sets, filter the variable data
+            # if variable is defined for a sub set of inter-problem sets, finter the sub-set only
+            # else, skip
             if not problem_filter.empty:
+                if not set(problem_filter.columns).isdisjoint(variable_data.columns):
+                    common_filter_cols = problem_filter.columns.intersection(
+                        variable_data.columns
+                    )
+                    problem_filter_intersection = problem_filter[common_filter_cols]
 
-                # if variable is not defined for the current inter-problem sets,
-                # if a unique variable can be identified, ok
-                # if not raise an error
-                if set(problem_filter.columns).isdisjoint(variable_data.columns):
-                    if len(variable_data.index) > 1:
-                        filter_columns = list(problem_filter.columns)
-                        msg = f"Variable '{var_key}' is not defined for " \
-                            f"inter-problem sets {filter_columns}: however, a " \
-                            "unique Variable cannot be identified."
-                        self.logger.error(msg)
-                        raise exc.ConceptualModelError(msg)
-
-                # if variable is defined for the current inter-problem sets
-                # filter the variable data
-                else:
                     variable_data = pd.merge(
                         left=variable_data,
-                        right=problem_filter,
-                        on=list(problem_filter.columns),
+                        right=problem_filter_intersection,
+                        on=list(problem_filter_intersection.columns),
                         how='inner'
                     ).copy()
 
@@ -1150,34 +1205,43 @@ class Problem:
                     raise exc.ConceptualModelError(msg)
 
             # if sets_intra_problem is defined for the variable, the right
-            # cvxpy variable is fetched for the current problem
+            # cvxpy variable is fetched for the current problem.
+            # intra problem sets may be different for each variable
             elif variable.coordinates_info['intra'] \
                     and set_intra_problem_header and set_intra_problem_value:
 
-                # case of a single intra-problem set
-                if not all((
-                    isinstance(set_intra_problem_header, list),
-                    isinstance(set_intra_problem_value, list),
-                )):
-                    condition = variable_data[set_intra_problem_header] == \
-                        set_intra_problem_value
+                # filter only the headers that are in the intra-problem sets
+                intra_values = set(variable.coordinates_info['intra'].values())
 
-                # case of multiple intra-problem sets
-                else:
-                    condition = True
-                    for header, value in zip(
-                        set_intra_problem_header,
-                        set_intra_problem_value
-                    ):
-                        condition &= variable_data[header] == value
+                filtered_header_value_pairs = [
+                    (header, value) for header, value in zip(
+                        set_intra_problem_header, set_intra_problem_value
+                    )
+                    if header in intra_values
+                ]
+
+                if not filtered_header_value_pairs:
+                    msg = "No intra-problem sets found for variable " \
+                        f"'{var_key}' based on the current problem filter."
+                    self.logger.error(msg)
+                    raise exc.ConceptualModelError(msg)
+
+                filtered_header, filtered_value = map(
+                    list, zip(*filtered_header_value_pairs)
+                )
+
+                conditions = [
+                    variable_data[header] == value
+                    for header, value in zip(filtered_header, filtered_value)
+                ]
+                condition = np.logical_and.reduce(conditions)
 
                 allowed_variables[var_key] = variable_data.loc[
                     condition, cvxpy_var_header].iloc[0]
 
             # other cases
             else:
-                msg = "Unable to fetch cvxpy variable for " \
-                    f"variable {var_key}."
+                msg = f"Unable to fetch cvxpy variable for variable {var_key}."
                 self.logger.error(msg)
                 raise exc.ConceptualModelError(msg)
 
@@ -1224,7 +1288,7 @@ class Problem:
 
         local_vars = {}
         if allowed_operators is None:
-            allowed_operators = dict(Constants.get('_ALLOWED_OPERATORS'))
+            allowed_operators = Constants.SymbolicDefinitions.ALLOWED_OPERATORS
 
         try:
             # pylint: disable-next=exec-used
@@ -1241,8 +1305,9 @@ class Problem:
             raise exc.NumericalProblemError(msg) from e
 
         except NameError as msg:
-            self.logger.error(f'NameError: {msg}')
-            raise exc.NumericalProblemError(f'NameError: {msg}')
+            error = f'NameError in reading literal expression: {msg}'
+            self.logger.error(error)
+            raise exc.NumericalProblemError(error) from msg
 
         return local_vars['output']
 
@@ -1307,7 +1372,7 @@ class Problem:
                 and variable.type == 'constant'
             })
 
-            sets_intra_problem = self.find_vars_common_sets_intra_problem(
+            sets_intra_problem = self.find_vars_sets_intra_problem(
                 variables_subset=vars_subset,
             )
 
@@ -1333,7 +1398,6 @@ class Problem:
                 sets_intra_problem_coords = self.find_common_vars_coords(
                     variables_subset=vars_subset,
                     coord_category='intra',
-                    allow_empty_coord=True,
                 )
 
                 # if filtered intra-problem set coordinates are not defined
@@ -1383,11 +1447,12 @@ class Problem:
 
         return numerical_expressions
 
-    def solve_single_problem(
+    def solve_problem_dataframe(
             self,
             problem_dataframe: pd.DataFrame,
             problem_name: Optional[str] = None,
-            verbose: Optional[bool] = True,
+            scenarios_idx: Optional[List[int] | int] = None,
+            solver_verbose: Optional[bool] = True,
             solver: Optional[str] = None,
             **kwargs: Any,
     ) -> None:
@@ -1418,43 +1483,56 @@ class Problem:
             The method updates the 'status' field of the input DataFrame in-place 
                 to reflect the solution status of each problem.
         """
-
-        if verbose == False:
+        if solver_verbose == False:
+            with warnings.catch_warnings():
+                warnings.simplefilter('ignore')
             warnings.filterwarnings(
                 'ignore',
                 category=UserWarning,
                 module='cvxpy.reductions.solvers.solving_chain'
             )
 
-        # possible workaround: summing all problems into one and solve it
-        # other solution: at the moment of generating endogenous variables bound
-        # to tables, in case of set split problems, define a dictionary with different variables.
-        for problem_num in problem_dataframe.index:
+        scenarios_info_header = Constants.Labels.SCENARIO_COORDINATES
+        problem_header = Constants.Labels.PROBLEM
+        status_header = Constants.Labels.PROBLEM_STATUS
 
-            problem_info: List[str] = problem_dataframe.at[
-                problem_num, Constants.get('_PROBLEM_INFO_HEADER')]
-
-            msg = "Solving numerical problem"
-            if problem_name:
-                msg += f" [{problem_name}]"
-            if problem_info:
-                msg += f" - Sub-problem {problem_info}."
-            self.logger.info(msg)
-
-            numerical_problem: cp.Problem = problem_dataframe.at[
-                problem_num, Constants.get('_PROBLEM_HEADER')]
-
-            numerical_problem.solve(
-                solver=solver,
-                verbose=verbose,
-                **kwargs,
+        if scenarios_idx is None:
+            scenarios_idx = list(self.index.scenarios_info.index)
+        elif isinstance(scenarios_idx, int):
+            scenarios_idx = [scenarios_idx]
+        else:
+            util.items_in_list(
+                items=scenarios_idx,
+                list_to_check=list(self.index.scenarios_info.index),
             )
 
-            problem_dataframe.at[
-                problem_num, Constants.get('_PROBLEM_STATUS_HEADER')
-            ] = numerical_problem.status
+        for scenario in scenarios_idx:
 
-            self.logger.debug(f"Problem status: '{numerical_problem.status}'")
+            scenario_info: List[str] = problem_dataframe.at[
+                scenario, scenarios_info_header]
+
+            cvxpy_problem: cp.Problem = problem_dataframe.at[
+                scenario, problem_header]
+
+            if problem_name:
+                msg = f"Solving cvxpy sub-problem '{problem_name}'"
+            else:
+                msg = "Solving cvxpy problem"
+
+            if scenario_info:
+                msg += f" - Scenario {scenario_info}."
+
+            self.logger.info(msg)
+
+            cvxpy_problem.solve(
+                solver=solver, verbose=solver_verbose, **kwargs)
+
+            # an optional informative solution report should be printed (independent from logger)
+            # self.logger.debug(f"Problem status: '{cvxpy_problem.status}'")
+
+            problem_dataframe.at[
+                scenario, status_header
+            ] = cvxpy_problem.status
 
     def fetch_problem_status(self) -> None:
         """
@@ -1469,80 +1547,27 @@ class Problem:
             self.logger.warning(msg)
             raise exc.OperationalError(msg)
 
-        status_header = Constants.get('_PROBLEM_STATUS_HEADER')
-        info_header = Constants.get('_PROBLEM_INFO_HEADER')
+        status_header = Constants.Labels.PROBLEM_STATUS
+        scenario_header = Constants.Labels.SCENARIO_COORDINATES
 
         if isinstance(self.numerical_problems, pd.DataFrame):
             problem_df = self.numerical_problems
 
             problem_status = {
-                f'sub-problem {info}' if len(problem_df) > 1 else 'problem': status
-                for info, status in zip(problem_df[info_header], problem_df[status_header])
+                f'Scenario {info}'
+                if len(problem_df) > 1 else '': status
+                for info, status
+                in zip(problem_df[scenario_header], problem_df[status_header])
             }
 
         elif isinstance(self.numerical_problems, dict):
 
             problem_status = {
-                f'Problem [{problem_key}]' +
-                (f' - Sub-problem {info}' if len(problem_df) > 1 else ''): status
-                for problem_key, problem_df in self.numerical_problems.items()
-                for info, status in zip(problem_df[info_header], problem_df[status_header])
+                f'Sub-problem [{sub_problem_key}]' +
+                (f' - Scenario {info}' if len(problem_df) > 1 else ''): status
+                for sub_problem_key, problem_df in self.numerical_problems.items()
+                for info, status
+                in zip(problem_df[scenario_header], problem_df[status_header])
             }
 
         self.problem_status = problem_status
-
-    def solve_problems(
-            self,
-            solver: str,
-            verbose: bool,
-            **kwargs: Any,
-    ) -> None:
-        """
-        Solves all optimization problems defined in the 'numerical_problems' attribute.
-
-        This method checks the type of 'numerical_problems'. If it's a DataFrame, 
-        it treats it as a single problem and solves it. If it's a dictionary, it 
-        treats each value as a separate problem and solves them independently.
-
-        Parameters:
-            solver (str): The solver to use. If None, CVXPY will choose a solver 
-                automatically.
-            verbose (bool): If set to True, the solver will print progress information.
-            **kwargs (Any): Additional arguments to pass to the solver.
-
-        Returns:
-            None
-
-        Raises:
-            exc.OperationalError: If 'numerical_problems' is None.
-
-        Notes:
-            The method updates the 'status' field of the input DataFrame(s) in-place 
-                to reflect the solution status of each problem.
-            If 'numerical_problems' is a dictionary, the keys are used as problem 
-                names.
-        """
-        if isinstance(self.numerical_problems, pd.DataFrame):
-            self.solve_single_problem(
-                problem_dataframe=self.numerical_problems,
-                verbose=verbose,
-                solver=solver,
-                **kwargs
-            )
-
-        elif isinstance(self.numerical_problems, dict):
-            for problem_name in self.numerical_problems.keys():
-                self.solve_single_problem(
-                    problem_dataframe=self.numerical_problems[problem_name],
-                    problem_name=problem_name,
-                    verbose=verbose,
-                    solver=solver,
-                    **kwargs
-                )
-        else:
-            if self.numerical_problems is None:
-                msg = "Numerical problems must be defined first."
-                self.logger.warning(msg)
-                raise exc.OperationalError(msg)
-
-        self.fetch_problem_status()

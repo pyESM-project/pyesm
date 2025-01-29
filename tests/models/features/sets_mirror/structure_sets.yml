@@ -4,11 +4,11 @@ flows:
     symbol: f
     table_name: _set_FLOWS
     table_structure:
-        name: ['f_Name', 'TEXT']
-        aggregation: ['f_Aggregation', 'TEXT']
+        name: 'f_Name'
+        aggregation: 'f_Aggregation'
         filters: 
             0:
-                header: ['f_Category', 'TEXT']
+                header: 'f_Category'
                 values: ['Hourly dispatched', 'Yearly dispatched']
 
 flows_to:
@@ -16,11 +16,11 @@ flows_to:
     table_name: _set_FLOWS_TO
     copy_from: flows
     table_structure:
-        name: ['f_to_Name', 'TEXT']
-        aggregation: ['f_to_Aggregation', 'TEXT']
+        name: 'f_to_Name'
+        aggregation: 'f_to_Aggregation'
         filters: 
             0:
-                header: ['f_to_Category', 'TEXT']
+                header: 'f_to_Category'
                 values: ['Hourly dispatched', 'Yearly dispatched']
 
 
@@ -28,9 +28,9 @@ flows_aggregated:
     symbol: f_agg
     table_name: _set_FLOWS_AGG
     table_structure:
-        name: ['f_agg_Name', 'TEXT']
+        name: 'f_agg_Name'
         filters: 
             0:
-                header: ['f_Category', 'TEXT']
+                header: 'f_Category'
                 values: ['Hourly dispatched', 'Yearly dispatched']
 

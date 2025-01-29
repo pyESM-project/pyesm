@@ -12,187 +12,228 @@ To avoid direct access and eventual unexpected modification of protected items
 may occur in other modules, constants are defined as class variables of the 
 Constants class, accessible through the 'get' getter method.
 """
-
 import cvxpy as cp
 import numpy as np
-
 from esm.support import util_functions
 
 
 class Constants:
     """
-    A centralized repository of constants used throughout the package for various 
-    purposes, including configuration file management, symbolic problem definition, 
-    and data structure validation. The class prevents direct modification and 
-    unintended use of internal constants by exposing a single, controlled access 
-    point through a class method.
-
-    This class encapsulates essential model configuration files, default headers, 
-    and allowed constants and operators necessary for defining symbolic problems 
-    using CVXPY. The constants are stored as protected class attributes to discourage
-    direct access.
-
-    Attributes:
-        _SETUP_FILES (dict): Essential model configuration files.
-        _TUTORIAL_FILE_NAME (str): Default tutorial file name.
-        _DEFAULT_MODELS_DIR_PATH (str): directory path for default models.
-        _DEFAULT_MODELS_LIST (list): List of default models.
-        _STD_NAME_HEADER (str): Standard header for the 'name' field in data tables.
-        _STD_FILTERS_HEADERS (str): Standard header for the 'filters' field in data tables.
-        _STD_AGGREGATION_HEADER (str): Standard header for the 'aggregation' field in data tables.
-        _STD_VALUES_FIELD (dict): Default column name-type for 'values' field in sets.
-        _STD_ID_FIELD (dict): Default column name-type for 'id' field in sets.
-        _ALLOWED_VALUES_TYPES (tuple): Allowed types for 'values' fields in tables.
-        _CVXPY_VAR_HEADER (str): Default header for variables in a dataframe.
-        _FILTER_DICT_HEADER (str): Default header for filters in a dataframe.
-        _OBJECTIVE_HEADER (str): Header for the objective function in problem definitions.
-        _CONSTRAINTS_HEADER (str): Header for constraints in problem definitions.
-        _PROBLEM_HEADER (str): Header for identifying problems in data structures.
-        _PROBLEM_INFO_HEADER (str): Header for additional information about problems.
-        _PROBLEM_STATUS_HEADER (str): Header for the status of problems.
-        _SET_DEFAULT_STRUCTURE (dict): Default structure for validation of set information.
-        _DATA_TABLE_DEFAULT_STRUCTURE (dict): Default structure for data tables.
-        _VARIABLE_DEFAULT_STRUCTURE (dict): Default structure for variables.
-        _ALLOWED_CONSTANTS (dict): Allowed constants for use in symbolic problem definitions.
-        _ALLOWED_OPERATORS (dict): Allowed operators for defining symbolic CVXPY problems.
-
-    Methods:
-        get(constant_name: str): Retrieves the value of a constant by name, 
-            ensuring safe, read-only access to class-defined constants.
+    Centralized repository of constants grouped into meaningful categories for 
+    clarity and ease of access. Supports direct attribute access of constants 
+    using '__getattr__' method.
 
     Usage:
-        To retrieve a constant, call the `get` method with the name of the 
-        constant as an argument. For example, to get the list of default models, use:
-        >>> Constants.get('_DEFAULT_MODELS_LIST')
-
-    Raises:
-        AttributeError: If the specified constant name does not exist within the class.
+        Direct access:
+            >>> Constants.ConfigFiles.SETUP_FILES
     """
 
-    # CONFIGURATION FILES INFO
-    _SETUP_FILES = {
-        0: 'structure_sets.yml',
-        1: 'structure_variables.yml',
-        2: 'problem.yml',
-    }
+    _SUBGROUPS = []
 
-    _TUTORIAL_FILE_NAME = 'tutorial.ipynb'
+    class ConfigFiles:
+        """Constants related to configuration and file management."""
+        SETUP_INFO = {
+            0: 'structure_sets',
+            1: 'structure_variables',
+            2: 'problem'
+        }
+        SETUP_XLSX_FILE = 'model_settings.xlsx'
+        SETS_FILE = 'sets.xlsx'
+        AVAILABLE_SOURCES = ['yml', 'xlsx']
+        INPUT_DATA_DIR = 'input_data'
+        INPUT_DATA_FILE = 'input_data.xlsx'
+        DATA_FILES_EXTENSION = '.xlsx'
+        SQLITE_DATABASE_FILE = 'database.db'
+        SQLITE_DATABASE_FILE_TEST = 'database_expected.db'
+        TUTORIAL_FILE_NAME = 'API_usage_guide.ipynb'
+        TEMPLATES_DIR = 'default'
 
-    _DEFAULT_MODELS_DIR_PATH = 'default'
-    _DEFAULT_MODELS_LIST = [
-        '1_sut_multi_year',
-        '2_sut_multi_year_rcot',
-        '3_sut_multi_year_rcot_cap',
-        '4_sut_multi_year_rcot_cap_dis',
+    class Labels:
+        """Standard headers and field names."""
+        NAME = 'name'
+        FILTERS = 'filters'
+        AGGREGATION = 'aggregation'
+        CVXPY_VAR = 'variable'
+        SUB_PROBLEM_KEY = 'sub_problem_key'
+        FILTER_DICT_KEY = 'filter'
+        PROBLEM = 'problem'
+        SCENARIO_COORDINATES = 'info'
+        PROBLEM_STATUS = 'status'
+        OBJECTIVE = 'objective'
+        CONSTRAINTS = 'expressions'
+
+        COORDINATES_KEY = 'coordinates'
+        VARIABLES_INFO_KEY = 'variables_info'
+        VALUE_KEY = 'value'
+
+        GENERIC_FIELD_TYPE = 'TEXT'
+        VALUES_FIELD = {'values': ['values', 'REAL']}
+        ID_FIELD = {'id': ['id', 'INTEGER PRIMARY KEY']}
+
+        SET_TABLE_NAME_PREFIX = '_set_'
+        COLUMN_NAME_SUFFIX = '_Name'
+        COLUMN_AGGREGATION_SUFFIX = '_Aggregation'
+
+    class DefaultStructures:
+        """Default structures for data validation."""
+        OPTIONAL = object()
+        ANY = object()
+
+        SET_STRUCTURE = (
+            # set name (case insensitive: 'e' and 'E' are the same set)
+            'set_key:',
+            {
+                # metadata
+                'description': (OPTIONAL, str),
+                # in case the set defines independent numerical sub-problems
+                'split_problem': (OPTIONAL, bool),
+                # key of another set to copy the data from
+                'copy_from': (OPTIONAL, str),
+                # dictionary with keys as the filters name and values as the
+                # list of filter values
+                'filters': (OPTIONAL, {ANY: list})
+            }
+        )
+
+        DATA_TABLE_STRUCTURE = (
+            # data table name (case insensitive: 'e' and 'E' are the same table)
+            'table_key:',
+            {
+                # metadata
+                'description': (OPTIONAL, str),
+                # ALLOWED_VARIABLES_TYPES (or dictionary with keys as problem
+                # name and corresponding values as allowed types)
+                'type': (str, dict),
+                # if variables of the table are integers (default: False)
+                'integer': (OPTIONAL, bool),
+                # list of table coordinates (set_key symbols)
+                'coordinates': (str, list),
+                # definition of the variables based on the same data table
+                'variables_info': {
+                    # dictionary with keys as variables names and values as dict
+                    # with variable info. Variables are case sensitive.
+                    ANY: {
+                        # ALLOWED_CONSTANTS (only for constants!)
+                        'value': (OPTIONAL, str),
+                        # dictionary with keys as set_key symbols and values
+                        # defining the dimension and filters for the set
+                        ANY: (OPTIONAL, {
+                            # ALLOWED_DIMENSIONS (included in 'coordinates')
+                            'dim': (OPTIONAL, str),
+                            # dictionary with keys as the filters key of the set
+                            # and values as the list of values to filter
+                            'filters': (OPTIONAL, dict),
+                        })
+                    }
+                }
+            }
+        )
+
+        PROBLEM_STRUCTURE = (
+            # problem name defined in case of multiple problems
+            'problem_key: # optional',
+            {
+                # Minimize() or Maximize() with an expression resulting in a scalar
+                'objective': (OPTIONAL, list),
+                # definition of additional expressions (equalities/inequalities)
+                'expressions': list,
+                # metadata
+                'description': (OPTIONAL, list),
+            }
+        )
+
+        XLSX_PIVOT_KEYS = {
+            'structure_sets': ('set_key', None),
+            'structure_variables': ('table_key', 'variables_info'),
+            'problem': ('problem_key', None),
+        }
+
+        XLSX_TEMPLATE_COLUMNS = {
+            'structure_sets': ['set_key', *SET_STRUCTURE[1].keys()],
+            'structure_variables': ['table_key', *DATA_TABLE_STRUCTURE[1].keys(), 'set_keys ...'],
+            'problem': ['problem_key', *PROBLEM_STRUCTURE[1].keys()],
+        }
+
+    class SymbolicDefinitions:
+        """Allowed constants and operators for symbolic problem definitions."""
+        ALLOWED_DIMENSIONS = ['rows', 'cols', 'intra', 'inter']
+        ALLOWED_VARIABLES_TYPES = ['constant', 'exogenous', 'endogenous']
+        REGEX_PATTERN = r'\b[a-zA-Z_][a-zA-Z0-9_]*\b'
+        NONE_SYMBOLS = [None, 'nan', 'None', 'null', '', [], {}]
+
+        ALLOWED_CONSTANTS = {
+            'sum_vector': (np.ones, {}),
+            'identity': (np.eye, {}),
+            'set_length': (np.size, {}),
+            'arange_1': (util_functions.arange, {}),
+            'arange_0': (util_functions.arange, {'start_from': 0}),
+            'lower_triangular': (util_functions.tril, {}),
+            'identity_rcot': (util_functions.identity_rcot, {}),
+        }
+        ALLOWED_OPERATORS = {
+            '+': '+',
+            '-': '-',
+            '*': '*',
+            '@': '@',
+            '==': '==',
+            '>=': '>=',
+            '<=': '<=',
+            '(': '(',
+            ')': ')',
+            ',': ',',
+            'tran': cp.transpose,
+            'diag': cp.diag,
+            'sum': cp.sum,
+            'mult': cp.multiply,
+            'shift': util_functions.shift,
+            'pow': util_functions.power,
+            'minv': util_functions.matrix_inverse,
+            'weib': util_functions.weibull_distribution,
+            'Minimize': cp.Minimize,
+            'Maximize': cp.Maximize,
+        }
+
+    class NumericalSettings:
+        """Settings for numerical solvers and tolerances."""
+        ALLOWED_VALUES_TYPES = (int, float)
+        STD_VALUES_TYPE = float
+        DB_EMPTY_DATA_FILL = 0
+        ALLOWED_SOLVERS = cp.installed_solvers()
+        DEFAULT_SOLVER = 'GUROBI'
+        TOLERANCE_TESTS_RESULTS_CHECK = 0.02
+        TOLERANCE_MODEL_COUPLING_CONVERGENCE = 0.01
+        MAXIMUM_ITERATIONS_MODEL_COUPLING = 20
+        ROUNDING_DIGITS_RELATIVE_DIFFERENCE_DB = 5
+
+    class TextNotes:
+        """Text notes and messages for user."""
+        GENERIC_NOTE = ("")
+
+    _SUBGROUPS = [
+        ConfigFiles,
+        Labels,
+        DefaultStructures,
+        SymbolicDefinitions,
+        NumericalSettings,
+        TextNotes,
     ]
 
-    # STANDARD HEADERS, TABLE FIELDS AND VALUE TYPES
-    _STD_NAME_HEADER = 'name'
-    _STD_FILTERS_HEADERS = 'filters'
-    _STD_AGGREGATION_HEADER = 'aggregation'
-
-    _STD_VALUES_FIELD = {'values': ['values', 'REAL']}
-    _STD_ID_FIELD = {'id': ['id', 'INTEGER PRIMARY KEY']}
-
-    _ALLOWED_VALUES_TYPES = (int, float)
-
-    _CVXPY_VAR_HEADER = 'variable'
-    _FILTER_DICT_HEADER = 'filter'
-    _SUB_PROBLEM_KEY_HEADER = 'sub_problem_key'
-
-    _PROBLEM_HEADER = 'problem'
-    _PROBLEM_INFO_HEADER = 'info'
-    _PROBLEM_STATUS_HEADER = 'status'
-
-    _OBJECTIVE_HEADER = 'objective'
-    _CONSTRAINTS_HEADER = 'expressions'
-
-    # DEFAULT STRUCTURES FOR VALIDATION
-    _SET_DEFAULT_STRUCTURE = {
-        'symbol': str,
-        'table_name': str,
-        'split_problem': bool,
-        'copy_from': str,
-        'table_structure': dict,
-    }
-
-    _DATA_TABLE_DEFAULT_STRUCTURE = {
-        'name': str,
-        'type': str | dict,
-        'integer': bool,
-        'coordinates': list,
-        'variables_info': dict,
-    }
-
-    _VAR_INFO_DEFAULT_STRUCTURE = {
-        'value': str,
-    }
-
-    _VAR_COORD_DEFAULT_STRUCTURE = {
-        'dim': str,
-        'filters': dict,
-    }
-
-    # ALLOWED ITEMS FOR DEFINING SYMBOLIC PROBLEMS
-    _ALLOWED_CONSTANTS = {
-        'sum_vector': (np.ones, {}),  # vector of 1s
-        'identity': (np.eye, {}),  # identity matrix
-        'set_length': (np.size, {}),  # scalar getting set length
-        # vector/matrix with a range from 1 up to dimension size
-        'arange_1': (util_functions.arange, {}),
-        'arange_0': (util_functions.arange, {'start_from': 0}),
-        # lower triangular matrix of 1s(inc. diagonal)
-        'lower_triangular': (util_functions.tril, {}),
-        # special identity matrix for rcot problems
-        'identity_rcot': (util_functions.identity_rcot, {}),
-    }
-
-    _ALLOWED_OPERATORS = {
-        '+': '+',
-        '-': '-',
-        '*': '*',
-        '@': '@',
-        '==': '==',
-        '>=': '>=',
-        '<=': '<=',
-        '(': '(',
-        ')': ')',
-        ',': ',',
-        'tran': cp.transpose,
-        'diag': cp.diag,
-        'sum': cp.sum,
-        'mult': cp.multiply,
-        'pow': util_functions.power,
-        'minv': util_functions.matrix_inverse,
-        'weib': util_functions.weibull_distribution,
-        'Minimize': cp.Minimize,
-        'Maximize': cp.Maximize,
-    }
-
-    # NUMERICAL SETTINGS
-    _ALLOWED_SOLVERS = cp.installed_solvers()
-    _DEFAULT_SOLVER = 'GUROBI'
-    _TOLERANCE_TESTS_RESULTS_CHECK = 0.02
-    _TOLERANCE_MODEL_COUPLING_CONVERGENCE = 0.01
-    _MAXIMUM_ITERATIONS_MODEL_COUPLING = 20
-    _ROUNDING_DIGITS_RELATIVE_DIFFERENCE_DB = 5
-
     @classmethod
-    def get(cls, constant_name):
+    def __getattr__(cls, name):
         """
-        Generic getter method to access constants.
+        Provides direct access to constants by searching nested groups.
 
         Args:
-            constant_name (str): The name of the constant to retrieve.
+            name (str): The name of the attribute to retrieve.
 
         Returns:
-            The value of the constant.
+            Any: The requested constant or attribute.
 
         Raises:
-            AttributeError: If the constant is not found.
+            AttributeError: If the attribute is not found.
         """
-        try:
-            return getattr(cls, constant_name)
-        except AttributeError as e:
-            raise AttributeError(
-                f"Constant '{constant_name}' not found.") from e
+        for subgroup in cls._SUBGROUPS:
+            if hasattr(subgroup, name):
+                return getattr(subgroup, name)
+        raise AttributeError(
+            f"Constant or group '{name}' not found in {cls.__name__}.")

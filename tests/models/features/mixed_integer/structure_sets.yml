@@ -5,24 +5,24 @@ years:
     symbol: y
     table_name: _set_YEARS
     table_structure:
-        name: [y_Names, TEXT]
+        name: y_Names
 
 tech_data:
     symbol: td
     table_name: _set_TECH_DATA
     table_structure:
-        name: [td_Names, TEXT]
+        name: td_Names
         filters:
             category:
-                header: [td_Category, TEXT]
+                header: td_Category
                 values: [availability, capacity_unit]
 
 supply_category:
     symbol: sc
     table_name: _set_SUPPLY_CATEGORY
     table_structure:
-        name: [sc_Names, TEXT]
+        name: sc_Names
         filters:
             category:
-                header: [sc_Category, TEXT]
+                header: sc_Category
                 values: [supply, curtailment]

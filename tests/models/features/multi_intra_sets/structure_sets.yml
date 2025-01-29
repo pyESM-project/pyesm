@@ -8,17 +8,17 @@ products:
     table_name: _set_products
     split_problem: False                       
     table_structure:
-        name: [p_Names, TYPE]
+        name: p_Names
 
 technologies:    
     symbol: t
     table_name: _set_technologies
     split_problem: False
     table_structure:    
-        name: [t_Names, TYPE]
+        name: t_Names
         filters:
             0:
-                header: [t_category, TEXT]
+                header: t_category
                 values: [not-detailed, detailed]
 
 years:    
@@ -26,9 +26,22 @@ years:
     table_name: _set_years
     split_problem: False
     table_structure:    
-        name: [y_Names, TYPE]
+        name: y_Names
         filters:
             0:
-                header: [y_category, TEXT]
+                header: y_category
                 values: [warmup, run]
 
+hours:
+    symbol: h
+    table_name: _set_hours
+    split_problem: False
+    table_structure:    
+        name: h_Names
+
+scenarios:
+    symbol: s
+    table_name: _set_scenarios
+    split_problem: True
+    table_structure:    
+        name: s_Names
