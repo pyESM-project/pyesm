@@ -481,6 +481,7 @@ class FileManager:
             excel_dir_path: str,
             sheet_name: Optional[str] = None,
             writer_engine: Optional[Literal['openpyxl', 'xlsxwriter']] = None,
+            force_overwrite: bool = False,
     ) -> None:
         """
         Exports a DataFrame to an Excel file, optionally allowing for 
@@ -505,15 +506,16 @@ class FileManager:
 
         excel_file_path = Path(excel_dir_path, excel_filename)
 
-        if excel_file_path.exists():
-            confirm = input(
-                f"File {excel_filename} already exists. \
-                    Do you want to overwrite it? (y/[n])"
-            )
-            if confirm.lower() != 'y':
-                self.logger.warning(
-                    f"File '{excel_filename}' not overwritten.")
-                return
+        if not force_overwrite:
+            if excel_file_path.exists():
+                confirm = input(
+                    f"File {excel_filename} already exists. \
+                        Do you want to overwrite it? (y/[n])"
+                )
+                if confirm.lower() != 'y':
+                    self.logger.warning(
+                        f"File '{excel_filename}' not overwritten.")
+                    return
 
         mode = 'a' if excel_file_path.exists() else 'w'
         if_sheet_exists = 'replace' if mode == 'a' else None
