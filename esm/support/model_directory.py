@@ -1,4 +1,7 @@
+import pandas as pd
+
 from pathlib import Path
+from typing import Literal
 
 from esm.constants import Constants
 from esm.log_exc.logger import Logger
@@ -140,3 +143,104 @@ def generate_yaml_template(
             file.write('\n'.join(yaml_content))
     except IOError as e:
         raise IOError(f"Error writing to file '{file_name}': {e}") from e
+
+
+def transfer_setup_info_xlsx(
+        source_file_name: str,
+        source_dir_path: str | Path,
+        destination_dir_path: str | Path,
+        update: Literal['settings', 'sets', 'all'] = 'all',
+) -> None:
+
+    files = FileManager(Logger())
+
+    source_file_path = Path(source_dir_path, source_file_name)
+    settings_file_name = Constants.ConfigFiles.SETUP_XLSX_FILE
+    sets_file_name = Constants.ConfigFiles.SETS_FILE
+
+    target_files = {
+        'settings': ['settings'],
+        'sets': ['sets'],
+        'all': ['settings', 'sets']
+    }
+
+    target_info = {
+        'settings': {
+            'destination_file_name': settings_file_name,
+            'destination_file_path': Path(destination_dir_path, settings_file_name),
+            'cols_to_drop': ['notes', 'skip'],
+            'tabs_to_update': list(Constants.ConfigFiles.SETUP_INFO.values()),
+        },
+        'sets': {
+            'destination_file_name': sets_file_name,
+            'destination_file_path': Path(destination_dir_path, sets_file_name),
+            'cols_to_drop': ['id', 'notes'],
+        },
+    }
+
+    # checks if files exists
+    missing_files = []
+
+    if not source_file_path.exists():
+        missing_files.append(source_file_name)
+
+    for category in target_files[update]:
+        file_path: Path = target_info[category]['destination_file_path']
+        if not file_path.exists():
+            missing_files.append(
+                target_info[category]['destination_file_name'])
+
+    if missing_files:
+        msg = f"Missing file/s: {missing_files}"
+        files.logger.error(msg)
+        raise FileNotFoundError(msg)
+
+    # loop to export data
+    for category in target_files[update]:
+
+        destination_file_name = target_info[category]['destination_file_name']
+        cols_to_drop = target_info[category]['cols_to_drop']
+
+        if category == 'settings':
+            tabs_to_update = target_info[category]['tabs_to_update']
+        elif category == 'sets':
+            xlsx_file = pd.ExcelFile(source_file_path)
+            tabs_to_update = [
+                tab for tab in xlsx_file.sheet_names
+                if tab.startswith(Constants.Labels.SET_TABLE_NAME_PREFIX)
+            ]
+
+        # confirmation
+        confirm = input(
+            f"File {destination_file_name} already exists. \
+                Do you want to overwrite it? (y/[n])"
+        )
+        if confirm.lower() != 'y':
+            files.logger.warning(
+                f"File '{destination_file_name}' not overwritten.")
+            continue
+
+        # update tabs
+        for tab in tabs_to_update:
+
+            files.logger.info(
+                f"Updating '{tab}' tab in '{destination_file_name}' file.")
+
+            df = files.excel_tab_to_dataframe(
+                excel_file_name=source_file_name,
+                excel_file_dir_path=source_dir_path,
+                tab_name=tab,
+            )
+
+            if 'skip' in cols_to_drop and 'skip' in df.columns:
+                df = df[df['skip'].isna()]
+
+            df_filtered = df.drop(columns=cols_to_drop, errors='ignore')
+
+            files.dataframe_to_excel(
+                dataframe=df_filtered,
+                excel_filename=destination_file_name,
+                excel_dir_path=destination_dir_path,
+                sheet_name=tab,
+                force_overwrite=True,
+            )

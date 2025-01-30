@@ -15,8 +15,11 @@ Package dependancies:
 
 """
 
-from esm.support.model_directory import create_model_dir
 from esm.backend.model import Model
+from esm.support.model_directory import (
+    create_model_dir,
+    transfer_setup_info_xlsx,
+)
 
 __authors__ = " 'Matteo V. Rocco', "
 __version__ = "0.0.1"
