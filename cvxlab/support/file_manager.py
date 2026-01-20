@@ -629,9 +629,10 @@ class FileManager:
         try:
             df = xlsx.parse(
                 sheet_name=sheet_name,
-                dtype_backend="python" if hasattr(pd, "options") else None,
                 keep_default_na=True,
+                dtype_backend="python" if hasattr(pd, "options") else None,
             )
+
         except Exception as e:
             msg = f"Excel parsing error | sheet '{sheet_name}' | {str(e)}"
             self.logger.error(msg)
