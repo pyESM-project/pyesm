@@ -481,12 +481,12 @@ def check_dataframes_equality(
                 "present in any dataframe.")
 
         for dataframe in df_list_copy:
-            dataframe.drop(columns=skip_columns, inplace=True)
+            dataframe.drop(columns=skip_columns, errors='ignore', inplace=True)
 
     # Convert all numeric values to float64 for consistent comparisons
     if homogeneous_num_types:
         df_list_copy = [
-            df.apply(pd.to_numeric)
+            df.apply(lambda col: pd.to_numeric(col, errors='coerce'))
             for df in df_list_copy
         ]
 
@@ -540,7 +540,7 @@ def check_dataframe_columns_equality(
 
     if skip_columns is not None:
         modified_df_list = [
-            dataframe.drop(columns=skip_columns)
+            dataframe.drop(columns=skip_columns, errors='ignore')
             for dataframe in df_list
         ]
     else:
