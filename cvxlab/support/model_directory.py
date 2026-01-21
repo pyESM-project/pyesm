@@ -355,7 +355,7 @@ def transfer_setup_info_xlsx(
             if 'skip' in cols_to_drop and 'skip' in df.columns:
                 df = df[df['skip'].isna()]
 
-            df_filtered = df.drop(columns=cols_to_drop, errors='ignore')
+            df_filtered = df.drop(columns=cols_to_drop)
 
             files.dataframe_to_excel(
                 dataframe=df_filtered,
