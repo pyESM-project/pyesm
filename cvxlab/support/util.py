@@ -862,7 +862,7 @@ def find_dict_keys_corresponding_to_value(
 
 def calculate_change_norm(
         seq1: List[float] | Tuple[float, ...] | pd.Series | np.ndarray | float | int,
-        seq2: List[float] | Tuple[float, ...] | pd.Series | np.ndarray | float | int,
+        seq2: List[float] | Tuple[float, ...] | pd.Series | np.ndarray | float | int | None,
         metric: Defaults.NumericalSettings.NormType,
         ignore_nan: bool,
 ) -> float:
@@ -872,6 +872,8 @@ def calculate_change_norm(
     (or scalars). It supports various metrics including maximum relative change,
     maximum absolute change, and L1, L2, and L-infinity norms. It can also ignore
     NaN or non-numeric values during the computation.
+    If seq2 is None, the norm of seq1 is calculated, calculating the norm of the
+    vector with respect to zero.
 
     Supported metrics (let x := seq1, y := seq2, d := x - y). 
         "max_relative": maximum relative change. Implemented as:
@@ -886,7 +888,8 @@ def calculate_change_norm(
             ||d||_2  (sqrt(sum_i d_i^2))
 
     Args:
-        seq1, seq2: Numeric sequences (or scalars). Must have same length.
+        seq1, seq2: Numeric sequences (or scalars). Must have same length. If None, 
+            norm of seq1 is calculated.
         metric: Metric name as above.
         ignore_nan: If True, drop positions where either x or y is NaN/non-numeric.
             If False, raises on non-numeric or NaN.
@@ -900,13 +903,13 @@ def calculate_change_norm(
     """
     # Convert inputs to 1D numpy arrays
     x = np.asarray(seq1, dtype=float).ravel()
-    y = np.asarray(seq2, dtype=float).ravel()
+    y = np.asarray(seq2, dtype=float).ravel() if seq2 is not None else None
 
-    if x.shape != y.shape:
+    if y is not None and x.shape != y.shape:
         raise ValueError("Sequences must have the same shape.")
 
     # Build mask for valid numeric entries
-    valid_mask = np.isfinite(x) & np.isfinite(y)
+    valid_mask = np.isfinite(x) & (np.isfinite(y) if y is not None else True)
 
     if not ignore_nan:
         if not np.all(valid_mask):
@@ -914,15 +917,19 @@ def calculate_change_norm(
                 "NaN/Inf values encountered and ignore_nan=False.")
     else:
         x = x[valid_mask]
-        y = y[valid_mask]
+        y = y[valid_mask] if y is not None else None
 
     if x.size == 0:
         return 0.0
 
-    d = x - y
+    d = x - y if y is not None else x
     abs_d = np.abs(d)
 
     if metric == "max_relative":
+        if y is None:
+            # When computing norm only, use absolute values
+            return float(np.max(abs_d))
+        # Relative change: max_i |d_i| / |y_i|
         denom = np.abs(y)
         # relative element-wise; denom==0 and abs_d>0 -> inf
         with np.errstate(divide='ignore', invalid='ignore'):
