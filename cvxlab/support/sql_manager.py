@@ -444,6 +444,13 @@ class SQLManager:
 
             self.drop_table(table_name)
 
+        if foreign_keys:
+            self.logger.debug(
+                f"SQLite table generation with foreign keys | Table name: '{table_name}'")
+        else:
+            self.logger.debug(
+                f"SQLite table generation | Table name: '{table_name}'")
+
         fields_str = ", ".join(
             [f'{field_name} {field_type}'
                 for field_name, field_type in table_fields.values()]
@@ -461,13 +468,6 @@ class SQLManager:
 
         query = f"CREATE TABLE {table_name}({fields_str});"
         self.execute_query(query)
-
-        if foreign_keys:
-            self.logger.debug(
-                f"SQLite table generation with foreign keys | Table name: '{table_name}'")
-        else:
-            self.logger.debug(
-                f"SQLite table generation | Table name: '{table_name}'")
 
     def switch_foreing_keys(self, switch: bool) -> None:
         """Enable/disable the enforcement of foreign key constraints.
@@ -687,6 +687,7 @@ class SQLManager:
         force_overwrite: bool = False,
         suppress_warnings: bool = False,
         batch_size: Optional[int] = None,
+        upstream_msg: Optional[str] = None,
     ) -> None:
         """Insert or update a SQLite table based on a DataFrame entries.
 
@@ -710,6 +711,11 @@ class SQLManager:
                 False.
             suppress_warnings (bool, optional): If True, suppresses warning 
                 messages. Defaults to False.
+            batch_size (Optional[int], optional): The number of entries to
+                process in each batch during query execution. If None, an
+                optimal batch size is calculated based on the DataFrame size.
+            upstream_msg (Optional[str], optional): An optional message to
+                prepend to log entries for context.
 
         Raises:
             exc.MissingDataError: If there is a mismatch in columns between
@@ -731,7 +737,6 @@ class SQLManager:
         values_field = Defaults.Labels.VALUES_FIELD['values'][0]
         table_existing_entries = self.count_table_data_entries(table_name)
         df_existing = self.table_to_dataframe(table_name)
-        batch_calculated = False
 
         # check if dataframes columns are matching (except id_field)
         if not util.check_dataframe_columns_equality(
@@ -841,7 +846,6 @@ class SQLManager:
             if batch_size is None:
                 batch_size = self._calculate_optimal_batch_size(
                     dataframe_with_id)
-                batch_calculated = True
 
             data = [tuple(row) for row in dataframe_with_id.values.tolist()]
             placeholders = ', '.join(['?'] * len(dataframe_with_id.columns))
@@ -858,15 +862,15 @@ class SQLManager:
 
         self.execute_query(query=query, params=data, batch_size=batch_size)
 
-        log_msg = (
+        msg = (
             f"SQLite table '{table_name}' | "
             f"action '{action}' | "
-            f"entries: {len(data)}"
+            f"entries: {len(data)} "
         )
-        if batch_calculated:
-            log_msg += f" | batched data transfer"
+        if upstream_msg:
+            msg += upstream_msg
 
-        self.logger.debug(log_msg)
+        self.logger.debug(msg)
 
     def table_to_dataframe(
             self,
@@ -1238,6 +1242,68 @@ class SQLManager:
 
         finally:
             other_db_connection.close()
+
+    def get_tables_values_scale(
+        self,
+        norm_type: Defaults.NumericalSettings.NormType,
+        tables_names: Optional[List[str]] = None,
+    ) -> Dict[str, float]:
+        """Get norm of values in specified tables of the current SQLite database.
+
+        This method computes the norm (scale) of numerical values in specified 
+        tables. This is useful for understanding the magnitude of data in tables
+        and for scaling/normalization purposes during integrated solving.
+
+        Args:
+            norm_type (Literal['max_relative', 'max_absolute', 'l1', 'l2', 'linf']): 
+                The type of norm to use for calculating the scale of values.
+            tables_names (Optional[List[str]], optional): Specific tables to
+                analyze; if None, all tables are analyzed.
+
+        Returns:
+            Dict[str, float]: A dictionary where keys are table names and values 
+                are the computed norms.
+
+        Raises:
+            exc.OperationalError: If the connection or cursor is not initialized.
+            exc.TableNotFoundError: If specified tables are not found in the database.
+        """
+        if self.connection is None or self.cursor is None:
+            msg = "Connection or cursor of the database are not initialized."
+            self.logger.error(msg)
+            raise exc.OperationalError(msg)
+
+        if tables_names is None:
+            tables_names = self.get_existing_tables_names
+        else:
+            if not all([
+                table in self.get_existing_tables_names
+                for table in tables_names
+            ]):
+                msg = "One or more tables not found in the database."
+                self.logger.error(msg)
+                raise exc.TableNotFoundError(msg)
+
+        scales: Dict[str, float] = {}
+
+        try:
+            for table in tables_names:
+                self.cursor.execute(f"SELECT \"values\" FROM \"{table}\"")
+                table_values = [row[0] for row in self.cursor.fetchall()]
+
+                scales[table] = util.calculate_change_norm(
+                    seq1=table_values,
+                    seq2=None,
+                    metric=norm_type,
+                    ignore_nan=True,
+                )
+
+            return scales
+
+        except sqlite3.Error as error:
+            msg = f"Error retrieving table scales: {error}"
+            self.logger.error(msg)
+            raise exc.OperationalError(msg) from error
 
     def get_tables_values_norm_changes(
             self,

@@ -142,7 +142,7 @@ class Problem:
         return endogenous_tables_keys
 
     @property
-    def endogenous_tables_mixed(self) -> list:
+    def endogenous_tables_hybrid(self) -> list:
         """List of keys of the data tables that collect mixed endogenous/exogenous data.
 
         This property returns a list of keys corresponding to data tables
@@ -1015,11 +1015,11 @@ class Problem:
         This method checks the coherence between the symbolic problem definitions
         and the data tables definitions in the index. Specific checks include:
 
-        - For mixed type data tables, table types must be specified for all problems.
+        - For hybrid type data tables, table types must be specified for all problems.
         - For variables generated from the same pure endogenous data tables, 
-            in case these are used in multiple problems, a warning is raised.
-            This is indeed a strange modelling choice, as pure endogenous variables
-            should ideally be unique to each problem. 
+            in case these are used in multiple problems, an error is raised.
+            This indeed causes the variable to be reinitialized in the latest 
+            problem solved, losing the value assigned in previous problems. 
         - further checks can be added here ...
 
         Raises:
@@ -1037,7 +1037,8 @@ class Problem:
         for table_key, data_table in self.index.data.items():
             data_table: DataTable
 
-            # mixed type data tables must specify data type for all problems
+            # hybrid type data tables must specify data type for all problems (also
+            # in case a variable is not used at all in a specific problem)
             if isinstance(data_table.type, dict):
 
                 valid_problem_keys = set(self.symbolic_problem.keys())
@@ -1052,6 +1053,8 @@ class Problem:
                     )
 
                 # check for missing problem keys (only if no invalid keys found)
+                # QUI DEVO CONTROLLARE SOLO CHE LE VARIABILI SIANO ASSOCIATE AI PROBLEMI
+                # NEI QUALI EFFETTIVAMENTE LE VARIABILI VENGONO USATE
                 else:
                     missing_keys = valid_problem_keys - defined_keys
                     if missing_keys:
@@ -1075,9 +1078,9 @@ class Problem:
                             )
                         ]
                         if len(used_in_problems) > 1:
-                            self.logger.warning(
+                            errors.append(
                                 f"Data table '{table_key}' | Variable '{variable}' | "
-                                f"Pure endogenous variable used in multiple problems: "
+                                f"Pure endogenous variable cannot be used in multiple problems: "
                                 f"{used_in_problems}."
                             )
 

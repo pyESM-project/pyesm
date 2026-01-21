@@ -547,9 +547,8 @@ class Model:
         solver_settings: Optional[dict[str, Any]] = None,
         convergence_norm: Defaults.NumericalSettings.NormType = 'l2',
         convergence_tables: Literal[
-            'all_endogenous', 'mixed_only'] | List[str] = 'all_endogenous',
-        numerical_tolerance_max: Optional[float] = None,
-        numerical_tolerance_avg: Optional[float] = None,
+            'all_endogenous', 'hybrid_only'] | List[str] = 'all_endogenous',
+        relative_tolerance: Optional[float] = None,
         maximum_iterations: Optional[int] = None,
         **kwargs: Any,
     ) -> None:
@@ -580,16 +579,13 @@ class Model:
             convergence_norm (Defaults.NumericalSettings.NormType, optional):
                 The norm type to use for convergence monitoring in integrated
                 problems. Defaults to 'l2' (Euclidean Norm).
-            convergence_tables (Literal['all_endogenous', 'mixed_only'] | List[str], optional):
+            convergence_tables (Literal['all_endogenous', 'hybrid_only'] | List[str], optional):
                 The data tables to consider for convergence monitoring in
-                integrated problems. Can be 'all_endogenous', 'mixed_only', or
+                integrated problems. Can be 'all_endogenous', 'hybrid_only', or
                 a list of specific data table keys. Defaults to 'all_endogenous'.
-            numerical_tolerance_max (float, optional): Numerical tolerance for verifying
+            relative_tolerance (float, optional): Numerical tolerance for verifying
                 maximum relative change between iterations in integrated problems for 
                 each data table. Overrides 'Defaults.NumericalSettings.MODEL_COUPLING_SETTINGS'.
-            numerical_tolerance_avg (float, optional): Numerical tolerance for verifying
-                average (RMS) norm for all data tables across iterations in integrated problems. 
-                Overrides 'Defaults.NumericalSettings.MODEL_COUPLING_SETTINGS'.
             maximum_iterations (int, optional): The maximum number of iterations 
                 for solving integrated problems. Overrides 
                 'Defaults.NumericalSettings.MODEL_COUPLING_SETTINGS'.
@@ -662,8 +658,7 @@ class Model:
                 convergence_monitoring=convergence_monitoring,
                 convergence_norm=convergence_norm,
                 convergence_tables=convergence_tables,
-                numerical_tolerance_max=numerical_tolerance_max,
-                numerical_tolerance_avg=numerical_tolerance_avg,
+                relative_tolerance=relative_tolerance,
                 maximum_iterations=maximum_iterations,
                 **solver_settings,
             )

@@ -133,7 +133,6 @@ class Defaults:
         PROBLEM_STATUS = 'status'
         OBJECTIVE = 'objective'
         EXPRESSIONS = 'expressions'
-        RMS_TABLES = 'ALL TABLES RMS'
 
         GENERIC_FIELD_TYPE = 'TEXT'
         VALUES_FIELD = {'values': ['values', 'REAL']}
@@ -453,12 +452,10 @@ class Defaults:
         }
         MODEL_COUPLING_SETTINGS = {
             'allowed_norms': ['max_relative', 'max_absolute', 'l1', 'l2', 'linf'],
-            # Per-table tolerance:
-            # - For l1, l2, linf, max_absolute: ABSOLUTE thresholds (same units as values)
-            # - For max_relative: RELATIVE threshold (fraction, e.g., 0.01 = 1%)
-            'numerical_tolerance_max': 0.1,
-            # Global RMS tolerance (ABSOLUTE; RMS of per-table errors in same units)
-            'numerical_tolerance_avg': 0.005,
+            # Per-table RELATIVE tolerance
+            'relative_tolerance': 0.01,
+            # Per-table ABSOLUTE minimum tolerance (minimum guard value)
+            'absolute_minimum_guard_tolerance': 0.001,
             'max_iterations': 20,
         }
 

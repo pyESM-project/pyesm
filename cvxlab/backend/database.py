@@ -711,10 +711,9 @@ class Database:
                     df_query[value_header].isna(), value_header
                 ] = blank_fill_value
 
-                self.logger.debug(
-                    f"Table '{related_table}' | Variable '{var_key}' | "
-                    f"Filling '{len(df_query_nan)}' entries | Value: "
-                    f"'{blank_fill_value}'."
+                upstream_msg = (
+                    f"| Variable '{var_key}' "
+                    f"| Blank fill value: '{blank_fill_value}'"
                 )
 
                 self.sqltools.dataframe_to_table(
@@ -722,6 +721,7 @@ class Database:
                     dataframe=df_query_nan,
                     action='update',
                     force_overwrite=force_overwrite,
+                    upstream_msg=upstream_msg
                 )
 
     def reinit_sqlite_endogenous_tables(

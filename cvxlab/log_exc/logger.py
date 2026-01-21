@@ -225,8 +225,7 @@ class Logger:
             self,
             output_dir: str,
             norm_metric: str,
-            tolerance_max: float,
-            tolerance_avg: float,
+            relative_tolerance: float,
             scenario_name: str = "N/A",
             activate_terminal: bool = True,
             refresh_interval: float = 2.0,
@@ -238,12 +237,12 @@ class Logger:
 
         Args:
             output_dir (str): Directory for temporary convergence file.
-            tolerance (float): Numerical tolerance threshold (as decimal).
+            norm_metric (str): Norm metric used for convergence ('l1', 'l2', etc.).
+            relative_tolerance (float): Relative tolerance threshold (as decimal).
             scenario_name (str): Name/coordinates of the scenario being solved.
             activate_terminal (bool): If True, opens monitoring terminal; if False, 
                 only writes to file.
             refresh_interval (float): Seconds between terminal refreshes (default: 2.0s).
-
 
         Yields:
             dict: Dictionary with 'log' method for writing convergence data.
@@ -259,9 +258,9 @@ class Logger:
             "="*79,
             f"CONVERGENCE MONITORING - Scenario: {scenario_name}",
             f"Numerical changes across iteration assessed based on Norm metric: '{norm_metric}'",
-            f"Tolerance on each data tables norm: {tolerance_max:.3f}",
-            f"Tolerance on RMS for all data tables norm: {tolerance_avg:.3f}",
-            "Tolerances in absolute values. '*' indicates value above tolerance.",
+            f"Relative tolerance on data tables norm: {relative_tolerance:.3f}",
+            "Thresholds in absolute values. '*' indicates value above tolerance.",
+            "Absolute tolerances are defined per table based on first iteration values.",
             "="*79,
             ""
         ]

@@ -6,7 +6,7 @@ data tables and variables), Database (handling SQLite database operations, using
 SQLManager), and Problem (defining symbolic and numerical problems).
 """
 import os
-from typing import Any, Dict, List, Optional, Literal
+from typing import Any, Dict, List, Optional
 from pathlib import Path
 
 import numpy as np
@@ -762,8 +762,7 @@ class Core:
             convergence_monitoring: bool,
             convergence_norm: Defaults.NumericalSettings.NormType = 'l2',
             convergence_tables: Optional[List[str]] = None,
-            numerical_tolerance_max: Optional[float] = None,
-            numerical_tolerance_avg: Optional[float] = None,
+            relative_tolerance: Optional[float] = None,
             maximum_iterations: Optional[int] = None,
             **solver_settings: Any,
     ) -> None:
@@ -793,12 +792,9 @@ class Core:
             convergence_tables (Optional[List[str]], optional): List of data table
                 keys to check for convergence in integrated problems. If None,
                 all endogenous data tables are checked.
-            numerical_tolerance_max (float, optional): Numerical tolerance for verifying
+            relative_tolerance (float, optional): Numerical tolerance for verifying
                 maximum relative change between iterations in integrated problems for 
                 each data table. Overrides 'Defaults.NumericalSettings.MODEL_COUPLING_SETTINGS'.
-            numerical_tolerance_avg (float, optional): Numerical tolerance for verifying
-                average (RMS) norm for all data tables across iterations in integrated problems. 
-                Overrides 'Defaults.NumericalSettings.MODEL_COUPLING_SETTINGS'.
             maximum_iterations (Optional[int], optional): The maximum number of 
                 iterations for the solver. Overrides 
                 'Defaults.NumericalSettings.MODEL_COUPLING_SETTINGS'.
@@ -827,10 +823,9 @@ class Core:
         if integrated_problems:
             self.solve_integrated_problems(
                 convergence_monitoring=convergence_monitoring,
-                convergence_norm_type=convergence_norm,
+                convergence_norm=convergence_norm,
                 tables_to_check=convergence_tables,
-                numerical_tolerance_max=numerical_tolerance_max,
-                numerical_tolerance_avg=numerical_tolerance_avg,
+                relative_tolerance=relative_tolerance,
                 maximum_iterations=maximum_iterations,
                 **solver_settings,
             )
@@ -906,12 +901,11 @@ class Core:
     def solve_integrated_problems(
             self,
             convergence_monitoring: bool = True,
-            convergence_norm_type: Defaults.NumericalSettings.NormType = 'l2',
-            tables_to_check: Literal[
-                'all_endogenous', 'mixed_only'] | List[str] = 'all_endogenous',
-            numerical_tolerance_max: Optional[float] = None,
-            numerical_tolerance_avg: Optional[float] = None,
+            convergence_norm: Defaults.NumericalSettings.NormType = 'l2',
+            tables_to_check: str | List[str] = 'all_endogenous',
+            relative_tolerance: Optional[float] = None,
             maximum_iterations: Optional[int] = None,
+            keep_previous_iteration_db: bool = False,
             **solver_settings: Any,
     ) -> None:
         """Solve integrated numerical problems iteratively.
@@ -946,26 +940,29 @@ class Core:
         Args:
             convergence_monitoring (bool, optional): If True, enables convergence
                 monitoring during the solving of integrated problems. Defaults to True.
-            convergence_norm_type (Literal['max_relative', 'max_absolute', 'l1', 
+            convergence_norm (Literal['max_relative', 'max_absolute', 'l1', 
                 'l2', 'linf'], optional): The type of norm to use for convergence 
                 checking. Defaults to 'l2'.
-            numerical_tolerance_maximum (Optional[float], optional): The maximum
-                numerical tolerance that all value tables must respect as a convergence
-                criterion. Overwrite default setting in Defaults. Defaults to None.
-            numerical_tolerance_average (Optional[float], optional): The numerical 
-                tolerance that compares with the average norm (root mean square) 
-                for all values tables. Overwrite default setting in Defaults. 
+            tables_to_check (str | List[str], optional): List of data table keys to check for convergence. 
+                If 'all_endogenous', all endogenous data tables are checked.
+                If 'hybrid_only', only hybrid endogenous data tables are checked.
+                Defaults to 'all_endogenous'.
+            relative_tolerance (Optional[float], optional): The maximum
+                relative tolerance that all value tables must respect as a convergence
+                criterion (0.1 -> 10%). Overwrite default setting in Defaults. 
                 Defaults to None.
             maximum_iterations (Optional[int], optional): The maximum number of 
                 iterations for the solver. Overwrite default setting in Defaults. 
                 Defaults to None.
+            keep_previous_iteration_db (bool, optional): If True, saves the
+                database of the previous iteration for debugging purposes. 
+                Defaults to False.
             **solver_settings (Any): Arguments to pass to the solver.
         """
         sqlite_db_file_name = Defaults.ConfigFiles.SQLITE_DATABASE_FILE
         sqlite_db_file_name_bkp = Defaults.ConfigFiles.SQLITE_DATABASE_FILE_BKP
         scenarios_header = Defaults.Labels.SCENARIO_COORDINATES
         problem_status_header = Defaults.Labels.PROBLEM_STATUS
-        rms_tables_header = Defaults.Labels.RMS_TABLES
 
         sqlite_db_path = self.paths['model_dir']
         base_name, extension = os.path.splitext(sqlite_db_file_name)
@@ -974,23 +971,25 @@ class Core:
         scenarios_df = self.index.scenarios_info
 
         model_coupling_settings = Defaults.NumericalSettings.MODEL_COUPLING_SETTINGS
+        min_guard_tolerance = model_coupling_settings['absolute_minimum_guard_tolerance']
+
+        if maximum_iterations <= 1:
+            msg = "Maximum iterations for integrated problems must be greater than 1."
+            self.logger.error(msg)
+            raise exc.SettingsError(msg)
 
         if not maximum_iterations:
             maximum_iterations = model_coupling_settings['max_iterations']
 
-        if not numerical_tolerance_max:
-            numerical_tolerance_max = \
-                model_coupling_settings['numerical_tolerance_max']
-
-        if not numerical_tolerance_avg:
-            numerical_tolerance_avg = \
-                model_coupling_settings['numerical_tolerance_avg']
+        if not relative_tolerance:
+            relative_tolerance = \
+                model_coupling_settings['relative_tolerance']
 
         if isinstance(tables_to_check, str):
             if tables_to_check == 'all_endogenous':
                 tables_to_check = self.problem.endogenous_tables_all
-            elif tables_to_check == 'mixed_only':
-                tables_to_check = self.problem.endogenous_tables_mixed
+            elif tables_to_check == 'hybrid_only':
+                tables_to_check = self.problem.endogenous_tables_hybrid
             else:
                 msg = "Parameter 'tables_to_check' string value not allowed. "
                 self.logger.error(msg)
@@ -1038,33 +1037,37 @@ class Core:
 
                 iter_count = 0
                 all_errors = {table: [] for table in tables_to_check}
+                convergence_thresholds = {}
 
                 with self.logger.convergence_monitor(
                     output_dir=sqlite_db_path,
                     scenario_name=scenario_label if scenario_coords else "default",
                     activate_terminal=convergence_monitoring,
-                    norm_metric=convergence_norm_type,
-                    tolerance_max=numerical_tolerance_max,
-                    tolerance_avg=numerical_tolerance_avg,
+                    norm_metric=convergence_norm,
+                    relative_tolerance=relative_tolerance,
                 ) as conv_monitor:
 
                     conv_log = conv_monitor['log']
 
                     while True:
                         try:
-                            iter_count += 1
                             self.logger.info(
                                 f"Iteration count: {iter_count} | "
                                 f"iterations limit: {maximum_iterations}")
 
-                            if iter_count > maximum_iterations:
-                                self.logger.warning(
-                                    "Maximum number of iterations hit before reaching convergence "
-                                    f"(tolerance max: {numerical_tolerance_max}, tolerance avg: "
-                                    f"{numerical_tolerance_avg})")
-                                break
+                            if iter_count >= 1:
 
-                            if iter_count > 1:
+                                self.logger.info(
+                                    f"Creating copy of database from previous iteration.")
+
+                                self.files.copy_file_to_destination(
+                                    path_destination=sqlite_db_path,
+                                    path_source=sqlite_db_path,
+                                    file_name=sqlite_db_file_name,
+                                    file_new_name=sqlite_db_file_name_previous,
+                                    force_overwrite=True,
+                                )
+
                                 self.logger.info(
                                     "Updating exogenous variables data from previous iteration.")
 
@@ -1074,14 +1077,6 @@ class Core:
                                     warnings_on_negatives=True,
                                     validate_types=False,
                                 )
-
-                            self.files.copy_file_to_destination(
-                                path_destination=sqlite_db_path,
-                                path_source=sqlite_db_path,
-                                file_name=sqlite_db_file_name,
-                                file_new_name=sqlite_db_file_name_previous,
-                                force_overwrite=True,
-                            )
 
                             for sub_problem, problem_df \
                                     in self.problem.numerical_problems.items():
@@ -1120,7 +1115,31 @@ class Core:
                                 suppress_warnings=True,
                             )
 
+                            iter_count += 1
+
+                            if iter_count > maximum_iterations:
+                                self.logger.warning(
+                                    "Maximum number of iterations hit before reaching convergence")
+                                break
+
+                            # first solution: compute tolerances and continue
                             if iter_count == 1:
+                                self.logger.info(
+                                    "Setting convergence thresholds as relative "
+                                    "tolerances of tables scales.")
+
+                                with db_handler(self.sqltools):
+                                    tables_scales = \
+                                        self.sqltools.get_tables_values_scale(
+                                            norm_type=convergence_norm,
+                                            tables_names=tables_to_check,
+                                        )
+                                convergence_thresholds = {
+                                    table_key: min_guard_tolerance +
+                                    tables_scales[table_key] *
+                                    relative_tolerance
+                                    for table_key in tables_to_check
+                                }
                                 continue
 
                             # relative error must be computed for scenarios_idx only
@@ -1132,7 +1151,7 @@ class Core:
                                     self.sqltools.get_tables_values_norm_changes(
                                         other_db_dir_path=sqlite_db_path,
                                         other_db_name=sqlite_db_file_name_previous,
-                                        norm_type=convergence_norm_type,
+                                        norm_type=convergence_norm,
                                         tables_names=tables_to_check,
                                     )
 
@@ -1140,35 +1159,21 @@ class Core:
                             for table in tables_to_check:
                                 all_errors[table].append(norm_changes[table])
 
-                            all_tables_rms = util.root_mean_square(
-                                list(norm_changes.values()))
-                            if rms_tables_header not in all_errors:
-                                all_errors[rms_tables_header] = []
-                            all_errors[rms_tables_header].append(
-                                all_tables_rms)
-
-                            lines = self._format_convergence_table(
+                            lines: List[str] = self._format_convergence_table(
                                 tables_to_check=tables_to_check,
                                 all_errors=all_errors,
                                 iter_count=iter_count,
-                                tolerance_max=numerical_tolerance_max,
-                                tolerance_avg=numerical_tolerance_avg,
+                                convergence_thresholds=convergence_thresholds,
                             )
 
-                            # Check convergence:
-                            # - any table above tolerance_max?
-                            # - global RMS above tolerance_avg?
+                            # Check convergence: any table above thresholds?
                             tables_above_max = {
                                 table: value
                                 for table, value in norm_changes.items()
-                                if value > numerical_tolerance_max
+                                if value > convergence_thresholds[table]
                             }
-                            rms_above_avg = (
-                                numerical_tolerance_avg is not None
-                                and all_tables_rms > numerical_tolerance_avg
-                            )
 
-                            if tables_above_max or rms_above_avg:
+                            if tables_above_max:
                                 self.logger.info(
                                     "Numerical convergence NOT reached")
                                 conv_log("\n".join(lines))
@@ -1184,12 +1189,14 @@ class Core:
                                 break
 
                         finally:
-                            self.files.erase_file(
-                                dir_path=sqlite_db_path,
-                                file_name=sqlite_db_file_name_previous,
-                                force_erase=True,
-                                confirm=False,
-                            )
+                            if iter_count >= 1 and \
+                                    not keep_previous_iteration_db:
+                                self.files.erase_file(
+                                    dir_path=sqlite_db_path,
+                                    file_name=sqlite_db_file_name_previous,
+                                    force_erase=True,
+                                    confirm=False,
+                                )
 
         finally:
             # after iterations are concluded for all scenarios
@@ -1213,8 +1220,7 @@ class Core:
             tables_to_check: List[str],
             all_errors: Dict[str, List[float]],
             iter_count: int,
-            tolerance_max: float,
-            tolerance_avg: float,
+            convergence_thresholds: Dict[str, float],
             values_format: str = ".3e",
     ) -> List[str]:
         """Format convergence monitoring table with errors for each iteration.
@@ -1227,43 +1233,40 @@ class Core:
             all_errors: Dictionary mapping table names to list of errors. It can
                 include the special key 'ALL TABLES RMS' with a single series.
             iter_count: Current iteration count.
-            tolerance_max: Per-table convergence threshold.
-            tolerance_avg: Global RMS threshold (optional).
-            values_format: Format string for floating-point values.
+            convergence_thresholds: Absolute thresholds for each table.
+            values_format: Format string for floating-point values. Defaults to ".3e".
 
         Returns:
             List of formatted strings for table display.
         """
         lines: List[str] = []
-
-        # Include RMS label in width calculation if present
-        rms_label = Defaults.Labels.RMS_TABLES
         display_rows = list(tables_to_check)
-        if rms_label in all_errors:
-            display_rows.append(rms_label)
 
         # Table (first) column width
         max_table_name_len = max(len(table) for table in display_rows) \
             if display_rows else len("Table")
         table_col_width = max(max_table_name_len + 2, 16)
 
+        # First column with thresholds values
+        thresholds_tokens = [
+            f"{format(convergence_thresholds[table], values_format)} "
+            for table in display_rows
+        ]
+        thresholds_col_width = max(
+            len("Thresholds"), max(len(t) for t in thresholds_tokens)
+        ) + 2
+
         # Iteration labels as ranges: Iter_1-2, Iter_2-3, ...
         # If iter_count < 2, there are no ranges to display.
         iter_labels = [
             f"Iter_{j-1}-{j}"
-            for j in range(2, max(iter_count, 2) + 1)
+            for j in range(1, max(iter_count, 1))
         ]
 
         # Helper to build a value token (formatted value + optional star)
-        def make_token(val: float, is_rms: bool = False) -> str:
+        def make_token(val: float, threshold: float) -> str:
             val_str = format(val, values_format)
-            if is_rms:
-                star = '*' if (
-                    tolerance_avg is not None and
-                    val > tolerance_avg
-                ) else ' '
-            else:
-                star = '*' if val > tolerance_max else ' '
+            star = '*' if val > threshold else ' '
             return f"{val_str}{star}"
 
         # Compute per-value column width:
@@ -1271,12 +1274,8 @@ class Core:
         tokens_for_width: List[str] = []
         for table in tables_to_check:
             tokens_for_width.extend(
-                make_token(v) for v in all_errors.get(table, []))
-        if rms_label in all_errors:
-            tokens_for_width.extend(
-                make_token(v, is_rms=True)
-                for v in all_errors.get(rms_label, [])
-            )
+                make_token(v, convergence_thresholds[table])
+                for v in all_errors.get(table, []))
 
         # Fallback token in case of empty errors
         default_token_len = len(format(0.0, values_format)) + 1
@@ -1285,34 +1284,30 @@ class Core:
             default=default_token_len
         )
         max_label_len = max((len(lbl) for lbl in iter_labels), default=0)
-
-        # Add minimal inter-column spacing for readability
         padding = 2
         value_col_width = max(max_token_len, max_label_len) + padding
 
-        # Single header row
-        header = f"{'Table':<{table_col_width}}" + \
+        # Header: Table | Thresholds | Iter columns
+        header = f"{'Table':<{table_col_width}}" \
+                 f"{'Thresholds':<{thresholds_col_width}}" + \
             "".join(f"{lbl:^{value_col_width}}" for lbl in iter_labels)
         lines.append(header)
         lines.append("-" * len(header))
 
         # Data rows
-        for table in tables_to_check:
-            values_tokens = [make_token(e) for e in all_errors.get(table, [])]
-            # Right-align tokens within fixed-width columns
-            values_str = "".join(
-                f"{tok:>{value_col_width}}" for tok in values_tokens)
-            lines.append(f"{table:<{table_col_width}}{values_str}")
-
-        # RMS row
-        if rms_label in all_errors:
-            rms_tokens = [
-                make_token(e, is_rms=True)
-                for e in all_errors.get(rms_label, [])
+        for table, thr_str in zip(tables_to_check, thresholds_tokens):
+            values_tokens = [
+                make_token(e, convergence_thresholds[table])
+                for e in all_errors.get(table, [])
             ]
-            rms_values_str = "".join(
-                f"{tok:>{value_col_width}}" for tok in rms_tokens)
-            lines.append(f"{rms_label:<{table_col_width}}{rms_values_str}")
+            values_str = "".join(
+                f"{tok:>{value_col_width}}" for tok in values_tokens
+            )
+            lines.append(
+                f"{table:<{table_col_width}}"
+                f"{thr_str:<{thresholds_col_width}}"
+                f"{values_str}"
+            )
 
         return lines
 
