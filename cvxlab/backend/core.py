@@ -764,6 +764,7 @@ class Core:
             convergence_tables: Optional[List[str]] = None,
             relative_tolerance: Optional[float] = None,
             maximum_iterations: Optional[int] = None,
+            keep_previous_iteration_db: bool = False,
             **solver_settings: Any,
     ) -> None:
         """Solve independent or integrated numerical problems.
@@ -798,6 +799,9 @@ class Core:
             maximum_iterations (Optional[int], optional): The maximum number of 
                 iterations for the solver. Overrides 
                 'Defaults.NumericalSettings.MODEL_COUPLING_SETTINGS'.
+            keep_previous_iteration_db (bool, optional): If True, does not delete 
+                the database related to the last-1 iteration. For debugging purpose.
+                Default to False.
             **solver_settings: Additional keyword arguments passed to the solver.
 
         Raises:
@@ -827,6 +831,7 @@ class Core:
                 tables_to_check=convergence_tables,
                 relative_tolerance=relative_tolerance,
                 maximum_iterations=maximum_iterations,
+                keep_previous_iteration_db=keep_previous_iteration_db,
                 **solver_settings,
             )
         else:
@@ -973,17 +978,15 @@ class Core:
         model_coupling_settings = Defaults.NumericalSettings.MODEL_COUPLING_SETTINGS
         min_guard_tolerance = model_coupling_settings['absolute_minimum_guard_tolerance']
 
-        if maximum_iterations <= 1:
+        if not maximum_iterations:
+            maximum_iterations = model_coupling_settings['max_iterations']
+        elif maximum_iterations <= 1:
             msg = "Maximum iterations for integrated problems must be greater than 1."
             self.logger.error(msg)
             raise exc.SettingsError(msg)
 
-        if not maximum_iterations:
-            maximum_iterations = model_coupling_settings['max_iterations']
-
         if not relative_tolerance:
-            relative_tolerance = \
-                model_coupling_settings['relative_tolerance']
+            relative_tolerance = model_coupling_settings['relative_tolerance']
 
         if isinstance(tables_to_check, str):
             if tables_to_check == 'all_endogenous':
@@ -1012,6 +1015,7 @@ class Core:
         )
 
         # create a backup copy of the original database
+        # (will be restored at the end)
         self.files.copy_file_to_destination(
             path_destination=sqlite_db_path,
             path_source=sqlite_db_path,
@@ -1115,15 +1119,8 @@ class Core:
                                 suppress_warnings=True,
                             )
 
-                            iter_count += 1
-
-                            if iter_count > maximum_iterations:
-                                self.logger.warning(
-                                    "Maximum number of iterations hit before reaching convergence")
-                                break
-
-                            # first solution: compute tolerances and continue
-                            if iter_count == 1:
+                            # first solution: compute tolerances
+                            if iter_count == 0:
                                 self.logger.info(
                                     "Setting convergence thresholds as relative "
                                     "tolerances of tables scales.")
@@ -1140,6 +1137,8 @@ class Core:
                                     relative_tolerance
                                     for table_key in tables_to_check
                                 }
+
+                                iter_count += 1
                                 continue
 
                             # relative error must be computed for scenarios_idx only
@@ -1187,6 +1186,14 @@ class Core:
                                     f"Scenario {scenario_coords} | "
                                     f"Iterations: {iter_count} ")
                                 break
+
+                            if iter_count == maximum_iterations:
+                                self.logger.warning(
+                                    "Maximum number of iterations hit before "
+                                    "reaching convergence")
+                                break
+
+                            iter_count += 1
 
                         finally:
                             if iter_count >= 1 and \
@@ -1260,7 +1267,7 @@ class Core:
         # If iter_count < 2, there are no ranges to display.
         iter_labels = [
             f"Iter_{j-1}-{j}"
-            for j in range(1, max(iter_count, 1))
+            for j in range(1, max(iter_count, 1)+1)
         ]
 
         # Helper to build a value token (formatted value + optional star)

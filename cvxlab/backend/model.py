@@ -550,6 +550,7 @@ class Model:
             'all_endogenous', 'hybrid_only'] | List[str] = 'all_endogenous',
         relative_tolerance: Optional[float] = None,
         maximum_iterations: Optional[int] = None,
+        keep_previous_iteration_db: bool = False,
         **kwargs: Any,
     ) -> None:
         """Solve numerical problems defined by the model instance.
@@ -589,6 +590,9 @@ class Model:
             maximum_iterations (int, optional): The maximum number of iterations 
                 for solving integrated problems. Overrides 
                 'Defaults.NumericalSettings.MODEL_COUPLING_SETTINGS'.
+            keep_previous_iteration_db (bool, optional): Whether keep or not the database 
+                generated during the last-1 iteration. For debugging purpose. Default to 
+                False.
             **kwargs: Additional keyword arguments to be passed to the solver. Useful 
                 for setting solver-specific options.
 
@@ -660,6 +664,7 @@ class Model:
                 convergence_tables=convergence_tables,
                 relative_tolerance=relative_tolerance,
                 maximum_iterations=maximum_iterations,
+                keep_previous_iteration_db=keep_previous_iteration_db,
                 **solver_settings,
             )
 
