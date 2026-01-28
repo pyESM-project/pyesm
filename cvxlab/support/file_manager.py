@@ -655,11 +655,7 @@ class FileManager:
         file_path = Path(file_path)
 
         try:
-            dataframe = pd.read_csv(
-                file_path,
-                keep_default_na=True,
-                dtype_backend="python" if hasattr(pd, "options") else None,
-            )
+            dataframe = pd.read_csv(file_path, keep_default_na=True)
         except Exception as error:
             msg = f"CSV parsing error | file '{file_path.name}' | {str(error)}"
             self.logger.error(msg)
