@@ -462,6 +462,7 @@ class Database:
         self,
         file_extension: Optional[str] = None,
         table_key_list: List[str] = [],
+        values_cleanup: bool = True,
     ) -> None:
         """Generate blank data input files for exogenous data tables.
 
@@ -479,9 +480,12 @@ class Database:
             table_key_list (List[str], optional): A list of table keys to generate
                 input files for. If empty, all exogenous data tables in the Index
                 are processed. Defaults to an empty list.
+            values_cleanup (bool, optional): Whether to clean up values in the
+                input data files. Defaults to True.
         """
         default_file_name = Defaults.ConfigFiles.INPUT_DATA_FILE_NAME
         allowed_var_types = Defaults.SymbolicDefinitions.VARIABLE_TYPES
+        value_field = Defaults.Labels.VALUES_FIELD['values'][0]
 
         if file_extension is None:
             file_extension = self.settings['input_data_files_type']
@@ -520,6 +524,10 @@ class Database:
                     force_overwrite = True
 
                 dataframe = self.sqltools.table_to_dataframe(table_key)
+
+                if values_cleanup:
+                    if value_field in dataframe.columns:
+                        dataframe[value_field] = None
 
                 if file_extension == 'xlsx':
                     self.files.dataframe_to_excel(

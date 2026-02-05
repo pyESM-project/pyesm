@@ -415,7 +415,11 @@ class Model:
             else:
                 self.logger.info("Relying on existing input data directory.")
 
-    def generate_input_data_files(self, table_key_list: List[str] = []) -> None:
+    def generate_input_data_files(
+            self,
+            table_key_list: List[str] = [],
+            values_cleanup: bool = True,
+    ) -> None:
         """Generate blank Excel files for data input.
 
         This method generates blank Excel files for data input, based on the
@@ -434,6 +438,8 @@ class Model:
             table_key_list (List[str], optional): A list of data table keys 
                 for which to generate input data files. If empty, all data 
                 tables are generated. Defaults to [].
+            values_cleanup (bool, optional): Whether to clean up values in the 
+                input data files. Defaults to True.
 
         Raises:
             exc.SettingsError: If the input data directory is missing.
@@ -466,7 +472,10 @@ class Model:
             message=msg,
             level='info',
         ):
-            self.core.database.generate_blank_data_input_files(table_key_list)
+            self.core.database.generate_blank_data_input_files(
+                table_key_list=table_key_list,
+                values_cleanup=values_cleanup,
+            )
 
     def load_exogenous_data_to_sqlite_database(
             self,
