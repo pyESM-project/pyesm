@@ -230,6 +230,9 @@ def test_check_dataframes_equality():
         (([df1, df7],), False, None),
         (([df1, df8],), False, None, {'skip_columns': ['A']}),
         (([df1, df6],), None, ValueError, {'skip_columns': ['column_2']}),
+        (([df1, df3],), True, None, {'check_columns': ['A']}),
+        (([df1, df5],), False, None, {
+         'check_columns': ['A'], 'rows_order_matters': True}),
     ]
 
     run_test_cases(check_dataframes_equality, test_cases)

@@ -444,6 +444,7 @@ def add_item_to_dict(
 def check_dataframes_equality(
         df_list: List[pd.DataFrame],
         skip_columns: Optional[List[str]] = None,
+        check_columns: Optional[List[str]] = None,
         cols_order_matters: bool = False,
         rows_order_matters: bool = False,
         homogeneous_num_types: bool = False,
@@ -451,13 +452,15 @@ def check_dataframes_equality(
     """Check dataframes equality.
 
     This function checks the equality of multiple DataFrames while optionally 
-    skipping specified columns. The function can also ignore the order of columns
-    and rows in the DataFrames.
+    skipping specified columns or checking only specified columns. The function 
+    can also ignore the order of columns and rows in the DataFrames.
 
     Args:
         df_list (List[pd.DataFrame]): A list of Pandas DataFrames to compare.
         skip_columns (List[str], optional): A list of column names to skip 
             during comparison.
+        check_columns (List[str], optional): A list of column names to specifically
+            include during comparison. If provided, only these columns are compared.
         cols_order_matters (bool, optional): If set to False, two dataframes
             with same columns in different orders are still identified as equal.
         rows_order_matters (bool, optional): If set to False, two dataframes
@@ -470,8 +473,14 @@ def check_dataframes_equality(
 
     Raises:
         ValueError: If any column in skip_columns is not present in all DataFrames.
+        ValueError: If both skip_columns and check_columns are provided.
     """
     df_list_copy = deepcopy(df_list)
+
+    if skip_columns and check_columns:
+        raise ValueError(
+            "Cannot use both 'skip_columns' and 'check_columns' arguments "
+            "simultaneously.")
 
     if skip_columns:
         all_columns_set = set().union(*(df.columns for df in df_list_copy))
@@ -482,6 +491,24 @@ def check_dataframes_equality(
 
         for dataframe in df_list_copy:
             dataframe.drop(columns=skip_columns, errors='ignore', inplace=True)
+
+    if check_columns:
+        all_columns_set = set().union(*(df.columns for df in df_list_copy))
+        if not set(check_columns).issubset(all_columns_set):
+            raise ValueError(
+                "One or more items in 'check_columns' argument are never "
+                "present in any dataframe.")
+
+        for dataframe in df_list_copy:
+            columns_to_drop = [
+                col for col in dataframe.columns
+                if col not in check_columns
+            ]
+            dataframe.drop(
+                columns=columns_to_drop,
+                errors='ignore',
+                inplace=True,
+            )
 
     # Convert all numeric values to float64 for consistent comparisons
     if homogeneous_num_types:
