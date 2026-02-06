@@ -245,6 +245,8 @@ class Database:
         self.logger.debug(
             f"Updating Sets in '{self.settings['sqlite_database_file']}'.")
 
+        id_header = Defaults.Labels.ID_FIELD['id'][0]
+
         with db_handler(self.sqltools):
             for set_key, set_instance in self.index.sets.items():
                 set_instance: SetTable
@@ -263,29 +265,55 @@ class Database:
                 )
 
                 if update_mode == 'all':
-                    dataframe_final = dataframe_new
+                    columns_to_update = [
+                        col for col in dataframe_new.columns
+                        if col != id_header
+                    ]
                 else:
                     if update_mode == 'filters':
                         headers_dict = set_instance.set_filters_headers
                     elif update_mode == 'aggregations':
                         headers_dict = set_instance.set_aggregations_headers
 
-                if not headers_dict:
-                    self.logger.warning(
+                    if not headers_dict:
+                        self.logger.warning(
+                            f"Set table '{set_instance.name}' | "
+                            f"No '{update_mode}' headers defined. Skipping update."
+                        )
+                        continue
+
+                    columns_to_update = list(headers_dict.values())
+
+                # check equality of dataframes columns
+                if util.check_dataframes_equality(
+                    df_list=[dataframe_current, dataframe_new],
+                    check_columns=columns_to_update,
+                ):
+                    self.logger.info(
                         f"Set table '{set_instance.name}' | "
-                        f"No '{update_mode}' headers defined. Skipping update."
+                        "No changes detected. Skipping update."
                     )
                     continue
 
-                headers_list = list(headers_dict.values())
-                dataframe_final = dataframe_current.copy()
-                for header in headers_list:
-                    dataframe_final[header] = dataframe_new[header]
+                # built final dataframe preserving id
+                dataframe_final = dataframe_current[[id_header]].copy()
+
+                for column in columns_to_update:
+                    if column in dataframe_new.columns:
+                        dataframe_final[column] = dataframe_new[column]
+                    else:
+                        self.logger.warning(
+                            f"Column '{column}' not found in new data for set "
+                            f"'{set_instance.name}'. Skipping this column."
+                        )
 
                 new_columns = set(dataframe_final.columns) - set(
                     dataframe_current.columns)
-
                 if new_columns:
+                    self.logger.debug(
+                        f"Set table '{set_instance.name}' | "
+                        f"Adding new columns: {new_columns}."
+                    )
                     for column in new_columns:
                         self.sqltools.add_table_column(
                             table_name=set_instance.table_name,
