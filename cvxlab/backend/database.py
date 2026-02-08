@@ -217,6 +217,12 @@ class Database:
                             column_position=0,
                         )
 
+                dataframe = util.normalize_dataframe(
+                    df=dataframe,
+                    replace_nans=True,
+                    bool_to_str=True,
+                )
+
                 self.sqltools.dataframe_to_table(table_name, dataframe)
 
     def update_sets_in_sqlite_database(
@@ -320,6 +326,12 @@ class Database:
                             column_name=column,
                             column_type=Defaults.Labels.GENERIC_FIELD_TYPE,
                         )
+
+                dataframe_final = util.normalize_dataframe(
+                    df=dataframe_final,
+                    replace_nans=True,
+                    bool_to_str=True,
+                )
 
                 self.sqltools.dataframe_to_table(
                     table_name=set_instance.table_name,
@@ -438,6 +450,12 @@ class Database:
                     column_header=table.table_headers['id'][0],
                     column_values=None,
                     column_position=0,
+                )
+
+                unpivoted_coords_df = util.normalize_dataframe(
+                    df=unpivoted_coords_df,
+                    replace_nans=True,
+                    bool_to_str=True,
                 )
 
                 self.sqltools.dataframe_to_table(
@@ -635,7 +653,11 @@ class Database:
                     if table_key not in table_key_list:
                         continue
 
-                    dataframe = util.normalize_dataframe(df=dataframe)
+                    dataframe = util.normalize_dataframe(
+                        df=dataframe,
+                        all_str_except_numeric=True,
+                    )
+
                     self.sqltools.dataframe_to_table(
                         table_name=table_key,
                         dataframe=dataframe,
@@ -667,7 +689,9 @@ class Database:
                         )
 
                         dataframe = util.normalize_dataframe(
-                            df=data_dict[table_key])
+                            df=data_dict[table_key],
+                            all_str_except_numeric=True,
+                        )
 
                         self.sqltools.dataframe_to_table(
                             table_name=table_key,

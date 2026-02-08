@@ -801,7 +801,10 @@ class FileManager:
             )
 
             raw_data = raw_data_dict[structure_key]
-            raw_data = util.normalize_dataframe(raw_data)
+            raw_data = util.normalize_dataframe(
+                df=raw_data,
+                replace_nans=True,
+            )
 
             if raw_data.empty:
                 msg = f"Excel tab '{structure_key}' is empty."

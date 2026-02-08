@@ -647,6 +647,11 @@ class Core:
 
                 data_table_dataframe[values_headers] = cvxpy_var_data
 
+                data_table_dataframe = util.normalize_dataframe(
+                    df=data_table_dataframe,
+                    all_str_except_numeric=True,
+                )
+
                 self.sqltools.dataframe_to_table(
                     table_name=data_table_key,
                     dataframe=data_table_dataframe,
