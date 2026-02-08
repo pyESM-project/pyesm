@@ -1337,20 +1337,28 @@ def normalize_dataframe(
         exclude_columns: Optional[List[str]] = None,
         numeric_columns: Optional[List[str]] = None,
         numeric_dtype: Optional[type] = None,
-        replace_nans: bool = True,
-        nan_fill_value: Optional[Any] = None,
+        replace_nans: bool = False,
+        bool_to_str: bool = False,
+        all_str_except_numeric: bool = False,
 ) -> pd.DataFrame:
     """Normalize a DataFrame with optional casting and missing-value handling.
 
     Processing steps (in order):
-      1. Copy the input DataFrame to avoid mutating the original.
+      1. Copy the input DataFrame to avoid mutating the original
       2. Validate exclude_columns; build target_cols = all columns except exclusions.
-      3. If numeric_columns is provided, cast those columns (except excluded ones) to numeric_dtype.
-      4. If replace_nans is True, replace a set of Na-like sentinels in target_cols with Python None.
-      5. If nan_fill_value is not None, fill remaining None/NaN entries globally with that value.
+      3. If replace_nans is True: 
+         - Convert Pandas nullable dtypes (Int64, StringDtype, BooleanDtype, etc.) to object dtype.
+         - Replace a set of Na-like sentinels in target_cols with Python None.
+      4. If numeric_columns is provided, cast those columns (except excluded ones) to numeric_dtype.
+      5. If bool_to_str is True, convert boolean columns to string representation.
+      6. If all_str_except_numeric is True, convert all non-numeric columns (except excluded ones) 
+            to string dtype.
 
     Na-like sentinels replaced when replace_nans is True:
-      pd.NA, np.nan, float('nan'), 'nan', 'NaN', 'NA', 'na', 'N/A', 'null'
+      Defaults.SymbolicDefinitions.NONE_VARIANTS
+
+    If the function is called with all default parameters it will simply return a copy of the 
+    original DataFrame.
 
     Args:
         df (pd.DataFrame): Input DataFrame to normalize.
@@ -1360,9 +1368,12 @@ def normalize_dataframe(
             (Current signature accepts str; pass a list if multiple needed.)
         numeric_dtype (type | None): Target dtype for columns in numeric_columns.
             Required if numeric_columns is provided.
-        replace_nans (bool): If True, perform Na-like sentinel replacement in non-excluded columns.
-        nan_fill_value (Any | None): Value used with DataFrame.fillna after replacement.
-            If None, no fill is performed.
+        replace_nans (bool): If True, convert nullable dtypes and replace all None-like 
+            values with Python None. Defaults to False.
+        bool_to_str (bool): If True, convert boolean columns to string representation. 
+            Defaults to False.
+        all_str_except_numeric (bool): If True, convert all non-numeric columns (except excluded ones) 
+            to string dtype. Defaults to False.
 
     Returns:
         pd.DataFrame: A new normalized DataFrame.
@@ -1381,7 +1392,6 @@ def normalize_dataframe(
 
     df = df.copy()
 
-    # Validate exclude_columns
     if exclude_columns is None:
         exclude_columns = []
     else:
@@ -1392,7 +1402,38 @@ def normalize_dataframe(
 
     target_cols = [col for col in df.columns if col not in exclude_columns]
 
-    # Step 1: Convert numeric columns to specified dtype
+    # Convert boolean columns to string representation if bool_to_str is True
+    if bool_to_str:
+        for col in target_cols:
+            if df[col].dtype == bool or df[col].dtype == 'boolean':
+                df[col] = df[col].astype(str)
+
+    # Handle Non-like values (converts nullable dtypes only if needed)
+    if replace_nans:
+        cols_to_convert = [
+            col for col in target_cols
+            if col not in (numeric_columns if numeric_columns else [])
+        ]
+
+        # Only conver nullable dtypes to objects (where pd.NA is used)
+        for col in cols_to_convert:
+            if hasattr(df[col].dtype, 'na_value') and df[col].dtype.na_value is pd.NA:
+                df[col] = df[col].astype('object')
+
+        # Replace Na-like sentinels with None in target columns
+        nan_variants = {
+            key: None
+            for key in Defaults.SymbolicDefinitions.NONE_VARIANTS
+        }
+        df[target_cols] = df[target_cols].replace(nan_variants)
+
+    # Convert all non-numeric columns (except excluded ones) to string dtype
+    if all_str_except_numeric:
+        for col in target_cols:
+            if col not in (numeric_columns if numeric_columns else []):
+                df[col] = df[col].astype(str)
+
+    # Convert numeric columns (ensure they are processed last, untouched)
     if numeric_columns is not None:
         if not items_in_list(numeric_columns, df.columns):
             raise ValueError(
@@ -1405,31 +1446,14 @@ def normalize_dataframe(
                 "'numeric_dtype' must also be provided.")
 
         try:
-            df.update({
-                col: df[col].astype(numeric_dtype)
-                for col in numeric_columns
-                if col not in exclude_columns
-            })
+            for col in numeric_columns:
+                if col not in exclude_columns:
+                    df[col] = df[col].astype(numeric_dtype)
         except Exception as e:
             raise ValueError(
                 "Error converting specified numeric columns to "
                 f"'{numeric_dtype}': {e}"
             ) from e
-
-    # Step 2: Replace all NaN/Na variants with None
-    if replace_nans:
-        nan_variants = {
-            key: None for key in
-            [
-                pd.NA, np.nan, float('nan'),
-                'nan', 'NaN', 'NA', 'na', 'N/A', 'null'
-            ]
-        }
-        df[target_cols] = df[target_cols].replace(nan_variants)
-
-    # Step 3: Fill None/NaN with specific value
-    if nan_fill_value is not None:
-        df.fillna(nan_fill_value, inplace=True)
 
     return df
 

@@ -9,6 +9,7 @@ from typing import Literal, TypeAlias, Union
 
 import cvxpy as cp
 import numpy as np
+import pandas as pd
 
 from cvxlab.support import util_constants, util_operators
 
@@ -366,7 +367,10 @@ class Defaults:
             'parentheses': [r"\(", r"\)"],
         }
 
-        NONE_SYMBOLS = [None, 'nan', 'None', 'null', '', [], {}]
+        NONE_VARIANTS = [
+            pd.NA, np.nan, None, float('nan'),
+            'nan', 'NaN', 'NA', 'na', 'N/A', '<NA>', 'None', 'null', '',
+        ]
         STD_TEXT_DATA_FILL = ''
 
         DIMENSIONS = {
