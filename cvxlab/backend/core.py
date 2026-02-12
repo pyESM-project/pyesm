@@ -766,7 +766,8 @@ class Core:
             integrated_problems: bool,
             convergence_monitoring: bool,
             convergence_norm: Defaults.NumericalSettings.NormType = 'l2',
-            convergence_tables: Optional[List[str]] = None,
+            convergence_tables_to_check: Optional[List[str]] = None,
+            convergence_tables_to_skip: Optional[List[str]] = None,
             relative_tolerance: Optional[float] = None,
             maximum_iterations: Optional[int] = None,
             keep_previous_iteration_db: bool = False,
@@ -795,9 +796,12 @@ class Core:
                 The norm type to use for convergence monitoring in integrated 
                 problems. Defaults to 'l2' (Euclidean norm). Overrides 
                 'Defaults.NumericalSettings.MODEL_COUPLING_SETTINGS'.
-            convergence_tables (Optional[List[str]], optional): List of data table
+            convergence_tables_to_check (Optional[List[str]], optional): List of data table
                 keys to check for convergence in integrated problems. If None,
                 all endogenous data tables are checked.
+            convergence_tables_to_skip (Optional[List[str]], optional): List of data table
+                keys to skip for convergence checking in integrated problems. If None,
+                no tables are skipped.
             relative_tolerance (float, optional): Numerical tolerance for verifying
                 maximum relative change between iterations in integrated problems for 
                 each data table. Overrides 'Defaults.NumericalSettings.MODEL_COUPLING_SETTINGS'.
@@ -833,7 +837,8 @@ class Core:
             self.solve_integrated_problems(
                 convergence_monitoring=convergence_monitoring,
                 convergence_norm=convergence_norm,
-                tables_to_check=convergence_tables,
+                tables_to_check=convergence_tables_to_check,
+                tables_to_skip=convergence_tables_to_skip,
                 relative_tolerance=relative_tolerance,
                 maximum_iterations=maximum_iterations,
                 keep_previous_iteration_db=keep_previous_iteration_db,
@@ -913,6 +918,7 @@ class Core:
             convergence_monitoring: bool = True,
             convergence_norm: Defaults.NumericalSettings.NormType = 'l2',
             tables_to_check: str | List[str] = 'all_endogenous',
+            tables_to_skip: Optional[str | List[str]] = None,
             relative_tolerance: Optional[float] = None,
             maximum_iterations: Optional[int] = None,
             keep_previous_iteration_db: bool = False,
@@ -953,10 +959,13 @@ class Core:
             convergence_norm (Literal['max_relative', 'max_absolute', 'l1', 
                 'l2', 'linf'], optional): The type of norm to use for convergence 
                 checking. Defaults to 'l2'.
-            tables_to_check (str | List[str], optional): List of data table keys to check for convergence. 
-                If 'all_endogenous', all endogenous data tables are checked.
-                If 'hybrid_only', only hybrid endogenous data tables are checked.
-                Defaults to 'all_endogenous'.
+            tables_to_check (str | List[str], optional): List of data table keys to 
+                check for convergence. If 'all_endogenous', all endogenous data tables 
+                are checked. If 'hybrid_only', only hybrid endogenous data tables are 
+                checked. Defaults to 'all_endogenous'.
+            tables_to_skip (Optional[str | List[str]], optional): List of data table 
+                keys to skip for convergence checking. Useful in case of problematic 
+                tables. Defaults to None.
             relative_tolerance (Optional[float], optional): The maximum
                 relative tolerance that all value tables must respect as a convergence
                 criterion (0.1 -> 10%). Overwrite default setting in Defaults. 
@@ -993,26 +1002,10 @@ class Core:
         if not relative_tolerance:
             relative_tolerance = model_coupling_settings['relative_tolerance']
 
-        if isinstance(tables_to_check, str):
-            if tables_to_check == 'all_endogenous':
-                tables_to_check = self.problem.endogenous_tables_all
-            elif tables_to_check == 'hybrid_only':
-                tables_to_check = self.problem.endogenous_tables_hybrid
-            else:
-                msg = "Parameter 'tables_to_check' string value not allowed. "
-                self.logger.error(msg)
-                raise exc.SettingsError(msg)
-
-        elif isinstance(tables_to_check, list):
-            invalid_tables = [
-                table for table in tables_to_check
-                if table not in self.problem.endogenous_tables_all
-            ]
-            if invalid_tables:
-                msg = f"One or more tables in 'tables_to_check' are not " \
-                    f"endogenous tables: {invalid_tables}."
-                self.logger.error(msg)
-                raise exc.SettingsError(msg)
+        tables_to_check = self._validate_and_filter_tables_to_check(
+            tables_to_check=tables_to_check,
+            tables_to_skip=tables_to_skip,
+        )
 
         problems_status = pd.DataFrame(
             index=scenarios_df.index,
@@ -1226,6 +1219,102 @@ class Core:
                 name_old=sqlite_db_file_name_bkp,
                 name_new=sqlite_db_file_name,
             )
+
+    def _validate_and_filter_tables_to_check(
+            self,
+            tables_to_check: str | List[str],
+            tables_to_skip: Optional[str | List[str]],
+    ) -> List[str]:
+        """Validate and resolve convergence table settings.
+
+        This method resolves aliases ('all_endogenous', 'hybrid_only') and validates
+        that all specified tables are valid endogenous tables. It also filters out
+        any tables in 'tables_to_skip'. Errors are logged and raised as SettingsError.
+
+        Args:
+            tables_to_check (str | List[str]): Table names or aliases to check for
+                convergence. Supports:
+                    'all_endogenous': all endogenous data tables
+                    'hybrid_only': only hybrid endogenous data tables
+                    single table name (str)
+                    list of table names
+            tables_to_skip (Optional[str | List[str]]): Table names to exclude from
+                convergence checking. Can be a single name (str) or a list.
+
+        Returns:
+            List[str]: Validated and filtered list of table names to check.
+
+        Raises:
+            exc.SettingsError: If any table name is invalid or settings are malformed.
+        """
+        err_msg = []
+
+        if isinstance(tables_to_check, str):
+            if tables_to_check == 'all_endogenous':
+                resolved_tables = self.problem.endogenous_tables_all
+            elif tables_to_check == 'hybrid_only':
+                resolved_tables = self.problem.endogenous_tables_hybrid
+            elif tables_to_check in self.problem.endogenous_tables_all:
+                resolved_tables = [tables_to_check]
+            else:
+                err_msg.append(
+                    "Argument 'tables_to_check' is not a valid option or endogenous "
+                    "table name.")
+
+        elif isinstance(tables_to_check, list):
+            if not util.items_in_list(
+                items=tables_to_check,
+                control_list=self.problem.endogenous_tables_all,
+            ):
+                err_msg.append(
+                    f"One or more tables in 'tables_to_check' argument are not "
+                    f"endogenous tables.")
+            resolved_tables = tables_to_check
+
+        else:
+            err_msg.append(
+                "Argument 'tables_to_check' must be a string or a list of strings."
+            )
+
+        skip_tables = []
+        if tables_to_skip is not None:
+            if isinstance(tables_to_skip, str):
+                if tables_to_skip not in self.problem.endogenous_tables_all:
+                    err_msg.append(
+                        "Argument 'tables_to_skip' is not a valid endogenous table name.")
+                else:
+                    skip_tables = [tables_to_skip]
+
+            elif isinstance(tables_to_skip, list):
+                if not util.items_in_list(
+                    items=tables_to_skip,
+                    control_list=self.problem.endogenous_tables_all,
+                ):
+                    err_msg.append(
+                        "One or more tables in 'tables_to_skip' argument are not "
+                        "valid endogenous tables.")
+                else:
+                    skip_tables = tables_to_skip
+
+            else:
+                err_msg.append(
+                    "Argument 'tables_to_skip' must be a string or a list of strings.")
+
+        final_tables = [
+            table for table in resolved_tables
+            if table not in skip_tables
+        ]
+        if not final_tables:
+            err_msg.append(
+                "No tables to check for convergence after applying 'tables_to_skip' filter.")
+
+        if err_msg:
+            for msg in err_msg:
+                self.logger.error(msg)
+            raise exc.SettingsError(
+                "Invalid settings for integrated problems solving.")
+
+        return final_tables
 
     def _format_convergence_table(
             self,

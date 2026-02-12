@@ -555,8 +555,9 @@ class Model:
         solver_verbose: bool = False,
         solver_settings: Optional[dict[str, Any]] = None,
         convergence_norm: Defaults.NumericalSettings.NormType = 'l2',
-        convergence_tables: Literal[
+        convergence_tables_to_check: Literal[
             'all_endogenous', 'hybrid_only'] | List[str] = 'all_endogenous',
+        convergence_tables_to_skip: Optional[List[str]] = None,
         relative_tolerance: Optional[float] = None,
         maximum_iterations: Optional[int] = None,
         keep_previous_iteration_db: bool = False,
@@ -589,10 +590,13 @@ class Model:
             convergence_norm (Defaults.NumericalSettings.NormType, optional):
                 The norm type to use for convergence monitoring in integrated
                 problems. Defaults to 'l2' (Euclidean Norm).
-            convergence_tables (Literal['all_endogenous', 'hybrid_only'] | List[str], optional):
+            convergence_tables_to_check (Literal['all_endogenous', 'hybrid_only'] | List[str], optional):
                 The data tables to consider for convergence monitoring in
                 integrated problems. Can be 'all_endogenous', 'hybrid_only', or
                 a list of specific data table keys. Defaults to 'all_endogenous'.
+            convergence_tables_to_skip (Optional[List[str]], optional): List of data table
+                keys to skip for convergence checking in integrated problems. If None,
+                no tables are skipped. Defaults to None.
             relative_tolerance (float, optional): Numerical tolerance for verifying
                 maximum relative change between iterations in integrated problems for 
                 each data table. Overrides 'Defaults.NumericalSettings.MODEL_COUPLING_SETTINGS'.
@@ -670,7 +674,8 @@ class Model:
                 integrated_problems=integrated_problems,
                 convergence_monitoring=convergence_monitoring,
                 convergence_norm=convergence_norm,
-                convergence_tables=convergence_tables,
+                convergence_tables_to_check=convergence_tables_to_check,
+                convergence_tables_to_skip=convergence_tables_to_skip,
                 relative_tolerance=relative_tolerance,
                 maximum_iterations=maximum_iterations,
                 keep_previous_iteration_db=keep_previous_iteration_db,
