@@ -506,7 +506,7 @@ class FileManager:
                 self.logger.warning(
                     f"Excel file '{excel_filename}' already exists.")
                 if not util.get_user_confirmation(
-                    f"Do you want to overwrite  '{excel_filename}'?"
+                    f"Do you want to overwrite '{excel_filename}'?"
                 ):
                     self.logger.warning(
                         f"File '{excel_filename}' not overwritten.")

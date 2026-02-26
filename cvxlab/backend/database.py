@@ -655,6 +655,7 @@ class Database:
 
                     dataframe = util.normalize_dataframe(
                         df=dataframe,
+                        replace_nans=True,
                         all_str_except_numeric=True,
                     )
 
@@ -690,6 +691,7 @@ class Database:
 
                         dataframe = util.normalize_dataframe(
                             df=data_dict[table_key],
+                            replace_nans=True,
                             all_str_except_numeric=True,
                         )
 
