@@ -1338,7 +1338,7 @@ def normalize_dataframe(
         numeric_columns: Optional[List[str]] = None,
         numeric_dtype: Optional[type] = None,
         replace_nans: bool = False,
-        nan_type: Any = np.nan,
+        nan_type: Any = None,
         bool_to_str: bool = False,
         all_str_except_numeric: bool = False,
 ) -> pd.DataFrame:
@@ -1411,6 +1411,12 @@ def normalize_dataframe(
             if df[col].dtype == bool or df[col].dtype == 'boolean':
                 df[col] = df[col].astype(str)
 
+    # Convert all non-numeric columns (except excluded ones) to string dtype
+    if all_str_except_numeric:
+        for col in target_cols:
+            if col not in (numeric_columns if numeric_columns else []):
+                df[col] = df[col].astype(str)
+
     # Handle Non-like values (converts nullable dtypes only if needed)
     if replace_nans:
         cols_to_convert = [
@@ -1429,12 +1435,6 @@ def normalize_dataframe(
             for key in Defaults.SymbolicDefinitions.NONE_VARIANTS
         }
         df[target_cols] = df[target_cols].replace(nan_variants)
-
-    # Convert all non-numeric columns (except excluded ones) to string dtype
-    if all_str_except_numeric:
-        for col in target_cols:
-            if col not in (numeric_columns if numeric_columns else []):
-                df[col] = df[col].astype(str)
 
     # Convert numeric columns (ensure they are processed last, untouched)
     if numeric_columns is not None:

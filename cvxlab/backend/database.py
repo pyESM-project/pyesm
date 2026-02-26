@@ -655,8 +655,8 @@ class Database:
 
                     dataframe = util.normalize_dataframe(
                         df=dataframe,
-                        replace_nans=True,
                         all_str_except_numeric=True,
+                        replace_nans=True,
                     )
 
                     self.sqltools.dataframe_to_table(
@@ -691,8 +691,8 @@ class Database:
 
                         dataframe = util.normalize_dataframe(
                             df=data_dict[table_key],
-                            replace_nans=True,
                             all_str_except_numeric=True,
+                            replace_nans=True,
                         )
 
                         self.sqltools.dataframe_to_table(
