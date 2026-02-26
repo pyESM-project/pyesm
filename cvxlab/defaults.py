@@ -369,7 +369,7 @@ class Defaults:
 
         NONE_VARIANTS = [
             pd.NA, np.nan, None, float('nan'),
-            'nan', 'NaN', 'NA', 'na', 'N/A', '<NA>', 'None', 'null', '',
+            'nan', 'NaN', 'NA', 'na', 'N/A', '<NA>', '<N/A>', 'None', 'null', '',
         ]
         STD_TEXT_DATA_FILL = ''
 

@@ -1338,6 +1338,7 @@ def normalize_dataframe(
         numeric_columns: Optional[List[str]] = None,
         numeric_dtype: Optional[type] = None,
         replace_nans: bool = False,
+        nan_type: Any = np.nan,
         bool_to_str: bool = False,
         all_str_except_numeric: bool = False,
 ) -> pd.DataFrame:
@@ -1370,6 +1371,8 @@ def normalize_dataframe(
             Required if numeric_columns is provided.
         replace_nans (bool): If True, convert nullable dtypes and replace all None-like 
             values with Python None. Defaults to False.
+        nan_type (Any): The value to consider as Na-like when replace_nans is True.
+            Defaults to np.nan.
         bool_to_str (bool): If True, convert boolean columns to string representation. 
             Defaults to False.
         all_str_except_numeric (bool): If True, convert all non-numeric columns (except excluded ones) 
@@ -1422,7 +1425,7 @@ def normalize_dataframe(
 
         # Replace Na-like sentinels with None in target columns
         nan_variants = {
-            key: None
+            key: nan_type
             for key in Defaults.SymbolicDefinitions.NONE_VARIANTS
         }
         df[target_cols] = df[target_cols].replace(nan_variants)
