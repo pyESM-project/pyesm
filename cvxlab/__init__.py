@@ -15,6 +15,7 @@ from cvxlab.support.model_directory import (
     transfer_setup_info_xlsx,
     handle_model_instance
 )
+from cvxlab.frontend import run_interface
 
 
 try:
