@@ -50,17 +50,17 @@ class Model:
 
     def __init__(
             self,
-            model_dir_name: str,
-            main_dir_path: str,
-            model_settings_from: Literal['yml', 'xlsx'] = 'xlsx',
+            model_dir_name: str = 'model',
+            main_dir_path: Optional[str] = None,
+            model_settings_from: Defaults.LiteralTypes.SettingsSource = 'xlsx',
             detailed_validation: bool = False,
             use_existing_data: bool = False,
             multiple_input_files: bool = False,
-            input_data_files_type: Literal['xlsx', 'csv'] = 'xlsx',
+            input_data_files_type: Defaults.LiteralTypes.DataFileType = 'xlsx',
             import_custom_operators: bool = False,
             import_custom_constants: bool = False,
-            log_level: Literal['info', 'debug', 'warning', 'error'] = 'info',
-            log_format: Literal['standard', 'detailed'] = 'standard',
+            log_level: Defaults.LiteralTypes.LogLevel = 'info',
+            log_format: Defaults.LiteralTypes.LogFormat = 'standard',
     ):
         """Initialize the Model instance with specified configurations.
 
@@ -75,7 +75,7 @@ class Model:
         Args:
             model_dir_name (str): The name of the model directory.
             main_dir_path (str): The main directory path where the model
-                directory is located or where it will be generated.
+                directory is located. If None, the current working directory is used.
             model_settings_from (Defaults.LiteralTypes.SettingsSource, optional): 
                 The format of the model settings file. Can be either 'yml' or 'xlsx'. 
                 Defaults to 'xlsx'.
@@ -103,6 +103,10 @@ class Model:
                 format for the logger. Defaults to 'standard'.
         """
         config = Defaults.ConfigFiles
+
+        if main_dir_path is None:
+            main_dir_path = str(Path.cwd())
+
         model_dir_path = Path(main_dir_path) / model_dir_name
 
         self.logger = Logger(
