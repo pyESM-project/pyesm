@@ -27,7 +27,7 @@ def create_model_dir(
     force_overwrite: bool = False,
     include_user_operators_template: bool = False,
     include_user_constants_template: bool = False,
-    template_file_type: Literal['yml', 'xlsx'] = 'yml',
+    template_file_type: Defaults.LiteralTypes.SettingsSource = 'yml',
 ) -> None:
     """Create a model directory with template configuration files.
 
@@ -50,8 +50,8 @@ def create_model_dir(
         include_user_constants_template (bool, optional): If True, copy a
             user-defined constants template file into the new model directory.
             Defaults to False.
-        template_file_type (Literal['yml', 'xlsx'], optional): The type of
-            template configuration file to generate ('yml' or 'xlsx').
+        template_file_type (Defaults.LiteralTypes.SettingsSource, optional): The 
+            type of template configuration file to generate ('yml' or 'xlsx').
             Defaults to 'yml'.
 
     Raises:
@@ -246,7 +246,7 @@ def transfer_setup_info_xlsx(
         source_file_name: str,
         source_dir_path: str | Path,
         destination_dir_path: str | Path,
-        update: Literal['settings', 'sets', 'all'] = 'all',
+        update: Defaults.LiteralTypes.TransferUpdate = 'all',
 ) -> None:
     """Transfer setup information from an Excel file.
 
@@ -266,7 +266,7 @@ def transfer_setup_info_xlsx(
         source_dir_path (str | Path): The directory path of the source file.
         destination_dir_path (str | Path): The directory path where the
             configuration files are located.
-        update (Literal['settings', 'sets', 'all'], optional): Specifies which
+        update (Defaults.LiteralTypes.TransferUpdate, optional): Specifies which
             files to update: 'settings', 'sets', or 'all'. Defaults to 'all'.
 
     Raises:
@@ -302,7 +302,14 @@ def transfer_setup_info_xlsx(
     missing_files = []
 
     if not source_file_path.exists():
-        missing_files.append(source_file_name)
+        msg = (
+            f"Source file '{source_file_name}' not found in "
+            f"'{source_dir_path}'. This file is used to transfer model "
+            f"settings to the configuration files. Please ensure it exists "
+            f"in the specified directory."
+        )
+        files.logger.error(msg)
+        raise FileNotFoundError(msg)
 
     for category in target_files[update]:
         file_path: Path = target_info[category]['destination_file_path']
@@ -311,7 +318,7 @@ def transfer_setup_info_xlsx(
                 target_info[category]['destination_file_name'])
 
     if missing_files:
-        msg = f"Missing file/s: {missing_files}"
+        msg = f"Missing destination file/s: {missing_files}"
         files.logger.error(msg)
         raise FileNotFoundError(msg)
 
@@ -367,7 +374,7 @@ def transfer_setup_info_xlsx(
 
 
 def handle_model_instance(
-        action: Literal['save', 'load'],
+        action: Defaults.LiteralTypes.HandleModelInstance,
         file_name: str,
         source_dir_path: str | Path = None,
         instance: Model = None,
@@ -380,8 +387,8 @@ def handle_model_instance(
     must provide the source directory path.
 
     Args:
-        action (Literal['save', 'load']): The action to perform, either 'save' 
-            or 'load'.
+        action (Defaults.LiteralTypes.HandleModelInstance): The action to perform, 
+            either 'save' or 'load'.
         file_name (str): The name of the file to save/load the model instance.
         source_dir_path (str | Path, optional): The directory path to load the 
             model instance from. Required if action is 'load'.
