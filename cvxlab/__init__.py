@@ -15,7 +15,9 @@ from cvxlab.support.model_directory import (
     transfer_setup_info_xlsx,
     handle_model_instance
 )
-from cvxlab.frontend import run_interface
+from cvxlab.frontend import (
+    run_interface
+)
 
 
 try:
@@ -25,7 +27,10 @@ except PackageNotFoundError:
 
 __authors__ = "'Matteo V. Rocco'"
 __collaborators__ = """
-    'Lorenzo Rinaldi', 'Debora Ghezzi', 'Valeria Baiocco', 'Camilla Citterio', 
-    'Emanuela Colombo'
+    'Lorenzo Rinaldi', 
+    'Debora Ghezzi', 
+    'Valeria Baiocco', 
+    'Camilla Citterio', 
+    'Emanuela Colombo',
     """
 __license__ = "Apache License Version 2.0, (January 2004) <http://www.apache.org/licenses/>"

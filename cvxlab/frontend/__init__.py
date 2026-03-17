@@ -2,9 +2,9 @@
 
 Public API::
 
-    from cvxlab.frontend import guided_session
-    guided_session(model_dir_name='model', log_level='debug')
+    from cvxlab.frontend import run_interface
+    run_interface(model_dir_name='model', log_level='debug')
 """
-from cvxlab.frontend.cli import run_interface
+from cvxlab.frontend.interface import run_interface
 
 __all__ = ["run_interface"]
