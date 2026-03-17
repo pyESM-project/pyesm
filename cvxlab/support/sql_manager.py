@@ -6,7 +6,7 @@ and to various sources.
 The SQLManager class interacts with SQLite database in Python using the sqlite3 
 library.
 """
-from typing import List, Dict, Any, Literal, Optional, Tuple
+from typing import List, Dict, Any, Optional, Tuple
 from pathlib import Path
 import contextlib
 import sqlite3
@@ -32,7 +32,7 @@ class SQLManager:
     - logger (Logger): Logger object for logging information.
     - database_sql_path (Path): Path to the SQLite database file.
     - database_name (str): Descriptive name of the database used in logs.
-    - xls_engine (Literal['openpyxl', 'xlsxwriter']): Engine for exporting data to Excel.
+    - xls_engine (Defaults.LiteralTypes.ExcelEngine): Engine for exporting data to Excel.
     - connection (Optional[sqlite3.Connection]): Active database connection, None if not connected.
     - cursor (Optional[sqlite3.Cursor]): Database cursor for executing SQL queries, None if not connected.
     - foreign_keys_enabled (Optional[bool]): Status of SQLite foreign key enforcement in the session.
@@ -44,7 +44,7 @@ class SQLManager:
         logger: Logger,
         database_path: Path,
         database_name: str,
-        xls_engine: Literal['openpyxl', 'xlswriter'] = 'openpyxl',
+        xls_engine: Defaults.LiteralTypes.ExcelEngine = 'openpyxl',
     ):
         """Initialize the SQLManager class.
 
@@ -52,7 +52,7 @@ class SQLManager:
             logger (Logger): Logger object for logging database operations.
             database_path (Path): File system path to the SQLite database file.
             database_name (str): Descriptive name of the database for logging purposes.
-            xls_engine (Literal['openpyxl', 'xlsxwriter']): Preferred engine for exporting 
+            xls_engine (Defaults.LiteralTypes.ExcelEngine): Preferred engine for exporting 
                 data to Excel, defaults to 'openpyxl'.
         """
         self.logger = logger.get_child(__name__)
@@ -683,7 +683,7 @@ class SQLManager:
         self,
         table_name: str,
         dataframe: pd.DataFrame,
-        action: Literal['update', 'overwrite'] = 'overwrite',
+        action: Defaults.LiteralTypes.TableHandling = 'overwrite',
         force_overwrite: bool = False,
         suppress_warnings: bool = False,
         batch_size: Optional[int] = None,
@@ -703,7 +703,7 @@ class SQLManager:
             table_name (str): The name of the SQLite table.
             dataframe (pd.DataFrame): The DataFrame to be inserted into the 
                 table.
-            action (Literal['update', 'overwrite'], optional): The action to
+            action (Defaults.LiteralTypes.TableHandling, optional): The action to
                 perform: 'update' to modify existing entries, 'overwrite' to
                 replace all entries. Defaults to 'overwrite'.
             force_overwrite (bool, optional): If True, existing table entries 
@@ -1240,7 +1240,7 @@ class SQLManager:
 
     def get_tables_values_scale(
         self,
-        norm_type: Defaults.NumericalSettings.NormType,
+        norm_type: Defaults.LiteralTypes.NormType,
         tables_names: Optional[List[str]] = None,
     ) -> Dict[str, float]:
         """Get norm of values in specified tables of the current SQLite database.
@@ -1250,7 +1250,7 @@ class SQLManager:
         and for scaling/normalization purposes during integrated solving.
 
         Args:
-            norm_type (Literal['max_relative', 'max_absolute', 'l1', 'l2', 'linf']): 
+            norm_type (Defaults.LiteralTypes.NormType): 
                 The type of norm to use for calculating the scale of values.
             tables_names (Optional[List[str]], optional): Specific tables to
                 analyze; if None, all tables are analyzed.
@@ -1304,7 +1304,7 @@ class SQLManager:
             self,
             other_db_dir_path: Path | str,
             other_db_name: str,
-            norm_type: Defaults.NumericalSettings.NormType,
+            norm_type: Defaults.LiteralTypes.NormType,
             tables_names: Optional[List[str]] = None,
     ) -> Dict[str, float]:
         """Get data tables norm changes between two SQLite databases.
@@ -1321,7 +1321,7 @@ class SQLManager:
             other_db_name (str): The name of the other SQLite database.
             tables_names (Optional[List[str]], optional): Specific tables to
                 compare; if None, all tables are compared.
-            norm_type (Literal['max_relative', 'max_absolute', 'l1', 'l2', 'linf'], 
+            norm_type (Defaults.LiteralTypes.NormType, 
                 optional): The type of norm to use for calculating differences.
 
         Returns:

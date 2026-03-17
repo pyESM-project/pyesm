@@ -9,7 +9,7 @@ loading data from Excel files, generating data input files, and managing the
 SQLite database interactions via the SQLManager.
 """
 from pathlib import Path
-from typing import Dict, List, Literal, Optional
+from typing import Dict, List, Optional
 
 import pandas as pd
 
@@ -228,7 +228,7 @@ class Database:
     def update_sets_in_sqlite_database(
             self,
             set_keys_list: List[str] = [],
-            update_mode: Literal['all', 'filters', 'aggregations'] = 'all',
+            update_mode: Defaults.LiteralTypes.SetUpdateMode = 'all',
     ) -> None:
         """Update sets data in the SQLite database.
 
@@ -241,7 +241,7 @@ class Database:
         Args:
             set_keys_list(List[str], optional): A list of set keys to update.
                 If empty, all sets in the Index are updated. Defaults to [].
-            update_mode(Literal['all', 'filters', 'aggregations'], optional):
+            update_mode(Defaults.LiteralTypes.SetUpdateMode, optional):
                 Specifies the update mode. Defaults to 'all'.
 
         Raises:

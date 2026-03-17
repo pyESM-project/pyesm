@@ -9,7 +9,7 @@ operational characteristics related to these entities.
 """
 from pathlib import Path
 from scipy.sparse import issparse
-from typing import Dict, List, Literal, Optional
+from typing import Dict, List, Optional
 
 import pandas as pd
 import cvxpy as cp
@@ -1213,7 +1213,7 @@ class Index:
             var_key: str,
             scenario_key: Optional[int] = None,
             intra_problem_key: Optional[int] = None,
-            if_hybrid_var: Literal['endogenous', 'exogenous'] = 'endogenous',
+            if_hybrid_var: Defaults.LiteralTypes.HybridVarType = 'endogenous',
     ) -> Optional[pd.DataFrame]:
         """Fetch variable data from Index.
 
@@ -1235,7 +1235,7 @@ class Index:
                 sets. Default to None.
             intra_problem_key (Optional[int]): Defines the cardinality of intra-problem
                 sets. Default to None.
-            if_hybrid_var (Literal['endogenous', 'exogenous']): Defines the type 
+            if_hybrid_var (Defaults.LiteralTypes.HybridVarType): Defines the type 
                 of variable data to inspect in case variable type depends on the 
                 problem.
 

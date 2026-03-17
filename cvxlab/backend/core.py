@@ -765,7 +765,7 @@ class Core:
             force_overwrite: bool,
             integrated_problems: bool,
             convergence_monitoring: bool,
-            convergence_norm: Defaults.NumericalSettings.NormType = 'l2',
+            convergence_norm: Defaults.LiteralTypes.NormType = 'l2',
             convergence_tables_to_check: Optional[List[str]] = None,
             convergence_tables_to_skip: Optional[List[str]] = None,
             relative_tolerance: Optional[float] = None,
@@ -792,7 +792,7 @@ class Core:
                 integrated problem. If False, solves the problems as independent.
             convergence_monitoring (bool): If True, enables convergence monitoring
                 during the solving of integrated problems.
-            convergence_norm (Defaults.NumericalSettings.NormType, optional):
+            convergence_norm (Defaults.LiteralTypes.NormType, optional):
                 The norm type to use for convergence monitoring in integrated 
                 problems. Defaults to 'l2' (Euclidean norm). Overrides 
                 'Defaults.NumericalSettings.MODEL_COUPLING_SETTINGS'.
@@ -916,7 +916,7 @@ class Core:
     def solve_integrated_problems(
             self,
             convergence_monitoring: bool = True,
-            convergence_norm: Defaults.NumericalSettings.NormType = 'l2',
+            convergence_norm: Defaults.LiteralTypes.NormType = 'l2',
             tables_to_check: str | List[str] = 'all_endogenous',
             tables_to_skip: Optional[str | List[str]] = None,
             relative_tolerance: Optional[float] = None,
@@ -956,8 +956,7 @@ class Core:
         Args:
             convergence_monitoring (bool, optional): If True, enables convergence
                 monitoring during the solving of integrated problems. Defaults to True.
-            convergence_norm (Literal['max_relative', 'max_absolute', 'l1', 
-                'l2', 'linf'], optional): The type of norm to use for convergence 
+            convergence_norm (Defaults.LiteralTypes.NormType, optional): The type of norm to use for convergence 
                 checking. Defaults to 'l2'.
             tables_to_check (str | List[str], optional): List of data table keys to 
                 check for convergence. If 'all_endogenous', all endogenous data tables 

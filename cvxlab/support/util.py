@@ -890,7 +890,7 @@ def find_dict_keys_corresponding_to_value(
 def calculate_change_norm(
         seq1: List[float] | Tuple[float, ...] | pd.Series | np.ndarray | float | int,
         seq2: List[float] | Tuple[float, ...] | pd.Series | np.ndarray | float | int | None,
-        metric: Defaults.NumericalSettings.NormType,
+        metric: Defaults.LiteralTypes.NormType,
         ignore_nan: bool,
 ) -> float:
     """Compute change metric between two numeric sequences (or scalars).

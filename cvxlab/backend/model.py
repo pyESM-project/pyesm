@@ -12,7 +12,7 @@ data indexing, functionalities for SQLite database management, problem formulati
 and solution through cvxpy package. 
 """
 from pathlib import Path
-from typing import Any, List, Literal, Optional
+from typing import Any, List, Optional
 
 import pandas as pd
 
@@ -76,8 +76,8 @@ class Model:
             model_dir_name (str): The name of the model directory.
             main_dir_path (str): The main directory path where the model
                 directory is located or where it will be generated.
-            model_settings_from (Literal['yml', 'xlsx'], optional): The format
-                of the model settings file. Can be either 'yml' or 'xlsx'. 
+            model_settings_from (Defaults.LiteralTypes.SettingsSource, optional): 
+                The format of the model settings file. Can be either 'yml' or 'xlsx'. 
                 Defaults to 'xlsx'.
             detailed_validation (bool, optional): if True, performs detailed
                 validation logging of data and model settings during initialization.
@@ -90,15 +90,16 @@ class Model:
                 are generated as one file per data table. If False, all data tables
                 are generated in a single Excel file with multiple tabs. Defaults 
                 to False.
-            input_data_files_type (Literal['xlsx', 'csv'], optional): The format
-                of the input data files. Can be either 'xlsx' or 'csv'. Defaults to 'xlsx'.
+            input_data_files_type (Defaults.LiteralTypes.DataFileType, optional): 
+                The format of the input data files. Can be either 'xlsx' or 'csv'. 
+                Defaults to 'xlsx'.
             import_custom_operators (bool, optional): if True, user-defined
                 operators are imported during initialization. Defaults to False.
             import_custom_constants (bool, optional): if True, user-defined
                 constants are imported during initialization. Defaults to False.
-            log_level (Literal['info', 'debug', 'warning', 'error'], optional):
+            log_level (Defaults.LiteralTypes.LogLevel, optional):
                 The logging level for the logger. Defaults to 'info'.
-            log_format (Literal['standard', 'detailed'], optional): The logging 
+            log_format (Defaults.LiteralTypes.LogFormat, optional): The logging 
                 format for the logger. Defaults to 'standard'.
         """
         config = Defaults.ConfigFiles
@@ -554,9 +555,9 @@ class Model:
         solver: Optional[str] = None,
         solver_verbose: bool = False,
         solver_settings: Optional[dict[str, Any]] = None,
-        convergence_norm: Defaults.NumericalSettings.NormType = 'l2',
-        convergence_tables_to_check: Literal[
-            'all_endogenous', 'hybrid_only'] | List[str] = 'all_endogenous',
+        convergence_norm: Defaults.LiteralTypes.NormType = 'l2',
+        convergence_tables_to_check: Defaults.LiteralTypes.ConvergenceTables | List[
+            str] = 'all_endogenous',
         convergence_tables_to_skip: Optional[List[str]] = None,
         relative_tolerance: Optional[float] = None,
         maximum_iterations: Optional[int] = None,
@@ -587,13 +588,14 @@ class Model:
                 numerical solver operation during the model run. Defaults to False.
             solver_settings (dict[str, Any], optional): Additional settings
                 for the solver passed as key-value pairs. Defaults to None.
-            convergence_norm (Defaults.NumericalSettings.NormType, optional):
+            convergence_norm (Defaults.LiteralTypes.NormType, optional):
                 The norm type to use for convergence monitoring in integrated
                 problems. Defaults to 'l2' (Euclidean Norm).
-            convergence_tables_to_check (Literal['all_endogenous', 'hybrid_only'] | List[str], optional):
-                The data tables to consider for convergence monitoring in
-                integrated problems. Can be 'all_endogenous', 'hybrid_only', or
-                a list of specific data table keys. Defaults to 'all_endogenous'.
+            convergence_tables_to_check (Defaults.LiteralTypes.ConvergenceTables | 
+                List[str], optional): The data tables to consider for convergence 
+                monitoring in integrated problems. Can be 'all_endogenous', 
+                'hybrid_only', or a list of specific data table keys. Defaults 
+                to 'all_endogenous'.
             convergence_tables_to_skip (Optional[List[str]], optional): List of data table
                 keys to skip for convergence checking in integrated problems. If None,
                 no tables are skipped. Defaults to None.
@@ -885,7 +887,7 @@ class Model:
     def update_sets_tables(
             self,
             set_keys_list: List[str] = [],
-            update_mode: Literal['all', 'filters', 'aggregations'] = 'all',
+            update_mode: Defaults.LiteralTypes.SetUpdateMode = 'all',
     ) -> None:
         """Update sets tables in the SQLite database.
 
@@ -897,7 +899,7 @@ class Model:
         Args:
             set_keys_list (List[str], optional): A list of set keys to update.
                 If empty, all sets are updated. Defaults to [].
-            update_mode (Literal['all', 'filters', 'aggregations'], optional):
+            update_mode (Defaults.LiteralTypes.SetUpdateMode, optional):
                 The update mode. Can be 'all' (update all set data), 'filters'
                 (update only filters), or 'aggregations' (update only aggregations).
                 Defaults to 'all'.
@@ -912,7 +914,7 @@ class Model:
             name: str,
             scenario_key: Optional[int] = None,
             intra_problem_key: Optional[int] = None,
-            if_hybrid_var: Literal['endogenous', 'exogenous'] = 'endogenous',
+            if_hybrid_var: Defaults.LiteralTypes.HybridVarType = 'endogenous',
     ) -> Optional[pd.DataFrame]:
         """Fetch variable data.
 
@@ -934,7 +936,7 @@ class Model:
                 sets. Default to None.
             intra_problem_key (Optional[int]): Defines the cardinality of intra-problem
                 sets. Default to None.
-            if_hybrid_var (Literal['endogenous', 'exogenous']): Defines the type 
+            if_hybrid_var (Defaults.LiteralTypes.HybridVarType): Defines the type 
                 of variable data to inspect in case variable type depends on the 
                 problem.
 

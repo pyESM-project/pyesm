@@ -5,7 +5,7 @@ defining templates for fundamental package objects (sets, data tables, variables
 for validation purposes, defining fundamental numerical settings and template 
 text messages.
 """
-from typing import Literal, TypeAlias, Union
+from typing import Literal, Union
 
 import cvxpy as cp
 import numpy as np
@@ -22,6 +22,7 @@ class Defaults:
 
     Subgroups:
 
+    - LiteralTypes: Shared Literal type aliases for validating settings and type hints.
     - ConfigFiles: Defaults related to configuration and file management.
     - Labels: Standard headers and field names.
     - DefaultStructures: Default structures for data validation.
@@ -36,6 +37,26 @@ class Defaults:
     """
 
     _SUBGROUPS = []
+
+    class LiteralTypes:
+        """Shared Literal type aliases (single source of truth).
+
+        To be used to validate settings and for type hints across the package. 
+        Changing these aliases will change the allowed values for settings across 
+        the package.
+        """
+        SettingsSource = Literal['yml', 'xlsx']
+        DataFileType = Literal['xlsx', 'csv']
+        LogLevel = Literal['info', 'debug', 'warning', 'error']
+        LogFormat = Literal['standard', 'detailed']
+        NormType = Literal['max_relative', 'max_absolute', 'l1', 'l2', 'linf']
+        SetUpdateMode = Literal['all', 'filters', 'aggregations']
+        HybridVarType = Literal['endogenous', 'exogenous']
+        TransferUpdate = Literal['settings', 'sets', 'all']
+        ConvergenceTables = Literal['all_endogenous', 'hybrid_only']
+        HandleModelInstance = Literal['save', 'load']
+        ExcelEngine = Literal['openpyxl', 'xlsxwriter']
+        TableHandling = Literal['update', 'overwrite']
 
     class ConfigFiles:
         """Defaults related to configuration and file management.
@@ -463,18 +484,8 @@ class Defaults:
             'max_iterations': 20,
         }
 
-        NormType: TypeAlias = Literal[
-            'max_relative', 'max_absolute', 'l1', 'l2', 'linf']
-
-        @staticmethod
-        def validate_norm_type(norm: str) -> str:
-            allowed_norms = Defaults.NumericalSettings.MODEL_COUPLING_SETTINGS['allowed_norms']
-            if norm not in allowed_norms:
-                raise ValueError(
-                    f"Unsupported norm type '{norm}'. Allowed: {allowed_norms}.")
-            return norm
-
     _SUBGROUPS = [
+        LiteralTypes,
         ConfigFiles,
         Labels,
         DefaultStructures,
