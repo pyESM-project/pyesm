@@ -15,6 +15,7 @@ management and support for multiple, interconnected optimization models.
 ## Table of Contents
 - [Installation](#installation)
 - [Quick Overview](#quick-overview)
+- [Guided Interface](#guided-interface)
 - [Documentation](#documentation)
 - [Changelog](#changelog)
 - [Contributing](#contributing)
@@ -73,6 +74,26 @@ activities summarized below:
   Due to the structure of the relational database, it can be easily linked and 
   inspected via Excel or SQL queries, or imported into Business Intelligence tools 
   (such as *PowerBI* or *Tableau*) for more elaborated data visualization and analysis.
+
+## Guided Interface
+CVXlab provides an interactive guided interface that walks you through the full 
+modeling workflow — from directory setup to solving — via a terminal menu. 
+Launch it with `cvxlab.frontend.run()`:
+
+```python
+import cvxlab
+
+cvxlab.run(
+    model_dir_name='my_model',
+    main_dir_path='/path/to/models',
+)
+```
+
+The `run()` signature mirrors the parameters of `Model.__init__()` and 
+`Model.run_model()`, with additional frontend-only options such as 
+`model_structure_file` and `template_file_type`.
+All parameters are optional; when omitted, the backend applies its own defaults 
+or the interactive prompt asks for specific instructions.
 
 ## Documentation
 Full documentation is available at [cvxlab.readthedocs.io](https://cvxlab.readthedocs.io/en/latest/).
