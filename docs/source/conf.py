@@ -52,6 +52,12 @@ nb_execution_mode = "off"
 # Mock optional/heavy deps that are not available on RTD
 autodoc_mock_imports = ["gurobipy"]
 
+# Show type hints in parameter descriptions, not in the signature line
+autodoc_typehints = "description"
+
+# Wrap long signatures: one parameter per line
+maximum_signature_line_length = 80
+
 # -- Options for HTML output -------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#options-for-html-output
 

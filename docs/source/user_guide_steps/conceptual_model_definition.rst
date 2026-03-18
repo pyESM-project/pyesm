@@ -54,33 +54,44 @@ structure:
 
 .. math::
   \mathcal{S}_1 \times \cdots \times \mathcal{S}_k = 
-  \underbrace{(\mathcal{S}_{I_1} \times \cdots \times \mathcal{S}_{I_m})}_{\text{Inter-problem}} 
+  \underbrace{(\mathcal{S}_{I_1} \times \cdots \times \mathcal{S}_{I_m})}_{\text{Inter-problem sets}} 
   \times 
-  \underbrace{(\mathcal{S}_{D_1} \times \cdots \times \mathcal{S}_{D_n})}_{\text{Dimension}}
+  \underbrace{(\mathcal{S}_{D_1} \times \cdots \times \mathcal{S}_{D_n})}_{\text{Dimensions sets}}
 
-where :math:`m + n = k`
+where :math:`m + n = k`. *Inter-problem sets* and *dimensions sets* are defined as:
 
 - **Inter-problem sets** :math:`\mathcal{S}_{I_1}, \ldots, \mathcal{S}_{I_m}`: 
   Define the space over which the numerical problem is solved. All variables and 
   expressions in the model are defined and the numerical problem solved for each 
   coordinate combination in the Cartesian product of inter-problem sets: 
   :math:`\iota \in \mathcal{S}_{I_1} \times \cdots \times \mathcal{S}_{I_m}`. 
-  Each combination is called **scenario**, defining a distinct instance of 
+  Each combination is defined as a **scenario**, defining a distinct instance of 
   the optimization problem. Inter-problem sets are used to define multiple scenarios,
   e.g., to represent different demand projections, cost assumptions, or to perform 
-  sensitivity analysis.
+  sensitivity analysis on critical parameters.
 
 - **Dimensions sets** :math:`\mathcal{S}_{D_1}, \ldots, \mathcal{S}_{D_n}`: 
   Specify the shape and indexing of model variables — i.e., how variables are arranged 
   into rows and columns and indexed across intra-problem coordinates. Depending 
   by each variable, dimension sets can be further classified as:
 
-  - **Shape sets**: Define *rows* and *columns* of variables (matrix structure).
+  - **Shape sets**: Define *rows* and *columns* of variables (matrix structure). 
+    Multiple sets can be assigned to the same row or column; the resulting dimension 
+    is the Cartesian product of the assigned sets. For rows over 
+    :math:`\mathcal{S}_{R} = \mathcal{S}_{a} \times \mathcal{S}_{b}`, the variable 
+    has :math:`|\mathcal{S}_{R}| = |\mathcal{S}_{a}| \cdot |\mathcal{S}_{b}|` rows 
+    with row coordinates :math:`(s_a, s_b) \in \mathcal{S}_{a} \times \mathcal{S}_{b}`. 
+    The same applies to columns.
   - **Intra-problem sets**: Variables with a given shape are indexed over the 
     Cartesian product of the remaining dimensions sets, defined as intra-problem sets.
+    For intra-problem coordinates over 
+    :math:`\mathcal{S}_{P} = \mathcal{S}_{P_1} \times \cdots \times \mathcal{S}_{P_p}`, 
+    each variable :math:`x` of shape :math:`\mathcal{S}_{R} \times \mathcal{S}_{C}` 
+    has :math:`|\mathcal{S}_{P}| = \prod_{j=1}^{p} |\mathcal{S}_{P_j}|` instances, 
+    one for each :math:`\pi = (s_{P_1},\ldots,s_{P_p}) \in \mathcal{S}_{P}`.
 
-  A consistent definition of variables dimensions is fundamental to correctly define 
-  symbolic expressions in the model, that must be dimensionally consistent. 
+A consistent definition of variables dimensions is fundamental to correctly define 
+symbolic expressions in the model, that must be dimensionally consistent. 
 
 
 .. _definig-data-tables-variables:
@@ -101,7 +112,9 @@ Data tables can be classified as:
 - **Exogenous**: known parameters :math:`d(s)` for :math:`s \in \Omega`
 - **Endogenous**: unknowns to be determined (can be further classified as *decision 
   variables* or *auxiliary variables*). Can be further defined as *continuous* or *integer*.
-- **Constants**: fixed values.
+- **Constants**: fixed values. Multiple built-in constant types are supported, 
+    and user-defined constants can also be defined (both defined at the variable 
+    level, see :ref:`api_constants_types`).
 
 In case of integrated problems solved iteratively, variables can be defined as 
 *endogenous or exogenous* based on the role they play in each problem, avoiding 
@@ -149,18 +162,10 @@ sets. Variables with different intra-problem sets can appear in the same symboli
 expression: each variable is automatically broadcast/reused across all generated 
 expression instances, allowing for a flexible problem definition.
 
-This can be formalized as follows. Let :math:`\mathcal{S}_{D_1}, \ldots, \mathcal{S}_{D_n}` 
-be dimension sets partitioned as:
-
-.. math::
-  \mathcal{S}_{D_1} \times \cdots \times \mathcal{S}_{D_n} = 
-  \underbrace{\mathcal{S}_{R}}_{\text{Shape (rows)}} 
-  \times
-  \underbrace{\mathcal{S}_{C}}_{\text{Shape (columns)}}
-  \times 
-  \underbrace{(\mathcal{S}_{P_1} \times \cdots \times \mathcal{S}_{P_p})}_{\text{Intra-problem}}
-
-where :math:`n = 2 + p` (one row set, one column set, and :math:`p` intra-problem sets).
+This can be formalized using the notation introduced in :ref:`defining-sets`: 
+dimension sets are partitioned into shape sets :math:`\mathcal{S}_{R}` (rows) and 
+:math:`\mathcal{S}_{C}` (columns), plus :math:`p` intra-problem sets 
+:math:`\mathcal{S}_{P_1}, \ldots, \mathcal{S}_{P_p}`.
 
 An expression :math:`f(x_1, \ldots, x_k)` with variables over domains 
 :math:`\Omega_1, \ldots, \Omega_k` is **dimensionally consistent** if all shape 

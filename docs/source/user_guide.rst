@@ -21,6 +21,34 @@ provides a synthetic but comprehensive overview about the CVXlab modeling workfl
 Tutorial with CVXlab applications are available in :ref:`tutorials` section.
 
 
+.. _guided_interface:
+
+Guided interface (quick start)
+------------------------------
+
+For users who prefer a plug-and-play experience, CVXlab provides an interactive 
+guided interface that walks through the entire modeling workflow via a menu-driven 
+session. This is the simplest way to get started with CVXlab:
+
+.. code-block:: python
+
+   import cvxlab
+   cvxlab.run()
+
+The ``run()`` function launches an interactive session that guides the user through 
+model directory generation, setup, data loading, problem solving, and results export.
+All parameters (solver, log level, convergence settings, etc.) can be passed directly 
+or configured interactively.
+
+This interface is ideal to avoid direct interaction with the underlying APIs; however,
+model formulation, settings, and data input must still be provided through the expected 
+setup files and data structures, as described in the following sections.
+
+For full control over each modeling step, refer to the programmatic workflows below.
+
+API: :py:func:`cvxlab.run`
+
+
 .. _model_generation_from_scratch:
 
 Model generation from scratch

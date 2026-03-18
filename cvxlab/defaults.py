@@ -235,7 +235,22 @@ class Defaults:
                 be non-negative. This will result in an implicit non-negativity 
                 constraint defined in the model. In case of integrated models,
                 this constraint is useful to check if endogenous variables values 
-                are exchanged with the correct sign, to avoid numerical inconsistencies.
+                are exchanged with the correct sign, to avoid numerical 
+                inconsistencies. Notes:
+
+                - In case of single-problem setups, all implicit expressions are 
+                  added to the problem.
+                - In case of multiple problems:
+
+                  - For hybrid variables type, the non negativity constraints 
+                    are added to the problem where the variable is defined as
+                    endogenous.
+                  - For pure endogenous variables, the non negativity constraints
+                    are added only if the variable is used in any other problem
+                    expressions. In case the variable is not used in any expression,
+                    an error is raised (constraints must be explicitly defined in 
+                    symbolic problem).
+
             - set_key: 
                 (Optional) dictionary with keys as set_key symbols and values
                 defining the dimension and filters for the set.

@@ -19,8 +19,9 @@ The classes and functions documented in this section are those imported into the
 - :ref:`Model <api_model>` documents the main package class cvxlab.Model, embedding 
   all the main package APIs necessary to generate, handle and solve the numerical model. 
 - :ref:`Utility functions <api_utility_functions>` section documents various utility 
-  functions available in the package, including functions for initializing model 
-  directory and handling model class instances. 
+  functions available in the package, including the guided interactive interface 
+  (:py:func:`cvxlab.run`) and functions for initializing model directory and handling 
+  model class instances. 
 - :ref:`Symbolic operators <api_symbolic_operators>` documents built-in symbolic
   operators available in CVXlab, including standard arithmetic operations, matrix
   operations, and various mathematical functions. Provides guidelines on how to

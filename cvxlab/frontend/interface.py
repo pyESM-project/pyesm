@@ -1,9 +1,4 @@
-"""Interface loop engine and public entry-point function.
-
-Public API
-----------
-run : Launch the CVXlab guided user interface.
-"""
+"""Interface loop engine and public entry-point function."""
 import inspect
 from typing import Any, Dict, List, Optional
 
@@ -118,21 +113,18 @@ def run(
     All parameters are optional. When provided, they override the
     corresponding defaults in ``Model.__init__`` or ``Model.run_model()``.
     Parameters left as ``None`` are omitted, letting the backend apply
-    its own defaults.
+    its own defaults (or let the user specify them at runtime).
 
     Args:
-
-        Model initialization parameters:
-
         model_dir_name (str, optional): The name of the model directory.
-        main_dir_path (str, optional): The main directory path where the model
+        main_dir_path (str, optional): The main directory path where the model 
             directory is located. If None, the current working directory is used.
-        model_settings_from (Literal['yml', 'xlsx'], optional): The format of
+        model_settings_from (Literal['yml', 'xlsx'], optional): The format of 
             the model settings file. Can be either 'yml' or 'xlsx'.
-        detailed_validation (bool, optional): If True, performs detailed
+        detailed_validation (bool, optional): If True, performs detailed 
             validation logging of data and model settings during initialization.
-        multiple_input_files (bool, optional): If True, input data Excel files
-            are generated as one file per data table. If False, all data tables
+        multiple_input_files (bool, optional): If True, input data Excel files 
+            are generated as one file per data table. If False, all data tables 
             are generated in a single Excel file with multiple tabs.
         input_data_files_type (Literal['xlsx', 'csv'], optional): The format
             of the input data files.
@@ -144,9 +136,6 @@ def run(
             The logging level for the logger.
         log_format (Literal['standard', 'detailed'], optional): The logging
             format for the logger.
-
-        Solver and convergence parameters:
-
         solver (str, optional): The solver to use for solving numerical
             problems. If None, the default solver specified in
             'Defaults.NumericalSettings.CVXPY_DEFAULT_SETTINGS' is used.
@@ -160,34 +149,26 @@ def run(
             convergence.
         convergence_monitoring (bool, optional): If True, enables convergence
             monitoring during the solving of integrated problems.
-        convergence_norm (Literal['max_relative', 'max_absolute', 'l1', 'l2',
-            'linf'], optional): The norm type to use for convergence monitoring
-            in integrated problems.
-        convergence_tables_to_check (Literal['all_endogenous', 'hybrid_only']
-            | List[str], optional): The data tables to consider for convergence
-            monitoring in integrated problems. Can be 'all_endogenous',
-            'hybrid_only', or a list of specific data table keys.
+        convergence_norm (Literal['max_relative', 'max_absolute', 'l1', 'l2', 'linf'], optional): 
+            The norm type to use for convergence monitoring in integrated problems.
+        convergence_tables_to_check (Literal['all_endogenous', 'hybrid_only'] | List[str], optional): 
+            The data tables to consider for convergence monitoring in integrated problems. 
+            Can be 'all_endogenous', 'hybrid_only', or a list of specific data table keys.
         convergence_tables_to_skip (List[str], optional): List of data table
             keys to skip for convergence checking in integrated problems.
         relative_tolerance (float, optional): Numerical tolerance for verifying
             maximum relative change between iterations in integrated problems
-            for each data table. Overrides
-            'Defaults.NumericalSettings.MODEL_COUPLING_SETTINGS'.
+            for each data table. Overrides 'Defaults.NumericalSettings.MODEL_COUPLING_SETTINGS'.
         maximum_iterations (int, optional): The maximum number of iterations
-            for solving integrated problems. Overrides
-            'Defaults.NumericalSettings.MODEL_COUPLING_SETTINGS'.
-        keep_previous_iteration_db (bool, optional): Whether to keep the
-            database generated during the last-1 iteration. For debugging
-            purpose.
-
-        Frontend-only parameters:
-
+            for solving integrated problems. Overrides 'Defaults.NumericalSettings.MODEL_COUPLING_SETTINGS'.
+        keep_previous_iteration_db (bool, optional): Whether to keep the database 
+            generated during the last-1 iteration. For debugging purpose. 
         model_structure_file (str, optional): Name of the Excel file used to
-            transfer model structure information. Defaults to
-            'model_structure.xlsx'.
+            transfer model structure information.
         template_file_type (Literal['yml', 'xlsx'], optional): The type of
             template configuration file to generate when creating a model
             directory. Defaults to 'xlsx'.
+
 
     Example::
 
