@@ -16,7 +16,7 @@ from cvxlab.support.model_directory import (
     handle_model_instance
 )
 from cvxlab.frontend import (
-    run_interface
+    run
 )
 
 
