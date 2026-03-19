@@ -33,7 +33,6 @@ class Logger:
         'DEBUG': logging.DEBUG,
         'WARNING': logging.WARNING,
         'ERROR': logging.ERROR,
-        'CRITICAL': logging.CRITICAL,
     }
 
     FORMATS = {
