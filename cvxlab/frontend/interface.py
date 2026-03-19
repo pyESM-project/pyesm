@@ -14,7 +14,6 @@ from cvxlab.log_exc.exceptions import CVXLabError
 _MODEL_PARAM_NAMES = {
     'model_dir_name', 'main_dir_path', 'model_settings_from',
     'detailed_validation', 'multiple_input_files', 'input_data_files_type',
-    'import_custom_operators', 'import_custom_constants',
     'log_level', 'log_format',
 }
 
@@ -87,8 +86,6 @@ def run(
     detailed_validation: Optional[bool] = None,
     multiple_input_files: Optional[bool] = None,
     input_data_files_type: Optional[Defaults.LiteralTypes.DataFileType] = None,
-    import_custom_operators: Optional[bool] = None,
-    import_custom_constants: Optional[bool] = None,
     log_level: Optional[Defaults.LiteralTypes.LogLevel] = None,
     log_format: Optional[Defaults.LiteralTypes.LogFormat] = None,
     # Model.run_model parameters
@@ -128,10 +125,6 @@ def run(
             are generated in a single Excel file with multiple tabs.
         input_data_files_type (Literal['xlsx', 'csv'], optional): The format
             of the input data files.
-        import_custom_operators (bool, optional): If True, user-defined
-            operators are imported during initialization.
-        import_custom_constants (bool, optional): If True, user-defined
-            constants are imported during initialization.
         log_level (Literal['info', 'debug', 'warning', 'error'], optional):
             The logging level for the logger.
         log_format (Literal['standard', 'detailed'], optional): The logging

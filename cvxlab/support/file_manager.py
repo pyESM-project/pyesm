@@ -173,7 +173,6 @@ class FileManager:
         file_path = Path(dir_path) / file_name
 
         if not os.path.exists(file_path):
-            self.logger.error(f"File '{file_name}' does not exist.")
             return []
 
         spec = importlib.util.spec_from_file_location(
@@ -186,7 +185,6 @@ class FileManager:
             if callable(getattr(module, attr))
         ]
 
-        self.logger.debug(f"Functions loaded from '{file_name}'.")
         return functions_list
 
     def erase_file(

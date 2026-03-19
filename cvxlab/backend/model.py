@@ -57,8 +57,6 @@ class Model:
             use_existing_data: bool = False,
             multiple_input_files: bool = False,
             input_data_files_type: Defaults.LiteralTypes.DataFileType = 'xlsx',
-            import_custom_operators: bool = False,
-            import_custom_constants: bool = False,
             log_level: Defaults.LiteralTypes.LogLevel = 'info',
             log_format: Defaults.LiteralTypes.LogFormat = 'standard',
     ):
@@ -93,10 +91,6 @@ class Model:
             input_data_files_type (Defaults.LiteralTypes.DataFileType, optional): 
                 The format of the input data files. Can be either 'xlsx' or 'csv'. 
                 Defaults to 'xlsx'.
-            import_custom_operators (bool, optional): if True, user-defined
-                operators are imported during initialization. Defaults to False.
-            import_custom_constants (bool, optional): if True, user-defined
-                constants are imported during initialization. Defaults to False.
             log_level (Defaults.LiteralTypes.LogLevel, optional):
                 The logging level for the logger. Defaults to 'info'.
             log_format (Defaults.LiteralTypes.LogFormat, optional): The logging 
@@ -128,8 +122,6 @@ class Model:
                 'use_existing_data': use_existing_data,
                 'multiple_input_files': multiple_input_files,
                 'input_data_files_type': input_data_files_type,
-                'import_custom_operators': import_custom_operators,
-                'import_custom_constants': import_custom_constants,
                 'detailed_validation': detailed_validation,
                 'sets_xlsx_file': config.SETS_FILE,
                 'input_data_dir': config.INPUT_DATA_DIR,
@@ -835,9 +827,8 @@ class Model:
     def import_custom_scripts(self) -> None:
         """Import user-defined custom operators and constants.
 
-        This method imports user-defined custom operators and constants from
-        the model directory, if the corresponding import flags are enabled in
-        the model settings and the files are present. 
+        This method automatically imports user-defined custom operators and constants from
+        the model directory if the corresponding files are present. No user flags required.
 
         Raises:
             FileNotFoundError: If the specified custom operators or constants 
@@ -845,48 +836,40 @@ class Model:
         """
         custom_scripts = {
             'operators': {
-                'to_be_imported': self.settings['import_custom_operators'],
                 'file_name': Defaults.ConfigFiles.CUSTOM_OPERATORS_FILE_NAME,
                 'target_registry': Defaults.SymbolicDefinitions.ALLOWED_OPERATORS,
             },
             'constants': {
-                'to_be_imported': self.settings['import_custom_constants'],
                 'file_name': Defaults.ConfigFiles.CUSTOM_CONSTANTS_FILE_NAME,
                 'target_registry': Defaults.SymbolicDefinitions.ALLOWED_CONSTANTS,
             }
         }
 
         for script_type, config in custom_scripts.items():
-            if config['to_be_imported']:
-                try:
-                    custom_functions = self.files.load_functions_from_module(
-                        dir_path=self.paths['model_dir'],
-                        file_name=config['file_name'],
-                    )
 
-                    if not custom_functions:
-                        self.logger.warning(
-                            f"Custom '{script_type}' import | "
-                            f"No functions found in '{config['file_name']}'."
-                        )
-                        continue
+            custom_functions = self.files.load_functions_from_module(
+                dir_path=self.paths['model_dir'],
+                file_name=config['file_name'],
+            )
 
-                    # register functions
-                    for function in custom_functions:
-                        function_name = function.__name__
-                        config['target_registry'][function_name] = function
+            if not custom_functions:
+                self.logger.debug(
+                    f"Custom '{script_type}' import | Function(s) not defined "
+                    f"or '{config['file_name']}' not found."
+                )
+                continue
 
-                        self.logger.info(
-                            f"Custom '{script_type}' import | Imported "
-                            f"{len(custom_functions)} custom function(s) "
-                            f"from '{config['file_name']}'."
-                        )
+            # register functions
+            for function in custom_functions:
+                function_name = function.__name__
+                config['target_registry'][function_name] = function
 
-                except FileNotFoundError:
-                    self.logger.warning(
-                        f"Custom '{script_type}' import | "
-                        f"'{config['file_name']}' file not found in model directory."
-                    )
+            self.logger.debug(
+                f"Custom '{script_type}' import | Imported "
+                f"{len(custom_functions)} custom "
+                f"function{'s' if len(custom_functions) != 1 else ''} "
+                f"from '{config['file_name']}'."
+            )
 
     def update_sets_tables(
             self,
