@@ -40,7 +40,7 @@ model directory generation, setup, data loading, problem solving, and results ex
 All parameters (solver, log level, convergence settings, etc.) can be passed directly 
 or configured interactively.
 
-This interface is ideal to avoid direct interaction with the underlying APIs; however,
+The interface is ideal to avoid direct interaction with the underlying APIs; however,
 model formulation, settings, and data input must still be provided through the expected 
 setup files and data structures, as described in the following sections.
 

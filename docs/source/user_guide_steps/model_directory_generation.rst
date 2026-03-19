@@ -19,9 +19,7 @@ in the case of :ref:`model generation from scratch <model_generation_from_scratc
   optionally included to facilitate their definition and integration into the model 
   without modifying the CVXlab repository.
 
-**API Reference**
-
-- :py:func:`cvxlab.create_model_dir` 
+API: :py:func:`cvxlab.create_model_dir` 
 
 **Typical Usage**
 

@@ -39,12 +39,12 @@ class Model:
 
     - logger (Logger): Logger object for logging information, warnings, and errors.
     - files (FileManager): An instance of FileManager to manage file operations.
-    - settings (DotDict): A dictionary-like object storing configurations such as 
+    - settings (DotDict): A dictionary-like object storing configurations such as \
         model name, file paths, and operational flags.
-    - paths (DotDict): A dictionary-like object storing the paths for model 
+    - paths (DotDict): A dictionary-like object storing the paths for model \
         directories and associated files.
-    - core (Core): An instance of Core that manages the core functionality 
-        of the model (it embeds Index, Database and Problem instances).
+    - core (Core): An instance of Core that manages the core functionality of the \
+        model (it embeds Index, Database and Problem instances).
 
     """
 
