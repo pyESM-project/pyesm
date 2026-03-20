@@ -5,11 +5,12 @@ files, transfer setup information from Excel files to configuration files, and s
 model instances. It leverages libraries such as `dill` for serialization and `pandas`
 for data manipulation.
 """
+from typing import Optional
+
 import dill
 import pandas as pd
 
 from pathlib import Path
-from typing import Literal
 
 from cvxlab.backend.model import Model
 from cvxlab.defaults import Defaults
@@ -22,12 +23,12 @@ files = FileManager(Logger())
 
 
 def create_model_dir(
-    model_dir_name: str,
-    main_dir_path: str,
+    model_dir_name: str = 'model',
+    main_dir_path: Optional[str] = None,
     force_overwrite: bool = False,
+    template_file_type: Defaults.LiteralTypes.SettingsSource = 'yml',
     include_user_operators_template: bool = False,
     include_user_constants_template: bool = False,
-    template_file_type: Defaults.LiteralTypes.SettingsSource = 'yml',
 ) -> None:
     """Create a model directory with template configuration files.
 
@@ -39,9 +40,11 @@ def create_model_dir(
     operators/constants functions template).  
 
     Args:
-        model_dir_name (str): The name of the model directory to create.
+        model_dir_name (str): The name of the model directory to create. Defaults 
+            to 'model'.
         main_dir_path (str): The path to the main directory where the model
-            directory will be created.
+            directory will be created. If None, the current working directory will 
+            be used. Defaults to None.
         force_overwrite (bool, optional): If True, overwrite existing directory
             without confirmation. Defaults to False.
         include_user_operators_template (bool, optional): If True, copy a
@@ -59,6 +62,9 @@ def create_model_dir(
     """
     structures = Defaults.DefaultStructures
     config_files = Defaults.ConfigFiles
+
+    if main_dir_path is None:
+        main_dir_path = str(Path.cwd())
 
     model_dir_path = Path(main_dir_path) / model_dir_name
 
