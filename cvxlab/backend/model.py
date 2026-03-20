@@ -132,9 +132,9 @@ class Model:
                 'sqlite_database': model_dir_path / config.SQLITE_DATABASE_FILE,
             })
 
-            self.check_model_dir()
-            self.check_settings_consistency()
-            self.import_custom_scripts()
+            self._check_model_dir()
+            self._check_settings_consistency()
+            self._import_custom_scripts()
 
             self.core = Core(
                 logger=self.logger,
@@ -144,8 +144,8 @@ class Model:
             )
 
             if self.settings['use_existing_data']:
-                self.load_model_coordinates()
-                self.initialize_problems()
+                self._load_model_coordinates()
+                self._initialize_problems()
 
     @property
     def sets(self) -> List[str]:
@@ -189,7 +189,7 @@ class Model:
         else:
             return True
 
-    def check_model_dir(self) -> None:
+    def _check_model_dir(self) -> None:
         """Validate the existence of the model directory and required files.
 
         This method checks if the model directory and all the required files exist.
@@ -259,7 +259,7 @@ class Model:
             [self.logger.error(msg) for msg in err_msg]
             raise exc.SettingsError("Model directory validation | Failed.")
 
-    def check_settings_consistency(self) -> None:
+    def _check_settings_consistency(self) -> None:
         """Check consistency of model settings.
 
         This method checks the consistency of the model settings, ensuring that
@@ -290,23 +290,67 @@ class Model:
             [self.logger.error(msg) for msg in err_msg]
             raise exc.SettingsError("Model settings validation | Failed.")
 
-    def load_model_coordinates(self, fetch_foreign_keys: bool = True) -> None:
+    def _import_custom_scripts(self) -> None:
+        """Import user-defined custom operators and constants.
+
+        This method automatically imports user-defined custom operators and constants from
+        the model directory if the corresponding files are present. No user flags required.
+
+        Raises:
+            FileNotFoundError: If the specified custom operators or constants 
+                files are not found in the model directory.    
+        """
+        custom_scripts = {
+            'operators': {
+                'file_name': Defaults.ConfigFiles.CUSTOM_OPERATORS_FILE_NAME,
+                'target_registry': Defaults.SymbolicDefinitions.ALLOWED_OPERATORS,
+            },
+            'constants': {
+                'file_name': Defaults.ConfigFiles.CUSTOM_CONSTANTS_FILE_NAME,
+                'target_registry': Defaults.SymbolicDefinitions.ALLOWED_CONSTANTS,
+            }
+        }
+
+        for script_type, config in custom_scripts.items():
+
+            custom_functions = self.files.load_functions_from_module(
+                dir_path=self.paths['model_dir'],
+                file_name=config['file_name'],
+            )
+
+            if not custom_functions:
+                self.logger.debug(
+                    f"Custom '{script_type}' import | Function(s) not defined "
+                    f"or '{config['file_name']}' not found."
+                )
+                continue
+
+            # register functions
+            for function in custom_functions:
+                function_name = function.__name__
+                config['target_registry'][function_name] = function
+
+            self.logger.debug(
+                f"Custom '{script_type}' import | Imported "
+                f"{len(custom_functions)} custom "
+                f"function{'s' if len(custom_functions) != 1 else ''} "
+                f"from '{config['file_name']}'."
+            )
+
+    def _load_model_coordinates(self) -> None:
         """Load sets data and define data tables/variables coordinates.
 
         This method fetches sets data from Excel to sets instances. It then 
         loads such data (referred as coordinates) to data tables and to variables. 
         Then, it filter variables coordinates based on user defined filters, and 
         checks variables coherence.
-        If 'fetch_foreign_keys' flag is enabled, the method finally fetches 
-        foreign keys to data tables to enable SQLite foreign keys constraints.
-
         If the 'use_existing_data' flag is set to True, this method is called 
         during the initialization of the Model instance, and it is not meant to
         be called directly by the user.
-        If the 'use_existing_data' flag is set to False, the user can call this
-        method directly, after having generated the model instance, filled the 
-        sets Excel file with data, defined model settings (data tables, variables,
-        symbolic problem).
+        If the 'use_existing_data' flag is set to False, this method is called 
+        into Model.prepare_model_environment, after having defined model settings 
+        (data tables, variables, symbolic problem), generated the model instance, 
+        and having filled the sets Excel file with model coordinates.
 
         Raises:
             exc.SettingsError: If the sets Excel file specified in the settings 
@@ -332,11 +376,9 @@ class Model:
             self.core.index.load_all_coordinates_to_variables_index()
             self.core.index.filter_coordinates_in_variables_index()
             self.core.index.check_variables_coherence()
+            self.core.index.fetch_foreign_keys_to_data_tables()
 
-            if fetch_foreign_keys:
-                self.core.index.fetch_foreign_keys_to_data_tables()
-
-    def initialize_blank_data_structure(self) -> None:
+    def _initialize_blank_data_structure(self) -> None:
         """Initialize blank data structure for the model.
 
         This method generates the fundamental blank data structure for the model.
@@ -407,69 +449,7 @@ class Model:
             else:
                 self.logger.info("Relying on existing input data directory.")
 
-    def generate_input_data_files(
-            self,
-            table_key_list: List[str] = [],
-            values_cleanup: bool = True,
-    ) -> None:
-        """Generate blank Excel files for data input.
-
-        This method generates blank Excel files for data input, based on the
-        data tables defined in the model. If the input data directory already
-        exists, it gives the option to erase it and generate a new one, or to
-        work with the existing input data directory.
-        This method is called within the 'initialize_blank_data_structure'
-        method. However, the user can call it directly to regenerate input
-        data file/s, for all or for specific data tables (with the 'table_key_list'
-        attribute). This is especially useful in adjusting the input data without 
-        regenerating the whole blank data structure. This feature works also in
-        case of one single Excel file, since it can overwrite only the tabs
-        related to the specified data tables.
-
-        Args:
-            table_key_list (List[str], optional): A list of data table keys 
-                for which to generate input data files. If empty, all data 
-                tables are generated. Defaults to [].
-            values_cleanup (bool, optional): Whether to clean up values in the 
-                input data files. Defaults to True.
-
-        Raises:
-            exc.SettingsError: If the input data directory is missing.
-            exc.SettingsError: If any of the specified table keys are invalid 
-                (i.e., not exogenous data tables).
-        """
-        input_files_dir_path = Path(self.paths['input_data_dir'])
-
-        if not input_files_dir_path.exists():
-            msg = "Input data directory missing. Initialize blank data " \
-                "structure first."
-            self.logger.error(msg)
-            raise exc.SettingsError(msg)
-
-        if table_key_list != [] and not util.items_in_list(
-            table_key_list,
-            self.core.index.list_exogenous_data_tables
-        ):
-            msg = "Invalid table key/s provided. Only exogenous data tables " \
-                "can be exported to input data files."
-            self.logger.error(msg)
-            raise exc.SettingsError(msg)
-
-        if table_key_list != []:
-            msg = f"Generating input data files for tables: '{table_key_list}'..."
-        else:
-            msg = "Generating all input data files..."
-
-        with self.logger.log_timing(
-            message=msg,
-            level='info',
-        ):
-            self.core.database.generate_blank_data_input_files(
-                table_key_list=table_key_list,
-                values_cleanup=values_cleanup,
-            )
-
-    def load_exogenous_data_to_sqlite_database(
+    def _load_exogenous_data_to_sqlite_database(
             self,
             force_overwrite: bool = False,
             table_key_list: list[str] = [],
@@ -509,7 +489,7 @@ class Model:
                 table_key_list=table_key_list,
             )
 
-    def initialize_problems(
+    def _initialize_problems(
             self,
             force_overwrite: bool = False,
             allow_none_values: bool = True,
@@ -537,6 +517,63 @@ class Model:
             self.core.check_exogenous_data_coherence()
             self.core.generate_numerical_problem(
                 allow_none_values, force_overwrite)
+
+    def initialize_model_environment(self) -> None:
+        """Initialize the model environment for problem generation and solution.
+
+        This method prepares the model environment by loading sets data and 
+        coordinates, and initializing blank data structures (SQLite database and
+        input data files). This method is typically called after having generated
+        the Model instance, and before generating numerical problems and solving them.
+        If the 'use_existing_data' flag is set to True, this method is not meant to be 
+        called, since sets data and coordinates are already loaded, and blank data 
+        structures are not generated relying on existing ones.
+
+        Raises:
+            exc.SettingsError: If the sets Excel file specified in the settings 
+                is missing when loading model coordinates.
+        """
+        if self.settings['use_existing_data']:
+            self.logger.info(
+                "Relying on existing model environment (sets coordinates, "
+                "SQLite database, input data files)."
+            )
+            return
+
+        self._load_model_coordinates()
+        self._initialize_blank_data_structure()
+
+    def refresh_database_and_initialize_problem(
+            self,
+            table_key_list: list[str] = [],
+            force_overwrite: bool = False,
+    ) -> None:
+        """Update SQLite database with exogenous data and initialize problems.
+
+        This method loads the SQLite database exogenous data, and then initializes 
+        numerical problems. 
+        This method can be used for both initialization of the model environment, 
+        after having generated the Model instance, and for updating the model 
+        environment and the problems in case some changes in input data have been 
+        made, without the need of re-generating the Model instance. 
+
+        Args:
+            table_key_list (list[str], optional): A list of data table keys 
+                for which to load exogenous data. If empty, all exogenous data
+                tables are loaded. Defaults to [].
+            force_overwrite (bool, optional): Whether to overwrite/update 
+                existing data without asking user permission. Defaults to False.
+        """
+        sqlite_db_file = Defaults.ConfigFiles.SQLITE_DATABASE_FILE
+
+        self.logger.info(
+            f"Loading exogenous data into SQLite database '{sqlite_db_file}' "
+            "and initializing problems.")
+
+        self._load_exogenous_data_to_sqlite_database(
+            force_overwrite, table_key_list)
+
+        self._initialize_problems(force_overwrite)
 
     def run_model(
         self,
@@ -723,28 +760,73 @@ class Model:
                 suppress_warnings=suppress_warnings
             )
 
-    def update_database_and_problem(self, force_overwrite: bool = False) -> None:
-        """Update SQLite database with exogenous data and initialize problems.
+    def generate_input_data_files(
+            self,
+            table_key_list: List[str] = [],
+            values_cleanup: bool = True,
+    ) -> None:
+        """Generate blank Excel files for data input.
 
-        This method updates the SQLite database and initializes numerical problems. 
-        To be used in case some changes in exogenous data have been made, so that 
-        the SQLite database and the problems can be updated without re-generating the
-        Model instance.
+        This method generates blank Excel files for data input, based on the
+        data tables defined in the model. If the input data directory already
+        exists, it gives the option to erase it and generate a new one, or to
+        work with the existing input data directory.
+        This method is called within the 'initialize_blank_data_structure'
+        method. However, the user can call it directly to regenerate input
+        data file/s, for all or for specific data tables (with the 'table_key_list'
+        attribute). This is especially useful in adjusting the input data without 
+        regenerating the whole blank data structure. This feature works also in
+        case of one single Excel file, since it can overwrite only the tabs
+        related to the specified data tables.
 
         Args:
-            force_overwrite (bool, optional): Whether to overwrite/update 
-                existing data without asking user permission. Defaults to False.
+            table_key_list (List[str], optional): A list of data table keys 
+                for which to generate input data files. If empty, all data 
+                tables are generated. Defaults to [].
+            values_cleanup (bool, optional): Whether to clean up values of 
+                database tables before generating input data files. Defaults 
+                to True.
+
+        Raises:
+            exc.SettingsError: If the input data directory is missing.
+            exc.SettingsError: If any of the specified table keys are invalid 
+                (i.e., not exogenous data tables).
         """
-        sqlite_db_file = Defaults.ConfigFiles.SQLITE_DATABASE_FILE
+        input_files_dir_path = Path(self.paths['input_data_dir'])
 
-        self.logger.info(
-            f"Updating SQLite database '{sqlite_db_file}' "
-            "and initialize problems.")
+        if not input_files_dir_path.exists():
+            msg = "Input data directory missing. Initialize blank data " \
+                "structure first."
+            self.logger.error(msg)
+            raise exc.SettingsError(msg)
 
-        self.load_exogenous_data_to_sqlite_database(force_overwrite)
-        self.initialize_problems(force_overwrite)
+        if table_key_list != [] and not util.items_in_list(
+            table_key_list,
+            self.core.index.list_exogenous_data_tables
+        ):
+            msg = "Invalid table key/s provided. Only exogenous data tables " \
+                "can be exported to input data files."
+            self.logger.error(msg)
+            raise exc.SettingsError(msg)
 
-    def reinitialize_sqlite_database(self, force_overwrite: bool = False) -> None:
+        if table_key_list != []:
+            msg = f"Generating input data files for tables: '{table_key_list}'..."
+        else:
+            msg = "Generating all input data files..."
+
+        with self.logger.log_timing(
+            message=msg,
+            level='info',
+        ):
+            self.core.database.generate_blank_data_input_files(
+                table_key_list=table_key_list,
+                values_cleanup=values_cleanup,
+            )
+
+    def reinitialize_sqlite_database(
+            self,
+            force_overwrite: bool = False
+    ) -> None:
         """Reinitialize SQLite database tables and reimport input data.
 
         This method reinitializes endogenous tables in SQLite database to Null 
@@ -761,7 +843,7 @@ class Model:
             "endogenous tables.")
 
         self.core.database.reinit_sqlite_endogenous_tables(force_overwrite)
-        self.load_exogenous_data_to_sqlite_database(force_overwrite)
+        self._load_exogenous_data_to_sqlite_database(force_overwrite)
 
     def check_model_results(
             self,
@@ -776,7 +858,7 @@ class Model:
         'check_results_as_expected' method to compare the current model's computations
         with the expected results. The expected results can be stored in a specific
         database (identified by directory path and name), or stored in a test database
-        specified by the 'sqlite_database_file_test' setting and located in the model
+        specified by the SQLite test database default name and located in the model
         directory.
         Both 'other_db_dir_path' and 'other_db_name' must be provided together, or both
         must be None. If not provided, defaults are used.
@@ -786,8 +868,8 @@ class Model:
                 where the other SQLite database is located. If None, it defaults
                 to the model directory. Defaults to None.
             other_db_name (Optional[str], optional): The name of the other SQLite
-                database file. If None, it defaults to the 'sqlite_database_file_test'
-                setting. Defaults to None.
+                database file. If None, it defaults to the SQLite test database
+                default name. Defaults to None.
             numerical_tolerance (float, optional): The relative difference 
                 (non-percentage) tolerance for comparing numerical values in 
                 different databases. If None, it is set to
@@ -817,53 +899,6 @@ class Model:
                 values_relative_diff_tolerance=numerical_tolerance,
                 other_db_dir_path=other_db_dir_path,
                 other_db_name=other_db_name,
-            )
-
-    def import_custom_scripts(self) -> None:
-        """Import user-defined custom operators and constants.
-
-        This method automatically imports user-defined custom operators and constants from
-        the model directory if the corresponding files are present. No user flags required.
-
-        Raises:
-            FileNotFoundError: If the specified custom operators or constants 
-                files are not found in the model directory.    
-        """
-        custom_scripts = {
-            'operators': {
-                'file_name': Defaults.ConfigFiles.CUSTOM_OPERATORS_FILE_NAME,
-                'target_registry': Defaults.SymbolicDefinitions.ALLOWED_OPERATORS,
-            },
-            'constants': {
-                'file_name': Defaults.ConfigFiles.CUSTOM_CONSTANTS_FILE_NAME,
-                'target_registry': Defaults.SymbolicDefinitions.ALLOWED_CONSTANTS,
-            }
-        }
-
-        for script_type, config in custom_scripts.items():
-
-            custom_functions = self.files.load_functions_from_module(
-                dir_path=self.paths['model_dir'],
-                file_name=config['file_name'],
-            )
-
-            if not custom_functions:
-                self.logger.debug(
-                    f"Custom '{script_type}' import | Function(s) not defined "
-                    f"or '{config['file_name']}' not found."
-                )
-                continue
-
-            # register functions
-            for function in custom_functions:
-                function_name = function.__name__
-                config['target_registry'][function_name] = function
-
-            self.logger.debug(
-                f"Custom '{script_type}' import | Imported "
-                f"{len(custom_functions)} custom "
-                f"function{'s' if len(custom_functions) != 1 else ''} "
-                f"from '{config['file_name']}'."
             )
 
     def update_sets_tables(
