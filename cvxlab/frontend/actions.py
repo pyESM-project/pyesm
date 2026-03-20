@@ -71,7 +71,7 @@ def gen_directory(cfg: session.SessionConfig, ms: session.ModelState) -> None:
     cl.create_model_dir(
         main_dir_path=cfg.main_dir_path,
         model_dir_name=cfg.model_dir_name,
-        template_file_type=cfg.template_file_type,
+        settings_file_type=cfg.template_file_type,
     )
 
 
@@ -131,8 +131,8 @@ def init_model(cfg: session.SessionConfig, ms: session.ModelState) -> None:
                 update='sets',
             )
 
-    ms.model.load_model_coordinates()
-    ms.model.initialize_blank_data_structure()
+    ms.model._load_model_coordinates()
+    ms.model._initialize_blank_data_structure()
 
 
 # ------------------------------------------------------------------
@@ -150,7 +150,7 @@ def run_model(cfg: session.SessionConfig, ms: session.ModelState) -> None:
 @menu_action("Import/Refresh input data to database.")
 def refresh_input_data(cfg: session.SessionConfig, ms: session.ModelState) -> None:
     model = ms.ensure_model(cfg, use_existing_data=False)
-    model.load_exogenous_data_to_sqlite_database(force_overwrite=True)
+    model._load_exogenous_data_to_sqlite_database(force_overwrite=True)
 
 
 # ------------------------------------------------------------------
@@ -185,7 +185,7 @@ def update_sets(cfg: session.SessionConfig, ms: session.ModelState) -> None:
         update='sets',
     )
     model = ms.ensure_model(cfg, use_existing_data=False)
-    model.load_model_coordinates()
+    model._load_model_coordinates()
     model.update_sets_tables()
 
 
