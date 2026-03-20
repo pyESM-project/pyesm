@@ -20,6 +20,6 @@ Model directory and instance management
 ---------------------------------------
 
 .. autofunction:: cvxlab.create_model_dir
-.. autofunction:: cvxlab.copy_utility_files
+.. autofunction:: cvxlab.copy_user_defined_templates
 .. autofunction:: cvxlab.transfer_setup_info_xlsx
 .. autofunction:: cvxlab.handle_model_instance

@@ -3,10 +3,6 @@
 User Guide
 ==========
 
-.. note::
-   This user guide is based on CVXlab beta version (|version|). Some features 
-   and workflows may evolve in future releases.
-
 This section provides a comprehensive guide to using CVXlab for conceptualizing,
 generating and solving optimization problems. This includes all the necessary 
 steps to :ref:`generate a model from scratch <model_generation_from_scratch>`, 
@@ -38,7 +34,9 @@ session. This is the simplest way to get started with CVXlab:
 The ``run()`` function launches an interactive session that guides the user through 
 model directory generation, setup, data loading, problem solving, and results export.
 All parameters (solver, log level, convergence settings, etc.) can be passed directly 
-or configured interactively.
+or configured interactively. The idea is that if arguments are not passed, the user 
+is *interactively prompted to provide the necessary information at each step*, with
+sensible defaults provided for all parameters.
 
 The interface is ideal to avoid direct interaction with the underlying APIs; however,
 model formulation, settings, and data input must still be provided through the expected 
@@ -140,9 +138,7 @@ Step by step description of the CVXlab modeling workflow:
      preference) with *exogenous data tables* printed out as normalized data tables,
      to be filled by the user (see :ref:`step 7 <fill-exogenous-data>`).
 
-   APIs:
-      - :py:func:`cvxlab.Model.load_model_coordinates`
-      - :py:func:`cvxlab.Model.initialize_blank_data_structure`
+   API: :py:func:`cvxlab.Model.initialize_model_environment`
 
 7. :ref:`fill-exogenous-data`: user fills the Excel input data file/s with the 
    exogenous data tables values. In case of models with large amount of data, this
@@ -160,9 +156,7 @@ Step by step description of the CVXlab modeling workflow:
    and model data is performed to ensure that the symbolic problem is consistently 
    defined, and that all necessary data entries are correctly provided.
 
-   APIs:
-      - :py:func:`cvxlab.Model.load_exogenous_data_to_sqlite_database`
-      - :py:func:`cvxlab.Model.initialize_problems`
+   API: :py:func:`cvxlab.Model.refresh_database_and_initialize_problem`
 
 9. :ref:`numerical-problem-run`: in this step, the numerical problem/s are solved
    based on user settings, including selection of the adopted solver, the related 
@@ -221,7 +215,7 @@ Step by step description of the CVXlab modeling workflow:
    model data in the Excel file/s. This step is especially useful in case of 
    multiple consecutive model runs, where only exogenous data are changed.
    If needed, one or more blank input data file/s can be re-generated from the 
-   blank SQLite database with a dedicated API. 
+   blank SQLite database. 
 
    API: :py:func:`cvxlab.Model.generate_input_data_files`
 
@@ -230,7 +224,7 @@ Step by step description of the CVXlab modeling workflow:
    <fill-exogenous-data>`). It fetches exogenous data from the Excel input data 
    files to the SQLite database, updating data in numerical problem/s variables.
 
-   API: :py:func:`cvxlab.Model.update_database_and_problem`
+   API: :py:func:`cvxlab.Model.refresh_database_and_initialize_problem`
 
 4. :ref:`numerical-problem-run`: in this step, the numerical problem/s are solved
    based on user settings, including the adopted solver, the related verbosity level, 
@@ -280,7 +274,11 @@ and on the SQLite database.
 - :py:func:`cvxlab.Model.check_model_results`: allows to compare the model 
   SQLite database with a reference SQLite database, to check that results 
   are coherent with expected values.
-
+- :py:func:`cvxlab.Model.update_sets_tables`: allows to update sets tables in 
+  the SQLite database based on the current model structure and coordinates. 
+  This is useful in case the user wants to update sets coordinates after the 
+  model instance has been generated (e.g. for adding further aggregations 
+  categories).
 
 
 .. toctree::

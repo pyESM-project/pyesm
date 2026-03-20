@@ -1,13 +1,14 @@
 .. _generate-model-class-instance:
 
 Generation of Model class instance
-----------------------------------
+==================================
 
 This step creates a Model instance, which is the main object for handling all 
 CVXlab model operations, including data management, problem generation, and solution.
 
 
-**Overview**
+Overview
+--------
 
 - The *Model instance* is initialized with paths, settings, and logging configuration.
 - It loads *model structure* and *coordinates*, validates model directory content, 
@@ -18,10 +19,12 @@ CVXlab model operations, including data management, problem generation, and solu
 API: :py:class:`cvxlab.Model`
 
 
-**Typical Usage**
+Typical Usage
+-------------
 
-The Model class instance is typically created after the model directory and setup files
-have been generated (see :ref:`generation of model directory <generation-of-model-directory>`), 
+The Model class instance is the main CVXlab object: once initialized, it provides 
+access to all the APIs for subsequent modeling steps, including data management, 
+problem generation, and solution. The constructor can be called with default arguments,
 and it serves as the main interface for subsequent modeling steps, such as data 
 loading, problem generation, and optimization.
 
@@ -36,12 +39,14 @@ loading, problem generation, and optimization.
         detailed_validation=False,
         use_existing_data=False,
         log_level="info",
-        log_format='standard',
+        log_format="standard",
         multiple_input_files=False,
-        input_data_files_type='xlsx',
+        input_data_files_type="xlsx",
     )
 
-**Parameter descriptions:**
+
+Parameter descriptions
+----------------------
 
 In principle, the constructor has designed to be used without specifying arguments,
 relying on default values. However, the following parameters can be passed to customize 
@@ -74,7 +79,8 @@ the initialization process:
   is stored in a separate sheet of the same file).
 
 
-**Class constructor workflow**
+Class constructor workflow
+--------------------------
 
 Once a Model instance is generated, the actions below are occurring:
 
@@ -89,8 +95,8 @@ Once a Model instance is generated, the actions below are occurring:
 - Eventual user-defined :ref:`Symbolic operators <api_symbolic_operators>` or 
   :ref:`Constants <api_constants_types>` are imported and registered.
 
-- The ``Core`` class is initialized, which in turn initializes inner classes with 
-  different responsibilies:
+- The ``Core`` class is initialized within the Model instance, which in turn 
+  initializes inner classes with different responsibilies:
 
   - ``Index``: it consists in a *centralized registry* for managing sets, data tables 
     and variables. Once initialized, it fetches and validates data structures from 
@@ -99,10 +105,11 @@ Once a Model instance is generated, the actions below are occurring:
     latter objects are stored and accessed in this class.
 
   - ``Database``: it embeds subclasses and methods for interacting and operating 
-    on the SQLite database and the Excel/CSV input data files.
+    on the *SQLite database* and the Excel/CSV input data files.
   
   - ``Problem``: it embeds tools for reading symbolic problem defined by the user, 
-    and to generate and to solve the related **CVXPY** optimization problem based 
+    and to automatically generate and solve the related `CVXPY 
+    <https://www.cvxpy.org/tutorial/intro/index.html>`_ optimization problem based 
     on the defined sets, variables and expressions. 
 
 - Finally, the two following cases may occur:
@@ -125,3 +132,10 @@ In case of errors or inconsitencies in the definition of model settings of model
 data structures, error messages are logged and returned, with different levels of detail
 depending on the value of the ``detailed_validation`` argument, in order to ease 
 the debugging process.
+
+
+Generated files
+---------------
+
+Only the *sets.xlsx* file is eventually generated, in case ``use_existing_data`` 
+is set to *False*.

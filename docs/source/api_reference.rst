@@ -1,11 +1,6 @@
 API reference
 =============
 
-.. note::
-  CVXlab is currently in **beta** (|version|). The package is functional but APIs 
-  may change before the stable 1.0.1 release.
-   
-
 CVXlab is designed to be intuitive enough so that it may be used without diving 
 into APIs structures. Reading :ref:`User Guide <user_guide>`, practicing with the 
 tutorial notebook available in the :ref:`Tutorials <tutorials>` section, and  
