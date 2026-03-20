@@ -123,11 +123,6 @@ class Model:
                 'multiple_input_files': multiple_input_files,
                 'input_data_files_type': input_data_files_type,
                 'detailed_validation': detailed_validation,
-                'sets_xlsx_file': config.SETS_FILE,
-                'input_data_dir': config.INPUT_DATA_DIR,
-                'input_data_file': config.INPUT_DATA_FILE_NAME,
-                'sqlite_database_file': config.SQLITE_DATABASE_FILE,
-                'sqlite_database_file_test': config.SQLITE_DATABASE_FILE_TEST,
             })
 
             self.paths = DotDict({

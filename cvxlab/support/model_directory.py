@@ -26,9 +26,8 @@ def create_model_dir(
     model_dir_name: str = 'model',
     main_dir_path: Optional[str] = None,
     force_overwrite: bool = False,
-    template_file_type: Defaults.LiteralTypes.SettingsSource = 'yml',
-    include_user_operators_template: bool = False,
-    include_user_constants_template: bool = False,
+    settings_file_type: Defaults.LiteralTypes.SettingsSource = 'yml',
+    include_user_defined_templates: bool = False,
 ) -> None:
     """Create a model directory with template configuration files.
 
@@ -47,15 +46,12 @@ def create_model_dir(
             be used. Defaults to None.
         force_overwrite (bool, optional): If True, overwrite existing directory
             without confirmation. Defaults to False.
-        include_user_operators_template (bool, optional): If True, copy a
-            user-defined operators template file into the new model directory.
-            Defaults to False.
-        include_user_constants_template (bool, optional): If True, copy a
-            user-defined constants template file into the new model directory.
-            Defaults to False.
-        template_file_type (Defaults.LiteralTypes.SettingsSource, optional): The 
+        settings_file_type (Defaults.LiteralTypes.SettingsSource, optional): The 
             type of template configuration file to generate ('yml' or 'xlsx').
             Defaults to 'yml'.
+        include_user_defined_templates (bool, optional): If True, copy user-defined
+            template files into the new model directory (user-defined operators and
+            constants templates). Defaults to False.
 
     Raises:
         ValueError: If the template file type is unsupported.
@@ -70,11 +66,11 @@ def create_model_dir(
 
     files.logger.info(
         f"Generating model '{model_dir_name}' directory with basic "
-        f"{template_file_type} configuration files.")
+        f"{settings_file_type} configuration files.")
 
     util.validate_selection(
         valid_selections=config_files.AVAILABLE_SETUP_SOURCES,
-        selection=template_file_type)
+        selection=settings_file_type)
 
     if model_dir_path.exists():
         if not files.erase_dir(
@@ -84,7 +80,7 @@ def create_model_dir(
 
     files.create_dir(model_dir_path, force_overwrite)
 
-    if template_file_type == 'yml':
+    if settings_file_type == 'yml':
         structure_name = config_files.SETUP_INFO
 
         structure_mapping = {
@@ -101,7 +97,7 @@ def create_model_dir(
                 header=structure_template[0],
             )
 
-    elif template_file_type == 'xlsx':
+    elif settings_file_type == 'xlsx':
         structure_mapping = Defaults.DefaultStructures.XLSX_TEMPLATE_COLUMNS
         template_file_name = config_files.SETUP_XLSX_FILE
 
@@ -112,15 +108,12 @@ def create_model_dir(
         )
 
     else:
-        msg = f"Unsupported template file type '{template_file_type}'."
+        msg = f"Unsupported template file type '{settings_file_type}'."
         files.logger.error(msg)
         raise ValueError
 
-    copy_utility_files(
-        path_destination=model_dir_path,
-        include_custom_operators_template=include_user_operators_template,
-        include_custom_constants_template=include_user_constants_template,
-    )
+    if include_user_defined_templates:
+        copy_user_defined_templates(model_dir_path)
 
 
 def _generate_yaml_template(
@@ -202,50 +195,37 @@ def _generate_yaml_template(
         raise IOError(f"Error writing to file '{file_name}': {e}") from e
 
 
-def copy_utility_files(
-    path_destination: Path,
-    include_custom_operators_template: bool = False,
-    include_custom_constants_template: bool = False,
-) -> None:
-    """Copy utility files to the model directory.
+def copy_user_defined_templates(path_destination: Optional[Path] = None) -> None:
+    """Copy user-defined template files to destination path.
 
-    This function copy utility files such as templates for user-defined custom 
-    operators and constants to a defined path, based on the provided flags.
+    This function copies user-defined template files such as templates for custom 
+    operators and constants to a defined path.
 
     Args:
         path_destination (Path): The path to the model directory where the files
             will be included.
-        include_custom_operators_template (bool, optional): If True, include
-            the template for user-defined custom operators to the model
-            directory. Defaults to False.
-        include_custom_constants_template (bool, optional): If True, include
-            the template for user-defined custom constants to the model
-            directory. Defaults to False.
     """
     files_config = {
         'custom_operators_template': {
-            'included': include_custom_operators_template,
             'source_path': Defaults.ConfigFiles.TEMPLATES_DIR_PATH,
             'file_name': Defaults.ConfigFiles.CUSTOM_OPERATORS_FILE_NAME,
         },
         'custom_constants_template': {
-            'included': include_custom_constants_template,
             'source_path': Defaults.ConfigFiles.TEMPLATES_DIR_PATH,
             'file_name': Defaults.ConfigFiles.CUSTOM_CONSTANTS_FILE_NAME,
         },
     }
 
+    if path_destination is None:
+        path_destination = Path.cwd()
+
     for _, config in files_config.items():
-        if config['included']:
-            files.copy_file_to_destination(
-                path_source=config['source_path'],
-                path_destination=path_destination,
-                file_name=config['file_name'],
-            )
-            files.logger.info(
-                f"Exported '{config['file_name']}' "
-                f"to model directory."
-            )
+        files.copy_file_to_destination(
+            path_source=config['source_path'],
+            path_destination=path_destination,
+            file_name=config['file_name'],
+        )
+        files.logger.info(f"File '{config['file_name']}' copied.")
 
 
 def transfer_setup_info_xlsx(

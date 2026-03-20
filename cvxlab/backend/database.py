@@ -157,7 +157,7 @@ class Database:
                 standard ID field, the method adds it.
         """
         self.logger.debug(
-            f"Generating database '{self.settings['sqlite_database_file']}'.")
+            f"Generating database '{Defaults.ConfigFiles.SQLITE_DATABASE_FILE}'.")
 
         with db_handler(self.sqltools):
             for set_instance in self.index.sets.values():
@@ -192,7 +192,7 @@ class Database:
                 incomplete setup.
         """
         self.logger.debug(
-            f"Loading Sets to '{self.settings['sqlite_database_file']}'.")
+            f"Loading Sets to '{Defaults.ConfigFiles.SQLITE_DATABASE_FILE}'.")
 
         with db_handler(self.sqltools):
             for set_instance in self.index.sets.values():
@@ -249,7 +249,7 @@ class Database:
                 incomplete setup.
         """
         self.logger.debug(
-            f"Updating Sets in '{self.settings['sqlite_database_file']}'.")
+            f"Updating Sets in '{Defaults.ConfigFiles.SQLITE_DATABASE_FILE}'.")
 
         id_header = Defaults.Labels.ID_FIELD['id'][0]
 
@@ -579,7 +579,7 @@ class Database:
                     self.files.dataframe_to_excel(
                         dataframe=dataframe,
                         excel_filename=output_file_name,
-                        excel_dir_path=self.paths['input_data_dir'],
+                        excel_dir_path=Defaults.ConfigFiles.INPUT_DATA_DIR,
                         sheet_name=table_key,
                         force_overwrite=force_overwrite,
                     )
@@ -587,7 +587,7 @@ class Database:
                     self.files.dataframe_to_csv(
                         dataframe=dataframe,
                         csv_filename=output_file_name,
-                        csv_dir_path=self.paths['input_data_dir'],
+                        csv_dir_path=Defaults.ConfigFiles.INPUT_DATA_DIR,
                     )
                 else:
                     msg = f"File extension '{file_extension}' not supported."
@@ -644,7 +644,7 @@ class Database:
             file_name = Defaults.ConfigFiles.INPUT_DATA_FILE_NAME
 
             data_dict = self.files.excel_to_dataframes_dict(
-                excel_file_dir_path=self.paths['input_data_dir'],
+                excel_file_dir_path=Defaults.ConfigFiles.INPUT_DATA_DIR,
                 excel_file_name=f"{file_name}.{file_extension}",
             )
 
@@ -686,7 +686,7 @@ class Database:
 
                         data_dict[table_key] = self.files.file_to_dataframe(
                             file_name=file_name,
-                            file_dir_path=self.paths['input_data_dir'],
+                            file_dir_path=Defaults.ConfigFiles.INPUT_DATA_DIR,
                         )
 
                         dataframe = util.normalize_dataframe(

@@ -312,7 +312,7 @@ class Core:
                 or if the data for a variable contains non-allowed values types.
         """
         with self.logger.log_timing(
-            message=f"Fetching data from '{self.settings['sqlite_database_file']}' "
+            message=f"Fetching data from '{Defaults.ConfigFiles.SQLITE_DATABASE_FILE}' "
                 "to cvxpy exogenous variables...",
             level='info',
         ):
@@ -538,7 +538,7 @@ class Core:
         """
         self.logger.debug(
             "Exporting data from cvxpy endogenous variable (in data table) "
-            f"to SQLite database '{self.settings['sqlite_database_file']}' ")
+            f"to SQLite database '{Defaults.ConfigFiles.SQLITE_DATABASE_FILE}' ")
 
         values_headers = Defaults.Labels.VALUES_FIELD['values'][0]
         allowed_var_types = Defaults.SymbolicDefinitions.VARIABLE_TYPES
