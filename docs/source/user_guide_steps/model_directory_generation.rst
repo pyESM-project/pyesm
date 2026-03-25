@@ -27,13 +27,14 @@ Typical Usage
 -------------
 
 This function is typically used at the beginning of the modeling process, after 
-importing the CVXlab package, to create a new model directory with the necessary
+*importing the CVXlab package*, to create a new model directory with the necessary
 template files. See the example below.
 
 .. code-block:: python
 
     import cvxlab
 
+    # [CURRENT STEP] Create model directory and setup files
     cvxlab.create_model_dir(
         model_dir_name="my_model",
         main_dir_path="path/to/parent",

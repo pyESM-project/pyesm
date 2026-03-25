@@ -1,7 +1,7 @@
 .. _generate-model-class-instance:
 
-Generation of Model class instance
-==================================
+Model class instance generation
+===============================
 
 This step creates a Model instance, which is the main object for handling all 
 CVXlab model operations, including data management, problem generation, and solution.
@@ -16,7 +16,7 @@ Overview
 - Existing data structures can be loaded if available, or new files and 
   directories are generated as needed, depending on the initialization flags.
 
-API: :py:class:`cvxlab.Model`
+API (class constructor): :py:class:`cvxlab.Model`
 
 
 Typical Usage
@@ -32,7 +32,11 @@ loading, problem generation, and optimization.
 
     import cvxlab
 
-    model_instance = cvxlab.Model(
+    # Previous steps: 
+    # - Create model directory and setup files
+    
+    # [CURRENT STEP] Create Model instance
+    model = cvxlab.Model(
         model_dir_name="my_model",
         main_dir_path="path/to/parent",
         model_settings_from="yml",  # or "xlsx"
@@ -117,15 +121,16 @@ Once a Model instance is generated, the actions below are occurring:
   - If ``use_existing_data`` is set to *False*: the *sets.xlsx* file is generated 
     based on the model settings, in order to be subsequently filled by the user (
     see :ref:`Fill sets data <fill-sets-data>` section). The process ends here, 
-    and the model instance is ready to used for subsequent steps through its own 
-    :ref:`Model class APIs <api_model>`.
+    and the model instance is ready to be used for subsequent steps through its 
+    own :ref:`Model class APIs <api_model>`.
 
   - If ``use_existing_data`` is set to *True*: it is assumed that the fundamental data 
-    structures (namely the *sets excel file* and the model *SQLite database*) are 
-    already present in the model directory and filled with data. In this case, 
-    the model *coordinates* (i.e. the sets, data tables and related variables) 
-    are loaded in the ``Index``, and the *numerical problem* is initialized in 
-    the ``Problem`` class, ready to be solved. 
+    structures (namely the *sets excel file*, the *input data files* and the model 
+    *SQLite database*) are already present in the model directory and filled with 
+    data. In this case, the model *coordinates* (i.e. the sets data), the information 
+    related to data tables, variables and problems expressions are all loaded in the 
+    ``Index``, the *numerical problem* is initialized in the ``Problem`` class, 
+    and data fetched from the SQLite database through the ``Database`` class. 
 
 
 In case of errors or inconsitencies in the definition of model settings of model 

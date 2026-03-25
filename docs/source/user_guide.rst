@@ -29,6 +29,7 @@ session. This is the simplest way to get started with CVXlab:
 .. code-block:: python
 
    import cvxlab
+   
    cvxlab.run()
 
 The ``run()`` function launches an interactive session that guides the user through 
@@ -63,9 +64,45 @@ indicated alongside boxes.
    :alt: CVXlab modeling workflow diagram
    :align: center
 
-Step by step description of the CVXlab modeling workflow:
 
-1. :ref:`conceptual-model-definition`: the whole CVXlab modeling process must be 
+**Complete application example: programmatic workflow**
+
+Here is a complete example of the typical programmatic workflow for generating, 
+initializing, solving, and exporting results for a CVXlab model. Each step 
+corresponds to a key stage in the modeling process, as detailed below:
+
+.. code-block:: python
+
+   import cvxlab
+
+   # Create model directory and setup files
+   cvxlab.create_model_dir(...)
+
+   # Fill model setup file(s)
+
+   # Create Model instance
+   model = cvxlab.Model(...)
+
+   # Fill sets data (coordinates)
+
+   # Initialization of data structures
+   model.initialize_model_environment()
+
+   # Fill input data Excel file(s)
+
+   # Initialization of numerical problem(s)
+   model.refresh_database_and_initialize_problem(...)
+
+   # Solve the numerical problem(s)
+   model.run_model(...)
+    
+   # Export all results to the database
+   model.load_results_to_database(...)
+
+
+**Step by step description of the CVXlab modeling workflow:**
+
+-  :ref:`conceptual-model-definition`: the whole CVXlab modeling process must be 
    grounded on a solid conceptualization and mathematical definition of the problem 
    to be solved. This step consists in defining the fundamental model 
    structure pen-on-paper. The following items must be defined:
@@ -82,7 +119,7 @@ Step by step description of the CVXlab modeling workflow:
 
    Once the problem is well defined, the CVXlab modeling process can start.
 
-2. :ref:`generation-of-model-directory`: a model directory is generated based on 
+-  :ref:`generation-of-model-directory`: a model directory is generated based on 
    a predefined template, and it contains all the necessary files to transpose 
    the conceptual model into a CVXlab model instance. Setup files can be generated 
    as *YAML* or *Excel* formats, depending on user's preference. 
@@ -93,7 +130,7 @@ Step by step description of the CVXlab modeling workflow:
 
    API: :py:func:`cvxlab.create_model_dir`
    
-3. :ref:`fill-model-setup-files`: the user translates the conceptual model into 
+-  :ref:`fill-model-setup-files`: the user translates the conceptual model into 
    the setup files available in the model directory. The setup information can be
    provided in either *YAML* format (as three separate files) or *Excel* format (one 
    file with three tabs):
@@ -107,28 +144,28 @@ Step by step description of the CVXlab modeling workflow:
    implemented in dedicated Python modules templates eventually included in the 
    model directory.
 
-4. :ref:`generate-model-class-instance`: the instance of the Model class is 
+-  :ref:`generate-model-class-instance`: the instance of the Model class is 
    generated through the *Model class constructor*, which translates the 
    information provided by setup file/s into a Python object. The model instance 
    includes all the necessary information and the APIs to generate and to solve 
    numerical problems, and to handle exogenous/endogeous model data.
    The model instance generation automatically triggers the generation of the 
    Excel file ``sets.xlsx`` to be filled with the *sets coordinates* (see 
-   :ref:`step 5 <fill-sets-data>`).
+   :ref:`Fill sets data (model coordinates) <fill-sets-data>`).
    During the Model class instantiation, a comprehensive validation of model
    structure is performed to ensure that all model components are correctly and 
    consistently defined.
 
-   Constructor: :py:class:`cvxlab.Model`
+   API (class constructor): :py:class:`cvxlab.Model`
  
-5. :ref:`fill-sets-data`: the user fills the sets Excel file with the elements 
+-  :ref:`fill-sets-data`: the user fills the sets Excel file with the elements 
    belonging to each set, defined as *coordinates*. The Excel file includes one 
    tab per each set, where user can eventually specify other set attributes, such
    as set *filters* and *aggregation* categories.
    Once this step is completed, all the necessary information defining the model 
    structure is available, and the data structures can be generated.
 
-6. :ref:`data-structures-init`: this step includes fetching sets coordinates to
+-  :ref:`data-structures-init`: this step includes fetching sets coordinates to
    the model instance, performing a coherence check to ensure a correct definition
    of variables, and generating the necessary data structures, including:
 
@@ -136,11 +173,11 @@ Step by step description of the CVXlab modeling workflow:
      tables*, linked by univocal relations.
    - **Blank Excel input data file/s**: one or more Excel file/s (depending on user's 
      preference) with *exogenous data tables* printed out as normalized data tables,
-     to be filled by the user (see :ref:`step 7 <fill-exogenous-data>`).
+     to be filled by the user (see :ref:`Fill exogenous model data <fill-exogenous-data>`).
 
    API: :py:func:`cvxlab.Model.initialize_model_environment`
 
-7. :ref:`fill-exogenous-data`: user fills the Excel input data file/s with the 
+-  :ref:`fill-exogenous-data`: user fills the Excel input data file/s with the 
    exogenous data tables values. In case of models with large amount of data, this
    step can be critical, time consuming and highly prone to errors. To facilitate
    this task, CVXlab provides features to limit the amount of data entries to be
@@ -148,7 +185,7 @@ Step by step description of the CVXlab modeling workflow:
    entries in case of missing data).
    Once this step is completed, the numerical model can be generated and solved.
 
-8. :ref:`numerical-problem-init`: this step includes fetching exogenous data from
+-  :ref:`numerical-problem-init`: this step includes fetching exogenous data from
    excel input data file/s to the model SQLite database, loading symbolic problem/s 
    from model settings, and generating the numerical problem/s (as *CVXPY* problem 
    object).
@@ -158,17 +195,17 @@ Step by step description of the CVXlab modeling workflow:
 
    API: :py:func:`cvxlab.Model.refresh_database_and_initialize_problem`
 
-9. :ref:`numerical-problem-run`: in this step, the numerical problem/s are solved
+-  :ref:`numerical-problem-run`: in this step, the numerical problem/s are solved
    based on user settings, including selection of the adopted solver, the related 
    verbosity level, and other numerical settings.
 
    API: :py:func:`cvxlab.Model.run_model`
 
-10. :ref:`export-model-results`: in case numerical problem/s have successfully
-    solved, numerical results are exported to endogenous data tables of the 
-    SQLite database.
+-  :ref:`export-model-results`: in case numerical problem/s have successfully
+   solved, numerical results are exported to endogenous data tables of the 
+   SQLite database.
 
-    API: :py:func:`cvxlab.Model.load_results_to_database`
+   API: :py:func:`cvxlab.Model.load_results_to_database`
 
 
 .. _model_generation_from_existing:
@@ -187,9 +224,35 @@ APIs provided by CVXlab are indicated alongside boxes.
    :alt: CVXlab modeling workflow diagram
    :align: center
 
-Step by step description of the CVXlab modeling workflow:
 
-1. :ref:`generate-model-class-instance`: the instance of the Model class is 
+**Complete application example: programmatic workflow**
+
+Here is a complete example of the typical programmatic workflow for generating, 
+solving, and exporting results for a CVXlab model from existing settings and data. 
+Each step corresponds to a key stage in the modeling process, as detailed below:
+
+.. code-block:: python
+
+   import cvxlab
+
+   # Create Model instance
+   model = cvxlab.Model(...)
+
+   # [OPTIONAL] Fill/update input data Excel file(s)
+
+   # [OPTIONAL] Initialization of numerical problem(s)
+   model.refresh_database_and_initialize_problem(...)
+
+   # Solve the numerical problem(s)
+   model.run_model(...)
+    
+   # Export all results to the database
+   model.load_results_to_database(...)
+
+
+**Step by step description of the CVXlab modeling workflow:**
+
+-  :ref:`generate-model-class-instance`: the instance of the Model class is 
    generated through the *Model class constructor* as the first step, specifying
    that the model relies on existing data (i.e. by passing ``use_existing_data=True`` 
    to the constructor). 
@@ -209,9 +272,9 @@ Step by step description of the CVXlab modeling workflow:
    SQLite database. The model instance includes all the necessary information and 
    the APIs to generate and to solve numerical problems, and to handle model data.
 
-   Constructor: :py:class:`cvxlab.Model`
+   API (class constructor): :py:class:`cvxlab.Model`
 
-2. :ref:`fill-exogenous-data`: (**optional**) in this step, user may update exogenous 
+-  :ref:`fill-exogenous-data`: (**optional**) in this step, user may update exogenous 
    model data in the Excel file/s. This step is especially useful in case of 
    multiple consecutive model runs, where only exogenous data are changed.
    If needed, one or more blank input data file/s can be re-generated from the 
@@ -219,22 +282,22 @@ Step by step description of the CVXlab modeling workflow:
 
    API: :py:func:`cvxlab.Model.generate_input_data_files`
 
-3. :ref:`numerical-problem-init`: (**optional**) this step needs to be made in case
+-  :ref:`numerical-problem-init`: (**optional**) this step needs to be made in case
    of exogenous data have updated (see :ref:`Fill exogenous model data 
    <fill-exogenous-data>`). It fetches exogenous data from the Excel input data 
    files to the SQLite database, updating data in numerical problem/s variables.
 
    API: :py:func:`cvxlab.Model.refresh_database_and_initialize_problem`
 
-4. :ref:`numerical-problem-run`: in this step, the numerical problem/s are solved
+-  :ref:`numerical-problem-run`: in this step, the numerical problem/s are solved
    based on user settings, including the adopted solver, the related verbosity level, 
    and other settings.
 
    API: :py:func:`cvxlab.Model.run_model`
 
-5. :ref:`export-model-results`: in case numerical problem/s have successfully
+-  :ref:`export-model-results`: in case numerical problem(s) have successfully 
    solved, numerical results are exported to the endogenous data tables of the 
-   SQLite database.
+   SQLite database. 
 
    API: :py:func:`cvxlab.Model.load_results_to_database`
    
@@ -252,10 +315,10 @@ CVXlab provides a set of utilities to facilitate these tasks, including:
 and expressions. This is especially useful to check that the model has been correctly 
 defined and generated.
 
-- :py:attr:`cvxlab.Model.sets`: list of model sets keys
-- :py:attr:`cvxlab.Model.data_tables`: list of model data tables keys
-- :py:attr:`cvxlab.Model.variables`: list of model variables keys
-- :py:attr:`cvxlab.Model.is_problem_solved`: indicates the status of the numerical problem
+- :py:attr:`cvxlab.Model.sets`: list of model sets keys.
+- :py:attr:`cvxlab.Model.data_tables`: list of model data tables keys.
+- :py:attr:`cvxlab.Model.variables`: list of model variables keys.
+- :py:attr:`cvxlab.Model.is_problem_solved`: indicates the status of the numerical problem.
       
 *Detailed model features* can be inspected through dedicated methods.
 
