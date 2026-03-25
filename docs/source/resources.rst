@@ -14,7 +14,7 @@ Download tutorials
 
 Full tutorial directories can be downloaded here:
 
-- :download:`Tutorial: Simple Production Optimization <_static/tutorial_simple.zip>`
+- :download:`Production Planning <tutorials/production_planning/production_planning.zip>`
 
 You can also view the rendered tutorials in the :ref:`tutorials` section.
 

@@ -3,25 +3,27 @@
 Tutorials
 =========
 
-This section contains tutorials to help you get started with **cvxlab**, provided
-as rendered Jupyter Notebooks.
+This section contains tutorials to help you get started with **cvxlab**. Each 
+tutorial is designed to walks you through the steps described in the 
+:ref:`User Guide <user_guide>` for different use-cases listed below.
 
-The following tutorials are designed to walks you through all the step described 
-in the user guide for different use-cases listed below (see :ref:`generate a model 
-from scratch <model_generation_from_scratch>`).
+Tutorial directories (with supplementary modeling materials such as Jupyter 
+Notebooks, Excel concept files, input-data files and SQLite databases) can be 
+downloaded from section :ref:`resources-tutorial`, so that you can run them 
+locally on your machine.
 
-- :doc:`Tutorial simple <tutorials/tutorial_simple/tutorial_simple>`: A simple 
+- :ref:`Simplified energy system <tutorial-simplified-energy-system>`: complete 
+  workflow for defining and running a least-cost energy planning model, aligned 
+  with the User Guide step-by-step structure. Ideal for newbies.
+- :doc:`Production planning <tutorials/production_planning/production_planning>`: A simple 
   optimization problem related to production optimization under resource constraints.
 
 
-Tutorial directories (with tutorial Jupyter Notebook, Excel concept file, input-data
-files and SQLite database) can be downloaded from section :ref:`resources-tutorial`,
-so that you can run them locally on your machine.
-
 
 .. toctree::
-   :maxdepth: 2
+   :maxdepth: 1
    :hidden:
    :caption: Tutorials index
 
-   tutorials/tutorial_simple/tutorial_simple.ipynb
+   tutorials/simple_energy_model/simple_energy_model
+   tutorials/production_planning/production_planning.ipynb

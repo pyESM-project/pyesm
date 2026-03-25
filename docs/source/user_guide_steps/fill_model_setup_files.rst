@@ -3,49 +3,47 @@
 Fill model setup file(s)
 ========================
 
-This page provides a guide on the structure and meaning of CVXlab Model settings.
+This page provides a guide to the structure and meaning of CVXlab model
+settings.
 
 
 Introduction
 ------------
 
-Model setup file(s) represent the essential settings required to translate the 
-conceptual model (see :ref:`conceptual-model-definition` step) from a mathematical 
-formulation into a *CVXlab Model class instance*. 
+Model setup file(s) represent the essential settings required to translate the
+conceptual model (see :ref:`conceptual-model-definition`) from a mathematical
+formulation into a *CVXlab Model class instance*.
 
-The setup files define the structure of fundamental CVXlab objects, including 
-*sets*, *data tables (with related variables)*, and *mathematical problem (with 
-related expressions)*. 
+The setup files define the structure of the fundamental CVXlab objects,
+including *sets*, *data tables (with related variables)*, and *mathematical
+problems (with related expressions)*.
 
-The structure of these files is defined in the 
-:py:attr:`default module <cvxlab.defaults.Defaults.DefaultStructures>`
+The structure of these files is defined in the
+:py:attr:`default module <cvxlab.defaults.Defaults.DefaultStructures>`.
 
-Once the model directory has been generated (see :ref:`generation-of-model-directory` 
-step), the setup files available in the model directory, provided in either 
-*YAML* format (as three separate files) or *Excel* format (one file with three tabs).
+Once the model directory has been generated
+(see :ref:`generation-of-model-directory`), the setup information is provided in
+either:
 
-- **Structure of sets**: defined in ``structure_sets.yml`` or ``structure_sets`` tab. 
-  Sets define the model's dimensions and subproblem structure.
-- **Structure of data tables and variables**: defined in ``structure_variables.yml``
-  or ``structure_variables`` tab. Data tables represent collections of data 
-  that shares the same structure (i.e., same coordinates and variable types). 
-  Multiple variables can be defined within the same data table, and each variable 
-  can represent a portion of the related data table and can be arrange in 
-  different shapes.
-- **Mathematical problem**: defined in ``problem.yml`` or ``problem`` tab. 
-  One or multiple mathematical problems can be defined for a same Model isnstance,
-  each with its own expressions list (equalities, inequalities, and objective). 
-  Different mathematical problems refers to the same sets, data tables and 
-  variables.
+- *YAML* format, as three separate files.
+- *Excel* format, as one workbook with three tabs.
 
+The setup files are:
 
-Optionally, template files for user-defined symbolic operators and constants can be
-included in the model directory if requested during the directory generation step:
+- **Structure of sets**: defined in ``structure_sets.yml`` or the
+  ``structure_sets`` tab.
+- **Structure of data tables and variables**: defined in
+  ``structure_variables.yml`` or the ``structure_variables`` tab.
+- **Mathematical problem**: defined in ``problem.yml`` or the ``problem`` tab.
 
-- :ref:`user_defined_operators.py <api_user_defined_operators>`: Template for 
+Optionally, template files for user-defined symbolic operators and constants can
+be included in the model directory if requested during the directory generation
+step:
+
+- :ref:`user_defined_operators.py <api_user_defined_operators>`: template for
   custom symbolic operators.
-- :ref:`user_defined_constants.py <api_user_defined_constants>`: Template for 
-  custom constants types.
+- :ref:`user_defined_constants.py <api_user_defined_constants>`: template for
+  custom constant types.
 
 
 .. _sets_definition:
@@ -53,74 +51,39 @@ included in the model directory if requested during the directory generation ste
 Sets
 ----
 
-*Sets* define the *dimensions* of the model according to the following structure 
-(here reported in *YAML format*, but the same structure applies to the Excel file):
+*Sets* define the dimensions of the model according to the following structure
+(here reported in YAML format, but the same logic applies to the Excel file):
 
-..  code-block:: yaml
+.. code-block:: yaml
 
-    set_key: <str>                      
+    set_key: <str>
         description: <str>              # optional
         split_problem: <bool>           # optional
         copy_from: <str>                # optional
         filters:                        # optional
             <filter_name>: [<values>]
             ...
-        aggregations: [<int|str>]    # optional
+        aggregations: [<int|str>]       # optional
 
 
-Fields description:
+**Fields description**
 
-- **set_key**: Name of the set, used as the name in the SQLite data table. 
-  Case-insensitive (e.g., 'e' and 'E' are the same set). This is the only 
-  required field. Multiple sets can be defined within the same settings file.
-- **description**: (Optional) Sets metadata provided by the modeler.
-- **split_problem**: (Optional) If *true*, the set items define independent 
-  numerical sub-problems (i.e. the set is classified as inter-problem set). 
-  If more sets are defined, the number of sub-problems is the product of the 
-  items of the sets.
-- **copy_from**: (Optional) Key of another set to copy the data from. If defined, 
-  the set copies data from the referenced set, and related data need not be 
-  provided in the sets Excel file generated in following phase.
-- **filters**: (Optional) Dictionary with keys as filter names and values as 
-  lists of filter values. Used to identify sub-sets of data tables for generating 
-  variables.
-- **aggregations**: (Optional) List of set aggregations keys for data visualization. 
-  Not used in numerical problem operations, but useful for reporting and visualization
-  when the database is explored (e.g. with Business Intelligence tools).
+- **set_key**: name of the set, used as the name in the SQLite data table.
+  Case-insensitive. This is the only required field.
+- **description**: optional metadata provided by the modeler.
+- **split_problem**: if *true*, set items define independent numerical
+  sub-problems. Such a set is classified as an inter-problem set.
+- **copy_from**: key of another set to copy data from. If defined, related data
+  need not be provided again in the sets workbook generated in a following step.
+- **filters**: dictionary used to identify sub-sets of data tables for
+  generating variables.
+- **aggregations**: list of aggregation keys used for reporting and
+  visualization. These are not used in numerical problem operations.
 
-Notice that at this stage the modeler only defines the structure of the sets, 
-while the actual set items (i.e., the elements belonging to each set, here defined 
-as *coordinates*) are defined in the sets Excel file generated after Model class 
-instance is generated (see :ref:`fill-sets-data` step).
-
-With reference to the example of the energy system model provided in the 
-:ref:`conceptual-model-definition` section, sets are defined as follows 
-(still assuming YAML format):
-
-..  code-block:: yaml
-
-    Demand_scenarios:
-        description: "demand levels corresponding to different scenarios"
-        split_problem: true
-
-    Technologies:
-        description: "technologies available in the system"
-    
-    Time_periods:
-        description: "time periods considered in the model"
-
-As it can be inferred from the example above, this simple energy system model 
-includes three sets: *Demand_scenarios*, *Technologies*, and *Time_periods*. 
-The *Demand_scenarios* set is defined as an inter-problem set, meaning that the 
-numerical model will be run and solved for the number of demand scenarios
-defined in the sets Excel file. The other two sets are defined as *dimensions set*, 
-defining how variables will be arranged into rows and columns and indexed across 
-intra-problem coordinates.
-
-Note that other fields are not defined in the example above, due to the simplicity 
-of the model. For instance, no *filters* are defined, meaning that all variables 
-will be generated with the same structure (i.e., with sets all defined by the same 
-coordinates, without filtering them).
+At this stage, the modeler only defines the structure of the sets, while the
+actual set items (that is, the *coordinates*) are defined later in the sets 
+Excel file generated after the Model class instance is created
+(see :ref:`fill-sets-data`).
 
 
 .. _data_tables_variables_definition:
@@ -128,16 +91,16 @@ coordinates, without filtering them).
 Data Tables and Variables
 -------------------------
 
-*Data Tables* represent collections of data that shares the same structure 
-(i.e., same coordinates and variable types). Each Data Table coincides with a 
-table in the SQLite database. One or more *Variables* can be defined from each 
-Data Table, representing symbolic objects defined according to different shapes 
-used in defining mathematical expressions. 
+*Data Tables* represent collections of data that share the same structure, that
+is, the same coordinates and variable types. Each data table coincides with a
+table in the SQLite database. One or more *Variables* can be defined from each
+data table, representing symbolic objects arranged according to different shapes
+used in mathematical expressions.
 
-Data tables and variables are defined according to the following structure (here 
-reported in *YAML format*, but the same structure applies to the Excel file):
+*Data Tables* and *Variables* are defined according to the following structure (here
+reported in YAML format, but the same logic applies to the Excel file):
 
-..  code-block:: yaml
+.. code-block:: yaml
 
     table_key: <str>
         description: <str>                  # optional
@@ -146,140 +109,85 @@ reported in *YAML format*, but the same structure applies to the Excel file):
             ...
         integer: <bool>                     # optional
         coordinates: <str|list>
-        variable_info: <str>
-            variable_key: <str>
+        variables_info:
+            variable_key:
                 value: <str>                # optional
                 blank_fill: <int|float>     # optional
                 nonneg: <bool>              # optional
-                set_key: <str>              # optional
+                set_key:                     # optional
                     dim: <str>
-                    filters: 
+                    filters:
                         filter_key: [<values>]
                         ...
                 ...
             ...
-        ...
-
-Fields description:
-
-- **table_key**: Name of the Data Table, used as the table name in the SQLite 
-  database. Attention: since SQLite table naming is case-insensitive, this field 
-  is also *case-insensitive*. Required.
-- **description**: (Optional) Information about the Data Table.
-- **type**: Type of the Data Table. Can be one of *endogenous*, *exogenous*, 
-  *constant*, or a dictionary mapping problem keys to types (for integrated 
-  problems). Required.
-- **integer**: (Optional) If *true*, variables in the table are integer-valued 
-  (default: False).
-- **coordinates**: List of set_key symbols defining the dimensions of the Data 
-  Table. Required.
-- **variables_info**: Dictionary of variable definitions. Each key is a variable 
-  name (case-insensitive), and the value is a dictionary with the following optional 
-  fields:
-  
-  - **value**: (Optional, *for constants only*) The constant value assigned to 
-    the variable. See :ref:`api_constants_types` for supported constant types.
-  - **blank_fill**: (Optional, *for exogenous variables only*) Value used to 
-    fill blanks or NaNs in the SQLite database.
-  - **nonneg**: (Optional, *for endogenous variables only*) If *true*, the variable 
-    is constrained to be non-negative (more on this in 
-    :py:attr:`default module <cvxlab.defaults.Defaults.DefaultStructures>`)
-  - **set_key**: (Optional) Set key (included in *coordinates* field) defining 
-    variable shape and eventual filtering. Defined as a dictionary with the 
-    following optional fields:
-    
-    - **dim**: (Optional) Dimension key on which the variable is assigned: *rows*, 
-      *cols* or *intra* are allowed.
-    - **filters**: (Optional) Dictionary with filter names as keys and lists of 
-      filter values as values (both defined in :ref:`sets_definition`). This is 
-      used to define sub-domains for the coordinate defined by the set key.
 
 
-With reference to the example of the energy system model provided in the 
-:ref:`conceptual-model-definition` section, Data Tables and related Variables are 
-defined as follows (still assuming YAML format):
+**Fields description**
 
-.. code-block:: yaml
+- **table_key**: required field, with name of the Data Table. This is used as the 
+  table name in the SQLite database. Since SQLite data tables are case-insensitive, 
+  this field is *case-insensitive* too. 
+- **description**: optional information about the data table.
+- **type**: type of the data table. It can be *endogenous*, *exogenous*,
+  *constant*, or a dictionary mapping problem keys to types for integrated
+  problems (in this case, variables are defined as *hybrid* type).
+- **integer**: if *true*, variables in the table are integer-valued.
+- **coordinates**: list of set keys defining the dimensions of the data table.
+- **variables_info**: dictionary of variable definitions. Each key is a variable
+  name, and the corresponding value can include:
 
-    cost:
-        description: Specific costs of generation by cost scenario and technology (in €/MWh)
-        type: exogenous
-        coordinates: [Technologies]
-        variables_info:            
-            c:
-                technology:
-                    dim: cols
-    capacity:
-        description: Installed capacity by technology and time period (in MW)
-        type: exogenous
-        coordinates: [Technologies, Time_periods]
-        variables_info:            
-            cap:
-                technology:
-                    dim: cols
-                time_period:
-                    dim: intra
-    availability:
-        description: Availability factors by technology (in MWh/MW)
-        type: exogenous
-        coordinates: [Technologies]
-        variables_info:            
-            av:
-                technology:
-                    dim: cols
-    demand:
-        description: Energy demand defined by demand scenarios and time periods (in MWh)
-        type: exogenous
-        coordinates: [Demand_scenarios, Time_periods]
-        variables_info:            
-            E_d:
-                time_period:
-                    dim: intra
-    Supply:
-        description: Energy supply (in MWh)
-        type: endogenous
-        coordinates: [Demand_scenarios, Technologies, Time_periods]
-        variables_info:            
-            E_s:
-                technology:
-                    dim: cols
-                time_period:
-                    dim: intra
-    Constant:
-        description: Model constants
-        type: constant
-        coordinates: [Technologies]
-        variables_info:            
-            i_t:
-                value: sum_vector
-                technology:
-                    dim: rows
+  - **value**: for constants only, the constant value assigned to the variable.
+  - **blank_fill**: for exogenous variables only, the value used to fill blanks
+    or NaNs.
+  - **nonneg**: for endogenous variables only, whether the variable is
+    constrained to be non-negative.
+  - **set_key**: optional set-specific configuration defining how that set is
+    assigned to rows, columns, or intra-problem indexing, and how it is filtered.
 
-# CONTINUARE QUI
 
 Problem and Expressions
 -----------------------
-The problem section defines objectives and constraints. Each problem includes:
+
+Problems are defined in ``problem.yml`` or in the ``problem`` sheet of
+``model_settings.xlsx``. Each problem key can include an objective and a list of
+symbolic expressions, for example:
+
+.. code-block:: yaml
+
+    problem_key:
+        objective:
+            - Minimize(<expression>)
+        expressions:
+            - <constraint_1>
+            - <constraint_2>
+
+The exact symbolic syntax depends on the variables and operators defined in the
+model. Built-in operators are documented in :ref:`api_symbolic_operators`.
 
 
 
 Field Reference and Best Practices
 ----------------------------------
+
 - Use field names as defined in ``Defaults.Labels`` for consistency.
 - Keys are case-insensitive for sets and tables.
-- For hybrid variables/data tables, use explicit mapping by problem.
+- For hybrid variables and data tables, use explicit mapping by problem.
 - Required fields must be present; optional fields can be omitted.
 - See ``cvxlab/defaults.py`` for authoritative field definitions.
 
+
 Where to Find Examples
 ----------------------
-Full examples of setup files in both YAML and Excel formats are provided in the Tutorials section and in the ``tests/integration/fixtures`` directory.
+
+Worked examples of this structure are provided in the :ref:`tutorials` section
+and in the ``tests/integration/fixtures`` directory.
+
 
 Further Reading
 ---------------
+
 - :ref:`API Reference <api-reference>`
 - :ref:`Tutorials <tutorials>`
 - :ref:`Templates <templates>`
 - ``cvxlab/defaults.py`` for code-level details
-
-
