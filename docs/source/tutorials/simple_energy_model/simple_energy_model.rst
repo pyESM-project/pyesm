@@ -630,3 +630,105 @@ This table stores the optimal energy supplied by each technology, for each time
 period, and for each demand scenario. After export, the results can be explored
 through the CVXlab utilities, direct SQLite inspection, or downstream reporting
 tools.
+
+
+
+Practical example
+-----------------
+
+Let us consider a model with Set structure defined as below. Notice that it is 
+possible to define Set structure in both the ``structure_sets.yml`` file, or in 
+the ``structure_sets`` tab in the ``settings.xlsx`` Excel file. The following
+tabs show the same Set structure in both formats.
+
+.. tabs::
+
+  .. tab:: YAML
+
+    .. code-block:: yaml
+
+        Scenarios:
+            description: Scenarios analyzed in the model
+            split_problem: True
+        
+        Technologies:
+            description: Technologies included in the model
+            filters:
+                Type: [Supply, Demand, Storage]
+                Category: [Renewable, Non-renewable]
+            aggregations: [Sectors]
+
+  .. tab:: XLSX (tab ``structure_sets``)
+
+    .. list-table::
+        :header-rows: 1
+        :align: center
+
+        * - set_key
+          - description
+          - split_problem
+          - filters
+          - aggregations
+        * - Scenarios
+          - Scenarios analyzed in the model
+          - True
+          -
+          -
+        * - Technologies
+          - Technologies included in the model
+          -
+          - Type: [Supply, Demand, Storage], Category: [Renewable, Non-renewable]
+          - Sectors
+
+
+The tabs of ``sets.xlsx`` file are reported below. The header will be 
+automatically generated based on the set definition, while the entries are defined 
+by the user.
+
+
+.. tabs::
+
+    .. tab:: tab ``_set_SCENARIOS``
+
+      .. list-table:: 
+        :header-rows: 1
+        :align: center
+
+        * - Scenarios_Name
+        * - Business As Usual
+        * - Net Zero emissions
+        * - Stated Policies
+
+    .. tab:: tab ``_set_TECHNOLOGIES``
+
+      .. list-table:: 
+        :header-rows: 1
+        :align: center
+
+        * - Technologies_Name
+          - Technologies_Type
+          - Technologies_Category
+          - Technologies_Sector
+        * - Power by Coal
+          - Supply
+          - Non-renewable
+          - Power sector
+        * - Power by Solar
+          - Supply
+          - Renewable
+          - Power sector
+        * - Boiler
+          - Supply
+          - 
+          - Heat sector
+        * - Batteries
+          - Storage
+          - 
+          - Power sector
+        * - Households
+          - Demand
+          - 
+          - Demand
+
+In the example above, the unused fields in the structure file(s) have been omitted 
+(e.g., ``copy_from`` for the all Sets).

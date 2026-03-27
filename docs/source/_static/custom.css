@@ -1,0 +1,52 @@
+/* Make sphinx-tabs match the active PyData theme palette. */
+.sphinx-tabs-tablist {
+  border-bottom: 1px solid var(--pst-color-border, #444);
+  gap: 0.35rem;
+}
+
+.sphinx-tabs-tab {
+  background: var(--pst-color-surface, #f5f5f5) !important;
+  color: var(--pst-color-text-base, inherit) !important;
+  border: 1px solid var(--pst-color-border, #c9c9c9) !important;
+  border-bottom: 0 !important;
+  border-radius: 0.4rem 0.4rem 0 0;
+  margin-bottom: -1px;
+}
+
+.sphinx-tabs-tab[aria-selected="true"] {
+  background: var(--pst-color-background, #fff) !important;
+  color: var(--pst-color-primary, var(--pst-color-text-base, inherit)) !important;
+  border-color: var(--pst-color-border, #c9c9c9) !important;
+}
+
+.sphinx-tabs-tab:hover,
+.sphinx-tabs-tab:focus {
+  color: var(--pst-color-primary, inherit) !important;
+}
+
+.sphinx-tabs-panel {
+  background: var(--pst-color-background, #fff) !important;
+  border: 1px solid var(--pst-color-border, #c9c9c9) !important;
+  border-radius: 0 0.4rem 0.4rem 0.4rem;
+}
+
+[data-theme="dark"] .sphinx-tabs-tablist {
+  border-bottom-color: var(--pst-color-border, #4a4a4a);
+}
+
+[data-theme="dark"] .sphinx-tabs-tab {
+  background: #18181b !important;
+  color: var(--pst-color-text-base, #f5f5f5) !important;
+  border-color: #3f3f46 !important;
+}
+
+[data-theme="dark"] .sphinx-tabs-tab[aria-selected="true"] {
+  background: #0f0f10 !important;
+  color: var(--pst-color-primary, #8cc9ff) !important;
+  border-color: #52525b !important;
+}
+
+[data-theme="dark"] .sphinx-tabs-panel {
+  background: #0f0f10 !important;
+  border-color: #52525b !important;
+}

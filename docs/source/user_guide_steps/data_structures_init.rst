@@ -23,7 +23,7 @@ Overview
   normalized tables. Input data files are ready to be filled with exogenous data 
   by the user.
 
-API: :py:meth:`cvxlab.Model.initialize_model_environment`
+API: :py:meth:`~cvxlab.Model.initialize_model_environment`
 
 
 Typical Usage
@@ -45,7 +45,7 @@ Typical Usage
 Workflow
 --------
 
-When :py:meth:`cvxlab.Model.initialize_model_environment` is called on a Model 
+When :py:meth:`~cvxlab.Model.initialize_model_environment` is called on a Model 
 instance:
 
 - Loads sets data (i.e., the coordinates) from the ``sets.xlsx`` file into the 

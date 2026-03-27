@@ -9,15 +9,25 @@ tutorial is designed to walks you through the steps described in the
 
 Tutorial directories (with supplementary modeling materials such as Jupyter 
 Notebooks, Excel concept files, input-data files and SQLite databases) can be 
-downloaded from section :ref:`resources-tutorial`, so that you can run them 
-locally on your machine.
+downloaded from the table below, so that you can run them locally on your machine.
 
-- :ref:`Simplified energy system <tutorial-simplified-energy-system>`: complete 
-  workflow for defining and running a least-cost energy planning model, aligned 
-  with the User Guide step-by-step structure. Ideal for newbies.
-- :doc:`Production planning <tutorials/production_planning/production_planning>`: A simple 
-  optimization problem related to production optimization under resource constraints.
 
+.. list-table:: CVXlab tutorials
+    :header-rows: 1
+    :widths: 30 68
+
+    * - Tutorial
+      - Description
+    * - :ref:`Simplified energy system <tutorial-simplified-energy-system>`
+      - Complete workflow for defining and running a least-cost energy planning 
+        model, aligned with the :ref:`User Guide <model_generation_from_scratch>`
+        steps. *Ideal for newbies*. 
+    * - :doc:`Production planning <tutorials/production_planning/production_planning>`
+      - A simple optimization problem related to production optimization under 
+        resource constraints. Available as a Jupyter Notebook, which can be run 
+        interactively.
+        Full tutorial materials here: 
+        :download:`Production Planning <tutorials/production_planning/production_planning.zip>`
 
 
 .. toctree::

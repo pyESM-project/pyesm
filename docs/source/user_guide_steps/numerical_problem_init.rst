@@ -19,7 +19,7 @@ Overview
 - Constructs the *CVXPY numerical problem(s)* for each scenario, based on the 
   symbolic expressions and defined variables.
 
-API: :py:meth:`cvxlab.Model.refresh_database_and_initialize_problem`
+API: :py:meth:`~cvxlab.Model.refresh_database_and_initialize_problem`
 
 
 Typical Usage
@@ -60,7 +60,7 @@ directory creation as follows:
 Workflow
 --------
 
-When :py:meth:`cvxlab.Model.refresh_database_and_initialize_problem` is called 
+When :py:meth:`~cvxlab.Model.refresh_database_and_initialize_problem` is called 
 on a Model instance:
 
 - Loads exogenous data from the *input data Excel file(s)*, assigning values to 

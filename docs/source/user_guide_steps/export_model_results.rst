@@ -17,7 +17,7 @@ Overview
 - Supports overwriting existing results and suppressing warnings as needed.
 - Ensures that results are only exported if the model has been successfully solved.
 
-API: :py:meth:`cvxlab.Model.load_results_to_database`
+API: :py:meth:`~cvxlab.Model.load_results_to_database`
 
 
 Typical Usage
@@ -56,7 +56,7 @@ Parameter descriptions
 Workflow
 --------
 
-When :py:meth:`cvxlab.Model.load_results_to_database` is called on a Model instance:
+When :py:meth:`~cvxlab.Model.load_results_to_database` is called on a Model instance:
 
 - Checks if the model has been solved (i.e., results are available). If not, 
   logs a warning and aborts export.

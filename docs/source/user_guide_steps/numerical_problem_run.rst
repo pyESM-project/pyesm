@@ -21,7 +21,7 @@ Overview
   convergence criteria.
 - Logs a summary of the solution status for all problems and scenarios.
 
-API: :py:meth:`cvxlab.Model.run_model`
+API: :py:meth:`~cvxlab.Model.run_model`
 
 
 Typical Usage
@@ -95,7 +95,7 @@ process as follows:
 Workflow
 --------
 
-When :py:meth:`cvxlab.Model.run_model` is called on a Model instance:
+When :py:meth:`~cvxlab.Model.run_model` is called on a Model instance:
 
 - Checks that the selected solver is supported and that numerical problems are defined.
 - Applies solver settings and logs solver output if requested.

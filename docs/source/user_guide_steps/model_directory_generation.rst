@@ -15,7 +15,7 @@ Overview
 
 - Creates a new directory to store all files related to a CVXlab model instance 
   (settings, input data, database, etc.).
-- Supports both YAML (*.yml*) and Excel (*.xlsx*) templates for setup files, 
+- Supports both **YAML** (*.yml*) and **XLSX** (*.xlsx*) templates for setup files, 
   depending on workflow preference.
 - Optionally includes template files for user-defined symbolic operators and 
   constants, allowing customization without modifying the CVXlab repository.
@@ -87,10 +87,11 @@ Generated files
 ---------------
 
 - Directory: *my_model* (or specified name) in the chosen parent path.
-- Setup files:
+- Setup files depends on the selected format (``settings_file_type`` argument):
 
-  - YAML: *structure_sets.yml*, *structure_variables.yml*, *problem.yml*.
-  - Excel: *model_settings.xlsx* (with three sheets: sets, variables, problem).
+  - **YAML**: ``structure_sets.yml``, ``structure_variables.yml``, ``problem.yml``.
+  - **XLSX**: ``model_settings.xlsx`` (with three tabs: ``structure_sets``, 
+    ``structure_variables``, ``problem``).
 
 - Optional templates files includes:
 
