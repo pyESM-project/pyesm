@@ -4,11 +4,33 @@ Simplified energy system model
 ==============================
 
 This tutorial illustrates, step by step, how to build a simple energy system
-optimization model with CVXlab. 
+optimization model with CVXlab. The tutorial mirrors the workflow described 
+in :ref:`model generation from scratch <model_generation_from_scratch>`, so that 
+the transition from conceptual design to numerical solution stays visible 
+throughout the documentation. 
 
-The tutorial mirrors the workflow described in :ref:`model generation from scratch 
-<model_generation_from_scratch>`, so that the transition from conceptual design 
-to numerical solution stays visible throughout the documentation.
+This tutorial is the right place to start if you are new to CVXlab.
+
+
+.. rubric:: Problem statement
+
+Let us consider the following energy system planning problem, applied to a generic 
+region. The goal is to define the *least-cost energy production plan* over a defined 
+time horizon, considering the following assumptions:
+
+- The energy demand is assumed to be known in advance over the whole time horizon
+  (i.e., perfect foresight).
+- The energy can be supplied by a number of available technologies, each characterized 
+  by known values for: 
+  
+  - installed capacities (MW, variable over time).
+  - specific production costs (€/kWh, constant).
+  - availabilities (i.e. values able to convert installed capacity in MW to energy supplied 
+    in MWh, assumed as constants).
+
+
+
+
 
 
 Conceptual model definition
@@ -17,15 +39,6 @@ Conceptual model definition
 Related user guide step: :ref:`conceptual-model-definition`
 
 
-.. rubric:: Problem statement
-
-Let us consider a *conceptual* energy system planning model, where the goal is to 
-define the *least-cost energy production plan* for one region over a defined time 
-horizon, able to satisfy energy demand (assumed as known data defined according to 
-different scenarios). Energy can be supplied by different technologies, characterized 
-by specific production costs and installed capacities and availabilities (i.e. values 
-able to convert installed capacity in MW to energy supplied in MWh). Installed 
-capacity is varying over time, while costs and availabilities are assumed as fixed.
 
 
 .. rubric:: Defining Sets
