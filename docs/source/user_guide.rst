@@ -102,15 +102,23 @@ column, and it links to the corresponding detailed page.
    to be solved. This step consists in defining the fundamental model 
    structure pen-on-paper. The following items must be defined:
 
-   - :ref:`defining-sets`: the dimensions of the model, defining its scope.
-   - :ref:`definig-data-tables-variables`: *data tables* are defined as collection 
-     of model data identified by one or more sets. *Variables* are symbolic items 
-     pointing to all or a subsets of data entries in data tables.
-   - :ref:`definig-expressions-and-problems`: *problems* are collection of 
-     *expressions*, the latter defined as symbolic items constructed relying on 
-     defined *variables* and *symbolic operators*. More than one problem can be 
-     stated, each defined as a system of linear equalities or as a convex 
-     optimization problems. 
+   .. list-table::
+      :header-rows: 1
+      :widths: 35 65
+
+      * - Conceptual component
+        - Description
+      * - :ref:`defining-sets`
+        - The dimensions of the model, defining its scope.
+      * - :ref:`definig-data-tables-variables`
+        - *Data tables* are collections of model data identified by one or more
+          sets. *Variables* are symbolic items pointing to all or a subset of
+          the data entries in those tables.
+      * - :ref:`definig-expressions-and-problems`
+        - *Problems* are collections of *expressions*, which are symbolic items
+          constructed from defined *variables* and *symbolic operators*. More
+          than one problem can be stated, each defined as a system of linear
+          equalities or as a convex optimization problem.
 
    Once the problem is well defined, the CVXlab modeling process can start.
 
@@ -127,17 +135,30 @@ column, and it links to the corresponding detailed page.
    
 -  :ref:`fill-model-setup-files`: the user translates the conceptual model into 
    the setup files available in the model directory. The setup information can be
-   provided in either *YAML* format (as three separate files) or *Excel* format (one 
-   file with three tabs):
+   provided either in *YAML* format (as three separate files) or in *Excel*
+   format (default ``model_settings.xlsx`` workbook with three tabs), as 
+   summarized below:
 
-   - **Structure of sets**: defined in ``structure_sets.yml`` or ``structure_sets`` tab.
-   - **Structure of data tables and variables**: defined in ``structure_variables.yml``
-     or ``structure_variables`` tab
-   - **Mathematical problem**: defined in ``problem.yml`` or ``problem`` tab.
+   .. list-table::
+      :header-rows: 1
+      :widths: 40 30 30
 
-   User-defined symbolic operators and constants data types can be finally 
-   implemented in dedicated Python modules templates eventually included in the 
-   model directory.
+      * - Setup component
+        - YAML file
+        - ``model_settings.xlsx`` tab
+      * - Structure of sets
+        - ``structure_sets.yml``
+        - ``structure_sets``
+      * - Structure of data tables and variables
+        - ``structure_variables.yml``
+        - ``structure_variables``
+      * - Mathematical problem
+        - ``problem.yml``
+        - ``problem``
+
+   Optionally, user-defined symbolic operators and constant data types can be
+   implemented in dedicated Python template modules included in the model
+   directory.
 
 -  :ref:`generate-model-class-instance`: the instance of the Model class is 
    generated through the *Model class constructor*, which translates the 
@@ -160,15 +181,23 @@ column, and it links to the corresponding detailed page.
    Once this step is completed, all the necessary information defining the model 
    structure is available, and the data structures can be generated.
 
--  :ref:`data-structures-init`: this step includes fetching sets coordinates to
-   the model instance, performing a coherence check to ensure a correct definition
-   of variables, and generating the necessary data structures, including:
+-  :ref:`data-structures-init`: this step imports the set coordinates into the
+   model instance, checks that variables are defined consistently, and generates
+   the initial model data structures.
 
-   - **Blank SQLite database**: a relational database with *set tables* and *data 
-     tables*, linked by univocal relations.
-   - **Blank Excel input data file/s**: one or more Excel file/s (depending on user's 
-     preference) with *exogenous data tables* printed out as normalized data tables,
-     to be filled by the user (see :ref:`Fill exogenous model data <fill-exogenous-data>`).
+   .. list-table::
+      :header-rows: 1
+      :widths: 32 68
+
+      * - Output
+        - Description
+      * - Blank SQLite database
+        - Relational database containing *set tables* and *data tables*,
+          linked by unique relationships.
+      * - Blank Excel input data file(s)
+        - One or more Excel files, depending on user preference, containing
+          the *exogenous data tables* in normalized form to be filled by the
+          user (see :ref:`Fill exogenous model data <fill-exogenous-data>`).
 
    API: :py:meth:`~cvxlab.Model.initialize_model_environment`
 

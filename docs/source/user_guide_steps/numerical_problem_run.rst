@@ -57,39 +57,76 @@ Typical Usage
     )
 
 
-Parameter descriptions
+Parameters description
 ----------------------
 
-All arguments are optional and have sensible defaults. You can customize the solution 
-process as follows:
+.. rubric:: General parameters
 
-- ``force_overwrite``: If True, overwrites existing problem status and variables 
-  numerical values in the ``Problem`` object. Defaults to *False*.
-- ``integrated_problems``: If *True*, solves problems iteratively using a 
-  block Gauss-Seidel scheme (alternating optimization), exchanging updated 
-  endogenous variables until convergence. Defaults to *False* (independent solution).
-- ``convergence_monitoring``: Enables convergence monitoring during integrated 
-  solving. Defaults to *True*.
-- ``solver``: The solver to use (e.g., "ECOS", "SCS"). If None, uses the default 
-  solver from ``Defaults`` class settings.
-- ``solver_verbose``: If True, enables verbose output from the solver. 
-  Defaults to *False*.
-- ``solver_settings``: Dictionary of additional solver options (key-value pairs). 
-  Defaults to *None*.
-- ``convergence_norm``: Norm type for convergence monitoring in integrated problems 
-  (e.g., "l2"). Defaults to *"l2"* (Euclidean norm).
-- ``convergence_tables_to_check``: Data tables to check for convergence 
-  (*all_endogenous*, *hybrid_only*, or list of table keys). Defaults to 
-  *"all_endogenous"*.
-- ``convergence_tables_to_skip``: List of data table keys to skip for convergence 
-  checking. Defaults to *None*.
-- ``relative_tolerance``: Numerical tolerance for convergence (overrides default 
-  settings). Defaults to *None*.
-- ``maximum_iterations``: Maximum number of iterations for integrated solving 
-  (overrides default settings). Defaults to *None*.
-- ``keep_previous_iteration_db``: If True, keeps the database from the previous 
-  iteration (for debugging). Defaults to *False*.
-- ``**kwargs``: Additional keyword arguments for solver-specific options.
+.. list-table::
+   :header-rows: 1
+   :widths: 24 56 20
+
+   * - Parameter
+     - Description
+     - Default
+   * - ``force_overwrite``
+     - If ``True``, overwrites existing problem status and variable numerical
+       values in the ``Problem`` object.
+     - ``False``
+   * - ``integrated_problems``
+     - If ``True``, solves problems iteratively using a block Gauss-Seidel
+       scheme. If ``False``, solves each problem independently.
+     - ``False``
+   * - ``solver``
+     - Solver to use, for example ``"ECOS"`` or ``"SCS"``. If ``None``, the
+       default solver from ``Defaults`` is used.
+     - ``None``
+   * - ``solver_verbose``
+     - If ``True``, enables verbose output from the solver.
+     - ``False``
+   * - ``solver_settings``
+     - Dictionary of additional solver options passed as key-value pairs.
+     - ``None``
+   * - ``**kwargs``
+     - Additional keyword arguments for solver-specific options.
+     - None
+
+The parameters below are only relevant when ``integrated_problems=True``.
+
+.. rubric:: Integrated-solution parameters
+
+.. list-table::
+   :header-rows: 1
+   :widths: 24 56 20
+
+   * - Parameter
+     - Description
+     - Default
+   * - ``convergence_monitoring``
+     - Enables convergence monitoring during integrated solving.
+     - ``True``
+   * - ``convergence_norm``
+     - Norm used for convergence monitoring, for example ``"l2"``.
+     - ``"l2"``
+   * - ``convergence_tables_to_check``
+     - Data tables to check for convergence: ``"all_endogenous"``,
+       ``"hybrid_only"``, or a list of table keys.
+     - ``"all_endogenous"``
+   * - ``convergence_tables_to_skip``
+     - List of data table keys to skip during convergence checking.
+     - ``None``
+   * - ``relative_tolerance``
+     - Numerical tolerance for convergence. If provided, it overrides the
+       default model-coupling setting.
+     - ``None``
+   * - ``maximum_iterations``
+     - Maximum number of iterations for integrated solving. If provided, it
+       overrides the default model-coupling setting.
+     - ``None``
+   * - ``keep_previous_iteration_db``
+     - If ``True``, keeps the database from the previous iteration for
+       debugging.
+     - ``False``
 
 
 Workflow

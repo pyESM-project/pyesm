@@ -18,10 +18,10 @@ downloaded from the table below, so that you can run them locally on your machin
 
     * - Tutorial
       - Description
-    * - :ref:`Simplified energy system <tutorial-simplified-energy-system>`
+    * - :ref:`Simplified energy system <tutorial-simple-energy-system>`
       - Complete workflow for defining and running a least-cost energy planning 
         model, aligned with the :ref:`User Guide <model_generation_from_scratch>`
-        steps. *Ideal for newbies*. 
+        steps. *Ideal for newbies*.
     * - :doc:`Production planning <tutorials/production_planning/production_planning>`
       - A simple optimization problem related to production optimization under 
         resource constraints. Available as a Jupyter Notebook, which can be run 

@@ -13,7 +13,7 @@ The classes and functions documented in this section are those imported into the
 
 .. list-table:: API reference sections
    :header-rows: 1
-   :widths: 30 70
+   :widths: 20 80
 
    * - Section
      - Description

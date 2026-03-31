@@ -1,7 +1,7 @@
 .. _numerical-problem-init:
 
-Initialization of numerical problem/s
-=====================================
+Initialization of numerical problem(s)
+======================================
 
 This step prepares the *numerical optimization problem(s)* for a *CVXlab model*, 
 transforming symbolic definitions and data structures into a form ready for 
@@ -43,18 +43,25 @@ Typical Usage
     )
 
 
-Parameter descriptions
+Parameters description
 ----------------------
 
-All arguments are optional and have sensible defaults. You can customize the 
-directory creation as follows:
+.. list-table::
+   :header-rows: 1
+   :widths: 25 55 20
 
-- ``table_key_list``: List of specific tables keys for which data will be 
-  refreshed from the input files. This should be empty in case a model is initialized 
-  for the first time. Specific table(s) can be listed in case of data updates. 
-  Defaults empty list (all tables are refreshed).
-- ``force_overwrite``: Whether to overwrite existing data in SQLite database or 
-  numerical problem definitions without confirmation. Defaults to *False*.
+   * - Parameter
+     - Description
+     - Default
+   * - ``table_key_list``
+     - List of data table keys to refresh from the input files. Leave empty when
+       initializing a model for the first time; provide specific table keys when
+       only selected data have changed.
+     - ``[]`` (all tables)
+   * - ``force_overwrite``
+     - If ``True``, overwrites existing SQLite data and numerical problem
+       definitions without confirmation.
+     - ``False``
 
 
 Workflow

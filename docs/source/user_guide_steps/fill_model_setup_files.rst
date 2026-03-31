@@ -108,22 +108,22 @@ keys or values. Names written literally, such as ``description`` or
 
 .. rubric:: Fields description
 
-**<set_key_#>**: (required) user-defined key of the set. This placeholder must
+``<set_key_#>``: (required) user-defined key of the set. This placeholder must
 be replaced with the actual set key used as the key in the SQLite data
 table. Case-insensitive. This is the only required field.
 
-- **description**: (optional) metadata provided by the modeler.
-- **split_problem**: (optional) if *true*, set items define independent numerical
+- ``description``: (optional) metadata provided by the modeler.
+- ``split_problem``: (optional) if *true*, set items define independent numerical
   sub-problems. Such a set is classified as an inter-problem set.
-- **copy_from**: (optional) key of another set to copy data from. If defined, 
+- ``copy_from``: (optional) key of another set to copy data from. If defined, 
   related data need not be provided again in the sets workbook generated in a 
   following step.
-- **filters**: (optional) dictionary used to identify sub-sets of data tables for
+- ``filters``: (optional) dictionary used to identify sub-sets of data tables for
   generating variables. Each key is a filter key, and the corresponding value is 
   a list of values defining the filters categories. For example, the *technology 
   type* filter can be used to indentify the following subsets of technologies: 
   *[renewable, non-renewable]*.
-- **aggregations**: (optional) list of aggregation keys used for reporting and
+- ``aggregations``: (optional) list of aggregation keys used for reporting and
   visualization. These are not used in numerical problem operations, but useful 
   to identify how to aggregate results for reporting and visualization. 
 
@@ -231,44 +231,44 @@ unchanged.
 
 .. rubric:: Fields description
 
-**<table_key_#>**: (required) user-defined key of the Data Table. This
+``<table_key_#>``: (required) user-defined key of the Data Table. This
 placeholder must be replaced with the actual table key used as the table key
 in the SQLite database. Since SQLite data tables are case-insensitive, this
 key is *case-insensitive* too.
 
-- **description**: (optional) information about the data table.
-- **type**: (required) type of the data table. It can be *endogenous*, *exogenous*,
+- ``description``: (optional) information about the data table.
+- ``type``: (required) type of the data table. It can be *endogenous*, *exogenous*,
   *constant*, or a dictionary mapping problem keys to types for integrated
   problems (in this case, variables are defined as *hybrid* type).
-- **integer**: (optional) if *true*, variables in the table are integer-valued.
-- **coordinates**: (required) list of Set keys defining the dimensions of the 
+- ``integer``: (optional) if *true*, variables in the table are integer-valued.
+- ``coordinates``: (required) list of Set keys defining the dimensions of the 
   Data Table.
-- **variables_info**: dictionary defining Variables keys and related properties. 
+- ``variables_info``: dictionary defining Variables keys and related properties. 
   Each key is a user-defined variable key, and the corresponding value is a dictionary 
   including the following properties:
 
-  - **<variable_key_#>**: (required) user-defined variable key. This is the only 
+  - ``<variable_key_#>``: (required) user-defined variable key. This is the only 
     required field for each variable, and it is used as the variable key in 
     mathematical expressions.
     
-    - **value**: (optional) for *constants* types only, identifies the constant 
+    - ``value``: (optional) for *constants* types only, identifies the constant 
       value assigned to the variable. Full list of built-in constants and instructions 
       on how to define custom constants are documented in :ref:`api_constants_types`.
-    - **blank_fill**: (optional) for *exogenous* variables only, the value used to 
+    - ``blank_fill``: (optional) for *exogenous* variables only, the value used to 
       fill blanks in SQLite Data Tables in case of missing values. 
-    - **nonneg**: (optional) for *endogenous* variables only, indicates whether the 
+    - ``nonneg``: (optional) for *endogenous* variables only, indicates whether the 
       variable is constrained to be non-negative.
-    - **<set_key_#>**: (optional) key of a Set included within the Data Table 
+    - ``<set_key_#>``: (optional) key of a Set included within the Data Table 
       coordinates, for which the following information are provided to define how 
       that set is shaping the variable, and if and how it is filtered. 
       In case a Set belonging to the Data Table coordinates is not included in the 
       variable definition below, if these is is not an inter-problem sets, it is 
       assigned as an intra-problem dimension by default.
       
-      - **dim**: (required) dimension assigned to the set. It can be *row* for rows, 
+      - ``dim``: (required) dimension assigned to the set. It can be *row* for rows, 
         *col* for columns, or *intra* for intra-problem indexing (implying that the 
         variable will be defined as many times as the cardinality of intra-problem Sets).
-      - **filters**: (optional) dictionary used to filter Data Tables for generating 
+      - ``filters``: (optional) dictionary used to filter Data Tables for generating 
         variables. Each key is a filter key (defined in the ``filters`` fields of 
         the :ref:`sets_definition` section), and the corresponding value is 
         a list of values defining the filters categories to be filtered.
@@ -345,17 +345,28 @@ and should be kept unchanged.
 
 .. rubric:: Fields description
 
-**<problem_key_#>**: (optional) user-defined problem key. This can be omitted 
+``<problem_key_#>``: (optional) user-defined problem key. This can be omitted 
 in case of one single problem.
 
-- **objective**: (optional) symbolic expression defining the problem objective. 
+- ``objective``: (optional) symbolic expression defining the problem objective. 
   If omitted, the problem is considered a system of equations or inequalities 
-  without an objective function.
-- **expressions**: (required) list of symbolic expressions defining the problem
+  without an objective function. Each problem can have up to one Objective. 
+- ``expressions``: (required) list of symbolic expressions defining the problem
   constraints. 
     
 Both objective and expressions are strings that can include variable keys and 
 built-in or user-defined operators (see :ref:`api_symbolic_operators`).
+
+Objective and Expressions are defined as literal strings, calling variables by 
+their *variable keys*, and allowed or user-defined :ref:`operators 
+<api_symbolic_operators>`.
+
+In case the objective includes variables defined over *multiple intra-problem sets*, 
+the objective is automatically aggregated over the dimensions of the intra-problem 
+sets. For example, if variable *cost* is defined over time, defined as intra-problem 
+sets *t*, the generated CVXPY expressions will be a number equal to to the number 
+of time steps. CVXlab handle this automatically by defining the objective as 
+the *summation of the objective over the intra-problem dimensions*. 
 
 
 Final notes

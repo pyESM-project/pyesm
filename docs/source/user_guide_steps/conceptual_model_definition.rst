@@ -21,6 +21,30 @@ comprehensive description of supported problem types.
 Before generating a CVXlab Model, the items below must be conceptually defined.
 
 
+.. list-table::
+   :header-rows: 1
+   :widths: 20 40 40
+
+   * - Concept
+     - Defines
+     - Used for
+   * - :ref:`Sets <defining-sets>`
+     - The model domain and indexing space
+     - Defining model Variables based on a coordinates system
+   * - :ref:`Data Tables <definig-data-tables-variables>`
+     - The model data over a domain defined by multiple Sets
+     - Storing data in the database, defining Variables
+   * - :ref:`Variables <definig-data-tables-variables>`
+     - Symbolic references to Data Table values
+     - Defining model symbolic Expressions
+   * - :ref:`Expressions <definig-expressions-and-problems>`
+     - Symbolic combinations of Variables and operators
+     - Defining numerical Problems
+   * - :ref:`Problems <definig-expressions-and-problems>`
+     - Numerical problem(s) of the model
+     - Determining endogenous Data Tables values
+
+
 .. _defining-sets:
 
 Sets
@@ -60,42 +84,47 @@ problem structure:
   \underbrace{(\mathcal{S}_{D_1} \times \cdots \times \mathcal{S}_{D_n})}_{\text{Dimension sets}}
 
 where :math:`m + n = k`. *Inter-problem sets* and *dimension sets* are defined
-as:
+as below. A consistent definition of variable dimensions is fundamental to correctly
+define symbolic expressions in the model, which must be dimensionally consistent.
 
-- **Inter-problem sets** :math:`\mathcal{S}_{I_1}, \ldots, \mathcal{S}_{I_m}`:
-  define the space over which the numerical problem is solved. All variables and
-  expressions in the model are defined and the numerical problem is solved for
-  each coordinate combination in the Cartesian product of inter-problem sets:
-  :math:`\iota \in \mathcal{S}_{I_1} \times \cdots \times \mathcal{S}_{I_m}`.
-  Each combination is defined as a **scenario**, identifying a distinct
-  instance of the optimization problem. Inter-problem sets are used to define
-  multiple scenarios, for example to represent different demand projections,
-  cost assumptions, or sensitivity cases.
 
-- **Dimension sets** :math:`\mathcal{S}_{D_1}, \ldots, \mathcal{S}_{D_n}`:
-  specify the shape and indexing of model variables, that is, how variables are
-  arranged into rows and columns and indexed across intra-problem coordinates.
-  Depending on each variable, dimension sets can be further classified as:
+.. rubric::  Inter-problem sets 
+  
+:math:`\mathcal{S}_{I_1}, \ldots, \mathcal{S}_{I_m}`
 
-  - **Shape sets**: define *rows* and *columns* of variables (matrix
-    structure). Multiple sets can be assigned to the same row or column, and the
-    resulting dimension is the Cartesian product of the assigned sets. For rows
-    over :math:`\mathcal{S}_{R} = \mathcal{S}_{a} \times \mathcal{S}_{b}`, the
-    variable has :math:`|\mathcal{S}_{R}| = |\mathcal{S}_{a}| \cdot |\mathcal{S}_{b}|`
-    rows with row coordinates :math:`(s_a, s_b) \in \mathcal{S}_{a} \times \mathcal{S}_{b}`.
-    The same applies to columns.
-  - **Intra-problem sets**: variables with a given shape are indexed over the
-    Cartesian product of the remaining dimension sets. For intra-problem
-    coordinates over
-    :math:`\mathcal{S}_{P} = \mathcal{S}_{P_1} \times \cdots \times \mathcal{S}_{P_p}`,
-    each variable :math:`x` of shape :math:`\mathcal{S}_{R} \times \mathcal{S}_{C}`
-    has :math:`|\mathcal{S}_{P}| = \prod_{j=1}^{p} |\mathcal{S}_{P_j}|`
-    instances, one for each
-    :math:`\pi = (s_{P_1},\ldots,s_{P_p}) \in \mathcal{S}_{P}`.
+Define the space over which the numerical problem is solved. All variables and
+expressions in the model are defined and the numerical problem is solved for
+each coordinate combination in the Cartesian product of inter-problem sets:
+:math:`\iota \in \mathcal{S}_{I_1} \times \cdots \times \mathcal{S}_{I_m}`.
+Each combination is defined as a **scenario**, identifying a distinct
+instance of the optimization problem. Inter-problem sets are used to define
+multiple scenarios, for example to represent different demand projections,
+cost assumptions, or sensitivity cases.
 
-A consistent definition of variable dimensions is fundamental to correctly
-define symbolic expressions in the model, which must be dimensionally
-consistent.
+
+.. rubric:: Dimension sets 
+  
+:math:`\mathcal{S}_{D_1}, \ldots, \mathcal{S}_{D_n}`
+
+Specify the shape and indexing of model variables, that is, how variables are
+arranged into rows and columns and indexed across intra-problem coordinates.
+Depending on each variable, dimension sets can be further classified as:
+
+- **Shape sets**: define *rows* and *columns* of variables (matrix
+  structure). Multiple sets can be assigned to the same row or column, and the
+  resulting dimension is the Cartesian product of the assigned sets. For rows
+  over :math:`\mathcal{S}_{R} = \mathcal{S}_{a} \times \mathcal{S}_{b}`, the
+  variable has :math:`|\mathcal{S}_{R}| = |\mathcal{S}_{a}| \cdot |\mathcal{S}_{b}|`
+  rows with row coordinates :math:`(s_a, s_b) \in \mathcal{S}_{a} \times \mathcal{S}_{b}`.
+  The same applies to columns.
+- **Intra-problem sets**: variables with a given shape are indexed over the
+  Cartesian product of the remaining dimension sets. For intra-problem
+  coordinates over
+  :math:`\mathcal{S}_{P} = \mathcal{S}_{P_1} \times \cdots \times \mathcal{S}_{P_p}`,
+  each variable :math:`x` of shape :math:`\mathcal{S}_{R} \times \mathcal{S}_{C}`
+  has :math:`|\mathcal{S}_{P}| = \prod_{j=1}^{p} |\mathcal{S}_{P_j}|`
+  instances, one for each
+  :math:`\pi = (s_{P_1},\ldots,s_{P_p}) \in \mathcal{S}_{P}`.
 
 
 .. _definig-data-tables-variables:
@@ -258,8 +287,8 @@ schemes are supported:
      \end{aligned}
 
    The term :math:`xy` makes the system nonlinear because it multiplies two
-   endogenous variables. Problem 0 can be decomposed into two separate linear 
-   linear subproblems 1 and 2:
+   endogenous variables. Problem 0 can be decomposed into two separate linear
+   subproblems 1 and 2:
 
    .. math::
      \begin{aligned}
@@ -276,19 +305,8 @@ schemes are supported:
    is fixed.
 
 
-Simple example
---------------
-
-A complete illustrative example based on a :ref:`simplified energy system model 
-<tutorial-simplified-energy-system>` is available in the :ref:`tutorials` section. 
-The tutorials distribute examples across the same workflow steps used in the user 
-guide, from conceptual definition to results export. 
-This page focuses on the general concepts. The tutorial is the recommended
-place to see how those concepts are instantiated in a concrete model.
-
-
-A note on dimensional consistency
----------------------------------
+Dimensional consistency
+-----------------------
 
 The allocation of dimension sets to shapes and intra-problem sets offers
 significant modeling flexibility. The same problem can be formulated in
@@ -345,3 +363,14 @@ CVXlab supports both approaches and any intermediate allocation, allowing users
 to choose the most appropriate abstraction level for their specific modeling
 needs. All formulations are **mathematically equivalent** and produce
 **identical numerical solutions**.
+
+
+Simple example
+--------------
+
+A complete illustrative example based on a :ref:`simplified energy system model 
+<tutorial-simplified-energy-system>` is available in the :ref:`tutorials` section. 
+The tutorials distribute examples across the same workflow steps used in the user 
+guide, from conceptual definition to results export. 
+This page focuses on the general concepts. The tutorial is the recommended
+place to see how those concepts are instantiated in a concrete model.

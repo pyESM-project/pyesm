@@ -1,89 +1,182 @@
-.. _tutorial-simplified-energy-system:
+.. _tutorial-simple-energy-system:
 
 Simplified energy system model
 ==============================
 
 This tutorial illustrates, step by step, how to build a simple energy system
-planning model with CVXlab. The objective is to determine the least-cost energy
-production plan that satisfies demand over multiple time periods under different
-demand scenarios.
+optimization model with CVXlab. 
 
-The tutorial mirrors the workflow described in
-:ref:`model generation from scratch <model_generation_from_scratch>`. Each step
-applies the same energy system example, so that the transition from conceptual
-design to numerical solution stays visible throughout the documentation.
-
-The model includes:
-
-- One inter-problem set for demand scenarios.
-- Two dimension sets for technologies and time periods.
-- Exogenous data tables for costs, capacities, availabilities, and demand.
-- One endogenous data table for energy supply.
-- One linear optimization problem solved independently for each scenario.
+The tutorial mirrors the workflow described in :ref:`model generation from scratch 
+<model_generation_from_scratch>`, so that the transition from conceptual design 
+to numerical solution stays visible throughout the documentation.
 
 
-.. _simple-tutorial-conceptual-model-definition:
-
-Step 1. Conceptual model definition
------------------------------------
+Conceptual model definition
+---------------------------
 
 Related user guide step: :ref:`conceptual-model-definition`
 
-This tutorial uses a simple energy system planning model. The first step in the
-CVXlab modeling workflow consists in the definition of the
-:ref:`conceptual model <conceptual-model-definition>`, consisting in the
-identification of model sets, data tables, variables, and mathematical
-expressions.
+
+.. rubric:: Problem statement
+
+Let us consider a *conceptual* energy system planning model, where the goal is to 
+define the *least-cost energy production plan* for one region over a defined time 
+horizon, able to satisfy energy demand (assumed as known data defined according to 
+different scenarios). Energy can be supplied by different technologies, characterized 
+by specific production costs and installed capacities and availabilities (i.e. values 
+able to convert installed capacity in MW to energy supplied in MWh). Installed 
+capacity is varying over time, while costs and availabilities are assumed as fixed.
 
 
-Problem statement
-~~~~~~~~~~~~~~~~~
+.. rubric:: Defining Sets
 
-The goal is to determine the least-cost energy production plan for one region
-over a finite planning horizon. Demand is assumed to be known and defined for
-different scenarios. Energy can be supplied by multiple technologies, each
-characterized by specific production costs, installed capacities, and
-availability factors. Installed capacity varies over time, while costs and
-availabilities are assumed to be fixed.
+Sets defined for the model are summarized in the table below. 
 
-
-Main modeling objects
-~~~~~~~~~~~~~~~~~~~~~
-
-The example is built around the following conceptual objects.
-
-.. list-table:: Main objects of the tutorial model
+.. list-table:: Sets defining model's domain
   :header-rows: 1
 
-  * - Category
-    - Objects
-    - Role in the model
-  * - Sets
-    - :math:`d`, :math:`t`, :math:`y`
-    - Define scenarios, technologies, and time periods
-  * - Exogenous data tables
-    - :math:`cost(t)`, :math:`capacity(t,y)`, :math:`availability(t)`, :math:`demand(d,y)`
-    - Provide the input data of the optimization problem
-  * - Endogenous data tables
+  * - Set name
+    - Symbol
+    - Coordinates
+    - Cardinality
+    - Set type
+  * - Technologies
+    - :math:`t`
+    - Solar, Gas, Nuclear
+    - 3
+    - Dimension
+  * - Time periods
+    - :math:`y`
+    - 2025, 2026, 2027, 2028, 2029, 2030
+    - 6
+    - Dimension
+  * - Demand scenarios
+    - :math:`d`
+    - Low_demand, High_demand
+    - 2
+    - Inter-problem
+
+Notice that:
+
+- Inter-problem sets (:math:`d`) define multiple problem instances.  
+  This implies that one optimization problem is generated and solved for each 
+  combination of demand scenario (in this case, only :math:`2` problem instances).
+- Dimension sets (:math:`t`, :math:`y`) are used to define the scope of data tables 
+  and the shapes of related variables.
+- Coordinates of each set can be associated to filters to define sub-domains. As 
+  example, the *technologies* set may classify technologies as *renewable* and
+  *non-renewable*, allowing to define variables with sub-domains including only 
+  specific categories. In this simplified example, all variables are defined over 
+  *full domains* (no filtering is applied).
+
+
+.. rubric:: Defining Data Tables and related Variables
+
+The following tables summarizes the Data Tables and associated variables for the 
+energy system model. 
+
+.. list-table:: Data tables properties
+  :header-rows: 1
+
+  * - Type
+    - Name
+    - Domain [Cardinality]
+    - Description
+  * - Exogenous
+    - :math:`cost(t)`
+    - :math:`t - [3]`
+    - Specific costs of generation by cost scenario and technology (in *€/MWh*).
+  * - Exogenous
+    - :math:`capacity(t,y)`
+    - :math:`t \times y - [3 \times 6 = 18]`
+    - Installed capacity by technology and time period (in *MW*).
+  * - Exogenous
+    - :math:`availability(t)`
+    - :math:`t - [3]`
+    - Availability factors by technology (in *MWh/MW*).
+  * - Exogenous
+    - :math:`demand(d,y)`
+    - :math:`d \times y - [2 \times 1 \times 6 = 12]`
+    - Energy demand defined by demand scenarios and time periods.
+  * - Endogenous
     - :math:`supply(d,y,t)`
-    - Store the decision variables solved by the model
-  * - Constants
+    - :math:`d \times y \times t - [2 \times 6 \times 3 = 72]`
+    - Energy supply defined by demand and cost scenarios, technology and time period.
+  * - Constant
     - :math:`constant(t)`
-    - Provide symbolic helper objects such as summation vectors
-  * - Variables
-    - :math:`c`, :math:`cap`, :math:`av`, :math:`E_d`, :math:`E_s`, :math:`i_t`
-    - Define the symbolic representation used in expressions
-
-The detailed definition of set coordinates is reported in
-:ref:`simple-tutorial-fill-sets-data`. The translation of these objects into
-CVXlab setup files is reported in
-:ref:`simple-tutorial-fill-model-setup-files`.
+    - :math:`t - [3]`
+    - Model constants defined based on the shape of :math:`t` set.
 
 
-Symbolic problem
-~~~~~~~~~~~~~~~~
+Regarding data tables above:
 
-For this tutorial, the symbolic optimization problem can be written as:
+- Endogenous data table has a domain defined over all model sets, while exogenous 
+  data tables are defined over specific sets.
+- For each data table, the cardinality (i.e. the total number of data entries) is 
+  reported, calculated as the product of the cardinalities of all sets in the domain. 
+  As example, the `availability(t)` data table includes 3 entries only, one for each 
+  technology, due to its domain defined over the *technologies* set only.
+
+
+.. list-table:: Variables properties
+  :header-rows: 1
+
+  * - Related data table
+    - Variable name
+    - Shape (rows,columns)
+    - Intra-problem sets
+    - Inter-problem sets
+  * - :math:`cost(t)`
+    - :math:`c`
+    - :math:`1, t - [1, 3]`
+    - :math:`-`
+    - :math:`-`
+  * - :math:`capacity(t, y)`
+    - :math:`cap`
+    - :math:`1, t - [1, 3]`
+    - :math:`y - [6]`
+    - :math:`-`
+  * - :math:`availability(d, y)`
+    - :math:`av`
+    - :math:`1, t - [1, 3]`
+    - :math:`-`
+    - :math:`-`
+  * - :math:`demand(d, y)`
+    - :math:`E_d`
+    - :math:`1, 1 - [1, 1]`
+    - :math:`y - [6]`
+    - :math:`d - [2]`
+  * - :math:`supply(d,y,t)`
+    - :math:`E_s`
+    - :math:`1, t - [1, 3]`
+    - :math:`y - [6]`
+    - :math:`d - [2]`
+  * - :math:`consant(t)`
+    - :math:`i_t`
+    - :math:`t, 1 - [3, 1]`
+    - :math:`-`
+    - :math:`-`
+
+
+Regarding variables above:
+
+- Each variable stem from a related data table, inheriting its properties: the 
+  domain (defined by sets) and the data type (exogenous, endogenous, constant).
+- Each variable is characterized by a specific allocation of dimensions sets 
+  into shapes and intra-problem sets. As example, the energy supply `E_s` variable 
+  has 1 row and 3 columns (defined by the *technologies* set), it is indexed over 
+  6 intra-problem coordinates (defined by the *time periods* set) and over 2 
+  inter-problem coordinates (defined by the *demand scenarios* set).
+- Constants can be defined with different built-in or user defined types (see 
+  :ref:`api_constants_types`). In the example above, the `i_t` variable is
+  defined as a *summation vector*, consisting in a column vector of 1s, useful to 
+  perform summations by matrix multiplications.
+
+
+.. rubric:: Defining Problem and related Expressions
+
+For the current energy system model, a symbolic problem can be defined as a linear 
+optimization problem as follows.
 
 .. math::
   \begin{aligned}
@@ -93,66 +186,67 @@ For this tutorial, the symbolic optimization problem can be written as:
   & E_s \geq 0 & \forall \, y
   \end{aligned}
 
-where:
 
-- :math:`E_s` is the energy supply by technology and time period.
-- :math:`E_d` is the scalar demand for each scenario and time period.
-- :math:`c` is the vector of specific production costs.
-- :math:`cap` is the vector of installed capacities for each time period.
-- :math:`av` is the vector of technology availability factors.
-- :math:`i_t` is a summation vector used to aggregate supply across
-  technologies.
+Notice that:
 
-At this conceptual stage, it is enough to understand that the model is linear,
-convex, and separable across demand scenarios.
-
-
-How scenarios and expression instances are generated
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-The tutorial distinguishes between:
-
-- **Inter-problem sets**: define how many independent numerical problems are
-  created. In this example, the demand-scenario set :math:`d` generates one
-  problem instance per scenario.
-- **Dimension sets**: define the internal shape of variables. In this example,
-  :math:`t` and :math:`y` define technologies and time periods.
-
-As a consequence:
-
-- The full optimization problem is generated once for each demand scenario.
-- Each symbolic expression is expanded over the intra-problem set :math:`y`,
-  producing one numerical expression per time period.
-- Variables not indexed over a specific intra-problem set are automatically
-  reused across the generated numerical expressions.
+- The problem is defined a number of times equal to the cardinality of the inter-problem 
+  set. Specifically, one problem instance is defined and solved for each energy demand 
+  scenarios :math:`d`. In case of multiple inter-problem sets, the problem is defined
+  for each coordinate combination in the Cartesian product of all inter-problem sets.
+- For each simbolic expression, a number of numerical expressions is generated, equal 
+  to the Cartesian product of all intra-problem sets of the related variables. 
+  In this case, all expressions are defined over the intra-problem set *time periods* 
+  :math:`y`, generating one numerical expression per time period for all symbolic 
+  expressions.
+- In case of variables defined over different intra-problem sets, automatic broadcasting 
+  is applied, Variables not defined over specific intra-problem sets are automatically 
+  reused across all generated numerical expressions.
+- In this problem, the dot operator :math:`\cdot` represents matrix multiplication, 
+  the :math:`\widehat{(*)}` is the diagonalization operator, and the :math:`(*)'` represents 
+  the transposition operator (see :ref:`api_symbolic_operators` for a comprehensive 
+  description of built-in symbolic operators).
 
 
-Alternative dimensional formulations
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+A note on dimensional formulations:
 
-In this tutorial, the matrix-based formulation is used because it offers a
-compact representation of the problem while keeping the model easy to map into
-CVXlab structures.
+The allocation of dimension sets to shapes and intra-problem sets offers significant 
+modeling flexibility. The same problem can be formulated in multiple equivalent ways.
 
-The allocation of dimension sets to shapes and intra-problem sets offers
-significant modeling flexibility. The same optimization problem can be written
-in multiple equivalent ways.
+**Matrix-based formulation (as in the example above):**
+
+- Expressions must be dimensionally consistent, and variables shapes must be 
+  compatible for matrix operations. Multiple variables can stem from the same data 
+  table, each characterized by different allocations of dimension sets: this allows
+  for flexible model definitions.
+- Expressions works with matrix operations (multiplication, transposition, ...).
+- Compact symbolic representation with fewer expression instances.
+- Potentially more efficient numerical problem generation and solution.
+
+**Scalar-based formulation (extreme case):**
+
+All dimension sets can be allocated as *intra-problem sets*, reducing all variables 
+to scalars (shape :math:`(1,1)`). In this case, for each energy demand scenario :math:`d`,
+the problem can be reformulated as:
+
+.. math::
+  \begin{aligned}
+  \min_{E_s} \quad & \sum_{t} c \cdot E_s \\
+  \text{s.t.} \quad & \sum_{t} E_s \geq E_d & \forall \, y \\
+  & E_s \leq cap \cdot av & \forall \, t \, y \\
+  & E_s \geq 0 & \forall \, t \, y
+  \end{aligned}
+
+where all variables become scalars indexed over :math:`t` and :math:`y`.
 
 
-.. _simple-tutorial-model-directory-generation:
-
-Step 2. Generate the model directory
-------------------------------------
+Generation of model directory
+-----------------------------
 
 Related user guide step: :ref:`generation-of-model-directory`
 
 At this stage the conceptual model is already defined. The next step is to
 create a model directory that will contain the setup files, the sets workbook,
 the input-data files, and the SQLite database of the tutorial model.
-
-
-Recommended command
-~~~~~~~~~~~~~~~~~~~
 
 For this tutorial, a compact Excel-based workflow is convenient because all
 setup information can be stored in a single workbook.
@@ -167,10 +261,6 @@ setup information can be stored in a single workbook.
         settings_file_type="xlsx",
         include_user_defined_templates=False,
     )
-
-
-What this generates
-~~~~~~~~~~~~~~~~~~~
 
 For the simple energy system model, this step typically creates:
 

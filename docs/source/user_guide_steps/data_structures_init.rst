@@ -57,9 +57,10 @@ instance:
 - Validates variable definitions, performing various dimensionality checks.
 - Generates a *blank SQLite database* with set tables and data tables, filling 
   set tables with related coordinates.
-- Creates *blank input-data Excel file(s)* for exogenous data tables. 
-  See the section below on "Generated files" for details on file structure and 
-  the effect of the ``multiple_input_files`` attribute.
+- Creates *blank input-data file(s)* for exogenous data tables. The output can be
+  a single Excel workbook or multiple Excel/CSV files, depending on the
+  ``multiple_input_files`` and ``input_data_files_type`` attributes. See the
+  section below on "Generated files" for the supported combinations.
 - If existing database or input files are found, the user is given the option 
   to erase and recreate, or to use existing files. This is controlled by the 
   ``use_existing_data`` attribute of the model instance: if set to ``False``, 
@@ -70,13 +71,135 @@ instance:
 Generated files
 ---------------
 
-- A *blank SQLite database* is generated in the model directory, with tables for 
-  sets and data tables. Set tables are filled with coordinates, while data tables 
-  are created empty, ready to be filled with exogenous data by the user. 
-- *Blank input data file(s)* are generated in the model directory, with one file 
-  per data table if the ``multiple_input_files`` attribute of the model instance is
-  set to ``True``, or a single file containing all data tables if ``multiple_input_files``
-  is set to ``False``. In both cases, the file(s) are filled with sets coordinates
-  and provided as normalized tables ready to be filled with exogenous data by the 
-  user.
+This step creates two connected outputs in the model directory:
+
+- A *blank SQLite database*, which stores the model structure in relational form.
+- *Blank input data file(s)*, which expose the exogenous SQLite data tables in a
+  user-editable format (Excel/CSV).
+
+
+.. rubric:: SQLite database structure
+
+The generated **SQLite database** contains:
+
+- *Set tables*, one for each model set, populated with the coordinates provided in
+  ``sets.xlsx``, and named as ``_set_<SET_NAME>``, where ``<SET_NAME>`` is the 
+  capitalized name of the set, as defined in the model settings. This naming 
+  convention allows to easily identify the Set tables in the SQLite database 
+  (refer to label naming conventions in :class:`cvxlab.defaults.Defaults.Labels`).
+- *Data tables*, one for each model Data Table <data_table_#>, generated with 
+  columns derived from the related sets, plus ``id`` and ``values`` columns. 
+
+The key point is that Data Tables are relational tables linked to the Set tables
+through *foreign-key constraints*. Each coordinate column in a data table points
+to the corresponding set table, so only valid set coordinates can be stored.
+
+The simplified schema below illustrates the idea:
+
+.. mermaid::
+
+   erDiagram
+      "_set_SET_NAME_1" {
+         int id PK
+         text set_name_1_Name
+        }
+      
+      "_set_SET_NAME_2" {
+         int id PK
+         text set_name_2_Name
+        }
+
+      "data_table_1" {
+         int id PK
+         text set_name_1_Name 
+         real values
+      }
+
+      "data_table_2" {
+         int id PK
+         text set_name_1_Name 
+         text set_name_2_Name
+         real values
+      }
+
+      "_set_SET_NAME_1" ||--o{ "data_table_1" : referenced_by
+      "_set_SET_NAME_1" ||--o{ "data_table_2" : referenced_by
+      "_set_SET_NAME_2" ||--o{ "data_table_2" : referenced_by
+
+
+In practice, this means that:
+
+- set coordinates are stored once in the set tables;
+- data tables reference those coordinates instead of redefining an independent
+  structure;
+- SQLite can enforce *referential consistency* between sets and data tables.
+- The SQLite database can be easily imported by other tools (e.g. PowerBI), which 
+  can leverage the relational structure to easily navigate the model data.
+
+
+.. rubric:: Input data file(s)
+
+After the SQLite database is created, CVXlab exports the **exogenous data tables**
+only to *Excel/CSV* input files so that the user can fill the numerical values 
+outside the database. Input data file(s) are stored in the ``<model_dir_name>/input_data`` 
+directory by default.
+
+The generated files mirror the normalized layout of the exogenous tables in SQLite:
+each row corresponds to one valid combination of set coordinates, and the
+``values`` column is left blank for user input, as shown in the generalized example 
+below.
+
+
+.. list-table:: Example of exogenous Data Table layout
+   :header-rows: 1
+   :widths: 10 35 35 20
+
+   * - id
+     - <set_name_1>_Name
+     - <set_name_#>_Name
+     - values
+   * - <int>
+     - <str>
+     - <str>
+     - <int | float>
+   * - ...
+     - ...
+     - ...
+     - ...
+
+The practical meaning of these fields, and guidance on which columns should or
+should not be edited by the user, are provided in
+:ref:`Fill exogenous model data <fill-exogenous-data>`.
+
+The two settings controlling the export layout are:
+
+- ``multiple_input_files``: selects whether exogenous data tables are exported to
+  one file or to one file per table.
+- ``input_data_files_type``: selects the file format of the exported input data.
+
+The supported combinations are summarized below:
+
+.. list-table:: Input data export behavior
+   :header-rows: 1
+   :widths: 20 20 60
+
+   * - ``multiple_input_files``
+     - ``input_data_files_type``
+     - Output
+   * - ``False``
+     - ``"xlsx"``
+     - One Excel workbook named ``input_data.xlsx``, with one sheet per
+       exogenous data table.
+   * - ``True``
+     - ``"xlsx"``
+     - One Excel file per exogenous data table. Each file name (and its inner tab 
+       name) are set as the Data Table name.
+   * - ``True``
+     - ``"csv"``
+     - One CSV file per exogenous data table, named as the Data Table name.
+   * - ``False``
+     - ``"csv"``
+     - Single CSV export is not available. Error is returned.
+
+
 

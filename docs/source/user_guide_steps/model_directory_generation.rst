@@ -43,22 +43,33 @@ template files. See the example below.
     )
 
 
-Parameter descriptions
+Parameters description
 ----------------------
 
-All arguments are optional and have sensible defaults. You can customize the 
-directory creation as follows:
+.. list-table::
+   :header-rows: 1
+   :widths: 25 55 20
 
-- ``model_dir_name``: Name of the model directory to create. Defaults to *model*.
-- ``main_dir_path``: Path to the parent directory where the model directory will 
-  be created. Defaults to the current working directory if not specified.
-- ``settings_file_type``: Format of the setup files, either *yml* or *xlsx*. 
-  Defaults to *yml*.
-- ``include_user_defined_templates``: If *True*, includes template files for 
-  user-defined symbolic operators and constants in the model directory. 
-  Defaults to *False*.
-- ``force_overwrite``: If *True*, overwrites the directory if it already exists 
-  without confirmation. Defaults to *False*.
+   * - Parameter
+     - Description
+     - Default
+   * - ``model_dir_name``
+     - Name of the model directory to create.
+     - ``"model"``
+   * - ``main_dir_path``
+     - Parent directory where the model directory will be created.
+     - Current working directory
+   * - ``settings_file_type``
+     - Format of the setup files, either ``"yml"`` or ``"xlsx"``.
+     - ``"yml"``
+   * - ``include_user_defined_templates``
+     - If ``True``, includes template files for user-defined symbolic operators
+       and constants in the model directory.
+     - ``False``
+   * - ``force_overwrite``
+     - If ``True``, overwrites the directory if it already exists without
+       confirmation.
+     - ``False``
 
 
 Workflow

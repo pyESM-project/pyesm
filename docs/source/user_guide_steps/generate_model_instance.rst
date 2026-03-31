@@ -49,38 +49,47 @@ loading, problem generation, and optimization.
     )
 
 
-Parameter descriptions
+Parameters description
 ----------------------
 
-In principle, the constructor has designed to be used without specifying arguments,
-relying on default values. However, the following parameters can be passed to customize 
-the initialization process:
+.. list-table::
+   :header-rows: 1
+   :widths: 24 56 20
 
-- ``model_dir_name``: Name of the model directory, where model files are stored. If
-  not provided, it defaults to '*model*'.
-
-- ``main_dir_path``: Path to the parent directory where the model directory is located.
-  If not provided, it defaults to the *current working directory*.
-
-- ``model_settings_from``: Format of the model settings file, either *yml* or *xlsx*.
-  'xlsx' format assumed as default.
-
-- ``detailed_validation``: Whether to return detailed error messages during validation.
-  If *False*, only a summary of validation errors is returned. If *True*, errors in the 
-  definition of model sets/data tables/variables/expressions are detailed. 
-
-- ``use_existing_data``: Whether to rely on existing data structures (*True*) or generate 
-  new database and input files (*False*).
-
-- ``log_level``: Logging level (*debug*, *info*, *warning*, *error*).
-
-- ``log_format``: Logging format (*standard*, *minimal*, *detailed*).
-
-- ``multiple_input_files``: Whether to use multiple or single input file(s) for data.
-
-- ``input_data_files_type``: File type for input data files (*xlsx* or *csv*). In 
-  case of single input file, only *xlsx* format is allowed (each data table input 
-  is stored in a separate sheet of the same file).
+   * - Parameter
+     - Description
+     - Default
+   * - ``model_dir_name``
+     - Name of the model directory where model files are stored.
+     - ``"model"``
+   * - ``main_dir_path``
+     - Parent directory where the model directory is located.
+     - Current working directory
+   * - ``model_settings_from``
+     - Format of the model settings file, either ``"yml"`` or ``"xlsx"``.
+     - ``"xlsx"``
+   * - ``detailed_validation``
+     - If ``True``, returns detailed validation errors for model sets, data
+       tables, variables, and expressions.
+     - ``False``
+   * - ``use_existing_data``
+     - If ``True``, relies on existing data structures instead of generating new
+       database and input files.
+     - ``False``
+   * - ``log_level``
+     - Logging level for the model instance.
+     - ``"info"``
+   * - ``log_format``
+     - Logging format used by the model logger.
+     - ``"standard"``
+   * - ``multiple_input_files``
+     - If ``True``, exports one input data file per exogenous data table;
+       otherwise, uses a single workbook with multiple sheets.
+     - ``False``
+   * - ``input_data_files_type``
+     - File type for input data files. If ``multiple_input_files=False``, only
+       ``"xlsx"`` is allowed.
+     - ``"xlsx"``
 
 
 Class constructor workflow
