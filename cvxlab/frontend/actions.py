@@ -71,7 +71,7 @@ def gen_directory(cfg: session.SessionConfig, ms: session.ModelState) -> None:
     cl.create_model_dir(
         main_dir_path=cfg.main_dir_path,
         model_dir_name=cfg.model_dir_name,
-        settings_file_type=cfg.template_file_type,
+        settings_file_type=cfg.model_settings_from,
     )
 
 

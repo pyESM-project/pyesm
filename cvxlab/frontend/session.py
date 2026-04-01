@@ -28,7 +28,6 @@ class SessionConfig:
     model_kwargs: dict[str, Any] = field(default_factory=dict)
     solver_kwargs: dict[str, Any] = field(default_factory=dict)
     model_structure_file: str | None = None
-    template_file_type: str = 'xlsx'
 
     @property
     def model_dir_name(self) -> str:
@@ -37,6 +36,10 @@ class SessionConfig:
     @property
     def main_dir_path(self) -> str:
         return self.model_kwargs.get('main_dir_path', os.getcwd())
+
+    @property
+    def model_settings_from(self) -> cvxlab.Defaults.LiteralTypes.SettingsSource:
+        return self.model_kwargs.get('model_settings_from', 'yml')
 
 
 class ModelState:
