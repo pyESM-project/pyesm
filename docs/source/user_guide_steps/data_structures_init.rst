@@ -80,21 +80,25 @@ This step creates two connected outputs in the model directory:
 
 .. rubric:: SQLite database structure
 
-The generated **SQLite database** contains:
+The generated **SQLite database** contains the following tables:
 
-- *Set tables*, one for each model set, populated with the coordinates provided in
-  ``sets.xlsx``, and named as ``_set_<SET_NAME>``, where ``<SET_NAME>`` is the 
-  capitalized name of the set, as defined in the model settings. This naming 
-  convention allows to easily identify the Set tables in the SQLite database 
-  (refer to label naming conventions in :class:`cvxlab.defaults.Defaults.Labels`).
-- *Data tables*, one for each model Data Table <data_table_#>, generated with 
-  columns derived from the related sets, plus ``id`` and ``values`` columns. 
+- A table is defined for each model *Set*, and populated with the coordinates 
+  provided in ``sets.xlsx``. These tables are named as ``_set_<SET_NAME>``, where 
+  ``<SET_NAME>`` is the capitalized name of the set, as defined in the model 
+  settings. This naming convention allows to easily identify the Set tables in 
+  the SQLite database (refer to label naming conventions in 
+  :class:`cvxlab.defaults.Defaults.Labels`).
+- A table is defined for each model *Data Table*, named as ``<data_table_#>``, 
+  and generated with columns derived from the related sets, plus ``id`` and 
+  ``values`` columns. Notably, **SQLite tables are generated only for exogenous 
+  and endogenous Data Tables:** constants are only stored as attributes of the 
+  Data Table objects in Python, since they are not supposed to be inspected or 
+  displayed by the user.
 
-The key point is that Data Tables are relational tables linked to the Set tables
-through *foreign-key constraints*. Each coordinate column in a data table points
-to the corresponding set table, so only valid set coordinates can be stored.
-
-The simplified schema below illustrates the idea:
+The key point is that tables generated for model Data Tables are relational tables 
+linked to the Set tables through *foreign-key constraints*. Each coordinate column 
+in a data table points to the corresponding set table, so only valid set coordinates 
+can be stored. The simplified schema below illustrates the idea:
 
 .. mermaid::
 
