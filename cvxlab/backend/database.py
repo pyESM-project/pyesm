@@ -644,7 +644,7 @@ class Database:
             file_name = Defaults.ConfigFiles.INPUT_DATA_FILE_NAME
 
             data_dict = self.files.excel_to_dataframes_dict(
-                excel_file_dir_path=Defaults.ConfigFiles.INPUT_DATA_DIR,
+                excel_file_dir_path=self.paths['input_data_dir'],
                 excel_file_name=f"{file_name}.{file_extension}",
             )
 
@@ -686,7 +686,7 @@ class Database:
 
                         data_dict[table_key] = self.files.file_to_dataframe(
                             file_name=file_name,
-                            file_dir_path=Defaults.ConfigFiles.INPUT_DATA_DIR,
+                            file_dir_path=self.paths['input_data_dir'],
                         )
 
                         dataframe = util.normalize_dataframe(

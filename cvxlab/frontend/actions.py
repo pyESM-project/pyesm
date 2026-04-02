@@ -141,6 +141,7 @@ def init_model(cfg: session.SessionConfig, ms: session.ModelState) -> None:
 @menu_action("Initialize and solve numerical problems.")
 def run_model(cfg: session.SessionConfig, ms: session.ModelState) -> None:
     model = ms.ensure_model(cfg, use_existing_data=True)
+    model.refresh_database_and_initialize_problem()
     model.run_model(**cfg.solver_kwargs)
 
 
