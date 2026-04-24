@@ -34,6 +34,9 @@ class Variable:
     - blank_fill (Optional[float]): Value to fill in case of missing data. Only 
         defined for exogenous variables, reducing effort in inserting numerical 
         data by the user.
+    - is_uncertain (Optional[bool]): Placeholder uncertainty flag for future use.
+    - uncertainty_measure (Optional[bool]): Placeholder uncertainty-measure
+        flag for future use.
     - related_table (Optional[str]): The database table that collect the subset
         numerical data associated to the variable.
     - var_info (Optional[Dict[str, Any]]): Raw information about the variable
@@ -79,6 +82,8 @@ class Variable:
         self.cols: Dict[str, Any] = {}
         self.value: Optional[str] = None
         self.blank_fill: Optional[float] = None
+        self.is_uncertain: Optional[bool] = False
+        self.uncertainty_measure: Optional[bool] = False
         self.related_table: Optional[str] = None
         self.var_info: Optional[Dict[str, Any]] = None
         self.nonneg: Optional[bool] = False

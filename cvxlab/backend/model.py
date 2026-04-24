@@ -52,6 +52,7 @@ class Model:
             self,
             model_dir_name: str = 'model',
             main_dir_path: Optional[str] = None,
+            Uncertainty: bool = False,
             model_settings_from: Defaults.LiteralTypes.SettingsSource = 'xlsx',
             detailed_validation: bool = False,
             use_existing_data: bool = False,
@@ -74,6 +75,9 @@ class Model:
             model_dir_name (str): The name of the model directory.
             main_dir_path (str): The main directory path where the model
                 directory is located. If None, the current working directory is used.
+            Uncertainty (bool, optional): If True, enables uncertainty-related
+                template settings.
+                Defaults to False.
             model_settings_from (Defaults.LiteralTypes.SettingsSource, optional): 
                 The format of the model settings file. Can be either 'yml' or 'xlsx'. 
                 Defaults to 'xlsx'.
@@ -118,6 +122,7 @@ class Model:
             self.settings = DotDict({
                 'log_level': log_level,
                 'model_name': model_dir_name,
+                'Uncertainty': Uncertainty,
                 'model_settings_from': model_settings_from,
                 'use_existing_data': use_existing_data,
                 'multiple_input_files': multiple_input_files,

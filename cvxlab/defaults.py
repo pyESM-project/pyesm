@@ -327,6 +327,29 @@ class Defaults:
             }
         )
 
+        DATA_TABLE_STRUCTURE_UNCERTAINTY = (
+            'table_key:',
+            {
+                METADATA: (OPTIONAL, str),
+                'type': (str, dict),
+                'integer': (OPTIONAL, bool),
+                'coordinates': (str, list),
+                'variables_info': {
+                    ANY: {
+                        'value': (OPTIONAL, str),
+                        'blank_fill': (OPTIONAL, Union[int, float]),
+                        'nonneg': (OPTIONAL, bool),
+                        'is_uncertain': (OPTIONAL, bool),
+                        'uncertainty_measure': (OPTIONAL, bool),
+                        ANY: (OPTIONAL, {
+                            'dim': (OPTIONAL, str),
+                            'filters': (OPTIONAL, dict),
+                        })
+                    }
+                }
+            }
+        )
+
         PROBLEM_STRUCTURE = (
             'problem_key: # optional',
             {
@@ -352,6 +375,30 @@ class Defaults:
                 *DATA_TABLE_STRUCTURE[1].keys(),
                 'value',
                 'blank_fill',
+                'set_keys ...'
+            ],
+            'problem': [
+                'problem_key',
+                *PROBLEM_STRUCTURE[1].keys()
+            ],
+        }
+
+        UNCERTAINTY_VARIABLE_TEMPLATE_COLUMNS = [
+            'is_uncertain',
+            'uncertainty_measure',
+        ]
+
+        XLSX_TEMPLATE_COLUMNS_UNCERTAINTY = {
+            'structure_sets': [
+                'set_key',
+                *SET_STRUCTURE[1].keys()
+            ],
+            'structure_variables': [
+                'table_key',
+                *DATA_TABLE_STRUCTURE_UNCERTAINTY[1].keys(),
+                'value',
+                'blank_fill',
+                *UNCERTAINTY_VARIABLE_TEMPLATE_COLUMNS,
                 'set_keys ...'
             ],
             'problem': [
