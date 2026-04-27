@@ -110,6 +110,8 @@ class Defaults:
         - VALUE_KEY: key related to the type for variable of type constants.
         - BLANK_FILL_KEY: key related to the value used to fill blank.
         - NONNEG_KEY: key related to the non-negativity sign of endogenous variables.
+        - IS_UNCERTAIN_KEY: key related to the uncertainty flag of variables.
+        - UNCERTAINTY_MEASURE_KEY: key related to the uncertainty measure metadata.
 
         Dataframe columns default labels:
 
@@ -149,6 +151,8 @@ class Defaults:
         NONNEG_KEY = 'nonneg'
         IS_UNCERTAIN_KEY = 'is_uncertain'
         UNCERTAINTY_MEASURE_KEY = 'uncertainty_measure'
+        LOWER_BOUND_KEY = 'lower_bound'
+        UPPER_BOUND_KEY = 'upper_bound'
 
         SUB_PROBLEM_KEY = 'sub_problem_key'
         FILTER_DICT_KEY = 'filter'
@@ -160,6 +164,9 @@ class Defaults:
 
         GENERIC_FIELD_TYPE = 'TEXT'
         VALUES_FIELD = {'values': ['values', 'REAL']}
+        IS_UNCERTAIN_FIELD = {'is_uncertain': ['is_uncertain', 'TEXT']}
+        LOWER_BOUND_FIELD = {'lower_bound': ['lower_bound', 'REAL']}
+        UPPER_BOUND_FIELD = {'upper_bound': ['upper_bound', 'REAL']}
         ID_FIELD = {'id': ['id', 'INTEGER PRIMARY KEY']}
 
         SET_TABLE_NAME_PREFIX = '_set_'

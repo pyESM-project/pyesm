@@ -381,6 +381,9 @@ class Database:
         Finally, it adds an ID column to the DataFrame and loads the dataframe 
         into the corresponding data table in the SQLite database. It finally adds
         a 'values' column to the data table to store numerical values.
+        When uncertainty support is enabled and the table contains uncertain
+        variables, it also pre-fills an 'is_uncertain' column and adds blank
+        'lower_bound' and 'upper_bound' columns.
 
         Raises:
             OperationalError: Is raised if the procedure is not filtering
@@ -392,6 +395,7 @@ class Database:
         )
 
         allowed_var_types = Defaults.SymbolicDefinitions.VARIABLE_TYPES
+        uncertainty_enabled = self.settings.get('Uncertainty', False)
 
         with db_handler(self.sqltools):
             for table_key, table in self.index.data.items():
@@ -452,6 +456,97 @@ class Database:
                     column_position=0,
                 )
 
+                table_variables = [
+                    variable for variable in self.index.variables.values()
+                    if variable.related_table == table_key
+                ]
+                uncertain_variables = [
+                    variable for variable in table_variables
+                    if uncertainty_enabled and variable.is_uncertain
+                ]
+
+                if uncertain_variables:
+                    is_uncertain_header = Defaults.Labels.IS_UNCERTAIN_FIELD[
+                        Defaults.Labels.IS_UNCERTAIN_KEY
+                    ][0]
+
+                    unpivoted_coords_df = util.add_column_to_dataframe(
+                        dataframe=unpivoted_coords_df,
+                        column_header=is_uncertain_header,
+                        column_values=None,
+                        column_position=len(table.coordinates_headers) + 1,
+                    )
+
+                    for variable in uncertain_variables:
+                        coords_mask = pd.Series(
+                            True,
+                            index=unpivoted_coords_df.index,
+                        )
+
+                        for header, values in variable.all_coordinates_w_headers.items():
+                            coords_mask &= unpivoted_coords_df[header].isin(values)
+
+                        unpivoted_coords_df.loc[coords_mask, is_uncertain_header] = "TRUE"
+
+                unpivoted_coords_df = util.add_column_to_dataframe(
+                    dataframe=unpivoted_coords_df,
+                    column_header=Defaults.Labels.VALUES_FIELD['values'][0],
+                    column_values=None,
+                )
+
+                if uncertain_variables:
+                    unpivoted_coords_df = util.add_column_to_dataframe(
+                        dataframe=unpivoted_coords_df,
+                        column_header=Defaults.Labels.LOWER_BOUND_FIELD[
+                            Defaults.Labels.LOWER_BOUND_KEY
+                        ][0],
+                        column_values=None,
+                    )
+                    unpivoted_coords_df = util.add_column_to_dataframe(
+                        dataframe=unpivoted_coords_df,
+                        column_header=Defaults.Labels.UPPER_BOUND_FIELD[
+                            Defaults.Labels.UPPER_BOUND_KEY
+                        ][0],
+                        column_values=None,
+                    )
+
+                if uncertain_variables:
+                    self.sqltools.add_table_column(
+                        table_name=table_key,
+                        column_name=Defaults.Labels.IS_UNCERTAIN_FIELD[
+                            Defaults.Labels.IS_UNCERTAIN_KEY
+                        ][0],
+                        column_type=Defaults.Labels.IS_UNCERTAIN_FIELD[
+                            Defaults.Labels.IS_UNCERTAIN_KEY
+                        ][1],
+                    )
+
+                self.sqltools.add_table_column(
+                    table_name=table_key,
+                    column_name=Defaults.Labels.VALUES_FIELD['values'][0],
+                    column_type=Defaults.Labels.VALUES_FIELD['values'][1],
+                )
+
+                if uncertain_variables:
+                    self.sqltools.add_table_column(
+                        table_name=table_key,
+                        column_name=Defaults.Labels.LOWER_BOUND_FIELD[
+                            Defaults.Labels.LOWER_BOUND_KEY
+                        ][0],
+                        column_type=Defaults.Labels.LOWER_BOUND_FIELD[
+                            Defaults.Labels.LOWER_BOUND_KEY
+                        ][1],
+                    )
+                    self.sqltools.add_table_column(
+                        table_name=table_key,
+                        column_name=Defaults.Labels.UPPER_BOUND_FIELD[
+                            Defaults.Labels.UPPER_BOUND_KEY
+                        ][0],
+                        column_type=Defaults.Labels.UPPER_BOUND_FIELD[
+                            Defaults.Labels.UPPER_BOUND_KEY
+                        ][1],
+                    )
+
                 unpivoted_coords_df = util.normalize_dataframe(
                     df=unpivoted_coords_df,
                     replace_nans=True,
@@ -461,12 +556,6 @@ class Database:
                 self.sqltools.dataframe_to_table(
                     table_name=table_key,
                     dataframe=unpivoted_coords_df,
-                )
-
-                self.sqltools.add_table_column(
-                    table_name=table_key,
-                    column_name=Defaults.Labels.VALUES_FIELD['values'][0],
-                    column_type=Defaults.Labels.VALUES_FIELD['values'][1],
                 )
 
     def clear_database_tables(
