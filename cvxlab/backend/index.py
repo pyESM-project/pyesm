@@ -281,7 +281,12 @@ class Index:
 
         structures_mapping = {
             config.SETUP_INFO[0]: (SetTable, structures.SET_STRUCTURE[1]),
-            config.SETUP_INFO[1]: (DataTable, structures.DATA_TABLE_STRUCTURE[1]),
+            config.SETUP_INFO[1]: (
+                DataTable,
+                structures.DATA_TABLE_STRUCTURE_UNCERTAINTY[1]
+                if self.settings.get('Uncertainty', False)
+                else structures.DATA_TABLE_STRUCTURE[1],
+            ),
         }
 
         if data_structure_key in structures_mapping:
@@ -527,6 +532,8 @@ class Index:
         value_key = Defaults.Labels.VALUE_KEY
         blank_fill_key = Defaults.Labels.BLANK_FILL_KEY
         nonneg_key = Defaults.Labels.NONNEG_KEY
+        is_uncertain_key = Defaults.Labels.IS_UNCERTAIN_KEY
+        uncertainty_measure_key = Defaults.Labels.UNCERTAINTY_MEASURE_KEY
 
         problems = {}
 
@@ -615,6 +622,13 @@ class Index:
                             problems[f"{path}.{nonneg_key}"] = \
                                 "Exogenous variables cannot be defined as " \
                                 "non-negative. Check variables settings."
+
+                    # uncertainty-related fields are allowed variable properties
+                    elif property_key in {
+                        is_uncertain_key,
+                        uncertainty_measure_key,
+                    }:
+                        continue
 
                     # other properties must be allowed coordinates
                     elif property_key not in data_table.coordinates:

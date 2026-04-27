@@ -1,0 +1,55 @@
+# variables of the model
+
+x:
+    description: products supply
+    type: 
+        1: endogenous
+        2: exogenous
+    coordinates: [resources, products] 
+    variables_info:
+        x: 
+            products: 
+                dim: cols 
+
+a:
+    description: energy use
+    type: 
+        1: exogenous
+        2: endogenous
+    coordinates: [resources, products] 
+    variables_info:
+        a: 
+            products: 
+                dim: cols 
+
+products_data:
+    description: product data
+    type: exogenous
+    coordinates: [products, product_data] 
+    variables_info:
+        c: 
+            product_data:
+                dim: rows
+                filters: {category: profit}
+            products: 
+                dim: cols 
+        a_0: 
+            product_data:
+                dim: rows
+                filters: {category: energy_use_0}
+            products: 
+                dim: cols 
+        lr:
+            product_data:
+                dim: rows
+                filters: {category: learning_rate}
+            products: 
+                dim: cols 
+
+b:  
+    description: energy availability
+    type: exogenous
+    coordinates: resources 
+    variables_info:
+        b: 
+            

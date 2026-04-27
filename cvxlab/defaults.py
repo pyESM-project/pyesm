@@ -147,6 +147,8 @@ class Defaults:
         VALUE_KEY = 'value'
         BLANK_FILL_KEY = 'blank_fill'
         NONNEG_KEY = 'nonneg'
+        IS_UNCERTAIN_KEY = 'is_uncertain'
+        UNCERTAINTY_MEASURE_KEY = 'uncertainty_measure'
 
         SUB_PROBLEM_KEY = 'sub_problem_key'
         FILTER_DICT_KEY = 'filter'
@@ -340,7 +342,7 @@ class Defaults:
                         'blank_fill': (OPTIONAL, Union[int, float]),
                         'nonneg': (OPTIONAL, bool),
                         'is_uncertain': (OPTIONAL, bool),
-                        'uncertainty_measure': (OPTIONAL, bool),
+                        'uncertainty_measure': (OPTIONAL, str, bool),
                         ANY: (OPTIONAL, {
                             'dim': (OPTIONAL, str),
                             'filters': (OPTIONAL, dict),
