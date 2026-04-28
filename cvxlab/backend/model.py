@@ -989,3 +989,8 @@ class Model:
         """Return a string representation of the Model instance."""
         class_name = type(self).__name__
         return f'{class_name}'
+
+
+    def create_uncertain_problem(self) -> tuple[dict, pd.DataFrame]:
+        """Collect uncertain parameters from the database and build SALib problem data."""
+        return self.core.uncertainty.create_uncertain_problem()

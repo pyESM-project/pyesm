@@ -23,7 +23,7 @@ from cvxlab.defaults import Defaults
 from cvxlab.support import util
 from cvxlab.support.file_manager import FileManager
 from cvxlab.support.sql_manager import SQLManager, db_handler
-
+from cvxlab.backend.uncertainty import Uncertainty
 
 class Core:
     """Core class defines the interactions among main components of the package.
@@ -103,6 +103,12 @@ class Core:
             paths=self.paths,
             settings=self.settings,
             index=self.index
+        )
+
+        self.uncertainty = Uncertainty(
+        logger=self.logger,
+        sqltools=self.sqltools,
+        index=self.index,
         )
 
     def initialize_problems_variables(self) -> None:
