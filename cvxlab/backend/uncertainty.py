@@ -3,11 +3,20 @@
 from typing import Any, Dict, List, Tuple
 
 import pandas as pd
+from typing import Any, Callable
+import inspect
+from SALib.sample import sobol, latin, morris
 from cvxlab.defaults import Defaults
 from cvxlab.support.sql_manager import db_handler
 
 class Uncertainty:
     """Collect uncertainty metadata from exogenous data tables."""
+
+    SAMPLERS: dict[str, Callable] = {
+        "sobol": sobol.sample,
+        "latin": latin.sample,
+        "morris": morris.sample
+    }
 
     def __init__(self, logger, sqltools, index):
         self.logger = logger
@@ -73,7 +82,7 @@ class Uncertainty:
 
                     records.append(
                         {
-                            "parameter_name": f"{table_name}::{row_id}",
+                            "parameter_name": f"{table_name}::{var_keys}::{row_id}",
                             "table_name": table_name,
                             "id": row_id,
                             "variable_name": var_keys,
@@ -140,3 +149,44 @@ class Uncertainty:
             )
         
         return lower_val, upper_val
+
+
+    def sample_data(
+            self,
+            method: str,
+            **kwargs: Any,
+        ) -> pd.DataFrame:
+            method = method.lower()
+
+            if method not in self.SAMPLERS:
+                raise ValueError(
+                    f"Sampling method '{method}' not supported. "
+                    f"Available methods: {list(self.SAMPLERS.keys())}"
+                )
+            mapping_df = self.collect_uncertain_parameters()
+            problem = self.create_uncertain_problem(mapping_df=mapping_df)
+            sampler = self.SAMPLERS[method]
+
+            self._validate_sampler_kwargs(sampler, kwargs)
+
+            samples = sampler(problem, **kwargs)
+
+            samples_df = pd.DataFrame(samples, columns=problem["names"])
+
+            return samples_df
+
+
+    def _validate_sampler_kwargs(
+        self,
+        sampler: Callable,
+        kwargs: dict[str, Any],
+    ) -> None:
+        signature = inspect.signature(sampler)
+        allowed_args = set(signature.parameters.keys()) - {"problem"}
+
+        unexpected = set(kwargs.keys()) - allowed_args
+        if unexpected:
+            raise TypeError(
+                f"Unexpected sampling arguments: {unexpected}. "
+                f"Allowed arguments: {allowed_args}"
+            )

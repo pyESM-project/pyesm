@@ -991,6 +991,12 @@ class Model:
         return f'{class_name}'
 
 
-    def create_uncertain_problem(self) -> tuple[dict, pd.DataFrame]:
-        """Collect uncertain parameters from the database and build SALib problem data."""
-        return self.core.uncertainty.create_uncertain_problem()
+    def sample_data(
+        self,
+        method: str,
+        **kwargs: Any,
+    ) -> pd.DataFrame:
+        return self.core.uncertainty.sample_data(
+            method=method,
+            **kwargs,
+        )
