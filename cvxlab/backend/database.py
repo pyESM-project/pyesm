@@ -799,7 +799,7 @@ class Database:
                             dataframe=dataframe,
                             force_overwrite=force_overwrite,
                             action='update',
-                            non_coordinate_cols=non_coordinate_cols,
+                            other_coordinate_cols=other_coordinate_cols,
                         )
 
     def fill_nan_values_in_database(
