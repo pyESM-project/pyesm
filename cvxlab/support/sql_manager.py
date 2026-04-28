@@ -684,6 +684,7 @@ class SQLManager:
         table_name: str,
         dataframe: pd.DataFrame,
         action: Defaults.LiteralTypes.TableHandling = 'overwrite',
+        other_coordinate_cols: Optional[List[str]] = None,
         force_overwrite: bool = False,
         suppress_warnings: bool = False,
         batch_size: Optional[int] = None,
@@ -706,6 +707,10 @@ class SQLManager:
             action (Defaults.LiteralTypes.TableHandling, optional): The action to
                 perform: 'update' to modify existing entries, 'overwrite' to
                 replace all entries. Defaults to 'overwrite'.
+            other_coordinate_cols (Optional[List[str]], optional): Columns to
+                exclude from structural coordinate matching when
+                `action='update' other than the ID and values
+                fields.
             force_overwrite (bool, optional): If True, existing table entries 
                 will be overwritten without asking user permission. Defaults to 
                 False.
@@ -807,6 +812,11 @@ class SQLManager:
         # case where all or a part of data entries need to be replaced
         elif table_existing_entries > 0 or action == 'update':
 
+            non_coordinate_cols = [id_field, values_field]
+
+            if other_coordinate_cols:
+                non_coordinate_cols.extend(other_coordinate_cols)
+
             # case of passed dataframe has more entry then existing table
             if len(dataframe) > len(df_existing):
                 msg = \
@@ -817,9 +827,14 @@ class SQLManager:
                 self.logger.error(msg)
                 raise exc.OperationalError(msg)
 
+            non_coordinate_cols = [
+                col for col in non_coordinate_cols
+                if col in df_existing.columns
+            ]
+
             coordinates_cols = [
-                column for column in df_existing.columns
-                if column not in [id_field, values_field]
+                col for col in df_existing.columns
+                if col not in non_coordinate_cols
             ]
 
             # merge dataframes to get a resulting dataframe with updated values

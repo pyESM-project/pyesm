@@ -711,6 +711,15 @@ class Database:
         file_extension = self.settings['input_data_files_type']
         multiple_data_file = self.settings['multiple_input_files']
 
+        other_coordinate_cols = None
+
+        if self.settings.get('Uncertainty', False):
+            lb_field = Defaults.Labels.LOWER_BOUND_FIELD['lower_bound'][0]
+            ub_field = Defaults.Labels.UPPER_BOUND_FIELD['upper_bound'][0]
+            is_uncertain_field = Defaults.Labels.IS_UNCERTAIN_FIELD['is_uncertain'][0]
+
+            other_coordinate_cols=[lb_field, ub_field, is_uncertain_field]
+
         if table_key_list == []:
             table_key_list = self.index.data.keys()
         else:
@@ -753,6 +762,7 @@ class Database:
                         dataframe=dataframe,
                         force_overwrite=force_overwrite,
                         action='update',
+                        other_coordinate_cols=other_coordinate_cols,
                     )
 
         # case 2: load from multiple files
@@ -789,6 +799,7 @@ class Database:
                             dataframe=dataframe,
                             force_overwrite=force_overwrite,
                             action='update',
+                            non_coordinate_cols=non_coordinate_cols,
                         )
 
     def fill_nan_values_in_database(
