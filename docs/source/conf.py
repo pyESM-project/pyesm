@@ -73,3 +73,9 @@ html_theme_options = {
 }
 html_static_path = ['_static']
 html_css_files = ['custom.css']
+myst_enable_extensions = [
+    "colon_fence",
+]
+exclude_patterns = [
+    "tutorials/**/materials/**",
+]

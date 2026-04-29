@@ -12,22 +12,23 @@ Notebooks, Excel concept files, input-data files and SQLite databases) can be
 downloaded from the table below, so that you can run them locally on your machine.
 
 
-.. list-table:: CVXlab tutorials
+.. list-table::
     :header-rows: 1
-    :widths: 30 68
+    :widths: 30 60 10
 
     * - Tutorial
       - Description
-    * - :ref:`Simplified energy system <tutorial-simple-energy-system>`
-      - Complete workflow for defining and running a least-cost energy planning 
-        model, aligned with the :ref:`User Guide <model_generation_from_scratch>`
-        steps. *Ideal for newbies*.
+      - Material
     * - :doc:`Production planning <tutorials/production_planning/production_planning>`
-      - A simple optimization problem related to production optimization under 
-        resource constraints. Available as a Jupyter Notebook, which can be run 
-        interactively.
-        Full tutorial materials here: 
-        :download:`Production Planning <tutorials/production_planning/production_planning.zip>`
+      - Complete workflow for definining and solving a simple production planning 
+        under resource constraints. Step by step guide aligned with :ref:`User 
+        Guide <model_generation_from_scratch>`. *Ideal for newbies*.
+      - :download:`link <tutorials/production_planning/production_planning.zip>`
+    * - :doc:`Production planning (non-linear) <tutorials/production_planning_nonlinear/production_planning_nonlinear>`
+      - Complete workflow for definining and solving a non-linear production planning 
+        under resource constraints. Similar to previous production planning tutorial, 
+        but handling non-linearities. 
+      - :download:`link <tutorials/production_planning_nonlinear/production_planning_nonlinear.zip>`
 
 
 .. toctree::
@@ -35,5 +36,5 @@ downloaded from the table below, so that you can run them locally on your machin
    :hidden:
    :caption: Tutorials index
 
-   tutorials/simple_energy_model/simple_energy_model
-   tutorials/production_planning/production_planning.ipynb
+   tutorials/production_planning/production_planning
+   tutorials/production_planning_nonlinear/production_planning_nonlinear
