@@ -23,7 +23,28 @@ from cvxlab.log_exc.logger import Logger
 from cvxlab.support.dotdict import DotDict
 from cvxlab.support.file_manager import FileManager
 from cvxlab.support import util
+from dataclasses import dataclass, field
 
+@dataclass
+class UncertaintyAnalysisConfig:
+    """Container for user-defined uncertainty analysis configuration.
+
+    This dataclass stores the sampling configuration specified by the user
+    through the `Model.UncertaintyAnalysis()` method.b The stored configuration is
+    used by `Model.run_uncertainty_analysis()` to generate samples and execute iterative model runs.
+
+    Attributes:
+        method (str): Sampling method name (e.g. 'lhs', 'sobol', 'morris').
+        method_kwargs (dict[str, Any]): Keyword arguments required by the
+            selected sampling method (e.g. N, seed, num_levels).
+        save_samples (bool): Whether generated samples should be saved to file.
+        file_format (str): Output file format for saving samples
+            (e.g. 'xlsx', 'csv', 'parquet').
+    """
+    method: str
+    method_kwargs: dict[str, Any] = field(default_factory=dict)
+    save_samples: bool = False
+    file_format: str = "xlsx"
 
 class Model:
     """Central class for generating and handling a CVXLab models.
@@ -148,6 +169,8 @@ class Model:
                 paths=self.paths,
             )
 
+            self.uncertainty_analysis: UncertaintyAnalysisConfig | None = None
+
             if self.settings['use_existing_data']:
                 self._load_model_coordinates()
                 self._initialize_problems()
@@ -193,6 +216,10 @@ class Model:
             return False
         else:
             return True
+        
+    @property
+    def is_uncertainty_enabled(self) -> bool:
+        return bool(self.settings.get("Uncertainty", False))
 
     def _check_model_dir(self) -> None:
         """Validate the existence of the model directory and required files.
@@ -991,43 +1018,121 @@ class Model:
         return f'{class_name}'
 
 
-    def sample_data(
+    def _sample_data(
         self,
         method: str,
-        save_samples: bool = False,
+        save_samples: bool = True,
         file_format: str = "xlsx",
         **kwargs: Any,
     ) -> pd.DataFrame:
-
-        samples_df = self.core.uncertainty.sample_data(
-            method=method,
-            **kwargs,
-        )
+        samples_df = self.core.uncertainty.sample_data(method=method, **kwargs)
 
         if save_samples:
-            self.save_samples(samples_df=samples_df, file_format=file_format)
+            self._save_samples(samples_df=samples_df, file_format=file_format)
 
-    
-    def save_samples(
+            self.logger.info(
+                f"Uncertainty sampling | Samples saved to input directory "
+                f"as '{file_format}' file."
+            )
+
+        return samples_df
+
+    def _save_samples(
             self,
             samples_df: pd.DataFrame,
             file_format: str = "xlsx",
     ) -> None:
-        self.core.uncertainty.save_samples(
-            samples_df=samples_df,
+        self.core.uncertainty.save_samples(samples_df=samples_df, file_format=file_format)
+    
+    def UncertaintyAnalysis(
+        self,
+        method: str,
+        save_samples: bool = True,
+        file_format: str = "xlsx",
+        **method_kwargs: Any,
+    ) -> UncertaintyAnalysisConfig:
+
+        if not self.is_uncertainty_enabled:
+            raise ValueError(
+                "Uncertainty analysis is not enabled. "
+                "Create the model with Uncertainty=True."
+            )
+        
+        if not save_samples and file_format is not None:
+            self.logger.warning(
+                "Uncertainty analysis | 'file_format' specified but "
+                "'save_samples=False'. Samples will not be saved."
+            )
+            
+        method=method.lower()
+
+        self.core.uncertainty.validate_sampling_config(
+        method=method,
+        kwargs=method_kwargs)
+
+        self.uncertainty_analysis = UncertaintyAnalysisConfig(
+            method=method,
+            method_kwargs=method_kwargs,
+            save_samples=save_samples,
             file_format=file_format,
-    )
+        )
 
-#     def run_uncertainty(
-#         self,
-#         samples_df: pd.DataFrame | None = None,
-#         **solver_kwargs: Any,
-# ) -> None:
-#     if samples_df is None:
-#         samples_df = self.samples_df
 
-#     self.core.load_and_validate_symbolic_problem()
-#     self.core.cycle_uncertainty_runs(
-#         samples_df=samples_df,
-#         solver_kwargs=solver_kwargs,
-#     )
+    def run_uncertainty_analysis(
+            self,
+            force_overwrite: bool = False,
+            integrated_problems: bool = False,
+            convergence_monitoring: bool = True,
+            solver: Optional[str] = None,
+            solver_verbose: bool = False,
+            solver_settings: Optional[dict[str, Any]] = None,
+            convergence_norm: Defaults.LiteralTypes.NormType = 'l2',
+            convergence_tables_to_check: Defaults.LiteralTypes.ConvergenceTables | List[str] = 'all_endogenous',
+            convergence_tables_to_skip: Optional[List[str]] = None,
+            relative_tolerance: Optional[float] = None,
+            maximum_iterations: Optional[int] = None,
+            keep_previous_iteration_db: bool = False,
+            **kwargs: Any,
+    ) -> None:
+
+        if not self.is_uncertainty_enabled:
+            raise ValueError(
+                "Uncertainty analysis is not enabled. "
+                "Create the model with Uncertainty=True."
+            )
+
+        if self.uncertainty_analysis is None:
+            raise ValueError(
+                "No uncertainty analysis configured. "
+                "Call model.UncertaintyAnalysis(...) before run_uncertainty_analysis()."
+            )
+
+        uncertainty_cfg = self.uncertainty_analysis
+
+        samples_df = self._sample_data(
+            method=uncertainty_cfg.method,
+            save_samples=uncertainty_cfg.save_samples,
+            file_format=uncertainty_cfg.file_format,
+            **uncertainty_cfg.method_kwargs,
+        )
+
+        self.core.load_and_validate_symbolic_problem(
+            force_overwrite=force_overwrite,
+        )
+
+        # self.core.cycle_uncertainty_runs(
+        #     samples_df=samples_df,
+        #     force_overwrite=force_overwrite,
+        #     integrated_problems=integrated_problems,
+        #     convergence_monitoring=convergence_monitoring,
+        #     solver=solver,
+        #     solver_verbose=solver_verbose,
+        #     solver_settings=solver_settings,
+        #     convergence_norm=convergence_norm,
+        #     convergence_tables_to_check=convergence_tables_to_check,
+        #     convergence_tables_to_skip=convergence_tables_to_skip,
+        #     relative_tolerance=relative_tolerance,
+        #     maximum_iterations=maximum_iterations,
+        #     keep_previous_iteration_db=keep_previous_iteration_db,
+        #     **kwargs,
+        # )

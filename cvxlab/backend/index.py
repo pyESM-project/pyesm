@@ -80,6 +80,10 @@ class Index:
         self.fetch_vars_coordinates_info()
 
     @property
+    def is_uncertainty_enabled(self) -> bool:
+        return bool(self.settings.get("Uncertainty", False))
+
+    @property
     def sets_split_problem_dict(self) -> Dict[str, str]:
         """Dictionary containing sets that define different problems.
 
@@ -284,7 +288,7 @@ class Index:
             config.SETUP_INFO[1]: (
                 DataTable,
                 structures.DATA_TABLE_STRUCTURE_UNCERTAINTY[1]
-                if self.settings.get('Uncertainty', False)
+                if self.is_uncertainty_enabled
                 else structures.DATA_TABLE_STRUCTURE[1],
             ),
         }

@@ -84,6 +84,10 @@ class Database:
         if not self.settings['use_existing_data']:
             self.create_blank_sets_xlsx_file()
 
+    @property
+    def is_uncertainty_enabled(self) -> bool:
+        return bool(self.settings.get("Uncertainty", False))
+
     def create_blank_sets_xlsx_file(self) -> None:
         """Create a blank Excel file for getting sets information.
 
@@ -395,7 +399,7 @@ class Database:
         )
 
         allowed_var_types = Defaults.SymbolicDefinitions.VARIABLE_TYPES
-        uncertainty_enabled = self.settings.get('Uncertainty', False)
+        uncertainty_enabled = self.is_uncertainty_enabled
 
         with db_handler(self.sqltools):
             for table_key, table in self.index.data.items():
@@ -713,7 +717,7 @@ class Database:
 
         other_coordinate_cols = None
 
-        if self.settings.get('Uncertainty', False):
+        if self.is_uncertainty_enabled:
             lb_field = Defaults.Labels.LOWER_BOUND_FIELD['lower_bound'][0]
             ub_field = Defaults.Labels.UPPER_BOUND_FIELD['upper_bound'][0]
             is_uncertain_field = Defaults.Labels.IS_UNCERTAIN_FIELD['is_uncertain'][0]

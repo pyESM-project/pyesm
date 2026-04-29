@@ -13,6 +13,23 @@ from cvxlab.support.sql_manager import SQLManager, db_handler
 
 class Uncertainty:
 
+    """Handle uncertainty metadata, sampling, and sample export.
+
+    This class provides the uncertainty-analysis layer of CVXLab. It identifies
+    uncertain parameters from exogenous data tables, validates their lower and
+    upper bounds, builds the sampling problem required by SALib, generates
+    sampled parameter values, and optionally exports the generated samples.
+
+    
+    ASSAKRORFPPOF AGGIUNGERE ALTRE COSE CHE POI METTO RICORDARSIIIII
+
+    Attributes:
+        sqltools (SQLManager): SQLite manager used to read model data tables.
+        index (Index): Model index containing variables, data tables, and
+            their metadata.
+        paths (Dict): Dictionary of model paths, including the model directory.
+    """
+
     SAMPLERS: dict[str, Callable] = {
         "sobol": sobol.sample,
         "latin": latin.sample,
@@ -34,6 +51,13 @@ class Uncertainty:
         self.paths = paths
 
     def collect_uncertain_parameters(self) -> pd.DataFrame:
+         
+        """Collect uncertain parameters from uncertainty-enabled exogenous tables
+
+             Returns:
+                pd.DataFrame: Mapping table containing parameter names, table names,
+                row identifiers, bounds, and coordinate labels. 
+        """
         records: List[Dict[str, Any]] = []
 
 
@@ -91,10 +115,10 @@ class Uncertainty:
 
                     records.append(
                         {
-                            "parameter_name": f"{table_name}||{var_keys}||{row_id}",
+                            "parameter_name": f"{table_name}||{var_keys[0]}||{row_id}",
                             "table_name": table_name,
                             "id": row_id,
-                            "variable_name": var_keys,
+                            "variable_name": var_keys[0],
                             "lower_bound": lower_val,
                             "upper_bound": upper_val,
                             "coordinate_label": coordinate_label,
@@ -118,12 +142,13 @@ class Uncertainty:
     
     def create_sampling_problem(
         self,
-        mapping_df: pd.DataFrame | None = None,
     ) -> Dict[str, Any]:
-        """Create the SALib problem dictionary from uncertain parameters."""
-
-        if mapping_df is None:
-            mapping_df = self.collect_uncertain_parameters()
+        
+        """Create the SALib problem dictionary from uncertain parameters.    
+        Returns:
+            Dict[str, Any]: SALib-compatible problem dictionary
+        """
+        mapping_df = self.collect_uncertain_parameters()
 
         problem = {
             "num_vars": len(mapping_df),
@@ -166,18 +191,20 @@ class Uncertainty:
         **kwargs: Any,
     ) -> pd.DataFrame:
             
-            method = method.lower()
+            """Generate sampled values for uncertain parameters.
 
-            if method not in self.SAMPLERS:
-                raise ValueError(
-                    f"Sampling method '{method}' not supported. "
-                    f"Available methods: {list(self.SAMPLERS.keys())}"
-                )
+            Args:
+                method (str): Sampling method name. Must be one of the keys in
+                    ``SAMPLERS``.
+                **kwargs: Keyword arguments passed to the selected SALib sampler.
+
+            Returns:
+                pd.DataFrame: Sample matrix with ``run_id`` as explicit column.
+            """
+        
             mapping_df = self.collect_uncertain_parameters()
-            problem = self.create_sampling_problem(mapping_df=mapping_df)
+            problem = self.create_sampling_problem()
             sampler = self.SAMPLERS[method]
-
-            self._validate_sampler_kwargs(sampler, kwargs)
 
             samples = sampler(problem, **kwargs)
 
@@ -196,6 +223,17 @@ class Uncertainty:
         signature = inspect.signature(sampler)
         allowed_args = set(signature.parameters.keys()) - {"problem"}
 
+        required_args = {
+            name
+            for name, parameter in signature.parameters.items()
+            if name != "problem"
+            and parameter.default is inspect.Parameter.empty
+            and parameter.kind in (
+                inspect.Parameter.POSITIONAL_OR_KEYWORD,
+                inspect.Parameter.KEYWORD_ONLY,
+            )
+        }
+
         unexpected = set(kwargs.keys()) - allowed_args
         if unexpected:
             raise TypeError(
@@ -203,6 +241,40 @@ class Uncertainty:
                 f"Allowed arguments: {allowed_args}"
        
             )
+        missing = required_args - set(kwargs.keys())
+        if missing:
+            raise TypeError(
+                f"Missing required sampling arguments: {missing}. "
+                f"Required arguments: {required_args}."
+            )
+        
+    def validate_sampling_config(
+            self,
+            method: str,
+            kwargs: dict[str, Any],
+    ) -> None:
+        """Validate the selected sampling method and its keyword arguments.
+
+        Args:
+            method (str): Sampling method name.
+            kwargs (dict[str, Any]): Keyword arguments to validate.
+
+        Raises:
+            ValueError: If the sampling method is not supported.
+            TypeError: If unexpected arguments are passed or required arguments are
+                missing.
+        """
+        if method not in self.SAMPLERS:
+            raise ValueError(
+                f"Sampling method '{method}' not supported. "
+                f"Available methods: {list(self.SAMPLERS.keys())}"
+            )
+
+        sampler = self.SAMPLERS[method]
+        self._validate_sampler_kwargs(
+            sampler=sampler,
+            kwargs=kwargs,
+        )
 
 
     def _prepare_samples_dataframe_for_saving(
@@ -233,6 +305,17 @@ class Uncertainty:
             samples_df: pd.DataFrame,
             file_format: str = "xlsx"
     ) -> None:
+        
+        """Export generated uncertainty samples to file.
+
+            Args:
+                samples_df (pd.DataFrame): Sample dataframe returned by ``sample_data``.
+                file_format (str): Output format. Supported values are ``xlsx``, ``csv``,
+                    and ``parquet``.
+
+            Raises:
+                ValueError: If the requested file format is not supported.
+        """
         file_format = file_format.lower()
         allowed_formats = ["xlsx", "csv", "parquet"]
         if file_format not in allowed_formats:
