@@ -994,9 +994,40 @@ class Model:
     def sample_data(
         self,
         method: str,
+        save_samples: bool = False,
+        file_format: str = "xlsx",
         **kwargs: Any,
     ) -> pd.DataFrame:
-        return self.core.uncertainty.sample_data(
+
+        samples_df = self.core.uncertainty.sample_data(
             method=method,
             **kwargs,
         )
+
+        if save_samples:
+            self.save_samples(samples_df=samples_df, file_format=file_format)
+
+    
+    def save_samples(
+            self,
+            samples_df: pd.DataFrame,
+            file_format: str = "xlsx",
+    ) -> None:
+        self.core.uncertainty.save_samples(
+            samples_df=samples_df,
+            file_format=file_format,
+    )
+
+#     def run_uncertainty(
+#         self,
+#         samples_df: pd.DataFrame | None = None,
+#         **solver_kwargs: Any,
+# ) -> None:
+#     if samples_df is None:
+#         samples_df = self.samples_df
+
+#     self.core.load_and_validate_symbolic_problem()
+#     self.core.cycle_uncertainty_runs(
+#         samples_df=samples_df,
+#         solver_kwargs=solver_kwargs,
+#     )

@@ -7,10 +7,11 @@ from typing import Any, Callable
 import inspect
 from SALib.sample import sobol, latin, morris
 from cvxlab.defaults import Defaults
-from cvxlab.support.sql_manager import db_handler
+from cvxlab.backend.index import Index
+from cvxlab.support.sql_manager import SQLManager, db_handler
+
 
 class Uncertainty:
-    """Collect uncertainty metadata from exogenous data tables."""
 
     SAMPLERS: dict[str, Callable] = {
         "sobol": sobol.sample,
@@ -18,13 +19,21 @@ class Uncertainty:
         "morris": morris.sample
     }
 
-    def __init__(self, logger, sqltools, index):
-        self.logger = logger
+    def __init__(self, 
+                 sqltools: SQLManager, 
+                 index: Index, 
+                 paths: Dict
+        ):
+         
+        """
+         SCRIVERE QUIII AAAAA RICORDATIIIIIAAAA
+        """
+
         self.sqltools = sqltools
         self.index = index
+        self.paths = paths
 
     def collect_uncertain_parameters(self) -> pd.DataFrame:
-        """Build SALib problem data and a parameter mapping dataframe."""
         records: List[Dict[str, Any]] = []
 
 
@@ -68,8 +77,8 @@ class Uncertainty:
                 for _, row in uncertain_df.iterrows():
                     row_id = row[id_col]
 
-                    coordinate_label = " | ".join(
-                        f"{column}={row[column]}"
+                    coordinate_label = "||".join(
+                        f"{column} = {row[column]}"
                         for column in coordinate_columns
                     )
 
@@ -82,7 +91,7 @@ class Uncertainty:
 
                     records.append(
                         {
-                            "parameter_name": f"{table_name}::{var_keys}::{row_id}",
+                            "parameter_name": f"{table_name}||{var_keys}||{row_id}",
                             "table_name": table_name,
                             "id": row_id,
                             "variable_name": var_keys,
@@ -107,7 +116,7 @@ class Uncertainty:
 
         return mapping_df
     
-    def create_uncertain_problem(
+    def create_sampling_problem(
         self,
         mapping_df: pd.DataFrame | None = None,
     ) -> Dict[str, Any]:
@@ -152,10 +161,11 @@ class Uncertainty:
 
 
     def sample_data(
-            self,
-            method: str,
-            **kwargs: Any,
-        ) -> pd.DataFrame:
+        self,
+        method: str,
+        **kwargs: Any,
+    ) -> pd.DataFrame:
+            
             method = method.lower()
 
             if method not in self.SAMPLERS:
@@ -164,7 +174,7 @@ class Uncertainty:
                     f"Available methods: {list(self.SAMPLERS.keys())}"
                 )
             mapping_df = self.collect_uncertain_parameters()
-            problem = self.create_uncertain_problem(mapping_df=mapping_df)
+            problem = self.create_sampling_problem(mapping_df=mapping_df)
             sampler = self.SAMPLERS[method]
 
             self._validate_sampler_kwargs(sampler, kwargs)
@@ -172,7 +182,9 @@ class Uncertainty:
             samples = sampler(problem, **kwargs)
 
             samples_df = pd.DataFrame(samples, columns=problem["names"])
-
+            samples_df.index.name = "run_id"
+            samples_df.reset_index(inplace=True)
+            
             return samples_df
 
 
@@ -189,4 +201,59 @@ class Uncertainty:
             raise TypeError(
                 f"Unexpected sampling arguments: {unexpected}. "
                 f"Allowed arguments: {allowed_args}"
+       
             )
+
+
+    def _prepare_samples_dataframe_for_saving(
+            self,
+            samples_df: pd.DataFrame,
+            mapping_df: pd.DataFrame,
+    ) -> pd.DataFrame:
+        samples_long = samples_df.melt(
+            id_vars="run_id",
+            var_name="parameter_name",
+            value_name="sampled_value",
+        )
+
+        coordinates_df = mapping_df[
+            ["parameter_name", "coordinate_label"]
+        ].drop_duplicates()
+
+        samples_df_save = samples_long.merge(
+            coordinates_df,
+            on="parameter_name",
+            how="left",
+        )
+        samples_df_save = samples_df_save[["run_id", "coordinate_label", "parameter_name", "sampled_value"]]
+        return samples_df_save
+
+    def save_samples(
+            self,
+            samples_df: pd.DataFrame,
+            file_format: str = "xlsx"
+    ) -> None:
+        file_format = file_format.lower()
+        allowed_formats = ["xlsx", "csv", "parquet"]
+        if file_format not in allowed_formats:
+            raise ValueError(
+                f"Save format '{file_format}' not supported. "
+                f"Available formats: {allowed_formats}"
+            )
+
+        mapping_df = self.collect_uncertain_parameters()
+
+        samples_df_save = self._prepare_samples_dataframe_for_saving(
+            samples_df=samples_df,
+            mapping_df=mapping_df,
+        )
+
+        file_path = self.paths["model_dir"] / f"uncertainty_samples.{file_format}"
+
+        if file_format == "xlsx":
+            samples_df_save.to_excel(file_path, index=False)
+        elif file_format == "csv":
+            samples_df_save.to_csv(file_path, index=False)
+        elif file_format == "parquet":
+            samples_df_save.to_parquet(file_path, index=False)
+

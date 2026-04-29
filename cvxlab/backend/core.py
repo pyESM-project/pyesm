@@ -106,9 +106,9 @@ class Core:
         )
 
         self.uncertainty = Uncertainty(
-        logger=self.logger,
         sqltools=self.sqltools,
         index=self.index,
+        paths=self.paths
         )
 
     def initialize_problems_variables(self) -> None:
