@@ -666,17 +666,26 @@ class Core:
                     suppress_warnings=suppress_warnings,
                 )
 
-    def check_exogenous_data_coherence(self) -> None:
+    def check_exogenous_data_coherence(
+            self,
+            is_uncertain: bool = False) -> None:
         """Check coherence of exogenous data in the SQLite database.
 
-        The method parses all exogenous data tables in the Database, checking 
-        for NULL entries in the 'values' column. Since all exogenous data are 
-        expected to be filled by the user before running the model, in case NULL 
-        entries are found, the method logs the table name and the corresponding 
-        row IDs, and raises an error.
+        If uncertain is False, the method checks that all exogenous data entries
+        have non-null values in the 'values' column.
+
+        If uncertain is True, rows marked as uncertain are excluded from the check,
+        because their values are expected to be provided through sampled data during
+        uncertainty-analysis runs.
 
         Raises:
-            exc.MissingDataError: If NULL entries are found in any data table.
+            exc.MissingDataError: If NULL entries are found in required data rows.
+            The method parses all exogenous data tables in the Database, checking 
+            for NULL entries in the 'values' column. Since all exogenous data are 
+            expected to be filled by the user before running the model, in case NULL 
+            entries are found, the method logs the table name and the corresponding 
+            row IDs, and raises an error.
+
         """
         with self.logger.log_timing(
             message=f"Checking exogenous data coherence...",
@@ -696,16 +705,27 @@ class Core:
                         allowed_var_types['CONSTANT']
                     ):
                         continue
+                    
+                    if is_uncertain:
+                        table_df = self.sqltools.table_to_dataframe(table_name=table_name)
+                        deterministic_df = self.uncertainty.get_deterministic_values_df(table_df=table_df, table_name=table_name)
 
-                    null_list = self.sqltools.get_null_values(
+                        null_rows = deterministic_df.loc[
+                            deterministic_df[column_to_inspect].isna(), column_with_info].tolist()
+
+                        if null_rows:
+                            null_entries[table_name] = null_rows
+
+
+                    else:
+                        null_list = self.sqltools.get_null_values(
                         table_name=table_name,
                         column_to_inspect=column_to_inspect,
                         column_with_info=column_with_info,
-                    )
-
-                    if null_list:
-                        null_entries[table_name] = null_list
-
+                    ) 
+                        if null_list:
+                            null_entries[table_name] = null_list
+                    
             if null_entries:
                 for table, rows in null_entries.items():
                     if len(rows) > 5:

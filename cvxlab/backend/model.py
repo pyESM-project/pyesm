@@ -1120,6 +1120,12 @@ class Model:
             force_overwrite=force_overwrite,
         )
 
+        self.core.check_exogenous_data_coherence(is_uncertain=True)
+
+        self.core.initialize_problems_variables()
+
+
+
         # self.core.cycle_uncertainty_runs(
         #     samples_df=samples_df,
         #     force_overwrite=force_overwrite,

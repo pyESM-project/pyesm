@@ -9,6 +9,7 @@ from SALib.sample import sobol, latin, morris
 from cvxlab.defaults import Defaults
 from cvxlab.backend.index import Index
 from cvxlab.support.sql_manager import SQLManager, db_handler
+from cvxlab.log_exc import exceptions as exc
 
 
 class Uncertainty:
@@ -340,3 +341,50 @@ class Uncertainty:
         elif file_format == "parquet":
             samples_df_save.to_parquet(file_path, index=False)
 
+
+
+    def get_deterministic_values_df(
+            self,
+            table_df: pd.DataFrame,
+            table_name: str,
+    ) -> List[Any]:
+        
+        """Return row ids with NULL deterministic values.
+
+        Rows marked as uncertain are excluded because their values are expected
+        to be provided through sampled data during uncertainty runs.
+        """
+        values_header = Defaults.Labels.VALUES_FIELD["values"][0]
+        id_header = Defaults.Labels.ID_FIELD["id"][0]
+        is_uncertain_header = Defaults.Labels.IS_UNCERTAIN_FIELD["is_uncertain"][0]
+
+        if values_header not in table_df.columns:
+            msg = (
+                f"Data coherence check | Table '{table_name}' | "
+                f"Column '{values_header}' not found."
+            )
+            self.logger.error(msg)
+            raise exc.MissingDataError(msg)
+
+        if id_header not in table_df.columns:
+            msg = (
+                f"Data coherence check | Table '{table_name}' | "
+                f"Column '{id_header}' not found."
+            )
+            self.logger.error(msg)
+            raise exc.MissingDataError(msg)
+
+        if is_uncertain_header not in table_df.columns:
+            deterministic_df = table_df
+        else:
+            is_uncertain = (
+                table_df[is_uncertain_header]
+                .astype(str)
+                .str.strip()
+                .str.lower()
+                .isin(["true", "1"])
+            )
+
+            deterministic_df = table_df.loc[~is_uncertain].copy()
+
+        return deterministic_df
