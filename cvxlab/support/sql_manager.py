@@ -44,6 +44,7 @@ class SQLManager:
         logger: Logger,
         database_path: Path,
         database_name: str,
+        settings: Dict,
         xls_engine: Defaults.LiteralTypes.ExcelEngine = 'openpyxl',
     ):
         """Initialize the SQLManager class.
@@ -64,6 +65,7 @@ class SQLManager:
         self.connection: Optional[sqlite3.Connection] = None
         self.cursor: Optional[sqlite3.Cursor] = None
         self.foreign_keys_enabled = None
+        self.settings = settings
 
     @property
     def get_existing_tables_names(self) -> List[str]:
@@ -79,6 +81,10 @@ class SQLManager:
             return [table[0] for table in result]
 
         return []
+
+    @property
+    def is_uncertainty_enabled(self) -> bool:
+        return bool(self.settings.get("Uncertainty", False))
 
     def open_connection(self) -> None:
         """Open a connection to the SQLite database.
@@ -740,6 +746,8 @@ class SQLManager:
 
         id_field = Defaults.Labels.ID_FIELD['id'][0]
         values_field = Defaults.Labels.VALUES_FIELD['values'][0]
+        lb_field = Defaults.Labels.LOWER_BOUND_FIELD['lower_bound'][0]
+        ub_field = Defaults.Labels.UPPER_BOUND_FIELD['upper_bound'][0]
         table_existing_entries = self.count_table_data_entries(table_name)
         df_existing = self.table_to_dataframe(table_name)
 
@@ -812,7 +820,11 @@ class SQLManager:
         # case where all or a part of data entries need to be replaced
         elif table_existing_entries > 0 or action == 'update':
 
-            non_coordinate_cols = [id_field, values_field]
+            non_coordinate_cols = [
+                id_field, values_field]
+
+            if self.is_uncertainty_enabled:
+                non_coordinate_cols.extend([ub_field, lb_field])
 
             if other_coordinate_cols:
                 non_coordinate_cols.extend(other_coordinate_cols)

@@ -25,6 +25,7 @@ from cvxlab.support.file_manager import FileManager
 from cvxlab.support.sql_manager import SQLManager, db_handler
 from cvxlab.backend.uncertainty import Uncertainty
 
+
 class Core:
     """Core class defines the interactions among main components of the package.
 
@@ -77,6 +78,7 @@ class Core:
 
         self.sqltools = SQLManager(
             logger=self.logger,
+            settings=self.settings,
             database_path=self.paths['sqlite_database'],
             database_name=Defaults.ConfigFiles.SQLITE_DATABASE_FILE,
         )
@@ -106,11 +108,15 @@ class Core:
         )
 
         self.uncertainty = Uncertainty(
-        sqltools=self.sqltools,
-        index=self.index,
-        paths=self.paths,
-        logger=self.logger
+            sqltools=self.sqltools,
+            index=self.index,
+            paths=self.paths,
+            logger=self.logger
         )
+
+    @property
+    def is_uncertainty_enabled(self) -> bool:
+        return bool(self.settings.get("Uncertainty", False))
 
     def initialize_problems_variables(self) -> None:
         """Initialize data structures for handling problem variables.
@@ -281,9 +287,9 @@ class Core:
             warnings_on_negatives: bool = False,
             validate_types: bool = True,
             is_uncertain: Optional[bool] = False,
-            samples_df: Optional[pd.DataFrame] = None,    
-            run_id: Optional[int]=None
-            ) -> None:
+            samples_df: Optional[pd.DataFrame] = None,
+            run_id: Optional[int] = None
+    ) -> None:
         """Fetch data from the database and assign it to cvxpy exogenous variables.
 
         This method iterates over each exogenous variable in the Index, getting 
@@ -447,10 +453,10 @@ class Core:
                                     filters_dict=variable_data[filter_header][combination],
                                 )
 
-                                raw_data=self.uncertainty.inject_sampled_values(
-                                    table_df = raw_data_empty,
+                                raw_data = self.uncertainty.inject_sampled_values(
+                                    table_df=raw_data_empty,
                                     run_id=run_id,
-                                    samples_df = samples_df,
+                                    samples_df=samples_df,
                                     table_name=variable.related_table
                                 )
 
@@ -460,7 +466,7 @@ class Core:
                                     filters_dict=variable_data[filter_header][combination],
                                 )
 
-                                #qui esce fuori db con id poi usare db con id e mapping df per risalire al valore in samples_df
+                                # qui esce fuori db con id poi usare db con id e mapping df per risalire al valore in samples_df
 
                             if validate_types:
                                 # check if variable data are int or float
@@ -686,6 +692,57 @@ class Core:
                     suppress_warnings=suppress_warnings,
                 )
 
+    def cvxpy_uncertain_exogenous_data_to_database(
+            self,
+            force_overwrite: bool = False,
+            suppress_warnings: bool = False,
+    ) -> None:
+        """Write current cvxpy values of uncertain exogenous variables into DB values."""
+
+        filter_header = Defaults.Labels.FILTER_DICT_KEY
+        cvxpy_var_header = Defaults.Labels.CVXPY_VAR
+        values_header = Defaults.Labels.VALUES_FIELD["values"][0]
+
+        with db_handler(self.sqltools):
+
+            for var_key, variable in self.index.variables.items():
+
+                if not getattr(variable, "is_uncertain", False):
+                    continue
+
+                variable_data_items = (
+                    variable.data.values()
+                    if isinstance(variable.data, dict)
+                    else [variable.data]
+                )
+
+                for variable_data in variable_data_items:
+
+                    for combination in variable_data.index:
+
+                        table_df = self.sqltools.table_to_dataframe(
+                            table_name=variable.related_table,
+                            filters_dict=variable_data[filter_header][combination],
+                        )
+
+                        cvxpy_obj = variable_data[cvxpy_var_header][combination]
+                        cvxpy_values = np.asarray(cvxpy_obj.value).reshape(-1)
+
+                        table_df[values_header] = cvxpy_values
+
+                        table_df = util.normalize_dataframe(
+                            df=table_df,
+                            all_str_except_numeric=True,
+                        )
+
+                        self.sqltools.dataframe_to_table(
+                            table_name=variable.related_table,
+                            dataframe=table_df,
+                            action="update",
+                            force_overwrite=force_overwrite,
+                            suppress_warnings=suppress_warnings,
+                        )
+
     def check_exogenous_data_coherence(
             self,
             is_uncertain: bool = False) -> None:
@@ -725,10 +782,12 @@ class Core:
                         allowed_var_types['CONSTANT']
                     ):
                         continue
-                    
+
                     if is_uncertain:
-                        table_df = self.sqltools.table_to_dataframe(table_name=table_name)
-                        deterministic_df = self.uncertainty.get_deterministic_values_df(table_df=table_df, table_name=table_name)
+                        table_df = self.sqltools.table_to_dataframe(
+                            table_name=table_name)
+                        deterministic_df = self.uncertainty.get_deterministic_values_df(
+                            table_df=table_df, table_name=table_name)
 
                         null_rows = deterministic_df.loc[
                             deterministic_df[column_to_inspect].isna(), column_with_info].tolist()
@@ -736,16 +795,15 @@ class Core:
                         if null_rows:
                             null_entries[table_name] = null_rows
 
-
                     else:
                         null_list = self.sqltools.get_null_values(
-                        table_name=table_name,
-                        column_to_inspect=column_to_inspect,
-                        column_with_info=column_with_info,
-                    ) 
+                            table_name=table_name,
+                            column_to_inspect=column_to_inspect,
+                            column_with_info=column_with_info,
+                        )
                         if null_list:
                             null_entries[table_name] = null_list
-                    
+
             if null_entries:
                 for table, rows in null_entries.items():
                     if len(rows) > 5:
@@ -1181,7 +1239,13 @@ class Core:
                                     for table_key in tables_to_check
                                 }
 
+                                if self.is_uncertainty_enabled:
+
+                                    self.cvxpy_uncertain_exogenous_data_to_database(
+                                        force_overwrite=True, suppress_warnings=True)
+
                                 iter_count += 1
+
                                 continue
 
                             # relative error must be computed for scenarios_idx only
