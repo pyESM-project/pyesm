@@ -1107,6 +1107,22 @@ class Model:
                 "Call model.UncertaintyAnalysis(...) before run_uncertainty_analysis()."
             )
 
+        self.core.load_and_validate_symbolic_problem(
+            force_overwrite=force_overwrite,
+        )
+
+        self.core.check_exogenous_data_coherence(is_uncertain=True)
+
+        self.core.initialize_problems_variables()
+
+        deterministic_vars = self.core.uncertainty.get_deterministic_vars_list()
+        uncertain_vars = self.core.uncertainty.get_uncertain_vars_list()
+
+        self.core.data_to_cvxpy_exogenous_vars(
+            allow_none_values=False,
+            var_list_to_update=deterministic_vars,
+        )
+
         uncertainty_cfg = self.uncertainty_analysis
 
         samples_df = self._sample_data(
@@ -1116,29 +1132,32 @@ class Model:
             **uncertainty_cfg.method_kwargs,
         )
 
-        self.core.load_and_validate_symbolic_problem(
-            force_overwrite=force_overwrite,
-        )
+        for run_id in samples_df["run_id"]:
 
-        self.core.check_exogenous_data_coherence(is_uncertain=True)
+            self.core.data_to_cvxpy_exogenous_vars(
+                allow_none_values=False,
+                var_list_to_update=uncertain_vars,
+                is_uncertain=True,
+                samples_df=samples_df,
+                run_id=run_id
+            )
+            
+            print(f"running run number {run_id}")
 
-        self.core.initialize_problems_variables()
+            self.core.problem.generate_numerical_problems(force_overwrite=True)
 
+            self.run_model(
+                force_overwrite= force_overwrite,
+                integrated_problems= integrated_problems,
+                convergence_monitoring = convergence_monitoring,
+                solver = solver,  
+                solver_verbose = solver_verbose,
+                solver_settings = solver_settings,
+                convergence_norm = convergence_norm,
+                convergence_tables_to_check = convergence_tables_to_check,
+                convergence_tables_to_skip = convergence_tables_to_skip,
+                relative_tolerance = relative_tolerance,
+                maximum_iterations = maximum_iterations,
+                keep_previous_iteration_db =  keep_previous_iteration_db
+                )
 
-
-        # self.core.cycle_uncertainty_runs(
-        #     samples_df=samples_df,
-        #     force_overwrite=force_overwrite,
-        #     integrated_problems=integrated_problems,
-        #     convergence_monitoring=convergence_monitoring,
-        #     solver=solver,
-        #     solver_verbose=solver_verbose,
-        #     solver_settings=solver_settings,
-        #     convergence_norm=convergence_norm,
-        #     convergence_tables_to_check=convergence_tables_to_check,
-        #     convergence_tables_to_skip=convergence_tables_to_skip,
-        #     relative_tolerance=relative_tolerance,
-        #     maximum_iterations=maximum_iterations,
-        #     keep_previous_iteration_db=keep_previous_iteration_db,
-        #     **kwargs,
-        # )

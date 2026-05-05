@@ -10,6 +10,7 @@ from cvxlab.defaults import Defaults
 from cvxlab.backend.index import Index
 from cvxlab.support.sql_manager import SQLManager, db_handler
 from cvxlab.log_exc import exceptions as exc
+from cvxlab.log_exc.logger import Logger
 
 
 class Uncertainty:
@@ -40,7 +41,8 @@ class Uncertainty:
     def __init__(self, 
                  sqltools: SQLManager, 
                  index: Index, 
-                 paths: Dict
+                 paths: Dict,
+                 logger: Logger
         ):
          
         """
@@ -50,6 +52,7 @@ class Uncertainty:
         self.sqltools = sqltools
         self.index = index
         self.paths = paths
+        self.logger = logger.get_child(__name__)
 
     def collect_uncertain_parameters(self) -> pd.DataFrame:
          
@@ -116,7 +119,7 @@ class Uncertainty:
 
                     records.append(
                         {
-                            "parameter_name": f"{table_name}||{var_keys[0]}||{row_id}",
+                            "parameter_name": f"{table_name}||{row_id}",
                             "table_name": table_name,
                             "id": row_id,
                             "variable_name": var_keys[0],
@@ -202,8 +205,6 @@ class Uncertainty:
             Returns:
                 pd.DataFrame: Sample matrix with ``run_id`` as explicit column.
             """
-        
-            mapping_df = self.collect_uncertain_parameters()
             problem = self.create_sampling_problem()
             sampler = self.SAMPLERS[method]
 
@@ -388,3 +389,185 @@ class Uncertainty:
             deterministic_df = table_df.loc[~is_uncertain].copy()
 
         return deterministic_df
+    
+
+    def get_uncertain_vars_list(self) -> list[str]:
+        """Return exogenous variables marked as uncertain."""
+        allowed_var_types = Defaults.SymbolicDefinitions.VARIABLE_TYPES
+
+        uncertain_vars = []
+
+        for var_key, variable in self.index.variables.items():
+            if variable.type in (
+                allowed_var_types["ENDOGENOUS"],
+                allowed_var_types["CONSTANT"],
+            ):
+                continue
+
+            if getattr(variable, "is_uncertain", False):
+                uncertain_vars.append(var_key)
+
+        return uncertain_vars
+
+
+    def get_deterministic_vars_list(self) -> list[str]:
+        """Return exogenous variables not marked as uncertain."""
+        allowed_var_types = Defaults.SymbolicDefinitions.VARIABLE_TYPES
+        deterministic_vars = []
+
+        for var_key, variable in self.index.variables.items():
+            if variable.type in (
+                allowed_var_types["ENDOGENOUS"],
+                allowed_var_types["CONSTANT"],
+            ):
+                continue
+
+            if not getattr(variable, "is_uncertain", False):
+                deterministic_vars.append(var_key)
+
+        return deterministic_vars
+
+    def inject_sampled_values(
+        self,
+        table_df: pd.DataFrame,
+        table_name: str,
+        samples_df: pd.DataFrame,
+        run_id: int,
+        separator: str = "||",
+    ) -> pd.DataFrame:
+        """Inject sampled uncertainty values into a normalized data-table dataframe.
+
+        The function maps each row of `table_df` to one sampled parameter using
+        the convention:
+
+            {table_name} || {id}
+
+        and writes the sampled value into the standard `values` column. Auxiliary
+        uncertainty columns, such as `lower_bound` and `upper_bound`, are removed
+        before returning the dataframe, so that the output can be passed to the
+        standard CVXLab reshaping pipeline.
+
+        Args:
+            table_df: DataFrame extracted from the SQLite data table.
+            table_name: Name of the SQLite data table.
+            samples_df: DataFrame containing sampled values. Expected columns are
+                `run_id` plus one column per uncertain parameter.
+            run_id: Identifier of the uncertainty-analysis run to inject.
+            separator: Separator used in sampled-parameter names.
+
+        Returns:
+            A copy of `table_df` with sampled values written into the `values`
+            column and uncertainty-bound columns removed.
+
+        Raises:
+            MissingDataError: If required columns are missing, if `run_id` is not
+                found, if it is duplicated, or if sampled parameters are missing.
+        """
+
+        id_header = Defaults.Labels.ID_FIELD["id"][0]
+        values_header = Defaults.Labels.VALUES_FIELD["values"][0]
+
+        # If these labels already exist in Defaults, use them.
+        # Otherwise, keep the explicit strings.
+        lower_bound_header = getattr(
+            Defaults.Labels,
+            "LOWER_BOUND_FIELD",
+            {"lower_bound": ["lower_bound"]},
+        )["lower_bound"][0]
+
+        upper_bound_header = getattr(
+            Defaults.Labels,
+            "UPPER_BOUND_FIELD",
+            {"upper_bound": ["upper_bound"]},
+        )["upper_bound"][0]
+
+        required_table_columns = [id_header, values_header]
+        missing_table_columns = [
+            col for col in required_table_columns
+            if col not in table_df.columns
+        ]
+
+        if missing_table_columns:
+            msg = (
+                "Sample injection failed | "
+                f"Table '{table_name}' is missing required column(s): "
+                f"{missing_table_columns}."
+            )
+            self.logger.error(msg)
+            raise exc.MissingDataError(msg)
+
+        samples_df_run = samples_df.loc[samples_df["run_id"] == run_id]
+
+        if samples_df_run.empty:
+            msg = (
+                "Sample injection failed | "
+                f"No sampled values found for run_id={run_id}."
+            )
+            self.logger.error(msg)
+            raise exc.MissingDataError(msg)
+
+
+        samples_series = samples_df_run.iloc[0]
+
+        result_df = table_df.copy()
+
+        parameter_names = (
+            table_name
+            + separator
+            + result_df[id_header].astype(str)
+        )
+
+        missing_parameters = [
+            parameter_name
+            for parameter_name in parameter_names
+            if parameter_name not in samples_df.columns
+        ]
+
+        if missing_parameters:
+            if len(missing_parameters) > 5:
+                missing_parameters = (
+                    missing_parameters[:5]
+                    + [f"(total items {len(missing_parameters)})"]
+                )
+
+            msg = (
+                "Sample injection failed | "
+                f"Missing sampled parameter column(s) for table '{table_name}': "
+                f"{missing_parameters}."
+            )
+            self.logger.error(msg)
+            raise exc.MissingDataError(msg)
+
+        result_df[values_header] = parameter_names.map(samples_series).values
+
+        result_df[values_header] = pd.to_numeric(
+            result_df[values_header],
+            errors="coerce",
+        )
+
+        null_sampled_values = result_df.loc[
+            result_df[values_header].isna(),
+            id_header,
+        ].tolist()
+
+        if null_sampled_values:
+            if len(null_sampled_values) > 5:
+                null_sampled_values = (
+                    null_sampled_values[:5]
+                    + [f"(total items {len(null_sampled_values)})"]
+                )
+
+            msg = (
+                "Sample injection failed | "
+                f"Sampled values for table '{table_name}' contain null/non-numeric "
+                f"values at id row(s): {null_sampled_values}."
+            )
+            self.logger.error(msg)
+            raise exc.MissingDataError(msg)
+
+        result_df = result_df.drop(
+            columns=[lower_bound_header, upper_bound_header],
+            errors="ignore",
+        )
+
+        return result_df

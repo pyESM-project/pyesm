@@ -108,7 +108,8 @@ class Core:
         self.uncertainty = Uncertainty(
         sqltools=self.sqltools,
         index=self.index,
-        paths=self.paths
+        paths=self.paths,
+        logger=self.logger
         )
 
     def initialize_problems_variables(self) -> None:
@@ -279,7 +280,10 @@ class Core:
             filter_negative_values: bool = False,
             warnings_on_negatives: bool = False,
             validate_types: bool = True,
-    ) -> None:
+            is_uncertain: Optional[bool] = False,
+            samples_df: Optional[pd.DataFrame] = None,    
+            run_id: Optional[int]=None
+            ) -> None:
         """Fetch data from the database and assign it to cvxpy exogenous variables.
 
         This method iterates over each exogenous variable in the Index, getting 
@@ -437,10 +441,26 @@ class Core:
 
                         for combination in sets_parsing_hierarchy_idx:
                             # get raw data from database
-                            raw_data = self.database.sqltools.table_to_dataframe(
-                                table_name=variable.related_table,
-                                filters_dict=variable_data[filter_header][combination]
-                            )
+                            if is_uncertain:
+                                raw_data_empty = self.database.sqltools.table_to_dataframe(
+                                    table_name=variable.related_table,
+                                    filters_dict=variable_data[filter_header][combination],
+                                )
+
+                                raw_data=self.uncertainty.inject_sampled_values(
+                                    table_df = raw_data_empty,
+                                    run_id=run_id,
+                                    samples_df = samples_df,
+                                    table_name=variable.related_table
+                                )
+
+                            else:
+                                raw_data = self.database.sqltools.table_to_dataframe(
+                                    table_name=variable.related_table,
+                                    filters_dict=variable_data[filter_header][combination],
+                                )
+
+                                #qui esce fuori db con id poi usare db con id e mapping df per risalire al valore in samples_df
 
                             if validate_types:
                                 # check if variable data are int or float
@@ -1441,3 +1461,56 @@ class Core:
         """Return a string representation of the Core instance."""
         class_name = type(self).__name__
         return f'{class_name}'
+
+    # def build_deterministic_exogenous_data_cache(
+    #         self,
+    #         var_list_to_update: list[str] | None = None,
+    # ) -> dict[tuple[str, object, int], pd.DataFrame]:
+    #     """Build a cache of base exogenous data for uncertainty runs.
+
+    #     The cache stores raw database data for each exogenous variable block.
+    #     During each uncertainty run, sampled values are injected into copies of
+    #     these cached dataframes before assigning values to CVXPY Parameters.
+    #     """
+    #     cache = {}
+
+    #     filter_header = Defaults.Labels.FILTER_DICT_KEY
+    #     allowed_var_types = Defaults.SymbolicDefinitions.VARIABLE_TYPES
+
+    #     if var_list_to_update is None:
+    #         var_list_to_update = self.index.list_variables
+
+    #     with db_handler(self.sqltools):
+    #         for var_key, variable in self.index.variables.items():
+    #             if var_key not in var_list_to_update:
+    #                 continue
+
+    #             if variable.type in (
+    #                 allowed_var_types["ENDOGENOUS"],
+    #                 allowed_var_types["CONSTANT"],
+    #             ):
+    #                 continue
+
+    #             if isinstance(variable.type, dict):
+    #                 problem_keys = util.find_dict_keys_corresponding_to_value(
+    #                     variable.type,
+    #                     allowed_var_types["EXOGENOUS"],
+    #                 )
+    #             else:
+    #                 problem_keys = [None]
+
+    #             for problem_key in problem_keys:
+    #                 if problem_key is None:
+    #                     variable_data = variable.data
+    #                 else:
+    #                     variable_data = variable.data[problem_key]
+
+    #                 for combination in variable_data.index:
+    #                     raw_data = self.sqltools.table_to_dataframe(
+    #                         table_name=variable.related_table,
+    #                         filters_dict=variable_data.at[combination, filter_header],
+    #                     )
+
+    #                     cache[(var_key, problem_key, combination)] = raw_data.copy()
+
+    #     return cache
