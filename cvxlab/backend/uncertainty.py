@@ -3,6 +3,7 @@
 from typing import Any, Dict, List, Tuple
 
 import pandas as pd
+import numpy as np
 from typing import Any, Callable
 import inspect
 from SALib.sample import sobol, latin, morris
@@ -22,7 +23,7 @@ class Uncertainty:
     upper bounds, builds the sampling problem required by SALib, generates
     sampled parameter values, and optionally exports the generated samples.
 
-    
+
     ASSAKRORFPPOF AGGIUNGERE ALTRE COSE CHE POI METTO RICORDARSIIIII
 
     Attributes:
@@ -38,13 +39,12 @@ class Uncertainty:
         "morris": morris.sample
     }
 
-    def __init__(self, 
-                 sqltools: SQLManager, 
-                 index: Index, 
+    def __init__(self,
+                 sqltools: SQLManager,
+                 index: Index,
                  paths: Dict,
                  logger: Logger
-        ):
-         
+                 ):
         """
          SCRIVERE QUIII AAAAA RICORDATIIIIIAAAA
         """
@@ -55,7 +55,6 @@ class Uncertainty:
         self.logger = logger.get_child(__name__)
 
     def collect_uncertain_parameters(self) -> pd.DataFrame:
-         
         """Collect uncertain parameters from uncertainty-enabled exogenous tables
 
              Returns:
@@ -64,13 +63,12 @@ class Uncertainty:
         """
         records: List[Dict[str, Any]] = []
 
-
         id_col = Defaults.Labels.ID_FIELD['id'][0]
         values_col = Defaults.Labels.VALUES_FIELD['values'][0]
         is_uncertain_col = Defaults.Labels.IS_UNCERTAIN_FIELD['is_uncertain'][0]
         lower_col = Defaults.Labels.LOWER_BOUND_FIELD['lower_bound'][0]
         upper_col = Defaults.Labels.UPPER_BOUND_FIELD['upper_bound'][0]
-  
+
         technical_columns = {
             id_col,
             values_col,
@@ -78,7 +76,6 @@ class Uncertainty:
             lower_col,
             upper_col,
         }
-
 
         uncertain_tables = {}
 
@@ -126,9 +123,8 @@ class Uncertainty:
                             "lower_bound": lower_val,
                             "upper_bound": upper_val,
                             "coordinate_label": coordinate_label,
-                }
-            )
-                    
+                        }
+                    )
 
         mapping_df = pd.DataFrame(
             records,
@@ -143,11 +139,10 @@ class Uncertainty:
         )
 
         return mapping_df
-    
+
     def create_sampling_problem(
         self,
     ) -> Dict[str, Any]:
-        
         """Create the SALib problem dictionary from uncertain parameters.    
         Returns:
             Dict[str, Any]: SALib-compatible problem dictionary
@@ -160,7 +155,7 @@ class Uncertainty:
             "bounds": mapping_df[["lower_bound", "upper_bound"]].values.tolist(),
         }
 
-        return problem  
+        return problem
 
     def _check_bounds(
         self,
@@ -185,37 +180,34 @@ class Uncertainty:
                 f"Invalid bounds in table '{table_name}', id '{row_id}'. "
                 f"lower_bound >= upper_bound ({lower_val} >= {upper_val})"
             )
-        
-        return lower_val, upper_val
 
+        return lower_val, upper_val
 
     def sample_data(
         self,
         method: str,
         **kwargs: Any,
     ) -> pd.DataFrame:
-            
-            """Generate sampled values for uncertain parameters.
+        """Generate sampled values for uncertain parameters.
 
-            Args:
-                method (str): Sampling method name. Must be one of the keys in
-                    ``SAMPLERS``.
-                **kwargs: Keyword arguments passed to the selected SALib sampler.
+        Args:
+            method (str): Sampling method name. Must be one of the keys in
+                ``SAMPLERS``.
+            **kwargs: Keyword arguments passed to the selected SALib sampler.
 
-            Returns:
-                pd.DataFrame: Sample matrix with ``run_id`` as explicit column.
-            """
-            problem = self.create_sampling_problem()
-            sampler = self.SAMPLERS[method]
+        Returns:
+            pd.DataFrame: Sample matrix with ``run_id`` as explicit column.
+        """
+        problem = self.create_sampling_problem()
+        sampler = self.SAMPLERS[method]
 
-            samples = sampler(problem, **kwargs)
+        samples = sampler(problem, **kwargs)
 
-            samples_df = pd.DataFrame(samples, columns=problem["names"])
-            samples_df.index.name = "run_id"
-            samples_df.reset_index(inplace=True)
-            
-            return samples_df
+        samples_df = pd.DataFrame(samples, columns=problem["names"])
+        samples_df.index.name = "run_id"
+        samples_df.reset_index(inplace=True)
 
+        return samples_df
 
     def _validate_sampler_kwargs(
         self,
@@ -241,7 +233,7 @@ class Uncertainty:
             raise TypeError(
                 f"Unexpected sampling arguments: {unexpected}. "
                 f"Allowed arguments: {allowed_args}"
-       
+
             )
         missing = required_args - set(kwargs.keys())
         if missing:
@@ -249,7 +241,7 @@ class Uncertainty:
                 f"Missing required sampling arguments: {missing}. "
                 f"Required arguments: {required_args}."
             )
-        
+
     def validate_sampling_config(
             self,
             method: str,
@@ -278,7 +270,6 @@ class Uncertainty:
             kwargs=kwargs,
         )
 
-
     def _prepare_samples_dataframe_for_saving(
             self,
             samples_df: pd.DataFrame,
@@ -299,7 +290,8 @@ class Uncertainty:
             on="parameter_name",
             how="left",
         )
-        samples_df_save = samples_df_save[["run_id", "coordinate_label", "parameter_name", "sampled_value"]]
+        samples_df_save = samples_df_save[[
+            "run_id", "coordinate_label", "parameter_name", "sampled_value"]]
         return samples_df_save
 
     def save_samples(
@@ -307,7 +299,6 @@ class Uncertainty:
             samples_df: pd.DataFrame,
             file_format: str = "xlsx"
     ) -> None:
-        
         """Export generated uncertainty samples to file.
 
             Args:
@@ -333,7 +324,8 @@ class Uncertainty:
             mapping_df=mapping_df,
         )
 
-        file_path = self.paths["model_dir"] / f"uncertainty_samples.{file_format}"
+        file_path = self.paths["model_dir"] / \
+            f"uncertainty_samples.{file_format}"
 
         if file_format == "xlsx":
             samples_df_save.to_excel(file_path, index=False)
@@ -342,14 +334,56 @@ class Uncertainty:
         elif file_format == "parquet":
             samples_df_save.to_parquet(file_path, index=False)
 
+    def get_uncertainty_measure_vars_list(self) -> list[str]:
+        """Return variables marked as uncertainty-analysis output measures."""
+        uncertainty_measures = [
+            var_key
+            for var_key, variable in self.index.variables.items()
+            if getattr(variable, "uncertainty_measure", False) is True
+        ]
+        return uncertainty_measures
 
+    def check_uncertainty_measure_variables_are_scalar(self) -> None:
+        """Check that variables marked as uncertainty measures are scalar."""
+
+        invalid_vars = {}
+
+        uncertainty_measure_vars = self.get_uncertainty_measure_vars_list()
+
+        for var_key in uncertainty_measure_vars:
+            variable = self.index.variables[var_key]
+
+            shape_size = variable.shape_size
+
+            if not shape_size:
+                invalid_vars[var_key] = "Shape not available."
+                continue
+
+            n_elements = 1
+            for dim_size in shape_size:
+                n_elements *= dim_size
+
+            if n_elements != 1:
+                invalid_vars[var_key] = f"shape_size={shape_size}"
+
+        if invalid_vars:
+            for var_key, info in invalid_vars.items():
+                self.logger.error(
+                    "Uncertainty measure validation | "
+                    f"Variable '{var_key}' is marked as uncertainty_measure=True "
+                    f"but is not scalar ({info})."
+                )
+
+            raise exc.SettingsError(
+                "Uncertainty measure validation failed | "
+                "Only scalar variables can be marked as uncertainty_measure=True."
+            )
 
     def get_deterministic_values_df(
             self,
             table_df: pd.DataFrame,
             table_name: str,
     ) -> List[Any]:
-        
         """Return row ids with NULL deterministic values.
 
         Rows marked as uncertain are excluded because their values are expected
@@ -389,7 +423,6 @@ class Uncertainty:
             deterministic_df = table_df.loc[~is_uncertain].copy()
 
         return deterministic_df
-    
 
     def get_uncertain_vars_list(self) -> list[str]:
         """Return exogenous variables marked as uncertain."""
@@ -408,7 +441,6 @@ class Uncertainty:
                 uncertain_vars.append(var_key)
 
         return uncertain_vars
-
 
     def get_deterministic_vars_list(self) -> list[str]:
         """Return exogenous variables not marked as uncertain."""
@@ -506,7 +538,6 @@ class Uncertainty:
             self.logger.error(msg)
             raise exc.MissingDataError(msg)
 
-
         samples_series = samples_df_run.iloc[0]
 
         result_df = table_df.copy()
@@ -571,3 +602,32 @@ class Uncertainty:
         )
 
         return result_df
+
+    def collect_uncertainty_measures_for_run(
+            self,
+            run_id: int,
+    ) -> dict:
+        """Collect scalar uncertainty-measure values after one uncertainty run."""
+
+        cvxpy_var_header = Defaults.Labels.CVXPY_VAR
+
+        record = {"run_id": run_id}
+
+        uncertainty_measure_vars = self.get_uncertainty_measure_vars_list()
+
+        for var_key in uncertainty_measure_vars:
+            variable = self.index.variables[var_key]
+
+            if isinstance(variable.data, pd.DataFrame):
+                cvxpy_obj = variable.data[cvxpy_var_header].iloc[0]
+
+            elif isinstance(variable.data, dict):
+                cvxpy_obj = next(
+                    iter(variable.data.values())
+                )[cvxpy_var_header].iloc[0]
+
+            value_array = np.asarray(cvxpy_obj.value)
+
+            record[var_key] = float(value_array.reshape(-1)[0])
+
+        return record

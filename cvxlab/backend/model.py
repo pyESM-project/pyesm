@@ -25,6 +25,7 @@ from cvxlab.support.file_manager import FileManager
 from cvxlab.support import util
 from dataclasses import dataclass, field
 
+
 @dataclass
 class UncertaintyAnalysisConfig:
     """Container for user-defined uncertainty analysis configuration.
@@ -46,7 +47,8 @@ class UncertaintyAnalysisConfig:
     save_samples: bool = False
     file_format: str = "xlsx"
 
-class Model:
+
+class Model():
     """Central class for generating and handling a CVXLab models.
 
     The Model class represents a modeling environment that handles SQLite data 
@@ -216,7 +218,7 @@ class Model:
             return False
         else:
             return True
-        
+
     @property
     def is_uncertainty_enabled(self) -> bool:
         return bool(self.settings.get("Uncertainty", False))
@@ -573,6 +575,10 @@ class Model:
             return
 
         self._load_model_coordinates()
+
+        if self.settings["Uncertainty"]:
+            self.core.uncertainty.check_uncertainty_measure_variables_are_scalar()
+
         self._initialize_blank_data_structure()
 
     def refresh_database_and_initialize_problem(
@@ -1017,7 +1023,6 @@ class Model:
         class_name = type(self).__name__
         return f'{class_name}'
 
-
     def _sample_data(
         self,
         method: str,
@@ -1042,8 +1047,9 @@ class Model:
             samples_df: pd.DataFrame,
             file_format: str = "xlsx",
     ) -> None:
-        self.core.uncertainty.save_samples(samples_df=samples_df, file_format=file_format)
-    
+        self.core.uncertainty.save_samples(
+            samples_df=samples_df, file_format=file_format)
+
     def UncertaintyAnalysis(
         self,
         method: str,
@@ -1057,18 +1063,18 @@ class Model:
                 "Uncertainty analysis is not enabled. "
                 "Create the model with Uncertainty=True."
             )
-        
+
         if not save_samples and file_format is not None:
             self.logger.warning(
                 "Uncertainty analysis | 'file_format' specified but "
                 "'save_samples=False'. Samples will not be saved."
             )
-            
-        method=method.lower()
+
+        method = method.lower()
 
         self.core.uncertainty.validate_sampling_config(
-        method=method,
-        kwargs=method_kwargs)
+            method=method,
+            kwargs=method_kwargs)
 
         self.uncertainty_analysis = UncertaintyAnalysisConfig(
             method=method,
@@ -1076,7 +1082,6 @@ class Model:
             save_samples=save_samples,
             file_format=file_format,
         )
-
 
     def run_uncertainty_analysis(
             self,
@@ -1087,7 +1092,8 @@ class Model:
             solver_verbose: bool = False,
             solver_settings: Optional[dict[str, Any]] = None,
             convergence_norm: Defaults.LiteralTypes.NormType = 'l2',
-            convergence_tables_to_check: Defaults.LiteralTypes.ConvergenceTables | List[str] = 'all_endogenous',
+            convergence_tables_to_check: Defaults.LiteralTypes.ConvergenceTables | List[
+                str] = 'all_endogenous',
             convergence_tables_to_skip: Optional[List[str]] = None,
             relative_tolerance: Optional[float] = None,
             maximum_iterations: Optional[int] = None,
@@ -1132,6 +1138,8 @@ class Model:
             **uncertainty_cfg.method_kwargs,
         )
 
+        uncertainty_measure_records = []
+
         for run_id in samples_df["run_id"]:
 
             self.core.data_to_cvxpy_exogenous_vars(
@@ -1141,23 +1149,33 @@ class Model:
                 samples_df=samples_df,
                 run_id=run_id
             )
-            
-            print(f"running run number {run_id}")
+
+            self.core.logger.info(
+                f"Running uncertainty-analysis run {run_id}.")
 
             self.core.problem.generate_numerical_problems(force_overwrite=True)
 
             self.run_model(
-                force_overwrite= force_overwrite,
-                integrated_problems= integrated_problems,
-                convergence_monitoring = convergence_monitoring,
-                solver = solver,  
-                solver_verbose = solver_verbose,
-                solver_settings = solver_settings,
-                convergence_norm = convergence_norm,
-                convergence_tables_to_check = convergence_tables_to_check,
-                convergence_tables_to_skip = convergence_tables_to_skip,
-                relative_tolerance = relative_tolerance,
-                maximum_iterations = maximum_iterations,
-                keep_previous_iteration_db =  keep_previous_iteration_db
-                )
+                force_overwrite=force_overwrite,
+                integrated_problems=integrated_problems,
+                convergence_monitoring=convergence_monitoring,
+                solver=solver,
+                solver_verbose=solver_verbose,
+                solver_settings=solver_settings,
+                convergence_norm=convergence_norm,
+                convergence_tables_to_check=convergence_tables_to_check,
+                convergence_tables_to_skip=convergence_tables_to_skip,
+                relative_tolerance=relative_tolerance,
+                maximum_iterations=maximum_iterations,
+                keep_previous_iteration_db=keep_previous_iteration_db
+            )
 
+            uncertainty_measure_records.append(
+                self.core.uncertainty.collect_uncertainty_measures_for_run(
+                    run_id=run_id,
+                )
+            )
+
+        uncertainty_measures_df = pd.DataFrame(uncertainty_measure_records)
+
+        return uncertainty_measures_df

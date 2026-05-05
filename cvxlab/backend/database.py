@@ -488,9 +488,11 @@ class Database:
                         )
 
                         for header, values in variable.all_coordinates_w_headers.items():
-                            coords_mask &= unpivoted_coords_df[header].isin(values)
+                            coords_mask &= unpivoted_coords_df[header].isin(
+                                values)
 
-                        unpivoted_coords_df.loc[coords_mask, is_uncertain_header] = "TRUE"
+                        unpivoted_coords_df.loc[coords_mask,
+                                                is_uncertain_header] = "TRUE"
 
                 unpivoted_coords_df = util.add_column_to_dataframe(
                     dataframe=unpivoted_coords_df,
@@ -722,7 +724,7 @@ class Database:
             ub_field = Defaults.Labels.UPPER_BOUND_FIELD['upper_bound'][0]
             is_uncertain_field = Defaults.Labels.IS_UNCERTAIN_FIELD['is_uncertain'][0]
 
-            other_coordinate_cols=[lb_field, ub_field, is_uncertain_field]
+            other_coordinate_cols = [lb_field, ub_field, is_uncertain_field]
 
         if table_key_list == []:
             table_key_list = self.index.data.keys()
