@@ -579,7 +579,7 @@ class Database:
                     self.files.dataframe_to_excel(
                         dataframe=dataframe,
                         excel_filename=output_file_name,
-                        excel_dir_path=Defaults.ConfigFiles.INPUT_DATA_DIR,
+                        excel_dir_path=self.paths['input_data_dir'],
                         sheet_name=table_key,
                         force_overwrite=force_overwrite,
                     )
@@ -587,7 +587,7 @@ class Database:
                     self.files.dataframe_to_csv(
                         dataframe=dataframe,
                         csv_filename=output_file_name,
-                        csv_dir_path=Defaults.ConfigFiles.INPUT_DATA_DIR,
+                        csv_dir_path=self.paths['input_data_dir'],
                     )
                 else:
                     msg = f"File extension '{file_extension}' not supported."
@@ -644,7 +644,7 @@ class Database:
             file_name = Defaults.ConfigFiles.INPUT_DATA_FILE_NAME
 
             data_dict = self.files.excel_to_dataframes_dict(
-                excel_file_dir_path=Defaults.ConfigFiles.INPUT_DATA_DIR,
+                excel_file_dir_path=self.paths['input_data_dir'],
                 excel_file_name=f"{file_name}.{file_extension}",
             )
 
@@ -686,7 +686,7 @@ class Database:
 
                         data_dict[table_key] = self.files.file_to_dataframe(
                             file_name=file_name,
-                            file_dir_path=Defaults.ConfigFiles.INPUT_DATA_DIR,
+                            file_dir_path=self.paths['input_data_dir'],
                         )
 
                         dataframe = util.normalize_dataframe(
