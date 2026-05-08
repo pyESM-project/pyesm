@@ -689,7 +689,7 @@ class Model:
         problem_count = '1' if sub_problems == 1 else f'{sub_problems}'
 
         self.logger.info(
-            f"Model run | Solution mode: {solution_type}' | Solver: '{solver}' | "
+            f"Model run | Solution mode: {solution_type}' | Solver: '{selected_solver}' | "
             f"Problems: {problem_count} | Scenarios: {problem_scenarios}")
 
         if solver_verbose:
