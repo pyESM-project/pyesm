@@ -731,7 +731,6 @@ class Database:
             "Filling blank data in SQLite data tables based on the 'blank_fill' "
             "attribute of each variable.")
 
-        blank_fill_key = Defaults.Labels.BLANK_FILL_KEY
         value_header = Defaults.Labels.VALUES_FIELD['values'][0]
 
         if table_key_list == []:
@@ -750,7 +749,7 @@ class Database:
             for var_key, variable in self.index.variables.items():
                 variable: Variable
 
-                blank_fill_value = variable.var_info.get(blank_fill_key, None)
+                blank_fill_value = variable.blank_fill
                 related_table = variable.related_table
 
                 if related_table not in table_key_list:

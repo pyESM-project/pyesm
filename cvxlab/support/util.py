@@ -1201,8 +1201,13 @@ def pivot_dataframe_to_data_structure(
     primary_key = primary_key or data.columns[0]
 
     if primary_key not in data.columns:
-        raise ValueError(
-            f"Primary key '{primary_key}' not found in DataFrame columns.")
+        if secondary_key is not None:
+            raise ValueError(
+                f"Primary key '{primary_key}' not found in DataFrame columns.")
+
+        # single-structure case: optional primary key omitted from input.
+        data = data.copy()
+        data.insert(0, primary_key, None)
 
     for _, row in data.iterrows():
         key = row[primary_key]
