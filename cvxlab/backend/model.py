@@ -141,11 +141,12 @@ class Model():
             level='info',
         ):
             self.files = FileManager(logger=self.logger)
+            uncertainty_setting_key = Defaults.Labels.UNCERTAINTY_SETTING_KEY
 
             self.settings = DotDict({
                 'log_level': log_level,
                 'model_name': model_dir_name,
-                'Uncertainty': Uncertainty,
+                uncertainty_setting_key: Uncertainty,
                 'model_settings_from': model_settings_from,
                 'use_existing_data': use_existing_data,
                 'multiple_input_files': multiple_input_files,
@@ -221,7 +222,10 @@ class Model():
 
     @property
     def is_uncertainty_enabled(self) -> bool:
-        return bool(self.settings.get("Uncertainty", False))
+        return bool(self.settings.get(
+            Defaults.Labels.UNCERTAINTY_SETTING_KEY,
+            False,
+        ))
 
     def _check_model_dir(self) -> None:
         """Validate the existence of the model directory and required files.
@@ -576,7 +580,7 @@ class Model():
 
         self._load_model_coordinates()
 
-        if self.settings["Uncertainty"]:
+        if self.settings[Defaults.Labels.UNCERTAINTY_SETTING_KEY]:
             self.core.uncertainty.check_uncertainty_measure_variables_are_scalar()
 
         self._initialize_blank_data_structure()
@@ -1061,7 +1065,8 @@ class Model():
         if not self.is_uncertainty_enabled:
             raise ValueError(
                 "Uncertainty analysis is not enabled. "
-                "Create the model with Uncertainty=True."
+                f"Create the model with "
+                f"{Defaults.Labels.UNCERTAINTY_SETTING_KEY}=True."
             )
 
         if not save_samples and file_format is not None:
@@ -1104,7 +1109,8 @@ class Model():
         if not self.is_uncertainty_enabled:
             raise ValueError(
                 "Uncertainty analysis is not enabled. "
-                "Create the model with Uncertainty=True."
+                f"Create the model with "
+                f"{Defaults.Labels.UNCERTAINTY_SETTING_KEY}=True."
             )
 
         if self.uncertainty_analysis is None:
@@ -1121,12 +1127,24 @@ class Model():
 
         self.core.initialize_problems_variables()
 
-        deterministic_vars = self.core.uncertainty.get_deterministic_vars_list()
-        uncertain_vars = self.core.uncertainty.get_uncertain_vars_list()
+        # deterministic_vars = self.core.uncertainty.get_deterministic_vars_list()
+        # uncertain_vars = self.core.uncertainty.get_uncertain_vars_list()
+
+        fully_deterministic_tables = self.core.uncertainty.get_fully_deterministic_tables_list()
+
+        uncertainty_hybrid_tables = self.core.uncertainty.get_uncertainty_hybrid_tables_list()
+
+        fully_deterministic_vars = self.core.uncertainty.get_vars_in_tables_list(
+            fully_deterministic_tables
+        )
+
+        uncertainty_hybrid_vars = self.core.uncertainty.get_vars_in_tables_list(
+            uncertainty_hybrid_tables
+        )
 
         self.core.data_to_cvxpy_exogenous_vars(
             allow_none_values=False,
-            var_list_to_update=deterministic_vars,
+            var_list_to_update=fully_deterministic_vars,
         )
 
         uncertainty_cfg = self.uncertainty_analysis
@@ -1140,12 +1158,12 @@ class Model():
 
         uncertainty_measure_records = []
 
-        for run_id in samples_df["run_id"]:
+        for run_id in samples_df[Defaults.Labels.RUN_ID]:
 
             self.core.data_to_cvxpy_exogenous_vars(
                 allow_none_values=False,
-                var_list_to_update=uncertain_vars,
-                is_uncertain=True,
+                var_list_to_update=uncertainty_hybrid_vars,
+                is_hybrid=True,
                 samples_df=samples_df,
                 run_id=run_id
             )

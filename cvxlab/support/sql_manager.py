@@ -84,7 +84,10 @@ class SQLManager:
 
     @property
     def is_uncertainty_enabled(self) -> bool:
-        return bool(self.settings.get("Uncertainty", False))
+        return bool(self.settings.get(
+            Defaults.Labels.UNCERTAINTY_SETTING_KEY,
+            False,
+        ))
 
     def open_connection(self) -> None:
         """Open a connection to the SQLite database.
@@ -746,8 +749,12 @@ class SQLManager:
 
         id_field = Defaults.Labels.ID_FIELD['id'][0]
         values_field = Defaults.Labels.VALUES_FIELD['values'][0]
-        lb_field = Defaults.Labels.LOWER_BOUND_FIELD['lower_bound'][0]
-        ub_field = Defaults.Labels.UPPER_BOUND_FIELD['upper_bound'][0]
+        lb_field = Defaults.Labels.LOWER_BOUND_FIELD[
+            Defaults.Labels.LOWER_BOUND_KEY
+        ][0]
+        ub_field = Defaults.Labels.UPPER_BOUND_FIELD[
+            Defaults.Labels.UPPER_BOUND_KEY
+        ][0]
         table_existing_entries = self.count_table_data_entries(table_name)
         df_existing = self.table_to_dataframe(table_name)
 

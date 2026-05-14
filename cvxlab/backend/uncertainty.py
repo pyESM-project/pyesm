@@ -55,7 +55,7 @@ class Uncertainty:
         self.logger = logger.get_child(__name__)
 
     def collect_uncertain_parameters(self) -> pd.DataFrame:
-        """Collect uncertain parameters from uncertainty-enabled exogenous tables
+        """Collect uncertain parameters from uncertainty-enabled exogenous tables.
 
              Returns:
                 pd.DataFrame: Mapping table containing parameter names, table names,
@@ -65,9 +65,19 @@ class Uncertainty:
 
         id_col = Defaults.Labels.ID_FIELD['id'][0]
         values_col = Defaults.Labels.VALUES_FIELD['values'][0]
-        is_uncertain_col = Defaults.Labels.IS_UNCERTAIN_FIELD['is_uncertain'][0]
-        lower_col = Defaults.Labels.LOWER_BOUND_FIELD['lower_bound'][0]
-        upper_col = Defaults.Labels.UPPER_BOUND_FIELD['upper_bound'][0]
+        is_uncertain_col = Defaults.Labels.IS_UNCERTAIN_FIELD[
+            Defaults.Labels.IS_UNCERTAIN_KEY
+        ][0]
+        lower_col = Defaults.Labels.LOWER_BOUND_FIELD[
+            Defaults.Labels.LOWER_BOUND_KEY
+        ][0]
+        upper_col = Defaults.Labels.UPPER_BOUND_FIELD[
+            Defaults.Labels.UPPER_BOUND_KEY
+        ][0]
+        parameter_name_col = Defaults.Labels.PARAMETER_NAME
+        table_name_col = Defaults.Labels.TABLE_NAME
+        variable_name_col = Defaults.Labels.VARIABLE_NAME
+        coordinate_label_col = Defaults.Labels.COORDINATE_LABEL
 
         technical_columns = {
             id_col,
@@ -116,25 +126,25 @@ class Uncertainty:
 
                     records.append(
                         {
-                            "parameter_name": f"{table_name}||{row_id}",
-                            "table_name": table_name,
+                            parameter_name_col: f"{table_name}||{row_id}",
+                            table_name_col: table_name,
                             "id": row_id,
-                            "variable_name": var_keys[0],
-                            "lower_bound": lower_val,
-                            "upper_bound": upper_val,
-                            "coordinate_label": coordinate_label,
+                            variable_name_col: var_keys[0],
+                            Defaults.Labels.LOWER_BOUND_KEY: lower_val,
+                            Defaults.Labels.UPPER_BOUND_KEY: upper_val,
+                            coordinate_label_col: coordinate_label,
                         }
                     )
 
         mapping_df = pd.DataFrame(
             records,
             columns=[
-                "parameter_name",
-                "table_name",
+                parameter_name_col,
+                table_name_col,
                 "id",
-                "lower_bound",
-                "upper_bound",
-                "coordinate_label",
+                Defaults.Labels.LOWER_BOUND_KEY,
+                Defaults.Labels.UPPER_BOUND_KEY,
+                coordinate_label_col,
             ],
         )
 
@@ -151,8 +161,11 @@ class Uncertainty:
 
         problem = {
             "num_vars": len(mapping_df),
-            "names": mapping_df["parameter_name"].tolist(),
-            "bounds": mapping_df[["lower_bound", "upper_bound"]].values.tolist(),
+            "names": mapping_df[Defaults.Labels.PARAMETER_NAME].tolist(),
+            "bounds": mapping_df[[
+                Defaults.Labels.LOWER_BOUND_KEY,
+                Defaults.Labels.UPPER_BOUND_KEY,
+            ]].values.tolist(),
         }
 
         return problem
@@ -172,13 +185,16 @@ class Uncertainty:
         if pd.isna(lower_val) or pd.isna(upper_val):
             raise ValueError(
                 f"Missing bounds in table '{table_name}', id '{row_id}'. "
-                f"lower_bound={lower}, upper_bound={upper}"
+                f"{Defaults.Labels.LOWER_BOUND_KEY}={lower}, "
+                f"{Defaults.Labels.UPPER_BOUND_KEY}={upper}"
             )
 
         if lower_val >= upper_val:
             raise ValueError(
                 f"Invalid bounds in table '{table_name}', id '{row_id}'. "
-                f"lower_bound >= upper_bound ({lower_val} >= {upper_val})"
+                f"{Defaults.Labels.LOWER_BOUND_KEY} >= "
+                f"{Defaults.Labels.UPPER_BOUND_KEY} "
+                f"({lower_val} >= {upper_val})"
             )
 
         return lower_val, upper_val
@@ -196,7 +212,7 @@ class Uncertainty:
             **kwargs: Keyword arguments passed to the selected SALib sampler.
 
         Returns:
-            pd.DataFrame: Sample matrix with ``run_id`` as explicit column.
+            pd.DataFrame: Sample matrix with an explicit run identifier column.
         """
         problem = self.create_sampling_problem()
         sampler = self.SAMPLERS[method]
@@ -204,7 +220,7 @@ class Uncertainty:
         samples = sampler(problem, **kwargs)
 
         samples_df = pd.DataFrame(samples, columns=problem["names"])
-        samples_df.index.name = "run_id"
+        samples_df.index.name = Defaults.Labels.RUN_ID
         samples_df.reset_index(inplace=True)
 
         return samples_df
@@ -275,23 +291,32 @@ class Uncertainty:
             samples_df: pd.DataFrame,
             mapping_df: pd.DataFrame,
     ) -> pd.DataFrame:
+        run_id_col = Defaults.Labels.RUN_ID
+        parameter_name_col = Defaults.Labels.PARAMETER_NAME
+        sampled_value_col = Defaults.Labels.SAMPLED_VALUE
+        coordinate_label_col = Defaults.Labels.COORDINATE_LABEL
+
         samples_long = samples_df.melt(
-            id_vars="run_id",
-            var_name="parameter_name",
-            value_name="sampled_value",
+            id_vars=run_id_col,
+            var_name=parameter_name_col,
+            value_name=sampled_value_col,
         )
 
         coordinates_df = mapping_df[
-            ["parameter_name", "coordinate_label"]
+            [parameter_name_col, coordinate_label_col]
         ].drop_duplicates()
 
         samples_df_save = samples_long.merge(
             coordinates_df,
-            on="parameter_name",
+            on=parameter_name_col,
             how="left",
         )
         samples_df_save = samples_df_save[[
-            "run_id", "coordinate_label", "parameter_name", "sampled_value"]]
+            run_id_col,
+            coordinate_label_col,
+            parameter_name_col,
+            sampled_value_col,
+        ]]
         return samples_df_save
 
     def save_samples(
@@ -339,7 +364,11 @@ class Uncertainty:
         uncertainty_measures = [
             var_key
             for var_key, variable in self.index.variables.items()
-            if getattr(variable, "uncertainty_measure", False) is True
+            if getattr(
+                variable,
+                Defaults.Labels.UNCERTAINTY_MEASURE_KEY,
+                False,
+            ) is True
         ]
         return uncertainty_measures
 
@@ -370,13 +399,15 @@ class Uncertainty:
             for var_key, info in invalid_vars.items():
                 self.logger.error(
                     "Uncertainty measure validation | "
-                    f"Variable '{var_key}' is marked as uncertainty_measure=True "
+                    f"Variable '{var_key}' is marked as "
+                    f"{Defaults.Labels.UNCERTAINTY_MEASURE_KEY}=True "
                     f"but is not scalar ({info})."
                 )
 
             raise exc.SettingsError(
                 "Uncertainty measure validation failed | "
-                "Only scalar variables can be marked as uncertainty_measure=True."
+                f"Only scalar variables can be marked as "
+                f"{Defaults.Labels.UNCERTAINTY_MEASURE_KEY}=True."
             )
 
     def get_deterministic_values_df(
@@ -391,7 +422,9 @@ class Uncertainty:
         """
         values_header = Defaults.Labels.VALUES_FIELD["values"][0]
         id_header = Defaults.Labels.ID_FIELD["id"][0]
-        is_uncertain_header = Defaults.Labels.IS_UNCERTAIN_FIELD["is_uncertain"][0]
+        is_uncertain_header = Defaults.Labels.IS_UNCERTAIN_FIELD[
+            Defaults.Labels.IS_UNCERTAIN_KEY
+        ][0]
 
         if values_header not in table_df.columns:
             msg = (
@@ -437,7 +470,7 @@ class Uncertainty:
             ):
                 continue
 
-            if getattr(variable, "is_uncertain", False):
+            if getattr(variable, Defaults.Labels.IS_UNCERTAIN_KEY, False):
                 uncertain_vars.append(var_key)
 
         return uncertain_vars
@@ -454,7 +487,7 @@ class Uncertainty:
             ):
                 continue
 
-            if not getattr(variable, "is_uncertain", False):
+            if not getattr(variable, Defaults.Labels.IS_UNCERTAIN_KEY, False):
                 deterministic_vars.append(var_key)
 
         return deterministic_vars
@@ -475,7 +508,7 @@ class Uncertainty:
             {table_name} || {id}
 
         and writes the sampled value into the standard `values` column. Auxiliary
-        uncertainty columns, such as `lower_bound` and `upper_bound`, are removed
+        uncertainty bound columns are removed
         before returning the dataframe, so that the output can be passed to the
         standard CVXLab reshaping pipeline.
 
@@ -483,7 +516,7 @@ class Uncertainty:
             table_df: DataFrame extracted from the SQLite data table.
             table_name: Name of the SQLite data table.
             samples_df: DataFrame containing sampled values. Expected columns are
-                `run_id` plus one column per uncertain parameter.
+                the run identifier plus one column per uncertain parameter.
             run_id: Identifier of the uncertainty-analysis run to inject.
             separator: Separator used in sampled-parameter names.
 
@@ -492,26 +525,19 @@ class Uncertainty:
             column and uncertainty-bound columns removed.
 
         Raises:
-            MissingDataError: If required columns are missing, if `run_id` is not
+            MissingDataError: If required columns are missing, if the selected run is not
                 found, if it is duplicated, or if sampled parameters are missing.
         """
 
         id_header = Defaults.Labels.ID_FIELD["id"][0]
         values_header = Defaults.Labels.VALUES_FIELD["values"][0]
-
-        # If these labels already exist in Defaults, use them.
-        # Otherwise, keep the explicit strings.
-        lower_bound_header = getattr(
-            Defaults.Labels,
-            "LOWER_BOUND_FIELD",
-            {"lower_bound": ["lower_bound"]},
-        )["lower_bound"][0]
-
-        upper_bound_header = getattr(
-            Defaults.Labels,
-            "UPPER_BOUND_FIELD",
-            {"upper_bound": ["upper_bound"]},
-        )["upper_bound"][0]
+        lower_bound_header = Defaults.Labels.LOWER_BOUND_FIELD[
+            Defaults.Labels.LOWER_BOUND_KEY
+        ][0]
+        upper_bound_header = Defaults.Labels.UPPER_BOUND_FIELD[
+            Defaults.Labels.UPPER_BOUND_KEY
+        ][0]
+        run_id_col = Defaults.Labels.RUN_ID
 
         required_table_columns = [id_header, values_header]
         missing_table_columns = [
@@ -528,12 +554,13 @@ class Uncertainty:
             self.logger.error(msg)
             raise exc.MissingDataError(msg)
 
-        samples_df_run = samples_df.loc[samples_df["run_id"] == run_id]
+        samples_df_run = samples_df.loc[samples_df[run_id_col] == run_id]
 
         if samples_df_run.empty:
             msg = (
                 "Sample injection failed | "
-                f"No sampled values found for run_id={run_id}."
+                f"No sampled values found for "
+                f"{Defaults.Labels.RUN_ID}={run_id}."
             )
             self.logger.error(msg)
             raise exc.MissingDataError(msg)
@@ -640,7 +667,7 @@ class Uncertainty:
 
                     if record_key not in records:
 
-                        record = {"run_id": run_id}
+                        record = {Defaults.Labels.RUN_ID: run_id}
 
                         if scenario_key is not None:
                             record["scenario"] = scenario_key
@@ -656,7 +683,7 @@ class Uncertainty:
                     records[record_key][var_key] = value
 
         if not records:
-            return pd.DataFrame([{"run_id": run_id}])
+            return pd.DataFrame([{Defaults.Labels.RUN_ID: run_id}])
 
         return pd.DataFrame(records.values())
 
@@ -696,3 +723,128 @@ class Uncertainty:
             )
 
         return float(value_array[0])
+
+    def get_uncertainty_hybrid_tables_list(self) -> list[str]:
+        """Return data tables containing at least one uncertain variable."""
+
+        uncertainty_tables = []
+
+        for var_key, variable in self.index.variables.items():
+            if getattr(variable, Defaults.Labels.IS_UNCERTAIN_KEY, False):
+                if variable.related_table is not None:
+                    uncertainty_tables.append(variable.related_table)
+
+        return sorted(set(uncertainty_tables))
+
+    def get_fully_deterministic_tables_list(self) -> list[str]:
+        """Return exogenous data tables containing no uncertain variables."""
+
+        allowed_var_types = Defaults.SymbolicDefinitions.VARIABLE_TYPES
+
+        deterministic_tables = []
+
+        for table_key, table in self.index.data.items():
+            if table.type in [
+                allowed_var_types["ENDOGENOUS"],
+                allowed_var_types["CONSTANT"],
+            ]:
+                continue
+
+            table_has_uncertain_vars = any(
+                self.index.variables[var_key].is_uncertain
+                for var_key in table.variables_info
+            )
+
+            if not table_has_uncertain_vars:
+                deterministic_tables.append(table_key)
+
+        return deterministic_tables
+
+    def get_vars_in_tables_list(self, table_list: list[str]) -> list[str]:
+        """Return variable keys whose related table is included in table_list."""
+
+        allowed_var_types = Defaults.SymbolicDefinitions.VARIABLE_TYPES
+
+        vars_list = []
+
+        for var_key, variable in self.index.variables.items():
+            if variable.related_table not in table_list:
+                continue
+
+            if variable.type in [
+                allowed_var_types["ENDOGENOUS"],
+                allowed_var_types["CONSTANT"],
+            ]:
+                continue
+
+            vars_list.append(var_key)
+
+        return sorted(set(vars_list))
+
+    def inject_sampled_values_by_row(
+        self,
+        table_df: pd.DataFrame,
+        run_id: int,
+        samples_df: pd.DataFrame,
+        table_name: str,
+    ) -> pd.DataFrame:
+        """Inject sampled values only in rows marked as uncertain.
+
+        Rows with the uncertainty flag set to TRUE receive sampled values.
+        All other rows keep their original DB values.
+        """
+
+        values_col = Defaults.Labels.VALUES_FIELD["values"][0]
+        id_col = Defaults.Labels.ID_FIELD["id"][0]
+        is_uncertain_col = Defaults.Labels.IS_UNCERTAIN_FIELD[
+            Defaults.Labels.IS_UNCERTAIN_KEY
+        ][0]
+
+        resolved_df = table_df.copy()
+
+        if is_uncertain_col not in resolved_df.columns:
+            return resolved_df
+
+        uncertain_mask = (
+            resolved_df[is_uncertain_col]
+            .astype(str)
+            .str.upper()
+            .eq("TRUE")
+        )
+
+        if not uncertain_mask.any():
+            return resolved_df
+
+        run_id_col = Defaults.Labels.RUN_ID
+
+        samples_run = samples_df.loc[samples_df[run_id_col].eq(run_id)]
+
+        if samples_run.empty:
+            raise exc.MissingDataError(
+                f"No sampled values found for "
+                f"{Defaults.Labels.RUN_ID}={run_id}."
+            )
+
+        if len(samples_run) > 1:
+            raise exc.OperationalError(
+                f"Multiple sampled rows found for "
+                f"{Defaults.Labels.RUN_ID}={run_id}."
+            )
+
+        sample_values = samples_run.drop(
+            columns=[run_id_col]).iloc[0].to_dict()
+
+        for idx in resolved_df.loc[uncertain_mask].index:
+            row_id = resolved_df.at[idx, id_col]
+            parameter_name = f"{table_name}||{row_id}"
+
+            if parameter_name not in sample_values:
+                raise exc.MissingDataError(
+                    f"Missing sampled value for uncertain parameter "
+                    f"'{parameter_name}' in "
+                    f"{Defaults.Labels.RUN_ID}={run_id}."
+                )
+
+            resolved_df.at[idx, values_col] = sample_values[parameter_name]
+
+        return resolved_df

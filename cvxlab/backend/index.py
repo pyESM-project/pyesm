@@ -81,7 +81,10 @@ class Index:
 
     @property
     def is_uncertainty_enabled(self) -> bool:
-        return bool(self.settings.get("Uncertainty", False))
+        return bool(self.settings.get(
+            Defaults.Labels.UNCERTAINTY_SETTING_KEY,
+            False,
+        ))
 
     @property
     def sets_split_problem_dict(self) -> Dict[str, str]:

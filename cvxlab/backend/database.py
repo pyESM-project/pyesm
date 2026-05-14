@@ -86,7 +86,10 @@ class Database:
 
     @property
     def is_uncertainty_enabled(self) -> bool:
-        return bool(self.settings.get("Uncertainty", False))
+        return bool(self.settings.get(
+            Defaults.Labels.UNCERTAINTY_SETTING_KEY,
+            False,
+        ))
 
     def create_blank_sets_xlsx_file(self) -> None:
         """Create a blank Excel file for getting sets information.
@@ -384,10 +387,10 @@ class Database:
         making the data table lighter). 
         Finally, it adds an ID column to the DataFrame and loads the dataframe 
         into the corresponding data table in the SQLite database. It finally adds
-        a 'values' column to the data table to store numerical values.
+        the standard values column to the data table to store numerical values.
         When uncertainty support is enabled and the table contains uncertain
-        variables, it also pre-fills an 'is_uncertain' column and adds blank
-        'lower_bound' and 'upper_bound' columns.
+        variables, it also pre-fills the uncertainty flag column and adds blank
+        lower and upper bounds columns.
 
         Raises:
             OperationalError: Is raised if the procedure is not filtering
@@ -720,9 +723,15 @@ class Database:
         other_coordinate_cols = None
 
         if self.is_uncertainty_enabled:
-            lb_field = Defaults.Labels.LOWER_BOUND_FIELD['lower_bound'][0]
-            ub_field = Defaults.Labels.UPPER_BOUND_FIELD['upper_bound'][0]
-            is_uncertain_field = Defaults.Labels.IS_UNCERTAIN_FIELD['is_uncertain'][0]
+            lb_field = Defaults.Labels.LOWER_BOUND_FIELD[
+                Defaults.Labels.LOWER_BOUND_KEY
+            ][0]
+            ub_field = Defaults.Labels.UPPER_BOUND_FIELD[
+                Defaults.Labels.UPPER_BOUND_KEY
+            ][0]
+            is_uncertain_field = Defaults.Labels.IS_UNCERTAIN_FIELD[
+                Defaults.Labels.IS_UNCERTAIN_KEY
+            ][0]
 
             other_coordinate_cols = [lb_field, ub_field, is_uncertain_field]
 

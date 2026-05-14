@@ -149,10 +149,17 @@ class Defaults:
         VALUE_KEY = 'value'
         BLANK_FILL_KEY = 'blank_fill'
         NONNEG_KEY = 'nonneg'
+        UNCERTAINTY_SETTING_KEY = 'Uncertainty'
         IS_UNCERTAIN_KEY = 'is_uncertain'
         UNCERTAINTY_MEASURE_KEY = 'uncertainty_measure'
         LOWER_BOUND_KEY = 'lower_bound'
         UPPER_BOUND_KEY = 'upper_bound'
+        RUN_ID = 'run_id'
+        PARAMETER_NAME = 'parameter_name'
+        SAMPLED_VALUE = 'sampled_value'
+        COORDINATE_LABEL = 'coordinate_label'
+        TABLE_NAME = 'table_name'
+        VARIABLE_NAME = 'variable_name'
 
         SUB_PROBLEM_KEY = 'sub_problem_key'
         FILTER_DICT_KEY = 'filter'
@@ -164,9 +171,9 @@ class Defaults:
 
         GENERIC_FIELD_TYPE = 'TEXT'
         VALUES_FIELD = {'values': ['values', 'REAL']}
-        IS_UNCERTAIN_FIELD = {'is_uncertain': ['is_uncertain', 'TEXT']}
-        LOWER_BOUND_FIELD = {'lower_bound': ['lower_bound', 'REAL']}
-        UPPER_BOUND_FIELD = {'upper_bound': ['upper_bound', 'REAL']}
+        IS_UNCERTAIN_FIELD = {IS_UNCERTAIN_KEY: [IS_UNCERTAIN_KEY, 'TEXT']}
+        LOWER_BOUND_FIELD = {LOWER_BOUND_KEY: [LOWER_BOUND_KEY, 'REAL']}
+        UPPER_BOUND_FIELD = {UPPER_BOUND_KEY: [UPPER_BOUND_KEY, 'REAL']}
         ID_FIELD = {'id': ['id', 'INTEGER PRIMARY KEY']}
 
         SET_TABLE_NAME_PREFIX = '_set_'

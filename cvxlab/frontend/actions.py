@@ -72,7 +72,10 @@ def gen_directory(cfg: session.SessionConfig, ms: session.ModelState) -> None:
         main_dir_path=cfg.main_dir_path,
         model_dir_name=cfg.model_dir_name,
         settings_file_type=cfg.model_settings_from,
-        Uncertainty=cfg.model_kwargs.get('Uncertainty', False),
+        Uncertainty=cfg.model_kwargs.get(
+            Defaults.Labels.UNCERTAINTY_SETTING_KEY,
+            False,
+        ),
     )
 
 
