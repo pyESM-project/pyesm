@@ -606,28 +606,93 @@ class Uncertainty:
     def collect_uncertainty_measures_for_run(
             self,
             run_id: int,
-    ) -> dict:
-        """Collect scalar uncertainty-measure values after one uncertainty run."""
+    ) -> pd.DataFrame:
+        """Collect uncertainty-measure values after one uncertainty run.
+
+        Returns one row per scenario if the model is split into multiple problems.
+        """
 
         cvxpy_var_header = Defaults.Labels.CVXPY_VAR
-
-        record = {"run_id": run_id}
+        sub_problem_key_header = Defaults.Labels.SUB_PROBLEM_KEY
 
         uncertainty_measure_vars = self.get_uncertainty_measure_vars_list()
+
+        records = {}
 
         for var_key in uncertainty_measure_vars:
             variable = self.index.variables[var_key]
 
-            if isinstance(variable.data, pd.DataFrame):
-                cvxpy_obj = variable.data[cvxpy_var_header].iloc[0]
+            variable_data_by_problem = self._normalize_variable_data_by_problem(
+                variable.data
+            )
 
-            elif isinstance(variable.data, dict):
-                cvxpy_obj = next(
-                    iter(variable.data.values())
-                )[cvxpy_var_header].iloc[0]
+            for problem_key, variable_data in variable_data_by_problem.items():
 
-            value_array = np.asarray(cvxpy_obj.value)
+                for row_idx, row in variable_data.iterrows():
+                    cvxpy_obj = row[cvxpy_var_header]
 
-            record[var_key] = float(value_array.reshape(-1)[0])
+                    scenario_key = row.get(sub_problem_key_header, None)
 
-        return record
+                    if pd.isna(scenario_key):
+                        scenario_key = None
+
+                    record_key = scenario_key
+
+                    if record_key not in records:
+
+                        record = {"run_id": run_id}
+
+                        if scenario_key is not None:
+                            record["scenario"] = scenario_key
+
+                        records[record_key] = record
+
+                    value = self._extract_scalar_value(
+                        cvxpy_obj=cvxpy_obj,
+                        var_key=var_key,
+                        scenario_key=scenario_key,
+                    )
+
+                    records[record_key][var_key] = value
+
+        if not records:
+            return pd.DataFrame([{"run_id": run_id}])
+
+        return pd.DataFrame(records.values())
+
+    def _normalize_variable_data_by_problem(
+            self,
+            variable_data,
+    ) -> dict:
+        """Normalize variable.data to a dictionary keyed by problem/scenario key."""
+
+        if isinstance(variable_data, pd.DataFrame):
+            return {None: variable_data}
+
+        if isinstance(variable_data, dict):
+            return variable_data
+
+    def _extract_scalar_value(
+            self,
+            cvxpy_obj,
+            var_key: str,
+            scenario_key=None,
+    ) -> float:
+        """Extract a scalar value from a solved CVXPY object."""
+
+        if cvxpy_obj.value is None:
+            raise ValueError(
+                f"Uncertainty measure '{var_key}' has no value "
+                f"for scenario '{scenario_key}'. Problem may not have been solved."
+            )
+
+        value_array = np.asarray(cvxpy_obj.value).reshape(-1)
+
+        if value_array.size != 1:
+            raise ValueError(
+                f"Uncertainty measure '{var_key}' is not scalar "
+                f"for scenario '{scenario_key}'. Shape: {np.asarray(cvxpy_obj.value).shape}. "
+                "Only scalar uncertainty measures can be collected."
+            )
+
+        return float(value_array[0])

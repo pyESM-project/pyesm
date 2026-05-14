@@ -1176,6 +1176,8 @@ class Model():
                 )
             )
 
-        uncertainty_measures_df = pd.DataFrame(uncertainty_measure_records)
-
+        uncertainty_measures_df = pd.concat(
+            uncertainty_measure_records,
+            ignore_index=True,
+        )
         return uncertainty_measures_df
