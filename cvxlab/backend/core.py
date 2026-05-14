@@ -29,9 +29,9 @@ from cvxlab.backend.uncertainty import Uncertainty
 class Core:
     """Core class defines the interactions among main components of the package.
 
-    The Core class generates instances of Index (with all the information about 
-    sets, data tables and variables), SQLManager (with all the tools necessary 
-    to handle SQLite database), Database (handling all database operations), and 
+    The Core class generates instances of Index (with all the information about
+    sets, data tables and variables), SQLManager (with all the tools necessary
+    to handle SQLite database), Database (handling all database operations), and
     Problem (defining symbolic and numerical problems). It manages the interactions
     among these components, including data fetching and writing to the database,
     variable initialization, problem definition and solving.
@@ -116,15 +116,18 @@ class Core:
 
     @property
     def is_uncertainty_enabled(self) -> bool:
-        return bool(self.settings.get("Uncertainty", False))
+        return bool(self.settings.get(
+            Defaults.Labels.UNCERTAINTY_SETTING_KEY,
+            False,
+        ))
 
     def initialize_problems_variables(self) -> None:
         """Initialize data structures for handling problem variables.
 
-        This method first iterates over each endogenous data table, generating 
-        the coordinate dataframe and the related cvxpy variable in the data table 
-        object (cvxpy variable in endogenous data tables include all data tables 
-        entries that will be then sliced to be used in the problem). 
+        This method first iterates over each endogenous data table, generating
+        the coordinate dataframe and the related cvxpy variable in the data table
+        object (cvxpy variable in endogenous data tables include all data tables
+        entries that will be then sliced to be used in the problem).
         It then iterates over all variables in the index, generating the variable's
         dataframe (including all variables information and the related cvxpy variable)
         in Problem object.
@@ -286,20 +289,20 @@ class Core:
             filter_negative_values: bool = False,
             warnings_on_negatives: bool = False,
             validate_types: bool = True,
-            is_uncertain: Optional[bool] = False,
+            is_hybrid: Optional[bool] = False,
             samples_df: Optional[pd.DataFrame] = None,
             run_id: Optional[int] = None
     ) -> None:
         """Fetch data from the database and assign it to cvxpy exogenous variables.
 
-        This method iterates over each exogenous variable in the Index, getting 
+        This method iterates over each exogenous variable in the Index, getting
         related data from the SQLite database and assigns it to the cvxpy variable.
         The method handles variables whose type is defined by the problem separately.
-        The method can fetch data for all scenarios or for a subset of scenarios 
-        (scenarios_idx): scenarios are linear combinations of inter-problem sets 
-        values defined in the index. 
-        The method can update all exogenous variables or a specified list of variables 
-        (var_list_to_update): this may be useful for continuous user model run, 
+        The method can fetch data for all scenarios or for a subset of scenarios
+        (scenarios_idx): scenarios are linear combinations of inter-problem sets
+        values defined in the index.
+        The method can update all exogenous variables or a specified list of variables
+        (var_list_to_update): this may be useful for continuous user model run,
         when only a subset of exogenous variables need to be updated.
         Optionally, the method can check if variable data comply with nonneg attribute
         defined for the variable, putting negative values to zero.
@@ -446,27 +449,19 @@ class Core:
                                     list(variable_data_filtered.index)
 
                         for combination in sets_parsing_hierarchy_idx:
-                            # get raw data from database
-                            if is_uncertain:
-                                raw_data_empty = self.database.sqltools.table_to_dataframe(
-                                    table_name=variable.related_table,
-                                    filters_dict=variable_data[filter_header][combination],
-                                )
 
-                                raw_data = self.uncertainty.inject_sampled_values(
-                                    table_df=raw_data_empty,
+                            raw_data = self.database.sqltools.table_to_dataframe(
+                                table_name=variable.related_table,
+                                filters_dict=variable_data[filter_header][combination],
+                            )
+
+                            if is_hybrid:
+                                raw_data = self.uncertainty.inject_sampled_values_by_row(
+                                    table_df=raw_data,
                                     run_id=run_id,
                                     samples_df=samples_df,
-                                    table_name=variable.related_table
-                                )
-
-                            else:
-                                raw_data = self.database.sqltools.table_to_dataframe(
                                     table_name=variable.related_table,
-                                    filters_dict=variable_data[filter_header][combination],
                                 )
-
-                                # qui esce fuori db con id poi usare db con id e mapping df per risalire al valore in samples_df
 
                             if validate_types:
                                 # check if variable data are int or float
@@ -707,7 +702,11 @@ class Core:
 
             for var_key, variable in self.index.variables.items():
 
-                if not getattr(variable, "is_uncertain", False):
+                if not getattr(
+                    variable,
+                    Defaults.Labels.IS_UNCERTAIN_KEY,
+                    False,
+                ):
                     continue
 
                 variable_data_items = (
