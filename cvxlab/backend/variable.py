@@ -122,8 +122,8 @@ class Variable:
         set_key = Defaults.Labels.SET
         dim_key = Defaults.Labels.DIM
         sign_key = Defaults.Labels.NONNEG_KEY
-        is_uncertain_key = Defaults.Labels.IS_UNCERTAIN_KEY
-        uncertainty_measure_key = Defaults.Labels.UNCERTAINTY_MEASURE_KEY
+        is_uncertain_key = Defaults.UncertaintySettings.IS_UNCERTAIN_KEY
+        uncertainty_measure_key = Defaults.UncertaintySettings.UNCERTAINTY_MEASURE_KEY
         dimensions = Defaults.SymbolicDefinitions.DIMENSIONS
 
         if self.var_info is None:

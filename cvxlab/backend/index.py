@@ -539,8 +539,8 @@ class Index:
         value_key = Defaults.Labels.VALUE_KEY
         blank_fill_key = Defaults.Labels.BLANK_FILL_KEY
         nonneg_key = Defaults.Labels.NONNEG_KEY
-        is_uncertain_key = Defaults.Labels.IS_UNCERTAIN_KEY
-        uncertainty_measure_key = Defaults.Labels.UNCERTAINTY_MEASURE_KEY
+        is_uncertain_key = Defaults.UncertaintySettings.IS_UNCERTAIN_KEY
+        uncertainty_measure_key = Defaults.UncertaintySettings.UNCERTAINTY_MEASURE_KEY
 
         problems = {}
 

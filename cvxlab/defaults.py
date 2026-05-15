@@ -25,6 +25,7 @@ class Defaults:
     - LiteralTypes: Shared Literal type aliases for validating settings and type hints.
     - ConfigFiles: Defaults related to configuration and file management.
     - Labels: Standard headers and field names.
+    - UncertaintySettings: Defaults and metadata for uncertainty workflows.
     - DefaultStructures: Default structures for data validation.
     - SymbolicDefinitions: Allowed constants and operators for symbolic problem definitions.
     - NumericalSettings: Settings for numerical solvers and tolerances.
@@ -110,8 +111,6 @@ class Defaults:
         - VALUE_KEY: key related to the type for variable of type constants.
         - BLANK_FILL_KEY: key related to the value used to fill blank.
         - NONNEG_KEY: key related to the non-negativity sign of endogenous variables.
-        - IS_UNCERTAIN_KEY: key related to the uncertainty flag of variables.
-        - UNCERTAINTY_MEASURE_KEY: key related to the uncertainty measure metadata.
 
         Dataframe columns default labels:
 
@@ -150,14 +149,6 @@ class Defaults:
         BLANK_FILL_KEY = 'blank_fill'
         NONNEG_KEY = 'nonneg'
         UNCERTAINTY_SETTING_KEY = 'Uncertainty'
-        IS_UNCERTAIN_KEY = 'is_uncertain'
-        UNCERTAINTY_MEASURE_KEY = 'uncertainty_measure'
-        LOWER_BOUND_KEY = 'lower_bound'
-        UPPER_BOUND_KEY = 'upper_bound'
-        RUN_ID = 'run_id'
-        PARAMETER_NAME = 'parameter_name'
-        SAMPLED_VALUE = 'sampled_value'
-        COORDINATE_LABEL = 'coordinate_label'
         TABLE_NAME = 'table_name'
         VARIABLE_NAME = 'variable_name'
 
@@ -171,14 +162,80 @@ class Defaults:
 
         GENERIC_FIELD_TYPE = 'TEXT'
         VALUES_FIELD = {'values': ['values', 'REAL']}
-        IS_UNCERTAIN_FIELD = {IS_UNCERTAIN_KEY: [IS_UNCERTAIN_KEY, 'TEXT']}
-        LOWER_BOUND_FIELD = {LOWER_BOUND_KEY: [LOWER_BOUND_KEY, 'REAL']}
-        UPPER_BOUND_FIELD = {UPPER_BOUND_KEY: [UPPER_BOUND_KEY, 'REAL']}
         ID_FIELD = {'id': ['id', 'INTEGER PRIMARY KEY']}
 
         SET_TABLE_NAME_PREFIX = '_set_'
         COLUMN_NAME_SUFFIX = '_Name'
         COLUMN_AGGREGATION_SUFFIX = '_agg_'
+
+    class UncertaintySettings:
+        """Defaults and metadata for uncertainty sampling and GSA analysis."""
+
+        IS_UNCERTAIN_KEY = "is_uncertain"
+        UNCERTAINTY_MEASURE_KEY = "uncertainty_measure"
+        LOWER_BOUND_KEY = "lower_bound"
+        UPPER_BOUND_KEY = "upper_bound"
+
+        IS_UNCERTAIN_FIELD = {"is_uncertain": ["is_uncertain", "TEXT"]}
+        LOWER_BOUND_FIELD = {"lower_bound": ["lower_bound", "REAL"]}
+        UPPER_BOUND_FIELD = {"upper_bound": ["upper_bound", "REAL"]}
+
+        RUN_ID = "run_id"
+        PARAMETER_NAME = "parameter_name"
+        SAMPLED_VALUE = "sampled_value"
+        COORDINATE_LABEL = "coordinate_label"
+        OUTPUT_NAME = "output_name"
+        INDEX_NAME = "index"
+        INDEX_VALUE = "value"
+        PARAMETER_NAME_2 = "parameter_name_2"
+        METHOD = "method"
+
+        SOBOL = "sobol"
+        MORRIS = "morris"
+        LATIN = "latin"
+        DELTA = "delta"
+        RBD_FAST = "rbd_fast"
+        SALTELLI = "saltelli"
+
+        SUPPORTED_SAMPLING_METHODS = [SOBOL, MORRIS, LATIN]
+        SUPPORTED_ANALYSIS_METHODS = [SOBOL, MORRIS, DELTA, RBD_FAST]
+
+        ANALYZER_REQUIRED_INPUTS = {
+            SOBOL: {"problem", "Y"},
+            MORRIS: {"problem", "X", "Y"},
+            DELTA: {"problem", "X", "Y"},
+            RBD_FAST: {"problem", "X", "Y"},
+        }
+
+        ANALYSIS_COMPATIBILITY = {
+            SOBOL: {SOBOL, SALTELLI},
+            MORRIS: {MORRIS},
+            DELTA: {LATIN, SOBOL, SALTELLI, MORRIS},
+            RBD_FAST: {LATIN, SOBOL, SALTELLI, MORRIS},
+        }
+
+        SAMPLING_DEFAULTS = {
+            SOBOL: {"calc_second_order": False},
+            MORRIS: {"num_levels": 4},
+            LATIN: {},
+        }
+
+        ANALYSIS_DEFAULTS = {
+            SOBOL: {
+                "calc_second_order": False,
+                "print_to_console": True,
+            },
+            MORRIS: {
+                "num_levels": 4,
+                "print_to_console": True,
+            },
+            DELTA: {
+                "print_to_console": True,
+            },
+            RBD_FAST: {
+                "print_to_console": True,
+            },
+        }
 
     class DefaultStructures:
         """Default structures for data validation and for generating templates.
@@ -343,29 +400,6 @@ class Defaults:
             }
         )
 
-        DATA_TABLE_STRUCTURE_UNCERTAINTY = (
-            'table_key:',
-            {
-                METADATA: (OPTIONAL, str),
-                'type': (str, dict),
-                'integer': (OPTIONAL, bool),
-                'coordinates': (str, list),
-                'variables_info': {
-                    ANY: {
-                        'value': (OPTIONAL, str),
-                        'blank_fill': (OPTIONAL, Union[int, float]),
-                        'nonneg': (OPTIONAL, bool),
-                        'is_uncertain': (OPTIONAL, bool),
-                        'uncertainty_measure': (OPTIONAL, str, bool),
-                        ANY: (OPTIONAL, {
-                            'dim': (OPTIONAL, str),
-                            'filters': (OPTIONAL, dict),
-                        })
-                    }
-                }
-            }
-        )
-
         PROBLEM_STRUCTURE = (
             'problem_key: # optional',
             {
@@ -391,30 +425,6 @@ class Defaults:
                 *DATA_TABLE_STRUCTURE[1].keys(),
                 'value',
                 'blank_fill',
-                'set_keys ...'
-            ],
-            'problem': [
-                'problem_key',
-                *PROBLEM_STRUCTURE[1].keys()
-            ],
-        }
-
-        UNCERTAINTY_VARIABLE_TEMPLATE_COLUMNS = [
-            'is_uncertain',
-            'uncertainty_measure',
-        ]
-
-        XLSX_TEMPLATE_COLUMNS_UNCERTAINTY = {
-            'structure_sets': [
-                'set_key',
-                *SET_STRUCTURE[1].keys()
-            ],
-            'structure_variables': [
-                'table_key',
-                *DATA_TABLE_STRUCTURE_UNCERTAINTY[1].keys(),
-                'value',
-                'blank_fill',
-                *UNCERTAINTY_VARIABLE_TEMPLATE_COLUMNS,
                 'set_keys ...'
             ],
             'problem': [
@@ -562,10 +572,65 @@ class Defaults:
             'max_iterations': 20,
         }
 
+    DefaultStructures.DATA_TABLE_STRUCTURE_UNCERTAINTY = (
+        'table_key:',
+        {
+            DefaultStructures.METADATA: (DefaultStructures.OPTIONAL, str),
+            'type': (str, dict),
+            'integer': (DefaultStructures.OPTIONAL, bool),
+            'coordinates': (str, list),
+            'variables_info': {
+                DefaultStructures.ANY: {
+                    'value': (DefaultStructures.OPTIONAL, str),
+                    'blank_fill': (DefaultStructures.OPTIONAL, Union[int, float]),
+                    'nonneg': (DefaultStructures.OPTIONAL, bool),
+                    UncertaintySettings.IS_UNCERTAIN_KEY: (
+                        DefaultStructures.OPTIONAL,
+                        bool,
+                    ),
+                    UncertaintySettings.UNCERTAINTY_MEASURE_KEY: (
+                        DefaultStructures.OPTIONAL,
+                        str,
+                        bool,
+                    ),
+                    DefaultStructures.ANY: (DefaultStructures.OPTIONAL, {
+                        'dim': (DefaultStructures.OPTIONAL, str),
+                        'filters': (DefaultStructures.OPTIONAL, dict),
+                    }),
+                }
+            },
+        },
+    )
+
+    DefaultStructures.UNCERTAINTY_VARIABLE_TEMPLATE_COLUMNS = [
+        UncertaintySettings.IS_UNCERTAIN_KEY,
+        UncertaintySettings.UNCERTAINTY_MEASURE_KEY,
+    ]
+
+    DefaultStructures.XLSX_TEMPLATE_COLUMNS_UNCERTAINTY = {
+        'structure_sets': [
+            'set_key',
+            *DefaultStructures.SET_STRUCTURE[1].keys()
+        ],
+        'structure_variables': [
+            'table_key',
+            *DefaultStructures.DATA_TABLE_STRUCTURE_UNCERTAINTY[1].keys(),
+            'value',
+            'blank_fill',
+            *DefaultStructures.UNCERTAINTY_VARIABLE_TEMPLATE_COLUMNS,
+            'set_keys ...'
+        ],
+        'problem': [
+            'problem_key',
+            *DefaultStructures.PROBLEM_STRUCTURE[1].keys()
+        ],
+    }
+
     _SUBGROUPS = [
         LiteralTypes,
         ConfigFiles,
         Labels,
+        UncertaintySettings,
         DefaultStructures,
         SymbolicDefinitions,
         NumericalSettings,

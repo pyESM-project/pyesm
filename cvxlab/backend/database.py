@@ -473,8 +473,8 @@ class Database:
                 ]
 
                 if uncertain_variables:
-                    is_uncertain_header = Defaults.Labels.IS_UNCERTAIN_FIELD[
-                        Defaults.Labels.IS_UNCERTAIN_KEY
+                    is_uncertain_header = Defaults.UncertaintySettings.IS_UNCERTAIN_FIELD[
+                        Defaults.UncertaintySettings.IS_UNCERTAIN_KEY
                     ][0]
 
                     unpivoted_coords_df = util.add_column_to_dataframe(
@@ -506,15 +506,15 @@ class Database:
                 if uncertain_variables:
                     unpivoted_coords_df = util.add_column_to_dataframe(
                         dataframe=unpivoted_coords_df,
-                        column_header=Defaults.Labels.LOWER_BOUND_FIELD[
-                            Defaults.Labels.LOWER_BOUND_KEY
+                        column_header=Defaults.UncertaintySettings.LOWER_BOUND_FIELD[
+                            Defaults.UncertaintySettings.LOWER_BOUND_KEY
                         ][0],
                         column_values=None,
                     )
                     unpivoted_coords_df = util.add_column_to_dataframe(
                         dataframe=unpivoted_coords_df,
-                        column_header=Defaults.Labels.UPPER_BOUND_FIELD[
-                            Defaults.Labels.UPPER_BOUND_KEY
+                        column_header=Defaults.UncertaintySettings.UPPER_BOUND_FIELD[
+                            Defaults.UncertaintySettings.UPPER_BOUND_KEY
                         ][0],
                         column_values=None,
                     )
@@ -522,11 +522,11 @@ class Database:
                 if uncertain_variables:
                     self.sqltools.add_table_column(
                         table_name=table_key,
-                        column_name=Defaults.Labels.IS_UNCERTAIN_FIELD[
-                            Defaults.Labels.IS_UNCERTAIN_KEY
+                        column_name=Defaults.UncertaintySettings.IS_UNCERTAIN_FIELD[
+                            Defaults.UncertaintySettings.IS_UNCERTAIN_KEY
                         ][0],
-                        column_type=Defaults.Labels.IS_UNCERTAIN_FIELD[
-                            Defaults.Labels.IS_UNCERTAIN_KEY
+                        column_type=Defaults.UncertaintySettings.IS_UNCERTAIN_FIELD[
+                            Defaults.UncertaintySettings.IS_UNCERTAIN_KEY
                         ][1],
                     )
 
@@ -539,20 +539,20 @@ class Database:
                 if uncertain_variables:
                     self.sqltools.add_table_column(
                         table_name=table_key,
-                        column_name=Defaults.Labels.LOWER_BOUND_FIELD[
-                            Defaults.Labels.LOWER_BOUND_KEY
+                        column_name=Defaults.UncertaintySettings.LOWER_BOUND_FIELD[
+                            Defaults.UncertaintySettings.LOWER_BOUND_KEY
                         ][0],
-                        column_type=Defaults.Labels.LOWER_BOUND_FIELD[
-                            Defaults.Labels.LOWER_BOUND_KEY
+                        column_type=Defaults.UncertaintySettings.LOWER_BOUND_FIELD[
+                            Defaults.UncertaintySettings.LOWER_BOUND_KEY
                         ][1],
                     )
                     self.sqltools.add_table_column(
                         table_name=table_key,
-                        column_name=Defaults.Labels.UPPER_BOUND_FIELD[
-                            Defaults.Labels.UPPER_BOUND_KEY
+                        column_name=Defaults.UncertaintySettings.UPPER_BOUND_FIELD[
+                            Defaults.UncertaintySettings.UPPER_BOUND_KEY
                         ][0],
-                        column_type=Defaults.Labels.UPPER_BOUND_FIELD[
-                            Defaults.Labels.UPPER_BOUND_KEY
+                        column_type=Defaults.UncertaintySettings.UPPER_BOUND_FIELD[
+                            Defaults.UncertaintySettings.UPPER_BOUND_KEY
                         ][1],
                     )
 
@@ -723,14 +723,14 @@ class Database:
         other_coordinate_cols = None
 
         if self.is_uncertainty_enabled:
-            lb_field = Defaults.Labels.LOWER_BOUND_FIELD[
-                Defaults.Labels.LOWER_BOUND_KEY
+            lb_field = Defaults.UncertaintySettings.LOWER_BOUND_FIELD[
+                Defaults.UncertaintySettings.LOWER_BOUND_KEY
             ][0]
-            ub_field = Defaults.Labels.UPPER_BOUND_FIELD[
-                Defaults.Labels.UPPER_BOUND_KEY
+            ub_field = Defaults.UncertaintySettings.UPPER_BOUND_FIELD[
+                Defaults.UncertaintySettings.UPPER_BOUND_KEY
             ][0]
-            is_uncertain_field = Defaults.Labels.IS_UNCERTAIN_FIELD[
-                Defaults.Labels.IS_UNCERTAIN_KEY
+            is_uncertain_field = Defaults.UncertaintySettings.IS_UNCERTAIN_FIELD[
+                Defaults.UncertaintySettings.IS_UNCERTAIN_KEY
             ][0]
 
             other_coordinate_cols = [lb_field, ub_field, is_uncertain_field]

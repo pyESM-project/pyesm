@@ -749,11 +749,11 @@ class SQLManager:
 
         id_field = Defaults.Labels.ID_FIELD['id'][0]
         values_field = Defaults.Labels.VALUES_FIELD['values'][0]
-        lb_field = Defaults.Labels.LOWER_BOUND_FIELD[
-            Defaults.Labels.LOWER_BOUND_KEY
+        lb_field = Defaults.UncertaintySettings.LOWER_BOUND_FIELD[
+            Defaults.UncertaintySettings.LOWER_BOUND_KEY
         ][0]
-        ub_field = Defaults.Labels.UPPER_BOUND_FIELD[
-            Defaults.Labels.UPPER_BOUND_KEY
+        ub_field = Defaults.UncertaintySettings.UPPER_BOUND_FIELD[
+            Defaults.UncertaintySettings.UPPER_BOUND_KEY
         ][0]
         table_existing_entries = self.count_table_data_entries(table_name)
         df_existing = self.table_to_dataframe(table_name)

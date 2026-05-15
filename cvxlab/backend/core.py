@@ -704,7 +704,7 @@ class Core:
 
                 if not getattr(
                     variable,
-                    Defaults.Labels.IS_UNCERTAIN_KEY,
+                    Defaults.UncertaintySettings.IS_UNCERTAIN_KEY,
                     False,
                 ):
                     continue
