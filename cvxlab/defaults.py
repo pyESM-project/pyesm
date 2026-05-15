@@ -197,8 +197,8 @@ class Defaults:
         RBD_FAST = "rbd_fast"
         SALTELLI = "saltelli"
 
-        SUPPORTED_SAMPLING_METHODS = [SOBOL, MORRIS, LATIN]
-        SUPPORTED_ANALYSIS_METHODS = [SOBOL, MORRIS, DELTA, RBD_FAST]
+        # SUPPORTED_SAMPLING_METHODS = [SOBOL, MORRIS, LATIN]
+        # SUPPORTED_ANALYSIS_METHODS = [SOBOL, MORRIS, DELTA, RBD_FAST]
 
         ANALYZER_REQUIRED_INPUTS = {
             SOBOL: {"problem", "Y"},
@@ -212,12 +212,6 @@ class Defaults:
             MORRIS: {MORRIS},
             DELTA: {LATIN, SOBOL, SALTELLI, MORRIS},
             RBD_FAST: {LATIN, SOBOL, SALTELLI, MORRIS},
-        }
-
-        SAMPLING_DEFAULTS = {
-            SOBOL: {"calc_second_order": False},
-            MORRIS: {"num_levels": 4},
-            LATIN: {},
         }
 
         ANALYSIS_DEFAULTS = {
