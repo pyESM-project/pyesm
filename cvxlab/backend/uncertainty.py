@@ -7,6 +7,12 @@ import numpy as np
 from typing import Any, Callable
 import inspect
 from SALib.sample import sobol, latin, morris
+from SALib.analyze import (
+    sobol as sobol_analyze,
+    morris as morris_analyze,
+    delta,
+    rbd_fast,
+)
 from cvxlab.defaults import Defaults
 from cvxlab.backend.index import Index
 from cvxlab.support.sql_manager import SQLManager, db_handler
@@ -34,10 +40,19 @@ class Uncertainty:
     """
 
     SAMPLERS: dict[str, Callable] = {
-        "sobol": sobol.sample,
-        "latin": latin.sample,
-        "morris": morris.sample
+        Defaults.UncertaintySettings.SOBOL: sobol.sample,
+        Defaults.UncertaintySettings.LATIN: latin.sample,
+        Defaults.UncertaintySettings.MORRIS: morris.sample,
     }
+
+    ANALYZERS: dict[str, Callable] = {
+        Defaults.UncertaintySettings.SOBOL: sobol_analyze.analyze,
+        Defaults.UncertaintySettings.MORRIS: morris_analyze.analyze,
+        Defaults.UncertaintySettings.DELTA: delta.analyze,
+        Defaults.UncertaintySettings.RBD_FAST: rbd_fast.analyze,
+    }
+
+    ANALYZER_REQUIRED_INPUTS = Defaults.UncertaintySettings.ANALYZER_REQUIRED_INPUTS
 
     def __init__(self,
                  sqltools: SQLManager,
@@ -65,19 +80,19 @@ class Uncertainty:
 
         id_col = Defaults.Labels.ID_FIELD['id'][0]
         values_col = Defaults.Labels.VALUES_FIELD['values'][0]
-        is_uncertain_col = Defaults.Labels.IS_UNCERTAIN_FIELD[
-            Defaults.Labels.IS_UNCERTAIN_KEY
+        is_uncertain_col = Defaults.UncertaintySettings.IS_UNCERTAIN_FIELD[
+            Defaults.UncertaintySettings.IS_UNCERTAIN_KEY
         ][0]
-        lower_col = Defaults.Labels.LOWER_BOUND_FIELD[
-            Defaults.Labels.LOWER_BOUND_KEY
+        lower_col = Defaults.UncertaintySettings.LOWER_BOUND_FIELD[
+            Defaults.UncertaintySettings.LOWER_BOUND_KEY
         ][0]
-        upper_col = Defaults.Labels.UPPER_BOUND_FIELD[
-            Defaults.Labels.UPPER_BOUND_KEY
+        upper_col = Defaults.UncertaintySettings.UPPER_BOUND_FIELD[
+            Defaults.UncertaintySettings.UPPER_BOUND_KEY
         ][0]
-        parameter_name_col = Defaults.Labels.PARAMETER_NAME
+        parameter_name_col = Defaults.UncertaintySettings.PARAMETER_NAME
         table_name_col = Defaults.Labels.TABLE_NAME
         variable_name_col = Defaults.Labels.VARIABLE_NAME
-        coordinate_label_col = Defaults.Labels.COORDINATE_LABEL
+        coordinate_label_col = Defaults.UncertaintySettings.COORDINATE_LABEL
 
         technical_columns = {
             id_col,
@@ -130,8 +145,8 @@ class Uncertainty:
                             table_name_col: table_name,
                             "id": row_id,
                             variable_name_col: var_keys[0],
-                            Defaults.Labels.LOWER_BOUND_KEY: lower_val,
-                            Defaults.Labels.UPPER_BOUND_KEY: upper_val,
+                            Defaults.UncertaintySettings.LOWER_BOUND_KEY: lower_val,
+                            Defaults.UncertaintySettings.UPPER_BOUND_KEY: upper_val,
                             coordinate_label_col: coordinate_label,
                         }
                     )
@@ -142,8 +157,8 @@ class Uncertainty:
                 parameter_name_col,
                 table_name_col,
                 "id",
-                Defaults.Labels.LOWER_BOUND_KEY,
-                Defaults.Labels.UPPER_BOUND_KEY,
+                Defaults.UncertaintySettings.LOWER_BOUND_KEY,
+                Defaults.UncertaintySettings.UPPER_BOUND_KEY,
                 coordinate_label_col,
             ],
         )
@@ -161,10 +176,12 @@ class Uncertainty:
 
         problem = {
             "num_vars": len(mapping_df),
-            "names": mapping_df[Defaults.Labels.PARAMETER_NAME].tolist(),
+            "names": mapping_df[
+                Defaults.UncertaintySettings.PARAMETER_NAME
+            ].tolist(),
             "bounds": mapping_df[[
-                Defaults.Labels.LOWER_BOUND_KEY,
-                Defaults.Labels.UPPER_BOUND_KEY,
+                Defaults.UncertaintySettings.LOWER_BOUND_KEY,
+                Defaults.UncertaintySettings.UPPER_BOUND_KEY,
             ]].values.tolist(),
         }
 
@@ -185,15 +202,15 @@ class Uncertainty:
         if pd.isna(lower_val) or pd.isna(upper_val):
             raise ValueError(
                 f"Missing bounds in table '{table_name}', id '{row_id}'. "
-                f"{Defaults.Labels.LOWER_BOUND_KEY}={lower}, "
-                f"{Defaults.Labels.UPPER_BOUND_KEY}={upper}"
+                f"{Defaults.UncertaintySettings.LOWER_BOUND_KEY}={lower}, "
+                f"{Defaults.UncertaintySettings.UPPER_BOUND_KEY}={upper}"
             )
 
         if lower_val >= upper_val:
             raise ValueError(
                 f"Invalid bounds in table '{table_name}', id '{row_id}'. "
-                f"{Defaults.Labels.LOWER_BOUND_KEY} >= "
-                f"{Defaults.Labels.UPPER_BOUND_KEY} "
+                f"{Defaults.UncertaintySettings.LOWER_BOUND_KEY} >= "
+                f"{Defaults.UncertaintySettings.UPPER_BOUND_KEY} "
                 f"({lower_val} >= {upper_val})"
             )
 
@@ -202,6 +219,7 @@ class Uncertainty:
     def sample_data(
         self,
         method: str,
+        problem: dict,
         **kwargs: Any,
     ) -> pd.DataFrame:
         """Generate sampled values for uncertain parameters.
@@ -214,13 +232,12 @@ class Uncertainty:
         Returns:
             pd.DataFrame: Sample matrix with an explicit run identifier column.
         """
-        problem = self.create_sampling_problem()
         sampler = self.SAMPLERS[method]
 
         samples = sampler(problem, **kwargs)
 
         samples_df = pd.DataFrame(samples, columns=problem["names"])
-        samples_df.index.name = Defaults.Labels.RUN_ID
+        samples_df.index.name = Defaults.UncertaintySettings.RUN_ID
         samples_df.reset_index(inplace=True)
 
         return samples_df
@@ -291,10 +308,10 @@ class Uncertainty:
             samples_df: pd.DataFrame,
             mapping_df: pd.DataFrame,
     ) -> pd.DataFrame:
-        run_id_col = Defaults.Labels.RUN_ID
-        parameter_name_col = Defaults.Labels.PARAMETER_NAME
-        sampled_value_col = Defaults.Labels.SAMPLED_VALUE
-        coordinate_label_col = Defaults.Labels.COORDINATE_LABEL
+        run_id_col = Defaults.UncertaintySettings.RUN_ID
+        parameter_name_col = Defaults.UncertaintySettings.PARAMETER_NAME
+        sampled_value_col = Defaults.UncertaintySettings.SAMPLED_VALUE
+        coordinate_label_col = Defaults.UncertaintySettings.COORDINATE_LABEL
 
         samples_long = samples_df.melt(
             id_vars=run_id_col,
@@ -366,7 +383,7 @@ class Uncertainty:
             for var_key, variable in self.index.variables.items()
             if getattr(
                 variable,
-                Defaults.Labels.UNCERTAINTY_MEASURE_KEY,
+                Defaults.UncertaintySettings.UNCERTAINTY_MEASURE_KEY,
                 False,
             ) is True
         ]
@@ -400,14 +417,14 @@ class Uncertainty:
                 self.logger.error(
                     "Uncertainty measure validation | "
                     f"Variable '{var_key}' is marked as "
-                    f"{Defaults.Labels.UNCERTAINTY_MEASURE_KEY}=True "
+                    f"{Defaults.UncertaintySettings.UNCERTAINTY_MEASURE_KEY}=True "
                     f"but is not scalar ({info})."
                 )
 
             raise exc.SettingsError(
                 "Uncertainty measure validation failed | "
                 f"Only scalar variables can be marked as "
-                f"{Defaults.Labels.UNCERTAINTY_MEASURE_KEY}=True."
+                f"{Defaults.UncertaintySettings.UNCERTAINTY_MEASURE_KEY}=True."
             )
 
     def get_deterministic_values_df(
@@ -422,8 +439,8 @@ class Uncertainty:
         """
         values_header = Defaults.Labels.VALUES_FIELD["values"][0]
         id_header = Defaults.Labels.ID_FIELD["id"][0]
-        is_uncertain_header = Defaults.Labels.IS_UNCERTAIN_FIELD[
-            Defaults.Labels.IS_UNCERTAIN_KEY
+        is_uncertain_header = Defaults.UncertaintySettings.IS_UNCERTAIN_FIELD[
+            Defaults.UncertaintySettings.IS_UNCERTAIN_KEY
         ][0]
 
         if values_header not in table_df.columns:
@@ -470,7 +487,11 @@ class Uncertainty:
             ):
                 continue
 
-            if getattr(variable, Defaults.Labels.IS_UNCERTAIN_KEY, False):
+            if getattr(
+                variable,
+                Defaults.UncertaintySettings.IS_UNCERTAIN_KEY,
+                False,
+            ):
                 uncertain_vars.append(var_key)
 
         return uncertain_vars
@@ -487,7 +508,11 @@ class Uncertainty:
             ):
                 continue
 
-            if not getattr(variable, Defaults.Labels.IS_UNCERTAIN_KEY, False):
+            if not getattr(
+                variable,
+                Defaults.UncertaintySettings.IS_UNCERTAIN_KEY,
+                False,
+            ):
                 deterministic_vars.append(var_key)
 
         return deterministic_vars
@@ -531,13 +556,13 @@ class Uncertainty:
 
         id_header = Defaults.Labels.ID_FIELD["id"][0]
         values_header = Defaults.Labels.VALUES_FIELD["values"][0]
-        lower_bound_header = Defaults.Labels.LOWER_BOUND_FIELD[
-            Defaults.Labels.LOWER_BOUND_KEY
+        lower_bound_header = Defaults.UncertaintySettings.LOWER_BOUND_FIELD[
+            Defaults.UncertaintySettings.LOWER_BOUND_KEY
         ][0]
-        upper_bound_header = Defaults.Labels.UPPER_BOUND_FIELD[
-            Defaults.Labels.UPPER_BOUND_KEY
+        upper_bound_header = Defaults.UncertaintySettings.UPPER_BOUND_FIELD[
+            Defaults.UncertaintySettings.UPPER_BOUND_KEY
         ][0]
-        run_id_col = Defaults.Labels.RUN_ID
+        run_id_col = Defaults.UncertaintySettings.RUN_ID
 
         required_table_columns = [id_header, values_header]
         missing_table_columns = [
@@ -560,7 +585,7 @@ class Uncertainty:
             msg = (
                 "Sample injection failed | "
                 f"No sampled values found for "
-                f"{Defaults.Labels.RUN_ID}={run_id}."
+                f"{Defaults.UncertaintySettings.RUN_ID}={run_id}."
             )
             self.logger.error(msg)
             raise exc.MissingDataError(msg)
@@ -667,7 +692,7 @@ class Uncertainty:
 
                     if record_key not in records:
 
-                        record = {Defaults.Labels.RUN_ID: run_id}
+                        record = {Defaults.UncertaintySettings.RUN_ID: run_id}
 
                         if scenario_key is not None:
                             record["scenario"] = scenario_key
@@ -683,7 +708,9 @@ class Uncertainty:
                     records[record_key][var_key] = value
 
         if not records:
-            return pd.DataFrame([{Defaults.Labels.RUN_ID: run_id}])
+            return pd.DataFrame(
+                [{Defaults.UncertaintySettings.RUN_ID: run_id}]
+            )
 
         return pd.DataFrame(records.values())
 
@@ -730,7 +757,11 @@ class Uncertainty:
         uncertainty_tables = []
 
         for var_key, variable in self.index.variables.items():
-            if getattr(variable, Defaults.Labels.IS_UNCERTAIN_KEY, False):
+            if getattr(
+                variable,
+                Defaults.UncertaintySettings.IS_UNCERTAIN_KEY,
+                False,
+            ):
                 if variable.related_table is not None:
                     uncertainty_tables.append(variable.related_table)
 
@@ -796,8 +827,8 @@ class Uncertainty:
 
         values_col = Defaults.Labels.VALUES_FIELD["values"][0]
         id_col = Defaults.Labels.ID_FIELD["id"][0]
-        is_uncertain_col = Defaults.Labels.IS_UNCERTAIN_FIELD[
-            Defaults.Labels.IS_UNCERTAIN_KEY
+        is_uncertain_col = Defaults.UncertaintySettings.IS_UNCERTAIN_FIELD[
+            Defaults.UncertaintySettings.IS_UNCERTAIN_KEY
         ][0]
 
         resolved_df = table_df.copy()
@@ -815,20 +846,20 @@ class Uncertainty:
         if not uncertain_mask.any():
             return resolved_df
 
-        run_id_col = Defaults.Labels.RUN_ID
+        run_id_col = Defaults.UncertaintySettings.RUN_ID
 
         samples_run = samples_df.loc[samples_df[run_id_col].eq(run_id)]
 
         if samples_run.empty:
             raise exc.MissingDataError(
                 f"No sampled values found for "
-                f"{Defaults.Labels.RUN_ID}={run_id}."
+                f"{Defaults.UncertaintySettings.RUN_ID}={run_id}."
             )
 
         if len(samples_run) > 1:
             raise exc.OperationalError(
                 f"Multiple sampled rows found for "
-                f"{Defaults.Labels.RUN_ID}={run_id}."
+                f"{Defaults.UncertaintySettings.RUN_ID}={run_id}."
             )
 
         sample_values = samples_run.drop(
@@ -842,9 +873,93 @@ class Uncertainty:
                 raise exc.MissingDataError(
                     f"Missing sampled value for uncertain parameter "
                     f"'{parameter_name}' in "
-                    f"{Defaults.Labels.RUN_ID}={run_id}."
+                    f"{Defaults.UncertaintySettings.RUN_ID}={run_id}."
                 )
 
             resolved_df.at[idx, values_col] = sample_values[parameter_name]
 
         return resolved_df
+
+    def _validate_analysis_kwargs(
+        self,
+        function: Callable,
+        kwargs: dict[str, Any],
+        excluded_args: set[str],
+        context: str,
+    ) -> None:
+        signature = inspect.signature(function)
+
+        allowed_args = set(signature.parameters.keys()) - excluded_args
+
+        required_args = {
+            name
+            for name, parameter in signature.parameters.items()
+            if name not in excluded_args
+            and parameter.default is inspect.Parameter.empty
+            and parameter.kind in (
+                inspect.Parameter.POSITIONAL_OR_KEYWORD,
+                inspect.Parameter.KEYWORD_ONLY,
+            )
+        }
+
+        unexpected = set(kwargs.keys()) - allowed_args
+        if unexpected:
+            raise TypeError(
+                f"Unexpected {context} arguments: {unexpected}. "
+                f"Allowed arguments: {allowed_args}."
+            )
+
+        missing = required_args - set(kwargs.keys())
+        if missing:
+            raise TypeError(
+                f"Missing required {context} arguments: {missing}. "
+                f"Required arguments: {required_args}."
+            )
+
+    def validate_analysis_config(
+        self,
+        method: str,
+        kwargs: dict[str, Any],
+    ) -> None:
+        """Validate the selected GSA analysis method and its keyword arguments."""
+
+        method = method.lower()
+        uncertainty_settings = Defaults.UncertaintySettings
+
+        if method not in self.ANALYZERS:
+            raise ValueError(
+                f"GSA analysis method '{method}' not supported. "
+                f"Available methods: {list(self.ANALYZERS.keys())}."
+            )
+
+        excluded_args = uncertainty_settings.ANALYZER_REQUIRED_INPUTS[method]
+
+        self._validate_analysis_kwargs(
+            function=self.ANALYZERS[method],
+            kwargs=kwargs,
+            excluded_args=excluded_args,
+            context="analysis",
+        )
+
+    def analyze_results(
+        self,
+        method: str,
+        problem: dict[str, Any],
+        samples_df: pd.DataFrame,
+        uncertainty_measures_df: pd.DataFrame,
+        **kwargs: Any,
+    ) -> pd.DataFrame:
+        """Run SALib GSA analysis on uncertainty-run outputs."""
+
+        method = method.lower()
+
+        # kwargs = self._apply_method_defaults(
+        #     method=method,
+        #     kwargs=kwargs,
+        #     defaults_by_method=Defaults.UncertaintySettings.ANALYSIS_DEFAULTS,
+        # )
+
+        # self.validate_analysis_config(
+        #     method=method,
+        #     kwargs=kwargs,
+        # )

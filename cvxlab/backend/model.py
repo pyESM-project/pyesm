@@ -27,11 +27,11 @@ from dataclasses import dataclass, field
 
 
 @dataclass
-class UncertaintyAnalysisConfig:
+class sampling_settings_config:
     """Container for user-defined uncertainty analysis configuration.
 
     This dataclass stores the sampling configuration specified by the user
-    through the `Model.UncertaintyAnalysis()` method.b The stored configuration is
+    through the `Model.sampling_settings()` method.b The stored configuration is
     used by `Model.run_uncertainty_analysis()` to generate samples and execute iterative model runs.
 
     Attributes:
@@ -45,6 +45,17 @@ class UncertaintyAnalysisConfig:
     method: str
     method_kwargs: dict[str, Any] = field(default_factory=dict)
     save_samples: bool = False
+    file_format: str = "xlsx"
+
+
+@dataclass
+class GSA_analysis_settings_config:
+    """
+
+    """
+    method: str
+    method_kwargs: dict[str, Any] = field(default_factory=dict)
+    save_analysis: bool = True
     file_format: str = "xlsx"
 
 
@@ -172,7 +183,12 @@ class Model():
                 paths=self.paths,
             )
 
-            self.uncertainty_analysis: UncertaintyAnalysisConfig | None = None
+            self._sampling_settings: sampling_settings_config | None = None
+            self._GSA_analysis_settings: GSA_analysis_settings_config | None = None
+
+            self.sampling_problem: dict[str, Any] | None = None
+            self.uncertainty_samples: pd.DataFrame | None = None
+            self.uncertainty_measures: pd.DataFrame | None = None
 
             if self.settings['use_existing_data']:
                 self._load_model_coordinates()
@@ -1034,7 +1050,14 @@ class Model():
         file_format: str = "xlsx",
         **kwargs: Any,
     ) -> pd.DataFrame:
-        samples_df = self.core.uncertainty.sample_data(method=method, **kwargs)
+
+        sample_problem = self.core.uncertainty.create_sampling_problem()
+
+        samples_df = self.core.uncertainty.sample_data(
+            method=method, problem=sample_problem, **kwargs)
+
+        self.sampling_problem = sample_problem
+        self.uncertainty_samples = samples_df
 
         if save_samples:
             self._save_samples(samples_df=samples_df, file_format=file_format)
@@ -1054,13 +1077,13 @@ class Model():
         self.core.uncertainty.save_samples(
             samples_df=samples_df, file_format=file_format)
 
-    def UncertaintyAnalysis(
+    def sampling_settings(
         self,
         method: str,
         save_samples: bool = True,
         file_format: str = "xlsx",
         **method_kwargs: Any,
-    ) -> UncertaintyAnalysisConfig:
+    ) -> sampling_settings_config:
 
         if not self.is_uncertainty_enabled:
             raise ValueError(
@@ -1081,14 +1104,51 @@ class Model():
             method=method,
             kwargs=method_kwargs)
 
-        self.uncertainty_analysis = UncertaintyAnalysisConfig(
+        self._sampling_settings = sampling_settings_config(
             method=method,
             method_kwargs=method_kwargs,
             save_samples=save_samples,
             file_format=file_format,
         )
 
-    def run_uncertainty_analysis(
+        # return self._sampling_settings
+
+    def GSA_analysis_settings(
+        self,
+        method: str,
+        save_analysis: bool = True,
+        file_format: str = "xlsx",
+        **method_kwargs: Any,
+    ) -> GSA_analysis_settings_config:
+
+        if not self.is_uncertainty_enabled:
+            raise ValueError(
+                "Uncertainty analysis is not enabled. "
+                f"Create the model with "
+                f"{Defaults.Labels.UNCERTAINTY_SETTING_KEY}=True."
+            )
+
+        if not save_analysis and file_format is not None:
+            self.logger.warning(
+                "Uncertainty analysis | 'file_format' specified but "
+                "'save_samples=False'. Samples will not be saved."
+            )
+
+        method = method.lower()
+
+        self.core.uncertainty.validate_analysis_config(
+            method=method,
+            kwargs=method_kwargs
+        )
+
+        self._GSA_analysis_settings = GSA_analysis_settings_config(
+            method=method,
+            method_kwargs=method_kwargs,
+            save_analysis=save_analysis,
+            file_format=file_format,
+        )
+
+    def run_uncertainty(
             self,
             force_overwrite: bool = False,
             integrated_problems: bool = False,
@@ -1113,10 +1173,10 @@ class Model():
                 f"{Defaults.Labels.UNCERTAINTY_SETTING_KEY}=True."
             )
 
-        if self.uncertainty_analysis is None:
+        if self._sampling_settings is None:
             raise ValueError(
                 "No uncertainty analysis configured. "
-                "Call model.UncertaintyAnalysis(...) before run_uncertainty_analysis()."
+                "Call model.sampling_settings(...) before run_uncertainty_analysis()."
             )
 
         self.core.load_and_validate_symbolic_problem(
@@ -1147,18 +1207,20 @@ class Model():
             var_list_to_update=fully_deterministic_vars,
         )
 
-        uncertainty_cfg = self.uncertainty_analysis
+        uncertainty_cfg = self._sampling_settings
 
-        samples_df = self._sample_data(
+        self._sample_data(
             method=uncertainty_cfg.method,
             save_samples=uncertainty_cfg.save_samples,
             file_format=uncertainty_cfg.file_format,
             **uncertainty_cfg.method_kwargs,
         )
 
+        samples_df = self.uncertainty_samples
+
         uncertainty_measure_records = []
 
-        for run_id in samples_df[Defaults.Labels.RUN_ID]:
+        for run_id in samples_df[Defaults.UncertaintySettings.RUN_ID]:
 
             self.core.data_to_cvxpy_exogenous_vars(
                 allow_none_values=False,
@@ -1198,4 +1260,60 @@ class Model():
             uncertainty_measure_records,
             ignore_index=True,
         )
-        return uncertainty_measures_df
+
+        self.uncertainty_measures = uncertainty_measures_df
+
+    def analyze_uncertainty(
+        self,
+        method: Optional[str] = None,
+        **analysis_kwargs: Any,
+    ) -> pd.DataFrame:
+        """Run GSA analysis on the latest stored uncertainty-analysis run.
+
+        The method uses samples and uncertainty-measure outputs produced by
+        `run_uncertainty_analysis()`. The user is therefore not required to pass
+        the run results manually.
+        """
+
+        if not self.is_uncertainty_enabled:
+            raise ValueError(
+                "Uncertainty analysis is not enabled. "
+                "Create the model with Uncertainty=True."
+            )
+
+        if self._GSA_analysis_settings is None:
+            raise ValueError(
+                "No uncertainty analysis configured. "
+                "Call model.sampling_settings(...) before analyze_uncertainty()."
+            )
+
+        if self.sampling_problem is None:
+            raise ValueError(
+                "No SALib problem found. "
+                "Call model.run_uncertainty_analysis() before analyze_uncertainty()."
+            )
+
+        if self.uncertainty_samples is None:
+            raise ValueError(
+                "No uncertainty samples found. "
+                "Call model.run_uncertainty_analysis() before analyze_uncertainty()."
+            )
+
+        if self.uncertainty_measures is None:
+            raise ValueError(
+                "No uncertainty-measure outputs found. "
+                "Call model.run_uncertainty_analysis() before analyze_uncertainty()."
+            )
+
+        if method is None:
+            method = self._sampling_settings.method
+
+        method = method.lower()
+
+        # self.core.uncertainty.analyze_results(
+        #     method=method,
+        #     problem=self.sampling_problem,
+        #     samples_df=self.uncertainty_samples,
+        #     uncertainty_measures_df=self.uncertainty_measures,
+        #     **analysis_kwargs,
+        # )
