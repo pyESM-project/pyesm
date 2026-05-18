@@ -232,6 +232,20 @@ class Defaults:
             },
         }
 
+        XLSX = "xlsx"
+        CSV = "csv"
+        PARQUET = "parquet"
+
+        AVAILABLE_EXPORT_FORMATS = [
+            XLSX,
+            CSV,
+            PARQUET,
+        ]
+
+        UNCERTAINTY_SAMPLES_FILE_NAME = "uncertainty_samples"
+        UNCERTAINTY_MEASURES_FILE_NAME = "uncertainty_measures"
+        GSA_ANALYSIS_FILE_NAME = "GSA_analysis"
+
     class DefaultStructures:
         """Default structures for data validation and for generating templates.
 

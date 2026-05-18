@@ -364,45 +364,43 @@ class Uncertainty:
         ]]
         return samples_df_save
 
-    def save_samples(
-            self,
-            samples_df: pd.DataFrame,
-            file_format: str = "xlsx"
+    def save_dataframe(
+        self,
+        dataframe: pd.DataFrame,
+        file_name: str,
+        file_format: str,
     ) -> None:
-        """Export generated uncertainty samples to file.
+        """Export a dataframe to the model directory.
 
-            Args:
-                samples_df (pd.DataFrame): Sample dataframe returned by ``sample_data``.
-                file_format (str): Output format. Supported values are ``xlsx``, ``csv``,
-                    and ``parquet``.
+        Args:
+            dataframe (pd.DataFrame): Dataframe to export.
+            file_name (str): Output file name without extension.
+            file_format (str): Output format.
 
-            Raises:
-                ValueError: If the requested file format is not supported.
+        Raises:
+            ValueError: If the requested file format is not supported.
         """
+
         file_format = file_format.lower()
-        allowed_formats = ["xlsx", "csv", "parquet"]
+
+        allowed_formats = Defaults.UncertaintySettings.AVAILABLE_EXPORT_FORMATS
+
         if file_format not in allowed_formats:
             raise ValueError(
                 f"Save format '{file_format}' not supported. "
-                f"Available formats: {allowed_formats}"
+                f"Available formats: {allowed_formats}."
             )
 
-        mapping_df = self.collect_uncertain_parameters()
+        file_path = self.paths["model_dir"] / f"{file_name}.{file_format}"
 
-        samples_df_save = self._prepare_samples_dataframe_for_saving(
-            samples_df=samples_df,
-            mapping_df=mapping_df,
-        )
+        if file_format == Defaults.UncertaintySettings.XLSX:
+            dataframe.to_excel(file_path, index=False)
 
-        file_path = self.paths["model_dir"] / \
-            f"uncertainty_samples.{file_format}"
+        elif file_format == Defaults.UncertaintySettings.CSV:
+            dataframe.to_csv(file_path, index=False)
 
-        if file_format == "xlsx":
-            samples_df_save.to_excel(file_path, index=False)
-        elif file_format == "csv":
-            samples_df_save.to_csv(file_path, index=False)
-        elif file_format == "parquet":
-            samples_df_save.to_parquet(file_path, index=False)
+        elif file_format == Defaults.UncertaintySettings.PARQUET:
+            dataframe.to_parquet(file_path, index=False)
 
     def get_uncertainty_measure_vars_list(self) -> list[str]:
         """Return variables marked as uncertainty-analysis output measures."""
@@ -1252,25 +1250,36 @@ class Uncertainty:
                 continue
 
             for parameter_name, value in zip(parameter_names, values_array):
-                records.append(
-                    {
-                        "method": method,
-                        "measure": measure,
-                        "scenario": scenario,
-                        parameter_name_col: parameter_name,
-                        "metric": metric,
-                        "value": float(value) if pd.notna(value) else np.nan,
-                    }
-                )
+                record = {
+                    "method": method,
+                    "measure": measure,
+                    parameter_name_col: parameter_name,
+                    "metric": metric,
+                    "value": float(value) if pd.notna(value) else np.nan,
+                }
+
+                if scenario is not None:
+                    record["scenario"] = scenario
+
+                records.append(record)
 
         result_df = pd.DataFrame(records)
 
         if mapping_df is None or result_df.empty:
             return result_df
 
+        excluded_metadata_cols = {
+            parameter_name_col,
+            Defaults.Labels.ID_FIELD["id"][0],
+            Defaults.UncertaintySettings.LOWER_BOUND_KEY,
+            Defaults.UncertaintySettings.UPPER_BOUND_KEY,
+            Defaults.UncertaintySettings.COORDINATE_LABEL,
+
+        }
+
         metadata_cols = [
             col for col in mapping_df.columns
-            if col != parameter_name_col
+            if col not in excluded_metadata_cols
         ]
 
         result_df = result_df.merge(
@@ -1279,5 +1288,19 @@ class Uncertainty:
             how="left",
             validate="many_to_one",
         )
+
+        result_df = result_df.drop(
+            columns=[parameter_name_col],
+            errors="ignore",
+        )
+
+        last_cols = ["measure", "metric", "value"]
+
+        first_cols = [
+            col for col in result_df.columns
+            if col not in last_cols
+        ]
+
+        result_df = result_df[first_cols + last_cols]
 
         return result_df
