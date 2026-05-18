@@ -1333,10 +1333,29 @@ class Model():
 
         method = method.lower()
 
-        # self.core.uncertainty.analyze_results(
-        #     method=method,
-        #     problem=self.sampling_problem,
-        #     samples_df=self.uncertainty_samples,
-        #     uncertainty_measures_df=self.uncertainty_measures,
-        #     **analysis_kwargs,
-        # )
+        gsa_cfg = self._GSA_analysis_settings
+
+        method = gsa_cfg.method
+
+        kwargs = {
+            **gsa_cfg.method_kwargs,
+            **analysis_kwargs,
+        }
+
+        analysis_df = self.core.uncertainty.analyze_results(
+            method=method,
+            problem=self.sampling_problem,
+            samples_df=self.uncertainty_samples,
+            uncertainty_measures_df=self.uncertainty_measures,
+            measures=gsa_cfg.measures,
+            scenarios=gsa_cfg.scenarios,
+            **kwargs,
+        )
+
+        # if gsa_cfg.save_analysis:
+        #     self.core.uncertainty.save_analysis(
+        #         analysis_df=analysis_df,
+        #         file_format=gsa_cfg.file_format,
+        #     )
+
+        return analysis_df

@@ -72,14 +72,16 @@ class Uncertainty:
     def collect_uncertain_parameters(self) -> pd.DataFrame:
         """Collect uncertain parameters from uncertainty-enabled exogenous tables.
 
-             Returns:
-                pd.DataFrame: Mapping table containing parameter names, table names,
-                row identifiers, bounds, and coordinate labels. 
+        Returns a mapping table with one row per uncertain sampled parameter.
+        The table includes the SALib parameter name, source table, row id,
+        variable name, bounds, coordinate label, and one column per coordinate.
         """
-        records: List[Dict[str, Any]] = []
 
-        id_col = Defaults.Labels.ID_FIELD['id'][0]
-        values_col = Defaults.Labels.VALUES_FIELD['values'][0]
+        records: list[dict[str, Any]] = []
+
+        id_col = Defaults.Labels.ID_FIELD["id"][0]
+        values_col = Defaults.Labels.VALUES_FIELD["values"][0]
+
         is_uncertain_col = Defaults.UncertaintySettings.IS_UNCERTAIN_FIELD[
             Defaults.UncertaintySettings.IS_UNCERTAIN_KEY
         ][0]
@@ -89,10 +91,10 @@ class Uncertainty:
         upper_col = Defaults.UncertaintySettings.UPPER_BOUND_FIELD[
             Defaults.UncertaintySettings.UPPER_BOUND_KEY
         ][0]
+
         parameter_name_col = Defaults.UncertaintySettings.PARAMETER_NAME
         table_name_col = Defaults.Labels.TABLE_NAME
         variable_name_col = Defaults.Labels.VARIABLE_NAME
-        coordinate_label_col = Defaults.UncertaintySettings.COORDINATE_LABEL
 
         technical_columns = {
             id_col,
@@ -102,20 +104,22 @@ class Uncertainty:
             upper_col,
         }
 
-        uncertain_tables = {}
+        uncertain_vars_by_table: dict[str, list[str]] = {}
 
         for var_key, variable in self.index.variables.items():
             if variable.is_uncertain:
-                table_name = variable.related_table
-                uncertain_tables.setdefault(table_name, []).append(var_key)
+                uncertain_vars_by_table.setdefault(
+                    variable.related_table,
+                    [],
+                ).append(var_key)
 
         with db_handler(self.sqltools):
 
-            for table_name, var_keys in uncertain_tables.items():
+            for table_name, var_keys in uncertain_vars_by_table.items():
                 df = self.sqltools.table_to_dataframe(table_name=table_name)
 
                 uncertain_df = df[
-                    df[is_uncertain_col].astype(str).str.lower() == "true"
+                    df[is_uncertain_col].astype(str).str.lower().eq("true")
                 ]
 
                 coordinate_columns = [
@@ -127,10 +131,35 @@ class Uncertainty:
                 for _, row in uncertain_df.iterrows():
                     row_id = row[id_col]
 
-                    coordinate_label = "||".join(
-                        f"{column} = {row[column]}"
+                    matched_var_keys = []
+
+                    for var_key in var_keys:
+                        variable = self.index.variables[var_key]
+
+                        matches_variable = True
+
+                        for header, allowed_values in variable.all_coordinates_w_headers.items():
+                            if row[header] not in allowed_values:
+                                matches_variable = False
+                                break
+
+                        if matches_variable:
+                            matched_var_keys.append(var_key)
+
+                    if len(matched_var_keys) != 1:
+                        raise exc.OperationalError(
+                            "Uncertain-parameter mapping failed | "
+                            f"Table '{table_name}', id '{row_id}' matches "
+                            f"{len(matched_var_keys)} uncertain variables: "
+                            f"{matched_var_keys}. Expected exactly one."
+                        )
+
+                    variable_name = matched_var_keys[0]
+
+                    coordinate_values = {
+                        column: row[column]
                         for column in coordinate_columns
-                    )
+                    }
 
                     lower_val, upper_val = self._check_bounds(
                         table_name=table_name,
@@ -143,13 +172,15 @@ class Uncertainty:
                         {
                             parameter_name_col: f"{table_name}||{row_id}",
                             table_name_col: table_name,
-                            "id": row_id,
-                            variable_name_col: var_keys[0],
+                            id_col: row_id,
+                            variable_name_col: variable_name,
                             Defaults.UncertaintySettings.LOWER_BOUND_KEY: lower_val,
                             Defaults.UncertaintySettings.UPPER_BOUND_KEY: upper_val,
-                            coordinate_label_col: coordinate_label,
+                            **coordinate_values,
                         }
                     )
+
+            return pd.DataFrame(records)
 
         mapping_df = pd.DataFrame(
             records,
@@ -159,7 +190,6 @@ class Uncertainty:
                 "id",
                 Defaults.UncertaintySettings.LOWER_BOUND_KEY,
                 Defaults.UncertaintySettings.UPPER_BOUND_KEY,
-                coordinate_label_col,
             ],
         )
 
@@ -311,7 +341,6 @@ class Uncertainty:
         run_id_col = Defaults.UncertaintySettings.RUN_ID
         parameter_name_col = Defaults.UncertaintySettings.PARAMETER_NAME
         sampled_value_col = Defaults.UncertaintySettings.SAMPLED_VALUE
-        coordinate_label_col = Defaults.UncertaintySettings.COORDINATE_LABEL
 
         samples_long = samples_df.melt(
             id_vars=run_id_col,
@@ -320,7 +349,7 @@ class Uncertainty:
         )
 
         coordinates_df = mapping_df[
-            [parameter_name_col, coordinate_label_col]
+            [parameter_name_col]
         ].drop_duplicates()
 
         samples_df_save = samples_long.merge(
@@ -330,7 +359,6 @@ class Uncertainty:
         )
         samples_df_save = samples_df_save[[
             run_id_col,
-            coordinate_label_col,
             parameter_name_col,
             sampled_value_col,
         ]]
@@ -971,79 +999,285 @@ class Uncertainty:
             context="analysis",
         )
 
-    # def prepare_salib_analysis_inputs(
-    #     self,
-    #     problem: dict[str, Any],
-    #     samples_df: pd.DataFrame,
-    #     uncertainty_measures_df: pd.DataFrame,
-    #     measures: list[str] | None = None,
-    #     scenarios: list[str] | None = None,
-    # ) -> tuple[np.ndarray, list[dict[str, Any]]]:
-    #     """Prepare SALib input matrix X and output vectors Y.
+    def analyze_results(
+        self,
+        method: str,
+        problem: dict[str, Any],
+        samples_df: pd.DataFrame,
+        uncertainty_measures_df: pd.DataFrame,
+        measures: list[str] | None = None,
+        scenarios: list[str] | None = None,
+        **kwargs: Any,
+    ) -> pd.DataFrame:
+        """Run SALib GSA analysis for each selected measure-scenario pair.
 
-    #     SALib analyses one scalar output at a time. Therefore, if the model has
-    #     multiple uncertainty measures and/or multiple scenarios, this method creates
-    #     one analysis target for each selected measure-scenario pair.
+        SALib analyzes one scalar output vector Y at a time. Therefore, when the
+        model has multiple uncertainty measures and/or multiple scenarios, this
+        method repeats the analysis for each selected combination.
+        """
 
-    #     Returns:
-    #         tuple:
-    #             - X: SALib input matrix with shape (n_runs, n_parameters)
-    #             - analysis_targets: list of dictionaries, each containing:
-    #                 - measure
-    #                 - scenario
-    #                 - Y
-    #     """
+        method = method.lower()
 
-    #     X = self._prepare_salib_input_matrix(
-    #         problem=problem,
-    #         samples_df=samples_df,
-    #     )
+        X = self._prepare_GSA_input_matrix(
+            problem=problem,
+            samples_df=samples_df,
+        )
 
-    #     # analysis_targets = self._prepare_salib_analysis_targets(
-    #     #     samples_df=samples_df,
-    #     #     uncertainty_measures_df=uncertainty_measures_df,
-    #     #     measures=measures,
-    #     #     scenarios=scenarios,
-    #     # )
+        targets = self._prepare_GSA_analysis_targets(
+            samples_df=samples_df,
+            uncertainty_measures_df=uncertainty_measures_df,
+            measures=measures,
+            scenarios=scenarios,
+        )
 
-    #     # return X, analysis_targets
+        analyzer = self.ANALYZERS[method]
+        records = []
+        mapping_df = self.collect_uncertain_parameters()
+        for target in targets:
+            analysis_inputs = self._build_GSA_analysis_inputs(
+                method=method,
+                problem=problem,
+                X=X,
+                Y=target["Y"],
+            )
 
-    # def _prepare_salib_input_matrix(
-    #     self,
-    #     problem: dict[str, Any],
-    #     samples_df: pd.DataFrame,
-    # ) -> np.ndarray:
-    #     """Convert samples_df into the SALib input matrix X.
-    #     The column order must match problem["names"].
-    #     """
+            result = analyzer(
+                **analysis_inputs,
+                **kwargs,
+            )
 
-    #     run_id_col = Defaults.UncertaintySettings.RUN_ID
+            result_df = self._GSA_result_to_dataframe(
+                result=result,
+                problem=problem,
+                method=method,
+                measure=target["measure"],
+                scenario=target["scenario"],
+                mapping_df=mapping_df
+            )
 
-    #     if run_id_col not in samples_df.columns:
-    #         raise ValueError(
-    #             f"samples_df must contain column '{run_id_col}'."
-    #         )
+            records.append(result_df)
 
-    #     if "names" not in problem:
-    #         raise ValueError(
-    #             "SALib problem dictionary must contain key 'names'."
-    #         )
+        if not records:
+            return pd.DataFrame()
 
-    #     parameter_names = problem["names"]
+        return pd.concat(records, ignore_index=True)
 
-    #     missing_parameters = set(parameter_names) - set(samples_df.columns)
+        return targets, X
 
-    #     if missing_parameters:
-    #         raise ValueError(
-    #             "samples_df does not contain all parameters listed in "
-    #             f"problem['names']. Missing parameters: {sorted(missing_parameters)}."
-    #         )
+    def _prepare_GSA_input_matrix(
+        self,
+        problem: dict[str, Any],
+        samples_df: pd.DataFrame,
+    ) -> np.ndarray:
+        """Convert samples_df into the SALib input matrix X.
 
-    #     X = samples_df[parameter_names].to_numpy(dtype=float)
+        The column order must exactly match problem["names"].
+        """
 
-    #     if X.ndim != 2:
-    #         raise ValueError(
-    #             f"SALib input matrix X must be 2-dimensional. Got shape {X.shape}."
-    #         )
+        run_id_col = Defaults.UncertaintySettings.RUN_ID
+        parameter_names = problem["names"]
 
-    #     return X
+        samples_ordered = samples_df.sort_values(run_id_col)
+
+        X = samples_ordered[parameter_names].to_numpy(dtype=float)
+
+        return X
+
+    def _prepare_GSA_analysis_targets(
+        self,
+        samples_df: pd.DataFrame,
+        uncertainty_measures_df: pd.DataFrame,
+        measures: list[str] | None = None,
+        scenarios: list[str] | None = None,
+    ) -> list[dict[str, Any]]:
+        """Prepare one output vector Y for each selected measure-scenario pair."""
+
+        run_id_col = Defaults.UncertaintySettings.RUN_ID
+        scenario_col = Defaults.UncertaintySettings.SCENARIO
+
+        technical_cols = {run_id_col, scenario_col}
+        samples_run_ids = samples_df[[run_id_col]]
+
+        available_measures = [
+            col for col in uncertainty_measures_df.columns
+            if col not in technical_cols
+        ]
+
+        if measures is None:
+            measures = available_measures
+        else:
+            missing_measures = [
+                measure for measure in measures
+                if measure not in available_measures
+            ]
+            if missing_measures:
+                raise exc.MissingDataError(
+                    "SALib target preparation failed | "
+                    f"Unknown uncertainty measure(s): {missing_measures}. "
+                    f"Available measures: {available_measures}."
+                )
+
+        has_scenarios = scenario_col in uncertainty_measures_df.columns
+
+        if has_scenarios:
+            available_scenarios = sorted(
+                uncertainty_measures_df[scenario_col]
+                .dropna()
+                .astype(str)
+                .unique()
+                .tolist()
+            )
+
+            if scenarios is None:
+                scenarios = available_scenarios
+            else:
+                missing_scenarios = [
+                    scenario for scenario in scenarios
+                    if scenario not in available_scenarios
+                ]
+                if missing_scenarios:
+                    raise exc.MissingDataError(
+                        "SALib target preparation failed | "
+                        f"Unknown scenario(s): {missing_scenarios}. "
+                        f"Available scenarios: {available_scenarios}."
+                    )
+        else:
+            scenarios = [None]
+
+        targets = []
+
+        for scenario in scenarios:
+            if has_scenarios:
+                df_target = uncertainty_measures_df.loc[
+                    uncertainty_measures_df[scenario_col].astype(
+                        str).eq(str(scenario))
+                ].copy()
+            else:
+                df_target = uncertainty_measures_df.copy()
+
+            merged = samples_run_ids.merge(
+                df_target,
+                on=run_id_col,
+                how="left",
+                validate="one_to_one",
+            ).sort_values(run_id_col)
+
+            for measure in measures:
+                if merged[measure].isna().any():
+                    missing_run_ids = merged.loc[
+                        merged[measure].isna(),
+                        run_id_col,
+                    ].tolist()
+
+                    raise exc.MissingDataError(
+                        "SALib target preparation failed | "
+                        f"Missing output values for measure '{measure}', "
+                        f"scenario '{scenario}', run_id(s): {missing_run_ids}."
+                    )
+
+                Y = merged[measure].to_numpy(dtype=float)
+
+                targets.append(
+                    {
+                        "measure": measure,
+                        "scenario": scenario,
+                        "Y": Y,
+                    }
+                )
+
+        return targets
+
+    def _build_GSA_analysis_inputs(
+        self,
+        method: str,
+        problem: dict[str, Any],
+        X: np.ndarray,
+        Y: np.ndarray,
+    ) -> dict[str, Any]:
+        """Build the required positional inputs for the selected SALib analyzer."""
+
+        required_inputs = self.ANALYZER_REQUIRED_INPUTS[method]
+
+        inputs = {}
+
+        if "problem" in required_inputs:
+            inputs["problem"] = problem
+
+        if "X" in required_inputs:
+            inputs["X"] = X
+
+        if "Y" in required_inputs:
+            inputs["Y"] = Y
+
+        return inputs
+
+    def _GSA_result_to_dataframe(
+        self,
+        result: Any,
+        problem: dict[str, Any],
+        method: str,
+        measure: str,
+        scenario: str | None,
+        mapping_df: pd.DataFrame | None = None,
+    ) -> pd.DataFrame:
+        """Convert a SALib analysis result into a long-format dataframe."""
+
+        parameter_name_col = Defaults.UncertaintySettings.PARAMETER_NAME
+        parameter_names = list(problem["names"])
+
+        metadata_keys = {"names"}
+        records = []
+
+        result_dict = dict(result)
+
+        for metric, values in result_dict.items():
+
+            if metric in metadata_keys:
+                continue
+
+            if np.ma.isMaskedArray(values):
+                values_array = np.ma.filled(values, np.nan)
+            else:
+                values_array = np.asarray(values)
+
+            values_array = np.asarray(values_array)
+
+            if values_array.ndim != 1:
+                continue
+
+            if len(values_array) != len(parameter_names):
+                continue
+
+            if not np.issubdtype(values_array.dtype, np.number):
+                continue
+
+            for parameter_name, value in zip(parameter_names, values_array):
+                records.append(
+                    {
+                        "method": method,
+                        "measure": measure,
+                        "scenario": scenario,
+                        parameter_name_col: parameter_name,
+                        "metric": metric,
+                        "value": float(value) if pd.notna(value) else np.nan,
+                    }
+                )
+
+        result_df = pd.DataFrame(records)
+
+        if mapping_df is None or result_df.empty:
+            return result_df
+
+        metadata_cols = [
+            col for col in mapping_df.columns
+            if col != parameter_name_col
+        ]
+
+        result_df = result_df.merge(
+            mapping_df[[parameter_name_col, *metadata_cols]].drop_duplicates(),
+            on=parameter_name_col,
+            how="left",
+            validate="many_to_one",
+        )
+
+        return result_df

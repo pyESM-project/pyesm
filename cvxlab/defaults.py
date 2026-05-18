@@ -189,6 +189,7 @@ class Defaults:
         INDEX_VALUE = "value"
         PARAMETER_NAME_2 = "parameter_name_2"
         METHOD = "method"
+        SCENARIO = "scenario"
 
         SOBOL = "sobol"
         MORRIS = "morris"
