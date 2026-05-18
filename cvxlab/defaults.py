@@ -183,7 +183,6 @@ class Defaults:
         RUN_ID = "run_id"
         PARAMETER_NAME = "parameter_name"
         SAMPLED_VALUE = "sampled_value"
-        COORDINATE_LABEL = "coordinate_label"
         OUTPUT_NAME = "output_name"
         INDEX_NAME = "index"
         INDEX_VALUE = "value"
@@ -198,9 +197,6 @@ class Defaults:
         RBD_FAST = "rbd_fast"
         SALTELLI = "saltelli"
 
-        # SUPPORTED_SAMPLING_METHODS = [SOBOL, MORRIS, LATIN]
-        # SUPPORTED_ANALYSIS_METHODS = [SOBOL, MORRIS, DELTA, RBD_FAST]
-
         ANALYZER_REQUIRED_INPUTS = {
             SOBOL: {"problem", "Y"},
             MORRIS: {"problem", "X", "Y"},
@@ -208,11 +204,11 @@ class Defaults:
             RBD_FAST: {"problem", "X", "Y"},
         }
 
-        ANALYSIS_COMPATIBILITY = {
-            SOBOL: {SOBOL, SALTELLI},
-            MORRIS: {MORRIS},
-            DELTA: {LATIN, SOBOL, SALTELLI, MORRIS},
-            RBD_FAST: {LATIN, SOBOL, SALTELLI, MORRIS},
+        SAMPLING_ANALYSIS_COMPATIBILITY = {
+            SOBOL: {SOBOL, DELTA, RBD_FAST},
+            SALTELLI: {SOBOL, DELTA, RBD_FAST},
+            MORRIS: {MORRIS, DELTA, RBD_FAST},
+            LATIN: {DELTA, RBD_FAST},
         }
 
         ANALYSIS_DEFAULTS = {

@@ -44,12 +44,13 @@ class sampling_settings_config:
     """
     method: str
     method_kwargs: dict[str, Any] = field(default_factory=dict)
-    save_samples: bool = False
+    save_samples: bool = True
+    save_measures: bool = True
     file_format: str = "xlsx"
 
 
 @dataclass
-class GSA_analysis_settings_config:
+class GSA_settings_config:
     """
     Container for user-defined GSA analysis configuration.
     """
@@ -57,7 +58,6 @@ class GSA_analysis_settings_config:
     method_kwargs: dict[str, Any] = field(default_factory=dict)
     measures: list[str] | None = None
     scenarios: list[str] | None = None
-    save_analysis: bool = True
     save_analysis: bool = True
     file_format: str = "xlsx"
 
@@ -187,11 +187,13 @@ class Model():
             )
 
             self._sampling_settings: sampling_settings_config | None = None
-            self._GSA_analysis_settings: GSA_analysis_settings_config | None = None
+            self._GSA_settings: GSA_settings_config | None = None
 
             self.sampling_problem: dict[str, Any] | None = None
             self.uncertainty_samples: pd.DataFrame | None = None
             self.uncertainty_measures: pd.DataFrame | None = None
+            self.par_mapping: pd.DataFrame | None = None
+            self.GSA_results: pd.DataFrame | None = None
 
             if self.settings['use_existing_data']:
                 self._load_model_coordinates()
@@ -545,6 +547,29 @@ class Model():
                 force_overwrite=force_overwrite,
                 table_key_list=table_key_list,
             )
+
+    def load_data(
+            self,
+            force_overwrite: bool = False,
+            table_key_list: list[str] = [],
+    ) -> None:
+        """Load exogenous input data into the SQLite database.
+
+        This is the public interface for loading user-filled input data files into
+        the model SQLite database. It wraps the internal data-loading routine, which
+        imports exogenous data and normalizes missing values as SQLite NULL values.
+
+        Args:
+            force_overwrite (bool, optional): If True, overwrite existing table data
+                without asking for user confirmation. Defaults to False.
+            table_key_list (list[str], optional): List of exogenous data table keys
+                to load. If empty, all exogenous input data tables are loaded.
+                Defaults to [].
+        """
+        self._load_exogenous_data_to_sqlite_database(
+            force_overwrite=force_overwrite,
+            table_key_list=table_key_list,
+        )
 
     def _initialize_problems(
             self,
@@ -1049,41 +1074,25 @@ class Model():
     def _sample_data(
         self,
         method: str,
-        save_samples: bool = True,
-        file_format: str = "xlsx",
         **kwargs: Any,
     ) -> pd.DataFrame:
 
-        sample_problem = self.core.uncertainty.create_sampling_problem()
+        mapping_df, sample_problem = self.core.uncertainty.create_sampling_problem()
 
         samples_df = self.core.uncertainty.sample_data(
             method=method, problem=sample_problem, **kwargs)
 
         self.sampling_problem = sample_problem
         self.uncertainty_samples = samples_df
-
-        if save_samples:
-            self._save_samples(samples_df=samples_df, file_format=file_format)
-
-            self.logger.info(
-                f"Uncertainty sampling | Samples saved to input directory "
-                f"as '{file_format}' file."
-            )
+        self.par_mapping = mapping_df
 
         return samples_df
-
-    def _save_samples(
-            self,
-            samples_df: pd.DataFrame,
-            file_format: str = "xlsx",
-    ) -> None:
-        self.core.uncertainty.save_samples(
-            samples_df=samples_df, file_format=file_format)
 
     def sampling_settings(
         self,
         method: str,
         save_samples: bool = True,
+        save_measures: bool = True,
         file_format: str = "xlsx",
         **method_kwargs: Any,
     ) -> sampling_settings_config:
@@ -1100,6 +1109,11 @@ class Model():
                 "Uncertainty analysis | 'file_format' specified but "
                 "'save_samples=False'. Samples will not be saved."
             )
+        if not save_measures and file_format is not None:
+            self.logger.warning(
+                "Uncertainty analysis | 'file_format' specified but "
+                "'save_measures=False'. Measures will not be saved."
+            )
 
         method = method.lower()
 
@@ -1111,12 +1125,13 @@ class Model():
             method=method,
             method_kwargs=method_kwargs,
             save_samples=save_samples,
+            save_measures=save_measures,
             file_format=file_format,
         )
 
         # return self._sampling_settings
 
-    def GSA_analysis_settings(
+    def GSA_settings(
         self,
         method: str,
         save_analysis: bool = True,
@@ -1124,7 +1139,7 @@ class Model():
         scenarios: list[str] | str | None = None,
         file_format: str = "xlsx",
         **method_kwargs: Any,
-    ) -> GSA_analysis_settings_config:
+    ) -> GSA_settings_config:
 
         if not self.is_uncertainty_enabled:
             raise ValueError(
@@ -1162,7 +1177,12 @@ class Model():
             kwargs=method_kwargs
         )
 
-        self._GSA_analysis_settings = GSA_analysis_settings_config(
+        self.core.uncertainty.validate_sampling_analysis_compatibility(
+            sampling_method=self._sampling_settings.method,
+            analysis_method=method
+        )
+
+        self._GSA_settings = GSA_settings_config(
             method=method,
             method_kwargs=method_kwargs,
             measures=measures,
@@ -1234,12 +1254,18 @@ class Model():
 
         self._sample_data(
             method=uncertainty_cfg.method,
-            save_samples=uncertainty_cfg.save_samples,
-            file_format=uncertainty_cfg.file_format,
             **uncertainty_cfg.method_kwargs,
         )
 
         samples_df = self.uncertainty_samples
+
+        if uncertainty_cfg.save_samples:
+
+            self.core.uncertainty.save_dataframe(
+                dataframe=samples_df,
+                file_name=Defaults.UncertaintySettings.UNCERTAINTY_SAMPLES_FILE_NAME,
+                file_format=self._sampling_settings.file_format,
+            )
 
         uncertainty_measure_records = []
 
@@ -1286,7 +1312,14 @@ class Model():
 
         self.uncertainty_measures = uncertainty_measures_df
 
-    def GSA_analysis(
+        if uncertainty_cfg.save_measures:
+            self.core.uncertainty.save_dataframe(
+                dataframe=uncertainty_measures_df,
+                file_name=Defaults.UncertaintySettings.UNCERTAINTY_MEASURES_FILE_NAME,
+                file_format=self._sampling_settings.file_format,
+            )
+
+    def analyze(
         self,
         method: Optional[str] = None,
         **analysis_kwargs: Any,
@@ -1304,7 +1337,7 @@ class Model():
                 "Create the model with Uncertainty=True."
             )
 
-        if self._GSA_analysis_settings is None:
+        if self._GSA_settings is None:
             raise ValueError(
                 "No uncertainty analysis configured. "
                 "Call model.sampling_settings(...) before analyze_uncertainty()."
@@ -1333,7 +1366,7 @@ class Model():
 
         method = method.lower()
 
-        gsa_cfg = self._GSA_analysis_settings
+        gsa_cfg = self._GSA_settings
 
         method = gsa_cfg.method
 
@@ -1346,16 +1379,20 @@ class Model():
             method=method,
             problem=self.sampling_problem,
             samples_df=self.uncertainty_samples,
+            mapping_df=self.par_mapping,
             uncertainty_measures_df=self.uncertainty_measures,
             measures=gsa_cfg.measures,
             scenarios=gsa_cfg.scenarios,
             **kwargs,
         )
 
-        # if gsa_cfg.save_analysis:
-        #     self.core.uncertainty.save_analysis(
-        #         analysis_df=analysis_df,
-        #         file_format=gsa_cfg.file_format,
-        #     )
+        if gsa_cfg.save_analysis:
+            self.core.uncertainty.save_dataframe(
+                dataframe=analysis_df,
+                file_name=Defaults.UncertaintySettings.GSA_FILE_NAME,
+                file_format=gsa_cfg.file_format,
+            )
+
+        self.GSA_results = analysis_df
 
         return analysis_df

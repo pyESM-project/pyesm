@@ -74,7 +74,7 @@ class Uncertainty:
 
         Returns a mapping table with one row per uncertain sampled parameter.
         The table includes the SALib parameter name, source table, row id,
-        variable name, bounds, coordinate label, and one column per coordinate.
+        variable name, bounds, and one column per coordinate.
         """
 
         records: list[dict[str, Any]] = []
@@ -215,7 +215,7 @@ class Uncertainty:
             ]].values.tolist(),
         }
 
-        return problem
+        return mapping_df, problem
 
     def _check_bounds(
         self,
@@ -332,37 +332,6 @@ class Uncertainty:
             sampler=sampler,
             kwargs=kwargs,
         )
-
-    def _prepare_samples_dataframe_for_saving(
-            self,
-            samples_df: pd.DataFrame,
-            mapping_df: pd.DataFrame,
-    ) -> pd.DataFrame:
-        run_id_col = Defaults.UncertaintySettings.RUN_ID
-        parameter_name_col = Defaults.UncertaintySettings.PARAMETER_NAME
-        sampled_value_col = Defaults.UncertaintySettings.SAMPLED_VALUE
-
-        samples_long = samples_df.melt(
-            id_vars=run_id_col,
-            var_name=parameter_name_col,
-            value_name=sampled_value_col,
-        )
-
-        coordinates_df = mapping_df[
-            [parameter_name_col]
-        ].drop_duplicates()
-
-        samples_df_save = samples_long.merge(
-            coordinates_df,
-            on=parameter_name_col,
-            how="left",
-        )
-        samples_df_save = samples_df_save[[
-            run_id_col,
-            parameter_name_col,
-            sampled_value_col,
-        ]]
-        return samples_df_save
 
     def save_dataframe(
         self,
@@ -543,143 +512,143 @@ class Uncertainty:
 
         return deterministic_vars
 
-    def inject_sampled_values(
-        self,
-        table_df: pd.DataFrame,
-        table_name: str,
-        samples_df: pd.DataFrame,
-        run_id: int,
-        separator: str = "||",
-    ) -> pd.DataFrame:
-        """Inject sampled uncertainty values into a normalized data-table dataframe.
+    # def inject_sampled_values(
+    #     self,
+    #     table_df: pd.DataFrame,
+    #     table_name: str,
+    #     samples_df: pd.DataFrame,
+    #     run_id: int,
+    #     separator: str = "||",
+    # ) -> pd.DataFrame:
+    #     """Inject sampled uncertainty values into a normalized data-table dataframe.
 
-        The function maps each row of `table_df` to one sampled parameter using
-        the convention:
+    #     The function maps each row of `table_df` to one sampled parameter using
+    #     the convention:
 
-            {table_name} || {id}
+    #         {table_name} || {id}
 
-        and writes the sampled value into the standard `values` column. Auxiliary
-        uncertainty bound columns are removed
-        before returning the dataframe, so that the output can be passed to the
-        standard CVXLab reshaping pipeline.
+    #     and writes the sampled value into the standard `values` column. Auxiliary
+    #     uncertainty bound columns are removed
+    #     before returning the dataframe, so that the output can be passed to the
+    #     standard CVXLab reshaping pipeline.
 
-        Args:
-            table_df: DataFrame extracted from the SQLite data table.
-            table_name: Name of the SQLite data table.
-            samples_df: DataFrame containing sampled values. Expected columns are
-                the run identifier plus one column per uncertain parameter.
-            run_id: Identifier of the uncertainty-analysis run to inject.
-            separator: Separator used in sampled-parameter names.
+    #     Args:
+    #         table_df: DataFrame extracted from the SQLite data table.
+    #         table_name: Name of the SQLite data table.
+    #         samples_df: DataFrame containing sampled values. Expected columns are
+    #             the run identifier plus one column per uncertain parameter.
+    #         run_id: Identifier of the uncertainty-analysis run to inject.
+    #         separator: Separator used in sampled-parameter names.
 
-        Returns:
-            A copy of `table_df` with sampled values written into the `values`
-            column and uncertainty-bound columns removed.
+    #     Returns:
+    #         A copy of `table_df` with sampled values written into the `values`
+    #         column and uncertainty-bound columns removed.
 
-        Raises:
-            MissingDataError: If required columns are missing, if the selected run is not
-                found, if it is duplicated, or if sampled parameters are missing.
-        """
+    #     Raises:
+    #         MissingDataError: If required columns are missing, if the selected run is not
+    #             found, if it is duplicated, or if sampled parameters are missing.
+    #     """
 
-        id_header = Defaults.Labels.ID_FIELD["id"][0]
-        values_header = Defaults.Labels.VALUES_FIELD["values"][0]
-        lower_bound_header = Defaults.UncertaintySettings.LOWER_BOUND_FIELD[
-            Defaults.UncertaintySettings.LOWER_BOUND_KEY
-        ][0]
-        upper_bound_header = Defaults.UncertaintySettings.UPPER_BOUND_FIELD[
-            Defaults.UncertaintySettings.UPPER_BOUND_KEY
-        ][0]
-        run_id_col = Defaults.UncertaintySettings.RUN_ID
+    #     id_header = Defaults.Labels.ID_FIELD["id"][0]
+    #     values_header = Defaults.Labels.VALUES_FIELD["values"][0]
+    #     lower_bound_header = Defaults.UncertaintySettings.LOWER_BOUND_FIELD[
+    #         Defaults.UncertaintySettings.LOWER_BOUND_KEY
+    #     ][0]
+    #     upper_bound_header = Defaults.UncertaintySettings.UPPER_BOUND_FIELD[
+    #         Defaults.UncertaintySettings.UPPER_BOUND_KEY
+    #     ][0]
+    #     run_id_col = Defaults.UncertaintySettings.RUN_ID
 
-        required_table_columns = [id_header, values_header]
-        missing_table_columns = [
-            col for col in required_table_columns
-            if col not in table_df.columns
-        ]
+    #     required_table_columns = [id_header, values_header]
+    #     missing_table_columns = [
+    #         col for col in required_table_columns
+    #         if col not in table_df.columns
+    #     ]
 
-        if missing_table_columns:
-            msg = (
-                "Sample injection failed | "
-                f"Table '{table_name}' is missing required column(s): "
-                f"{missing_table_columns}."
-            )
-            self.logger.error(msg)
-            raise exc.MissingDataError(msg)
+    #     if missing_table_columns:
+    #         msg = (
+    #             "Sample injection failed | "
+    #             f"Table '{table_name}' is missing required column(s): "
+    #             f"{missing_table_columns}."
+    #         )
+    #         self.logger.error(msg)
+    #         raise exc.MissingDataError(msg)
 
-        samples_df_run = samples_df.loc[samples_df[run_id_col] == run_id]
+    #     samples_df_run = samples_df.loc[samples_df[run_id_col] == run_id]
 
-        if samples_df_run.empty:
-            msg = (
-                "Sample injection failed | "
-                f"No sampled values found for "
-                f"{Defaults.UncertaintySettings.RUN_ID}={run_id}."
-            )
-            self.logger.error(msg)
-            raise exc.MissingDataError(msg)
+    #     if samples_df_run.empty:
+    #         msg = (
+    #             "Sample injection failed | "
+    #             f"No sampled values found for "
+    #             f"{Defaults.UncertaintySettings.RUN_ID}={run_id}."
+    #         )
+    #         self.logger.error(msg)
+    #         raise exc.MissingDataError(msg)
 
-        samples_series = samples_df_run.iloc[0]
+    #     samples_series = samples_df_run.iloc[0]
 
-        result_df = table_df.copy()
+    #     result_df = table_df.copy()
 
-        parameter_names = (
-            table_name
-            + separator
-            + result_df[id_header].astype(str)
-        )
+    #     parameter_names = (
+    #         table_name
+    #         + separator
+    #         + result_df[id_header].astype(str)
+    #     )
 
-        missing_parameters = [
-            parameter_name
-            for parameter_name in parameter_names
-            if parameter_name not in samples_df.columns
-        ]
+    #     missing_parameters = [
+    #         parameter_name
+    #         for parameter_name in parameter_names
+    #         if parameter_name not in samples_df.columns
+    #     ]
 
-        if missing_parameters:
-            if len(missing_parameters) > 5:
-                missing_parameters = (
-                    missing_parameters[:5]
-                    + [f"(total items {len(missing_parameters)})"]
-                )
+    #     if missing_parameters:
+    #         if len(missing_parameters) > 5:
+    #             missing_parameters = (
+    #                 missing_parameters[:5]
+    #                 + [f"(total items {len(missing_parameters)})"]
+    #             )
 
-            msg = (
-                "Sample injection failed | "
-                f"Missing sampled parameter column(s) for table '{table_name}': "
-                f"{missing_parameters}."
-            )
-            self.logger.error(msg)
-            raise exc.MissingDataError(msg)
+    #         msg = (
+    #             "Sample injection failed | "
+    #             f"Missing sampled parameter column(s) for table '{table_name}': "
+    #             f"{missing_parameters}."
+    #         )
+    #         self.logger.error(msg)
+    #         raise exc.MissingDataError(msg)
 
-        result_df[values_header] = parameter_names.map(samples_series).values
+    #     result_df[values_header] = parameter_names.map(samples_series).values
 
-        result_df[values_header] = pd.to_numeric(
-            result_df[values_header],
-            errors="coerce",
-        )
+    #     result_df[values_header] = pd.to_numeric(
+    #         result_df[values_header],
+    #         errors="coerce",
+    #     )
 
-        null_sampled_values = result_df.loc[
-            result_df[values_header].isna(),
-            id_header,
-        ].tolist()
+    #     null_sampled_values = result_df.loc[
+    #         result_df[values_header].isna(),
+    #         id_header,
+    #     ].tolist()
 
-        if null_sampled_values:
-            if len(null_sampled_values) > 5:
-                null_sampled_values = (
-                    null_sampled_values[:5]
-                    + [f"(total items {len(null_sampled_values)})"]
-                )
+    #     if null_sampled_values:
+    #         if len(null_sampled_values) > 5:
+    #             null_sampled_values = (
+    #                 null_sampled_values[:5]
+    #                 + [f"(total items {len(null_sampled_values)})"]
+    #             )
 
-            msg = (
-                "Sample injection failed | "
-                f"Sampled values for table '{table_name}' contain null/non-numeric "
-                f"values at id row(s): {null_sampled_values}."
-            )
-            self.logger.error(msg)
-            raise exc.MissingDataError(msg)
+    #         msg = (
+    #             "Sample injection failed | "
+    #             f"Sampled values for table '{table_name}' contain null/non-numeric "
+    #             f"values at id row(s): {null_sampled_values}."
+    #         )
+    #         self.logger.error(msg)
+    #         raise exc.MissingDataError(msg)
 
-        result_df = result_df.drop(
-            columns=[lower_bound_header, upper_bound_header],
-            errors="ignore",
-        )
+    #     result_df = result_df.drop(
+    #         columns=[lower_bound_header, upper_bound_header],
+    #         errors="ignore",
+    #     )
 
-        return result_df
+    #     return result_df
 
     def _get_scenario_name(self, scenario_key):
         """Return scenario name from scenario index/key."""
@@ -972,6 +941,33 @@ class Uncertainty:
                 f"Required arguments: {required_args}."
             )
 
+    def validate_sampling_analysis_compatibility(
+        self,
+        sampling_method: str,
+        analysis_method: str,
+    ) -> None:
+        """Validate methodological compatibility between sampler and GSA analyzer.
+
+        Some SALib analyzers require samples generated with a specific sampling
+        design. For instance, Morris analysis requires Morris trajectories, while
+        Sobol analysis requires a Sobol/Saltelli-compatible design. Latin
+        Hypercube samples are instead compatible with analyzers that can operate
+        on generic sample matrices, such as Delta and RBD-FAST.
+        """
+
+        compatibility_map = Defaults.UncertaintySettings.SAMPLING_ANALYSIS_COMPATIBILITY
+
+        compatible_methods = compatibility_map.get(analysis_method)
+
+        if analysis_method not in compatible_methods:
+            raise ValueError(
+                "Sampling-analysis compatibility validation failed | "
+                f"GSA analysis method '{analysis_method}' is not compatible "
+                f"with sampling method '{sampling_method}'. "
+                f"Compatible analysis methods for '{sampling_method}': "
+                f"{sorted(compatible_methods)}. "
+            )
+
     def validate_analysis_config(
         self,
         method: str,
@@ -1003,6 +999,7 @@ class Uncertainty:
         problem: dict[str, Any],
         samples_df: pd.DataFrame,
         uncertainty_measures_df: pd.DataFrame,
+        mapping_df: pd.DataFrame,
         measures: list[str] | None = None,
         scenarios: list[str] | None = None,
         **kwargs: Any,
@@ -1030,7 +1027,6 @@ class Uncertainty:
 
         analyzer = self.ANALYZERS[method]
         records = []
-        mapping_df = self.collect_uncertain_parameters()
         for target in targets:
             analysis_inputs = self._build_GSA_analysis_inputs(
                 method=method,
@@ -1273,7 +1269,6 @@ class Uncertainty:
             Defaults.Labels.ID_FIELD["id"][0],
             Defaults.UncertaintySettings.LOWER_BOUND_KEY,
             Defaults.UncertaintySettings.UPPER_BOUND_KEY,
-            Defaults.UncertaintySettings.COORDINATE_LABEL,
 
         }
 
