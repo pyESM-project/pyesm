@@ -655,6 +655,32 @@ class Uncertainty:
 
         return result_df
 
+    def _get_scenario_name(self, scenario_key):
+        """Return scenario name from scenario index/key."""
+
+        scenario_coordinates_header = Defaults.Labels.SCENARIO_COORDINATES
+
+        if pd.isna(scenario_key):
+            return None
+
+        scenarios_info = self.index.scenarios_info
+
+        if scenarios_info is None or scenarios_info.empty:
+            return scenario_key
+
+        if scenario_key not in scenarios_info.index:
+            return scenario_key
+
+        scenario_coordinates = scenarios_info.loc[
+            scenario_key,
+            scenario_coordinates_header,
+        ]
+
+        if isinstance(scenario_coordinates, list):
+            return " | ".join(str(item) for item in scenario_coordinates)
+
+            return scenario_coordinates
+
     def collect_uncertainty_measures_for_run(
             self,
             run_id: int,
@@ -690,12 +716,16 @@ class Uncertainty:
 
                     record_key = scenario_key
 
+                    scenario_name = self._get_scenario_name(scenario_key)
+
+                    record_key = scenario_name
+
                     if record_key not in records:
 
                         record = {Defaults.UncertaintySettings.RUN_ID: run_id}
 
                         if scenario_key is not None:
-                            record["scenario"] = scenario_key
+                            record["scenario"] = scenario_name
 
                         records[record_key] = record
 
@@ -941,25 +971,79 @@ class Uncertainty:
             context="analysis",
         )
 
-    def analyze_results(
-        self,
-        method: str,
-        problem: dict[str, Any],
-        samples_df: pd.DataFrame,
-        uncertainty_measures_df: pd.DataFrame,
-        **kwargs: Any,
-    ) -> pd.DataFrame:
-        """Run SALib GSA analysis on uncertainty-run outputs."""
+    # def prepare_salib_analysis_inputs(
+    #     self,
+    #     problem: dict[str, Any],
+    #     samples_df: pd.DataFrame,
+    #     uncertainty_measures_df: pd.DataFrame,
+    #     measures: list[str] | None = None,
+    #     scenarios: list[str] | None = None,
+    # ) -> tuple[np.ndarray, list[dict[str, Any]]]:
+    #     """Prepare SALib input matrix X and output vectors Y.
 
-        method = method.lower()
+    #     SALib analyses one scalar output at a time. Therefore, if the model has
+    #     multiple uncertainty measures and/or multiple scenarios, this method creates
+    #     one analysis target for each selected measure-scenario pair.
 
-        # kwargs = self._apply_method_defaults(
-        #     method=method,
-        #     kwargs=kwargs,
-        #     defaults_by_method=Defaults.UncertaintySettings.ANALYSIS_DEFAULTS,
-        # )
+    #     Returns:
+    #         tuple:
+    #             - X: SALib input matrix with shape (n_runs, n_parameters)
+    #             - analysis_targets: list of dictionaries, each containing:
+    #                 - measure
+    #                 - scenario
+    #                 - Y
+    #     """
 
-        # self.validate_analysis_config(
-        #     method=method,
-        #     kwargs=kwargs,
-        # )
+    #     X = self._prepare_salib_input_matrix(
+    #         problem=problem,
+    #         samples_df=samples_df,
+    #     )
+
+    #     # analysis_targets = self._prepare_salib_analysis_targets(
+    #     #     samples_df=samples_df,
+    #     #     uncertainty_measures_df=uncertainty_measures_df,
+    #     #     measures=measures,
+    #     #     scenarios=scenarios,
+    #     # )
+
+    #     # return X, analysis_targets
+
+    # def _prepare_salib_input_matrix(
+    #     self,
+    #     problem: dict[str, Any],
+    #     samples_df: pd.DataFrame,
+    # ) -> np.ndarray:
+    #     """Convert samples_df into the SALib input matrix X.
+    #     The column order must match problem["names"].
+    #     """
+
+    #     run_id_col = Defaults.UncertaintySettings.RUN_ID
+
+    #     if run_id_col not in samples_df.columns:
+    #         raise ValueError(
+    #             f"samples_df must contain column '{run_id_col}'."
+    #         )
+
+    #     if "names" not in problem:
+    #         raise ValueError(
+    #             "SALib problem dictionary must contain key 'names'."
+    #         )
+
+    #     parameter_names = problem["names"]
+
+    #     missing_parameters = set(parameter_names) - set(samples_df.columns)
+
+    #     if missing_parameters:
+    #         raise ValueError(
+    #             "samples_df does not contain all parameters listed in "
+    #             f"problem['names']. Missing parameters: {sorted(missing_parameters)}."
+    #         )
+
+    #     X = samples_df[parameter_names].to_numpy(dtype=float)
+
+    #     if X.ndim != 2:
+    #         raise ValueError(
+    #             f"SALib input matrix X must be 2-dimensional. Got shape {X.shape}."
+    #         )
+
+    #     return X
