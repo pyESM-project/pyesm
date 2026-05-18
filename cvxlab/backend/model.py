@@ -51,10 +51,13 @@ class sampling_settings_config:
 @dataclass
 class GSA_analysis_settings_config:
     """
-
+    Container for user-defined GSA analysis configuration.
     """
     method: str
     method_kwargs: dict[str, Any] = field(default_factory=dict)
+    measures: list[str] | None = None
+    scenarios: list[str] | None = None
+    save_analysis: bool = True
     save_analysis: bool = True
     file_format: str = "xlsx"
 
@@ -1117,6 +1120,8 @@ class Model():
         self,
         method: str,
         save_analysis: bool = True,
+        measures: list[str] | str | None = None,
+        scenarios: list[str] | str | None = None,
         file_format: str = "xlsx",
         **method_kwargs: Any,
     ) -> GSA_analysis_settings_config:
@@ -1134,6 +1139,22 @@ class Model():
                 "'save_samples=False'. Samples will not be saved."
             )
 
+        if isinstance(measures, str):
+            measures = [measures]
+
+        if measures is not None and not isinstance(measures, list):
+            raise TypeError(
+                "'measures' must be a string, a list of strings, or None."
+            )
+
+        if isinstance(scenarios, str):
+            scenarios = [scenarios]
+
+        if scenarios is not None and not isinstance(scenarios, list):
+            raise TypeError(
+                "'scenarios' must be a string, a list of strings, or None."
+            )
+
         method = method.lower()
 
         self.core.uncertainty.validate_analysis_config(
@@ -1144,6 +1165,8 @@ class Model():
         self._GSA_analysis_settings = GSA_analysis_settings_config(
             method=method,
             method_kwargs=method_kwargs,
+            measures=measures,
+            scenarios=scenarios,
             save_analysis=save_analysis,
             file_format=file_format,
         )
@@ -1263,7 +1286,7 @@ class Model():
 
         self.uncertainty_measures = uncertainty_measures_df
 
-    def analyze_uncertainty(
+    def GSA_analysis(
         self,
         method: Optional[str] = None,
         **analysis_kwargs: Any,
