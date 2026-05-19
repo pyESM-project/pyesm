@@ -204,11 +204,11 @@ class Defaults:
             RBD_FAST: {"problem", "X", "Y"},
         }
 
-        SAMPLING_ANALYSIS_COMPATIBILITY = {
-            SOBOL: {SOBOL, DELTA, RBD_FAST},
-            SALTELLI: {SOBOL, DELTA, RBD_FAST},
-            MORRIS: {MORRIS, DELTA, RBD_FAST},
-            LATIN: {DELTA, RBD_FAST},
+        ANALYSIS_COMPATIBILITY = {
+            SOBOL: {SOBOL, SALTELLI},
+            MORRIS: {MORRIS},
+            DELTA: {LATIN, SOBOL, SALTELLI, MORRIS},
+            RBD_FAST: {LATIN, SOBOL, SALTELLI, MORRIS},
         }
 
         ANALYSIS_DEFAULTS = {
@@ -240,7 +240,7 @@ class Defaults:
 
         UNCERTAINTY_SAMPLES_FILE_NAME = "uncertainty_samples"
         UNCERTAINTY_MEASURES_FILE_NAME = "uncertainty_measures"
-        GSA_ANALYSIS_FILE_NAME = "GSA_analysis"
+        GSA_FILE_NAME = "GSA_analysis"
 
     class DefaultStructures:
         """Default structures for data validation and for generating templates.

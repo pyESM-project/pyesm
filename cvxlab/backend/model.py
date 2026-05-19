@@ -193,7 +193,7 @@ class Model():
             self.uncertainty_samples: pd.DataFrame | None = None
             self.uncertainty_measures: pd.DataFrame | None = None
             self.par_mapping: pd.DataFrame | None = None
-            self.GSA_results: pd.DataFrame | None = None
+            self.gsa_results: pd.DataFrame | None = None
 
             if self.settings['use_existing_data']:
                 self._load_model_coordinates()
@@ -1393,6 +1393,6 @@ class Model():
                 file_format=gsa_cfg.file_format,
             )
 
-        self.GSA_results = analysis_df
+        self.gsa_results = analysis_df
 
         return analysis_df

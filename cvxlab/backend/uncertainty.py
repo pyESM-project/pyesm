@@ -951,21 +951,24 @@ class Uncertainty:
         Some SALib analyzers require samples generated with a specific sampling
         design. For instance, Morris analysis requires Morris trajectories, while
         Sobol analysis requires a Sobol/Saltelli-compatible design. Latin
-        Hypercube samples are instead compatible with analyzers that can operate
-        on generic sample matrices, such as Delta and RBD-FAST.
+        Hypercube samples are compatible with analyzers that can operate on generic
+        sample matrices, such as Delta and RBD-FAST.
         """
 
-        compatibility_map = Defaults.UncertaintySettings.SAMPLING_ANALYSIS_COMPATIBILITY
+        sampling_method = sampling_method.lower()
+        analysis_method = analysis_method.lower()
 
-        compatible_methods = compatibility_map.get(analysis_method)
+        compatibility_map = Defaults.UncertaintySettings.ANALYSIS_COMPATIBILITY
 
-        if analysis_method not in compatible_methods:
+        compatible_sampling_methods = compatibility_map.get(analysis_method)
+
+        if sampling_method not in compatible_sampling_methods:
             raise ValueError(
                 "Sampling-analysis compatibility validation failed | "
                 f"GSA analysis method '{analysis_method}' is not compatible "
                 f"with sampling method '{sampling_method}'. "
-                f"Compatible analysis methods for '{sampling_method}': "
-                f"{sorted(compatible_methods)}. "
+                f"Compatible sampling methods for '{analysis_method}': "
+                f"{sorted(compatible_sampling_methods)}."
             )
 
     def validate_analysis_config(
