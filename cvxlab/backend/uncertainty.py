@@ -1208,6 +1208,27 @@ class Uncertainty:
 
         return inputs
 
+    def _get_split_problem_coordinate_columns(self) -> set[str]:
+        """Return coordinate column names associated with split-problem sets."""
+
+        split_problem_coordinate_cols = set()
+
+        for set_key, set_table in self.index.sets.items():
+            if not getattr(set_table, "split_problem", False):
+                continue
+
+            table_headers = getattr(set_table, "table_headers", None)
+
+            if table_headers is None:
+                continue
+
+            name_header = table_headers.get(Defaults.Labels.NAME)
+
+            if name_header:
+                split_problem_coordinate_cols.add(name_header[0])
+
+        return split_problem_coordinate_cols
+
     def _GSA_result_to_dataframe(
         self,
         result: Any,
@@ -1268,16 +1289,20 @@ class Uncertainty:
             return result_df
 
         excluded_metadata_cols = {
-            parameter_name_col,
             Defaults.Labels.ID_FIELD["id"][0],
+            parameter_name_col,
             Defaults.UncertaintySettings.LOWER_BOUND_KEY,
             Defaults.UncertaintySettings.UPPER_BOUND_KEY,
+            Defaults.UncertaintySettings.METHOD,
 
         }
+
+        split_problem_coordinate_cols = self._get_split_problem_coordinate_columns()
 
         metadata_cols = [
             col for col in mapping_df.columns
             if col not in excluded_metadata_cols
+            and col not in split_problem_coordinate_cols
         ]
 
         result_df = result_df.merge(
