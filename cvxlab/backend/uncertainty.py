@@ -198,7 +198,7 @@ class Uncertainty:
     def create_sampling_problem(
         self,
     ) -> Dict[str, Any]:
-        """Create the SALib problem dictionary from uncertain parameters.    
+        """Create the SALib problem dictionary from uncertain parameters.
         Returns:
             Dict[str, Any]: SALib-compatible problem dictionary
         """
@@ -512,144 +512,6 @@ class Uncertainty:
 
         return deterministic_vars
 
-    # def inject_sampled_values(
-    #     self,
-    #     table_df: pd.DataFrame,
-    #     table_name: str,
-    #     samples_df: pd.DataFrame,
-    #     run_id: int,
-    #     separator: str = "||",
-    # ) -> pd.DataFrame:
-    #     """Inject sampled uncertainty values into a normalized data-table dataframe.
-
-    #     The function maps each row of `table_df` to one sampled parameter using
-    #     the convention:
-
-    #         {table_name} || {id}
-
-    #     and writes the sampled value into the standard `values` column. Auxiliary
-    #     uncertainty bound columns are removed
-    #     before returning the dataframe, so that the output can be passed to the
-    #     standard CVXLab reshaping pipeline.
-
-    #     Args:
-    #         table_df: DataFrame extracted from the SQLite data table.
-    #         table_name: Name of the SQLite data table.
-    #         samples_df: DataFrame containing sampled values. Expected columns are
-    #             the run identifier plus one column per uncertain parameter.
-    #         run_id: Identifier of the uncertainty-analysis run to inject.
-    #         separator: Separator used in sampled-parameter names.
-
-    #     Returns:
-    #         A copy of `table_df` with sampled values written into the `values`
-    #         column and uncertainty-bound columns removed.
-
-    #     Raises:
-    #         MissingDataError: If required columns are missing, if the selected run is not
-    #             found, if it is duplicated, or if sampled parameters are missing.
-    #     """
-
-    #     id_header = Defaults.Labels.ID_FIELD["id"][0]
-    #     values_header = Defaults.Labels.VALUES_FIELD["values"][0]
-    #     lower_bound_header = Defaults.UncertaintySettings.LOWER_BOUND_FIELD[
-    #         Defaults.UncertaintySettings.LOWER_BOUND_KEY
-    #     ][0]
-    #     upper_bound_header = Defaults.UncertaintySettings.UPPER_BOUND_FIELD[
-    #         Defaults.UncertaintySettings.UPPER_BOUND_KEY
-    #     ][0]
-    #     run_id_col = Defaults.UncertaintySettings.RUN_ID
-
-    #     required_table_columns = [id_header, values_header]
-    #     missing_table_columns = [
-    #         col for col in required_table_columns
-    #         if col not in table_df.columns
-    #     ]
-
-    #     if missing_table_columns:
-    #         msg = (
-    #             "Sample injection failed | "
-    #             f"Table '{table_name}' is missing required column(s): "
-    #             f"{missing_table_columns}."
-    #         )
-    #         self.logger.error(msg)
-    #         raise exc.MissingDataError(msg)
-
-    #     samples_df_run = samples_df.loc[samples_df[run_id_col] == run_id]
-
-    #     if samples_df_run.empty:
-    #         msg = (
-    #             "Sample injection failed | "
-    #             f"No sampled values found for "
-    #             f"{Defaults.UncertaintySettings.RUN_ID}={run_id}."
-    #         )
-    #         self.logger.error(msg)
-    #         raise exc.MissingDataError(msg)
-
-    #     samples_series = samples_df_run.iloc[0]
-
-    #     result_df = table_df.copy()
-
-    #     parameter_names = (
-    #         table_name
-    #         + separator
-    #         + result_df[id_header].astype(str)
-    #     )
-
-    #     missing_parameters = [
-    #         parameter_name
-    #         for parameter_name in parameter_names
-    #         if parameter_name not in samples_df.columns
-    #     ]
-
-    #     if missing_parameters:
-    #         if len(missing_parameters) > 5:
-    #             missing_parameters = (
-    #                 missing_parameters[:5]
-    #                 + [f"(total items {len(missing_parameters)})"]
-    #             )
-
-    #         msg = (
-    #             "Sample injection failed | "
-    #             f"Missing sampled parameter column(s) for table '{table_name}': "
-    #             f"{missing_parameters}."
-    #         )
-    #         self.logger.error(msg)
-    #         raise exc.MissingDataError(msg)
-
-    #     result_df[values_header] = parameter_names.map(samples_series).values
-
-    #     result_df[values_header] = pd.to_numeric(
-    #         result_df[values_header],
-    #         errors="coerce",
-    #     )
-
-    #     null_sampled_values = result_df.loc[
-    #         result_df[values_header].isna(),
-    #         id_header,
-    #     ].tolist()
-
-    #     if null_sampled_values:
-    #         if len(null_sampled_values) > 5:
-    #             null_sampled_values = (
-    #                 null_sampled_values[:5]
-    #                 + [f"(total items {len(null_sampled_values)})"]
-    #             )
-
-    #         msg = (
-    #             "Sample injection failed | "
-    #             f"Sampled values for table '{table_name}' contain null/non-numeric "
-    #             f"values at id row(s): {null_sampled_values}."
-    #         )
-    #         self.logger.error(msg)
-    #         raise exc.MissingDataError(msg)
-
-    #     result_df = result_df.drop(
-    #         columns=[lower_bound_header, upper_bound_header],
-    #         errors="ignore",
-    #     )
-
-    #     return result_df
-
     def _get_scenario_name(self, scenario_key):
         """Return scenario name from scenario index/key."""
 
@@ -677,16 +539,22 @@ class Uncertainty:
             return scenario_coordinates
 
     def collect_uncertainty_measures_for_run(
-            self,
-            run_id: int,
+        self,
+        run_id: int,
+        scenarios_to_collect: list | None = None,
     ) -> pd.DataFrame:
-        """Collect uncertainty-measure values after one uncertainty run.
+        """Collect scalar uncertainty-measure values after one solved uncertainty run.
 
-        Returns one row per scenario if the model is split into multiple problems.
+        If `scenarios_to_collect` is provided, collect only those scenario keys.
+        This avoids extracting values from infeasible scenarios.
         """
 
         cvxpy_var_header = Defaults.Labels.CVXPY_VAR
         sub_problem_key_header = Defaults.Labels.SUB_PROBLEM_KEY
+
+        run_id_col = Defaults.UncertaintySettings.RUN_ID
+        scenario_col = Defaults.UncertaintySettings.SCENARIO
+        status_col = Defaults.UncertaintySettings.STATUS
 
         uncertainty_measure_vars = self.get_uncertainty_measure_vars_list()
 
@@ -699,9 +567,9 @@ class Uncertainty:
                 variable.data
             )
 
-            for problem_key, variable_data in variable_data_by_problem.items():
+            for _, variable_data in variable_data_by_problem.items():
 
-                for row_idx, row in variable_data.iterrows():
+                for _, row in variable_data.iterrows():
                     cvxpy_obj = row[cvxpy_var_header]
 
                     scenario_key = row.get(sub_problem_key_header, None)
@@ -709,18 +577,20 @@ class Uncertainty:
                     if pd.isna(scenario_key):
                         scenario_key = None
 
-                    record_key = scenario_key
+                    if scenarios_to_collect is not None and scenario_key not in scenarios_to_collect:
+                        continue
 
                     scenario_name = self._get_scenario_name(scenario_key)
-
                     record_key = scenario_name
 
                     if record_key not in records:
+                        record = {
+                            run_id_col: run_id,
+                            status_col: "optimal",
+                        }
 
-                        record = {Defaults.UncertaintySettings.RUN_ID: run_id}
-
-                        if scenario_key is not None:
-                            record["scenario"] = scenario_name
+                        if scenario_name is not None:
+                            record[scenario_col] = scenario_name
 
                         records[record_key] = record
 
@@ -733,9 +603,7 @@ class Uncertainty:
                     records[record_key][var_key] = value
 
         if not records:
-            return pd.DataFrame(
-                [{Defaults.UncertaintySettings.RUN_ID: run_id}]
-            )
+            return pd.DataFrame([{run_id_col: run_id}])
 
         return pd.DataFrame(records.values())
 
@@ -762,7 +630,8 @@ class Uncertainty:
         if cvxpy_obj.value is None:
             raise ValueError(
                 f"Uncertainty measure '{var_key}' has no value "
-                f"for scenario '{scenario_key}'. Problem may not have been solved."
+                f"for scenario '{scenario_key}'. "
+                "The related problem was probably not solved successfully."
             )
 
         value_array = np.asarray(cvxpy_obj.value).reshape(-1)
@@ -1016,10 +885,10 @@ class Uncertainty:
 
         method = method.lower()
 
-        X = self._prepare_GSA_input_matrix(
-            problem=problem,
-            samples_df=samples_df,
-        )
+        # X = self._prepare_GSA_input_matrix(
+        #     problem=problem,
+        #     samples_df=samples_df,
+        # )
 
         targets = self._prepare_GSA_analysis_targets(
             samples_df=samples_df,
@@ -1031,6 +900,18 @@ class Uncertainty:
         analyzer = self.ANALYZERS[method]
         records = []
         for target in targets:
+            selected_samples_df = (
+                samples_df
+                .set_index(Defaults.UncertaintySettings.RUN_ID)
+                .loc[target["run_ids"]]
+                .reset_index()
+            )
+
+            X = self._prepare_GSA_input_matrix(
+                problem=problem,
+                samples_df=selected_samples_df,
+            )
+
             analysis_inputs = self._build_GSA_analysis_inputs(
                 method=method,
                 problem=problem,
@@ -1058,8 +939,6 @@ class Uncertainty:
             return pd.DataFrame()
 
         return pd.concat(records, ignore_index=True)
-
-        return targets, X
 
     def _prepare_GSA_input_matrix(
         self,
@@ -1092,8 +971,11 @@ class Uncertainty:
         run_id_col = Defaults.UncertaintySettings.RUN_ID
         scenario_col = Defaults.UncertaintySettings.SCENARIO
 
-        technical_cols = {run_id_col, scenario_col}
-        samples_run_ids = samples_df[[run_id_col]]
+        technical_cols = {run_id_col,
+                          scenario_col,
+                          Defaults.UncertaintySettings.STATUS}
+
+        samples_run_ids = samples_df[[run_id_col]].drop_duplicates()
 
         available_measures = [
             col for col in uncertainty_measures_df.columns
@@ -1128,6 +1010,8 @@ class Uncertainty:
             if scenarios is None:
                 scenarios = available_scenarios
             else:
+                scenarios = [str(scenario) for scenario in scenarios]
+
                 missing_scenarios = [
                     scenario for scenario in scenarios
                     if scenario not in available_scenarios
@@ -1160,25 +1044,36 @@ class Uncertainty:
             ).sort_values(run_id_col)
 
             for measure in measures:
-                if merged[measure].isna().any():
-                    missing_run_ids = merged.loc[
-                        merged[measure].isna(),
-                        run_id_col,
-                    ].tolist()
+                missing_run_ids = merged.loc[
+                    merged[measure].isna(),
+                    run_id_col,
+                ].tolist()
 
-                    raise exc.MissingDataError(
-                        "SALib target preparation failed | "
-                        f"Missing output values for measure '{measure}', "
+                if missing_run_ids:
+                    self.logger.warning(
+                        "SALib target preparation | "
+                        f"Dropping missing/unfeasible output for measure '{measure}', "
                         f"scenario '{scenario}', run_id(s): {missing_run_ids}."
                     )
 
-                Y = merged[measure].to_numpy(dtype=float)
+                merged_valid = merged.dropna(subset=[measure]).copy()
+
+                if merged_valid.empty:
+                    raise exc.MissingDataError(
+                        "SALib target preparation failed | "
+                        f"No valid output values left for measure '{measure}', "
+                        f"scenario '{scenario}' after dropping NaNs."
+                    )
+
+                Y = merged_valid[measure].to_numpy(dtype=float)
+                valid_run_ids = merged_valid[run_id_col].tolist()
 
                 targets.append(
                     {
                         "measure": measure,
                         "scenario": scenario,
                         "Y": Y,
+                        "run_ids": valid_run_ids,
                     }
                 )
 
@@ -1327,3 +1222,40 @@ class Uncertainty:
         result_df = result_df[first_cols + last_cols]
 
         return result_df
+
+    def create_failed_measure_records_for_run(
+        self,
+        run_id: int,
+        failed_scenarios: dict,
+    ) -> pd.DataFrame:
+        """Create NaN uncertainty-measure records for failed scenario-runs.
+
+        `failed_scenarios` maps scenario keys to solver status. For a model without
+        split scenarios, use {None: status}.
+        """
+
+        records = []
+
+        run_id_col = Defaults.UncertaintySettings.RUN_ID
+        scenario_col = Defaults.UncertaintySettings.SCENARIO
+        status_col = Defaults.UncertaintySettings.STATUS
+
+        uncertainty_measure_vars = self.get_uncertainty_measure_vars_list()
+
+        for scenario_key, status in failed_scenarios.items():
+            scenario_name = self._get_scenario_name(scenario_key)
+
+            record = {
+                run_id_col: run_id,
+                status_col: status,
+            }
+
+            if scenario_name is not None:
+                record[scenario_col] = scenario_name
+
+            for measure in uncertainty_measure_vars:
+                record[measure] = np.nan
+
+            records.append(record)
+
+        return pd.DataFrame(records)

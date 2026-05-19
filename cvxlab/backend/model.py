@@ -1201,14 +1201,25 @@ class Model():
             solver_verbose: bool = False,
             solver_settings: Optional[dict[str, Any]] = None,
             convergence_norm: Defaults.LiteralTypes.NormType = 'l2',
-            convergence_tables_to_check: Defaults.LiteralTypes.ConvergenceTables | List[
-                str] = 'all_endogenous',
+            convergence_tables_to_check: (
+                Defaults.LiteralTypes.ConvergenceTables | List[str]
+            ) = 'all_endogenous',
             convergence_tables_to_skip: Optional[List[str]] = None,
             relative_tolerance: Optional[float] = None,
             maximum_iterations: Optional[int] = None,
             keep_previous_iteration_db: bool = False,
             **kwargs: Any,
     ) -> None:
+        """Run uncertainty analysis over sampled uncertain input values.
+
+        The method samples uncertain parameters, executes one model run per sampled
+        input vector, collects scalar uncertainty-measure outputs, and stores the
+        resulting dataframe in `self.uncertainty_measures`.
+
+        If one or more scenario-runs are infeasible or unbounded, their uncertainty
+        measures are kept as NaN. These NaNs can then be dropped target-by-target
+        before GSA analysis.
+        """
 
         if not self.is_uncertainty_enabled:
             raise ValueError(
@@ -1220,9 +1231,10 @@ class Model():
         if self._sampling_settings is None:
             raise ValueError(
                 "No uncertainty analysis configured. "
-                "Call model.sampling_settings(...) before run_uncertainty_analysis()."
+                "Call model.sampling_settings(...) before model.run_uncertainty()."
             )
 
+        # 1. Prepare symbolic and numerical data structures.
         self.core.load_and_validate_symbolic_problem(
             force_overwrite=force_overwrite,
         )
@@ -1231,12 +1243,14 @@ class Model():
 
         self.core.initialize_problems_variables()
 
-        # deterministic_vars = self.core.uncertainty.get_deterministic_vars_list()
-        # uncertain_vars = self.core.uncertainty.get_uncertain_vars_list()
+        # 2. Identify deterministic and uncertainty/hybrid variable groups.
+        fully_deterministic_tables = (
+            self.core.uncertainty.get_fully_deterministic_tables_list()
+        )
 
-        fully_deterministic_tables = self.core.uncertainty.get_fully_deterministic_tables_list()
-
-        uncertainty_hybrid_tables = self.core.uncertainty.get_uncertainty_hybrid_tables_list()
+        uncertainty_hybrid_tables = (
+            self.core.uncertainty.get_uncertainty_hybrid_tables_list()
+        )
 
         fully_deterministic_vars = self.core.uncertainty.get_vars_in_tables_list(
             fully_deterministic_tables
@@ -1246,11 +1260,13 @@ class Model():
             uncertainty_hybrid_tables
         )
 
+        # 3. Load deterministic exogenous values only once.
         self.core.data_to_cvxpy_exogenous_vars(
             allow_none_values=False,
             var_list_to_update=fully_deterministic_vars,
         )
 
+        # 4. Generate uncertainty samples.
         uncertainty_cfg = self._sampling_settings
 
         self._sample_data(
@@ -1260,28 +1276,40 @@ class Model():
 
         samples_df = self.uncertainty_samples
 
-        if uncertainty_cfg.save_samples:
+        if samples_df is None or samples_df.empty:
+            raise ValueError(
+                "Uncertainty analysis failed | "
+                "No uncertainty samples were generated."
+            )
 
+        if uncertainty_cfg.save_samples:
             self.core.uncertainty.save_dataframe(
                 dataframe=samples_df,
                 file_name=Defaults.UncertaintySettings.UNCERTAINTY_SAMPLES_FILE_NAME,
-                file_format=self._sampling_settings.file_format,
+                file_format=uncertainty_cfg.file_format,
             )
 
-        uncertainty_measure_records = []
+        # 5. Run one model instance for each sampled run_id.
+        run_id_col = Defaults.UncertaintySettings.RUN_ID
+        scenario_col = Defaults.UncertaintySettings.SCENARIO
+        status_col = Defaults.UncertaintySettings.STATUS
 
-        for run_id in samples_df[Defaults.UncertaintySettings.RUN_ID]:
+        uncertainty_measure_records = []
+        failed_runs_report: dict[int, dict] = {}
+
+        for run_id in samples_df[run_id_col]:
 
             self.core.data_to_cvxpy_exogenous_vars(
                 allow_none_values=False,
                 var_list_to_update=uncertainty_hybrid_vars,
                 is_hybrid=True,
                 samples_df=samples_df,
-                run_id=run_id
+                run_id=run_id,
             )
 
             self.core.logger.info(
-                f"Running uncertainty-analysis run {run_id}.")
+                f"Running uncertainty-analysis run {run_id}."
+            )
 
             self.core.problem.generate_numerical_problems(force_overwrite=True)
 
@@ -1297,14 +1325,40 @@ class Model():
                 convergence_tables_to_skip=convergence_tables_to_skip,
                 relative_tolerance=relative_tolerance,
                 maximum_iterations=maximum_iterations,
-                keep_previous_iteration_db=keep_previous_iteration_db
+                keep_previous_iteration_db=keep_previous_iteration_db,
             )
 
-            uncertainty_measure_records.append(
-                self.core.uncertainty.collect_uncertainty_measures_for_run(
+            statuses_by_scenario = self.core.get_current_problem_status_by_scenario()
+
+            solved_scenarios = [
+                scenario_key
+                for scenario_key, status in statuses_by_scenario.items()
+                if status == "optimal"
+            ]
+
+            failed_scenarios = {
+                scenario_key: status
+                for scenario_key, status in statuses_by_scenario.items()
+                if status != "optimal"
+            }
+
+            if solved_scenarios:
+                solved_records = self.core.uncertainty.collect_uncertainty_measures_for_run(
                     run_id=run_id,
+                    scenarios_to_collect=solved_scenarios,
                 )
-            )
+                uncertainty_measure_records.append(solved_records)
+
+            if failed_scenarios:
+
+                failed_records = self.core.uncertainty.create_failed_measure_records_for_run(
+                    run_id=run_id,
+                    failed_scenarios=failed_scenarios,
+                )
+
+                uncertainty_measure_records.append(failed_records)
+
+                failed_runs_report[run_id] = failed_scenarios
 
         uncertainty_measures_df = pd.concat(
             uncertainty_measure_records,
@@ -1317,8 +1371,57 @@ class Model():
             self.core.uncertainty.save_dataframe(
                 dataframe=uncertainty_measures_df,
                 file_name=Defaults.UncertaintySettings.UNCERTAINTY_MEASURES_FILE_NAME,
-                file_format=self._sampling_settings.file_format,
+                file_format=uncertainty_cfg.file_format,
             )
+
+        # 7. Final warning on failed scenario-runs.
+        if failed_runs_report:
+            self._warn_failed_uncertainty_runs(failed_runs_report)
+
+    def _warn_failed_uncertainty_runs(
+        self,
+        failed_runs_report: dict[int, dict],
+    ) -> None:
+        """Log a summary warning for infeasible uncertainty-analysis runs."""
+
+        if not failed_runs_report:
+            return
+
+        has_scenarios = bool(self.core.index.sets_split_problem_dict)
+
+        if not has_scenarios:
+            failed_run_ids = list(failed_runs_report.keys())
+
+            self.logger.warning(
+                "Uncertainty analysis | Infeasible runs detected. "
+                f"Failed run_id values: {failed_run_ids}."
+            )
+
+            return
+
+        warning_lines = [
+            "Uncertainty analysis | Infeasible scenario-runs detected."
+        ]
+
+        for run_id, failed_scenarios in failed_runs_report.items():
+            scenario_info = []
+
+            for scenario_key, status in failed_scenarios.items():
+                scenario_name = self.core.uncertainty._get_scenario_name(
+                    scenario_key
+                )
+
+                if scenario_name in [None, ""]:
+                    scenario_name = scenario_key
+
+                scenario_info.append(f"{scenario_name}: {status}")
+
+            warning_lines.append(
+                f"run_id={run_id} | failed scenarios: "
+                + "; ".join(scenario_info)
+            )
+
+        self.logger.warning("\n".join(warning_lines))
 
     def analyze(
         self,

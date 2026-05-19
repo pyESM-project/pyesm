@@ -1525,55 +1525,66 @@ class Core:
         class_name = type(self).__name__
         return f'{class_name}'
 
-    # def build_deterministic_exogenous_data_cache(
-    #         self,
-    #         var_list_to_update: list[str] | None = None,
-    # ) -> dict[tuple[str, object, int], pd.DataFrame]:
-    #     """Build a cache of base exogenous data for uncertainty runs.
+    def get_current_problem_status_by_scenario(self) -> dict:
+        """Return the current solution status by scenario.
 
-    #     The cache stores raw database data for each exogenous variable block.
-    #     During each uncertainty run, sampled values are injected into copies of
-    #     these cached dataframes before assigning values to CVXPY Parameters.
-    #     """
-    #     cache = {}
+        Returns:
+            dict mapping scenario_key -> status. If there are no split scenarios,
+            the key is None.
+        """
 
-    #     filter_header = Defaults.Labels.FILTER_DICT_KEY
-    #     allowed_var_types = Defaults.SymbolicDefinitions.VARIABLE_TYPES
+        problem_status_col = Defaults.Labels.PROBLEM_STATUS
 
-    #     if var_list_to_update is None:
-    #         var_list_to_update = self.index.list_variables
+        statuses_by_scenario = {}
 
-    #     with db_handler(self.sqltools):
-    #         for var_key, variable in self.index.variables.items():
-    #             if var_key not in var_list_to_update:
-    #                 continue
+        numerical_problems = self.problem.numerical_problems
 
-    #             if variable.type in (
-    #                 allowed_var_types["ENDOGENOUS"],
-    #                 allowed_var_types["CONSTANT"],
-    #             ):
-    #                 continue
+        if numerical_problems is None:
+            return {None: "not_solved"}
 
-    #             if isinstance(variable.type, dict):
-    #                 problem_keys = util.find_dict_keys_corresponding_to_value(
-    #                     variable.type,
-    #                     allowed_var_types["EXOGENOUS"],
-    #                 )
-    #             else:
-    #                 problem_keys = [None]
+        # Case 1: standard single problem stored as one dataframe
+        if isinstance(numerical_problems, pd.DataFrame):
+            if problem_status_col not in numerical_problems.columns:
+                return {None: "unknown"}
 
-    #             for problem_key in problem_keys:
-    #                 if problem_key is None:
-    #                     variable_data = variable.data
-    #                 else:
-    #                     variable_data = variable.data[problem_key]
+            statuses = numerical_problems[problem_status_col].dropna().unique()
 
-    #                 for combination in variable_data.index:
-    #                     raw_data = self.sqltools.table_to_dataframe(
-    #                         table_name=variable.related_table,
-    #                         filters_dict=variable_data.at[combination, filter_header],
-    #                     )
+            if len(statuses) == 0:
+                return {None: "not_solved"}
 
-    #                     cache[(var_key, problem_key, combination)] = raw_data.copy()
+            if all(status == "optimal" for status in statuses):
+                return {None: "optimal"}
 
-    #     return cache
+            return {None: " | ".join(str(status) for status in statuses)}
+
+        # Case 2: multiple problem dataframes, possibly indexed by scenario
+        if isinstance(numerical_problems, dict):
+            for _, problem_df in numerical_problems.items():
+                if problem_status_col not in problem_df.columns:
+                    continue
+
+                for scenario_key, row in problem_df.iterrows():
+                    status = row[problem_status_col]
+
+                    if pd.isna(status):
+                        status = "not_solved"
+
+                    if scenario_key not in statuses_by_scenario:
+                        statuses_by_scenario[scenario_key] = []
+
+                    statuses_by_scenario[scenario_key].append(status)
+
+            final_statuses = {}
+
+            for scenario_key, statuses in statuses_by_scenario.items():
+                if all(status == "optimal" for status in statuses):
+                    final_statuses[scenario_key] = "optimal"
+                else:
+                    final_statuses[scenario_key] = " | ".join(
+                        str(status) for status in statuses
+                        if str(status) != "optimal"
+                    )
+
+            return final_statuses
+
+        return {None: "unknown"}

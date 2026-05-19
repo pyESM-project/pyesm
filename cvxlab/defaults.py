@@ -242,6 +242,9 @@ class Defaults:
         UNCERTAINTY_MEASURES_FILE_NAME = "uncertainty_measures"
         GSA_FILE_NAME = "GSA_analysis"
 
+        STATUS = "status"
+        INDEX_VALUE = "value"
+
     class DefaultStructures:
         """Default structures for data validation and for generating templates.
 
