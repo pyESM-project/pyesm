@@ -245,6 +245,8 @@ class Defaults:
         STATUS = "status"
         INDEX_VALUE = "value"
 
+        RESULTS_DIR = "results"
+
     class DefaultStructures:
         """Default structures for data validation and for generating templates.
 

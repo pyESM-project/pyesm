@@ -338,6 +338,8 @@ class Uncertainty:
         dataframe: pd.DataFrame,
         file_name: str,
         file_format: str,
+        folder_name: str | None = None,
+
     ) -> None:
         """Export a dataframe to the model directory.
 
@@ -360,7 +362,16 @@ class Uncertainty:
                 f"Available formats: {allowed_formats}."
             )
 
-        file_path = self.paths["model_dir"] / f"{file_name}.{file_format}"
+        output_dir = self.paths["model_dir"]
+
+        if folder_name:
+            output_dir = output_dir / folder_name
+            output_dir.mkdir(parents=True, exist_ok=True)
+            file_path = output_dir / f"{file_name}.{file_format}"
+
+        else:
+
+            file_path = self.paths["model_dir"] / f"{file_name}.{file_format}"
 
         if file_format == Defaults.UncertaintySettings.XLSX:
             dataframe.to_excel(file_path, index=False)

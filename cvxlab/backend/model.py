@@ -1315,6 +1315,7 @@ class Model():
             self.core.uncertainty.save_dataframe(
                 dataframe=samples_df,
                 file_name=Defaults.UncertaintySettings.UNCERTAINTY_SAMPLES_FILE_NAME,
+                folder_name=Defaults.UncertaintySettings.RESULTS_DIR,
                 file_format=uncertainty_cfg.file_format,
             )
 
@@ -1411,6 +1412,7 @@ class Model():
             self.core.uncertainty.save_dataframe(
                 dataframe=uncertainty_measures_df,
                 file_name=Defaults.UncertaintySettings.UNCERTAINTY_MEASURES_FILE_NAME,
+                folder_name=Defaults.UncertaintySettings.RESULTS_DIR,
                 file_format=uncertainty_cfg.file_format,
             )
 
@@ -1484,7 +1486,7 @@ class Model():
         if self._GSA_settings is None:
             raise ValueError(
                 "No uncertainty analysis configured. "
-                "Call model.sampling_settings(...) before analyze_uncertainty()."
+                "Call model.GSA_settings(...) before analyze_uncertainty()."
             )
 
         if self.sampling_problem is None:
@@ -1534,12 +1536,11 @@ class Model():
             self.core.uncertainty.save_dataframe(
                 dataframe=analysis_df,
                 file_name=Defaults.UncertaintySettings.GSA_FILE_NAME,
+                folder_name=Defaults.UncertaintySettings.RESULTS_DIR,
                 file_format=gsa_cfg.file_format,
             )
 
         self.gsa_results = analysis_df
-
-        return analysis_df
 
     def model_single_run(
         self,
