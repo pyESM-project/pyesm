@@ -90,7 +90,7 @@ class Model():
             self,
             model_dir_name: str = 'model',
             main_dir_path: Optional[str] = None,
-            Uncertainty: bool = False,
+            uncertainty: bool = False,
             model_settings_from: Defaults.LiteralTypes.SettingsSource = 'xlsx',
             detailed_validation: bool = False,
             use_existing_data: bool = False,
@@ -161,7 +161,7 @@ class Model():
             self.settings = DotDict({
                 'log_level': log_level,
                 'model_name': model_dir_name,
-                uncertainty_setting_key: Uncertainty,
+                uncertainty_setting_key: uncertainty,
                 'model_settings_from': model_settings_from,
                 'use_existing_data': use_existing_data,
                 'multiple_input_files': multiple_input_files,
@@ -1192,6 +1192,85 @@ class Model():
             file_format=file_format,
         )
 
+    def _validate_uncertainty_run_configuration(self) -> None:
+        """Validate that uncertainty analysis can be executed."""
+
+        if not self.is_uncertainty_enabled:
+            raise ValueError(
+                "Uncertainty analysis is not enabled. "
+                f"Create the model with "
+                f"{Defaults.Labels.UNCERTAINTY_SETTING_KEY}=True."
+            )
+
+        if self._sampling_settings is None:
+            raise ValueError(
+                "No uncertainty analysis configured. "
+                "Call model.sampling_settings(...) before model.run_uncertainty()."
+            )
+
+    def _generate_uncertainty_samples(
+            self,
+            uncertainty_cfg: sampling_settings_config,
+    ) -> pd.DataFrame:
+        """Generate and validate uncertainty samples."""
+
+        self._sample_data(
+            method=uncertainty_cfg.method,
+            **uncertainty_cfg.method_kwargs,
+        )
+
+        samples_df = self.uncertainty_samples
+
+        if samples_df is None or samples_df.empty:
+            raise ValueError(
+                "Uncertainty analysis failed | "
+                "No uncertainty samples were generated."
+            )
+
+        return samples_df
+
+    def _sort_variables(
+        self,
+    ) -> list[str]:
+
+        fully_deterministic_tables = (
+            self.core.uncertainty.get_fully_deterministic_tables_list()
+        )
+
+        uncertainty_hybrid_tables = (
+            self.core.uncertainty.get_uncertainty_hybrid_tables_list()
+        )
+
+        fully_deterministic_vars = (
+            self.core.uncertainty.get_vars_in_tables_list(
+                fully_deterministic_tables
+            )
+        )
+
+        uncertainty_hybrid_vars = (
+            self.core.uncertainty.get_vars_in_tables_list(
+                uncertainty_hybrid_tables
+            )
+        )
+
+        return fully_deterministic_vars, uncertainty_hybrid_vars
+
+    def _initialize_problem_structure(
+            self,
+            force_overwrite: bool = False,
+    ) -> None:
+        """Load symbolic problem, validate uncertain exogenous data, and initialize CVXPY structures."""
+
+        self.core.load_and_validate_symbolic_problem(
+            force_overwrite=force_overwrite,
+        )
+
+        self.core.check_exogenous_data_coherence(
+            is_uncertain=True,
+        )
+
+        self.core.initialize_problems_variables()
+
     def run_uncertainty(
             self,
             force_overwrite: bool = False,
@@ -1221,66 +1300,16 @@ class Model():
         before GSA analysis.
         """
 
-        if not self.is_uncertainty_enabled:
-            raise ValueError(
-                "Uncertainty analysis is not enabled. "
-                f"Create the model with "
-                f"{Defaults.Labels.UNCERTAINTY_SETTING_KEY}=True."
-            )
+        run_id_col = Defaults.UncertaintySettings.RUN_ID
 
-        if self._sampling_settings is None:
-            raise ValueError(
-                "No uncertainty analysis configured. "
-                "Call model.sampling_settings(...) before model.run_uncertainty()."
-            )
+        self._validate_uncertainty_run_configuration()
 
-        # 1. Prepare symbolic and numerical data structures.
-        self.core.load_and_validate_symbolic_problem(
-            force_overwrite=force_overwrite,
-        )
-
-        self.core.check_exogenous_data_coherence(is_uncertain=True)
-
-        self.core.initialize_problems_variables()
-
-        # 2. Identify deterministic and uncertainty/hybrid variable groups.
-        fully_deterministic_tables = (
-            self.core.uncertainty.get_fully_deterministic_tables_list()
-        )
-
-        uncertainty_hybrid_tables = (
-            self.core.uncertainty.get_uncertainty_hybrid_tables_list()
-        )
-
-        fully_deterministic_vars = self.core.uncertainty.get_vars_in_tables_list(
-            fully_deterministic_tables
-        )
-
-        uncertainty_hybrid_vars = self.core.uncertainty.get_vars_in_tables_list(
-            uncertainty_hybrid_tables
-        )
-
-        # 3. Load deterministic exogenous values only once.
-        self.core.data_to_cvxpy_exogenous_vars(
-            allow_none_values=False,
-            var_list_to_update=fully_deterministic_vars,
-        )
-
-        # 4. Generate uncertainty samples.
+        # 1. Generate uncertainty samples.
         uncertainty_cfg = self._sampling_settings
 
-        self._sample_data(
-            method=uncertainty_cfg.method,
-            **uncertainty_cfg.method_kwargs,
+        samples_df = self._generate_uncertainty_samples(
+            uncertainty_cfg=uncertainty_cfg,
         )
-
-        samples_df = self.uncertainty_samples
-
-        if samples_df is None or samples_df.empty:
-            raise ValueError(
-                "Uncertainty analysis failed | "
-                "No uncertainty samples were generated."
-            )
 
         if uncertainty_cfg.save_samples:
             self.core.uncertainty.save_dataframe(
@@ -1289,10 +1318,21 @@ class Model():
                 file_format=uncertainty_cfg.file_format,
             )
 
+        # 2. Initialize problem structure
+
+        self._initialize_problem_structure(force_overwrite=True)
+
+        fully_deterministic_vars, uncertainty_hybrid_vars = (
+            self._sort_variables(
+            )
+        )
+
+        # 3. Load deterministic exogenous values only once.
+        self.core.data_to_cvxpy_exogenous_vars(
+            allow_none_values=False,
+            var_list_to_update=fully_deterministic_vars,
+        )
         # 5. Run one model instance for each sampled run_id.
-        run_id_col = Defaults.UncertaintySettings.RUN_ID
-        scenario_col = Defaults.UncertaintySettings.SCENARIO
-        status_col = Defaults.UncertaintySettings.STATUS
 
         uncertainty_measure_records = []
         failed_runs_report: dict[int, dict] = {}
