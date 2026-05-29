@@ -1526,12 +1526,17 @@ class Core:
         return f'{class_name}'
 
     def get_current_problem_status_by_scenario(self) -> dict:
-        """Return the current solution status by scenario.
+        """Return current solution status by scenario.
 
         Returns:
             dict mapping scenario_key -> status. If there are no split scenarios,
             the key is None.
         """
+
+        try:
+            self.problem.fetch_problem_status()
+        except exc.OperationalError:
+            return {None: "not_solved"}
 
         problem_status_col = Defaults.Labels.PROBLEM_STATUS
 
@@ -1542,8 +1547,9 @@ class Core:
         if numerical_problems is None:
             return {None: "not_solved"}
 
-        # Case 1: standard single problem stored as one dataframe
+        # Case 1: numerical_problems is a single dataframe
         if isinstance(numerical_problems, pd.DataFrame):
+
             if problem_status_col not in numerical_problems.columns:
                 return {None: "unknown"}
 
@@ -1555,35 +1561,55 @@ class Core:
             if all(status == "optimal" for status in statuses):
                 return {None: "optimal"}
 
-            return {None: " | ".join(str(status) for status in statuses)}
+            failed_statuses = [
+                str(status)
+                for status in statuses
+                if str(status) != "optimal"
+            ]
 
-        # Case 2: multiple problem dataframes, possibly indexed by scenario
+            if failed_statuses:
+                return {None: " | ".join(failed_statuses)}
+
+            return {None: "unknown"}
+
+        # Case 2: numerical_problems is a dict of dataframes
         if isinstance(numerical_problems, dict):
+
             for _, problem_df in numerical_problems.items():
+
                 if problem_status_col not in problem_df.columns:
                     continue
 
                 for scenario_key, row in problem_df.iterrows():
+
                     status = row[problem_status_col]
 
                     if pd.isna(status):
                         status = "not_solved"
 
-                    if scenario_key not in statuses_by_scenario:
-                        statuses_by_scenario[scenario_key] = []
+                    statuses_by_scenario.setdefault(
+                        scenario_key,
+                        [],
+                    ).append(status)
 
-                    statuses_by_scenario[scenario_key].append(status)
+            if not statuses_by_scenario:
+                return {None: "unknown"}
 
             final_statuses = {}
 
             for scenario_key, statuses in statuses_by_scenario.items():
+
                 if all(status == "optimal" for status in statuses):
                     final_statuses[scenario_key] = "optimal"
-                else:
-                    final_statuses[scenario_key] = " | ".join(
-                        str(status) for status in statuses
-                        if str(status) != "optimal"
-                    )
+                    continue
+
+                failed_statuses = [
+                    str(status)
+                    for status in statuses
+                    if str(status) != "optimal"
+                ]
+
+                final_statuses[scenario_key] = " | ".join(failed_statuses)
 
             return final_statuses
 
