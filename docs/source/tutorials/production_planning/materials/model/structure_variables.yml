@@ -1,0 +1,46 @@
+production:
+    description: products supply
+    type: endogenous
+    coordinates: [Products, Scenarios_energy, Scenarios_material]
+    variables_info:
+        x:
+            Products: 
+                dim: cols
+
+products_data:
+    description: attributes of products | profits, energy use, material use
+    type: exogenous
+    coordinates: [Products, Attributes]
+    variables_info:
+        c:
+            Products:
+                dim: cols
+            Attributes:
+                dim: rows
+                filters: {type: profit}
+        e:
+            Products:
+                dim: cols
+            Attributes:
+                dim: rows
+                filters: {type: energy}
+        m:
+            Products:
+                dim: cols
+            Attributes:
+                dim: rows
+                filters: {type: material}
+
+energy_avail:
+    description: availability scenarios for energy
+    type: exogenous
+    coordinates: [Scenarios_energy]
+    variables_info:
+        E:
+    
+material_avail:
+    description: availability scenarios for material
+    type: exogenous
+    coordinates: [Scenarios_material]
+    variables_info:
+        M:

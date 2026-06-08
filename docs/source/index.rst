@@ -1,13 +1,6 @@
 CVXlab documentation
 ====================
 
-.. warning::
-   **Beta Release Notice**
-
-   CVXlab is currently in beta (|version|). The API may still change before the
-   stable 1.0.1 release. Feedback and bug reports are welcome via `GitHub Issues
-   <https://github.com/cvxlab/cvxlab/issues>`_.
-
 **CVXlab** is an open-source Python package for building convex optimization models 
 from high-level settings, structured data, and symbolic expressions. It combines 
 *YAML* or *Excel*-based model setup, *SQLite*-backed data management, and 
