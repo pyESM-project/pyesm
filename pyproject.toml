@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "cvxlab"
-version = "1.0.1b1"
+version = "1.0.1"
 description = "CVXlab - Open-source Python laboratory for convex algebraic modeling"
 authors = [
     {name = "Matteo V. Rocco", email = "matteovincenzo.rocco@polimi.it"}

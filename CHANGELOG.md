@@ -5,41 +5,53 @@ All notable changes to CVXlab will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [1.0.1] - 11 June 2026
+
+### Added
+- **Frontend CLI** (`cvxlab.frontend.run()`): interactive menu-driven interface for
+  model setup and execution. Modules: `interface`, `session`, `actions`, `display`.
+- **User-defined constants and operators**: template modules
+  (`user_defined_constants.py`, `user_defined_operators.py`) for custom symbolic
+  extensions; auto-imported when present in the model directory (issue #109).
+- **CSV input data support**: models can now use CSV files as input data sources
+  (issue #103).
+- **`Model.update_sets_tables()`**: update set definitions in an existing SQLite
+  database without full regeneration.
+- **`skip_tables` argument** in `Model.run_model()` / `Core.solve_integrated_problems()`:
+  selectively exclude tables from convergence checks.
 
 ### Changed
-- Modified Identity matrix constant: now it accepts one single set as dimensional 
-    argument.
-- **Python ≥ 3.11 required**: bumped `requires-python` from `>=3.8`; removed 
-    `from __future__ import annotations` across the codebase.
-- **Frontend package added**: new `frontend/` package providing a guided CLI for 
-    model setup and interaction. Public entry point is `cvxlab.frontend.run()`, 
-    which accepts all `Model.__init__`, solver, and frontend-only parameters, 
-    partitions them into typed groups, and drives an interactive menu loop. Key 
-    modules: `interface` (entry point and menu engine), `session` 
-    (`SessionConfig` / `ModelState` dataclasses), `actions` (decorator-based 
-    `@menu_action` registry building `MAIN_MENU`), and `display` (terminal UI 
-    helpers).
-- **Centralized `Defaults.LiteralTypes`**: shared `Literal` type aliases consolidated 
-    into `Defaults.LiteralTypes`, replacing scattered definitions across modules.
-- **Integrated-solving convergence refactored**: reworked convergence algorithm 
-    in `Core.solve_integrated_problems()` with new `skip_tables` argument for 
-    selectively excluding tables from convergence checks.
-- **User-defined constants and operators**: new template modules 
-    (`user_defined_constants.py`, `user_defined_operators.py`) enabling custom 
-    symbolic extensions (GitHub issue #109).
-- **DataFrame / SQLite data-handling fixes**: improved `util.normalize_dataframe()` 
-    for NaN handling, fixed CSV reading for missing values, and corrected 
-    `SQLManager.dataframe_to_table()` string-type conversion.
-- **Pandas 2.3 compatibility**: pinned `pandas==2.3.3`, removed deprecated 
-    `errors='ignore'` arguments, fixed boolean-import issues introduced by pandas 3.0.
-- Advancing documentation: new `cvxlab.frontend.run()` function auto-documented, ...
+- **Python ≥ 3.11 required**: bumped `requires-python`; removed
+  `from __future__ import annotations` across the codebase.
+- **Integrated-solving convergence refactored**: reworked algorithm in
+  `Core.solve_integrated_problems()`.
+- **Centralized `Defaults.LiteralTypes`**: shared `Literal` type aliases consolidated,
+  replacing scattered definitions.
+- **Identity matrix constant**: now accepts a single set as dimensional argument
+  (issue #101).
+- `description` columns in data structures are no longer processed, allowing free
+  text (issue #105).
+- Removed `CRITICAL` log level from `Logger`.
+- Pinned `pandas==2.3.3`; removed deprecated `errors='ignore'` arguments (pandas 3.0
+  compatibility).
 
-### Planned
-- Stable 1.0.1 release.
-- API stabilization.
-- Complete documentation coverage.
-- First interface function to ease user interaction.
+### Fixed
+- `util.normalize_dataframe()`: improved NaN handling and blank-fill logic.
+- `SQLManager.dataframe_to_table()`: string-type conversion and batch flag reset.
+- `Database.load_data_input_files_to_database()`: input directory path reference and
+  NaN replacement before SQLite export.
+- `Database.generate_blank_data_input_files()`: corrected `excel_dir_path` argument.
+- `Model.run_model()`: selected solver now correctly logged.
+- `util.pivot_dataframe_to_data_structure()`: handle missing primary key column in
+  Excel setup files.
+- Various error-catching improvements for symbolic expression validation and settings
+  inconsistencies (issues #102, #104, #106, #107, #108).
+
+### Documentation
+- Tutorials merged into `resources` page; standalone `tutorials.rst` removed.
+- Added production planning (non-linear) tutorial.
+- Added Models gallery and Publications sections to resources page.
+- Restructured `index.rst`: workflow figure promoted, navigation table updated.
 
 ## [1.0.1b1] - 17 December 2025
 
