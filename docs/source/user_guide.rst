@@ -14,10 +14,12 @@ saving and loading of model instances, refreshing model database.
 Before diving into each single step, it is suggested to read all this page, which 
 provides a synthetic but comprehensive overview about the CVXlab modeling workflow.
 
-Tutorial with CVXlab applications are available in :ref:`tutorials` section. 
-In particular, a complete illustrative example based on a :ref:`simplified energy 
-system model <tutorial-simplified-energy-system>` is available, where the example 
-is distributed across the same workflow presented below.
+The :ref:`tutorials` section provides different examples across the same workflow 
+steps used in the current page, from conceptual definition to results export. 
+While the user guide aims at providing general concepts, tutorials are recommended 
+to see how those concepts are instantiated in a concrete models. 
+For CVXlab newbies, it is recommended to start with the :ref:`resource-constrained 
+production planning problem <tutorial-production-planning>` tutorial.
 
 
 .. _guided_interface:

@@ -112,10 +112,28 @@ def update_structure(cfg: session.SessionConfig, ms: session.ModelState) -> None
 # ------------------------------------------------------------------
 @menu_action("Initialize model and generate data structures.")
 def init_model(cfg: session.SessionConfig, ms: session.ModelState) -> None:
+    # Verify if sets file exists before initializing the model
+    sets_file = Path(
+        cfg.main_dir_path, cfg.model_dir_name,
+        cl.defaults.Defaults.ConfigFiles.SETS_FILE,
+    )
+    sets_file_existed = sets_file.exists()
+
     ms.model = cl.Model(
         **cfg.model_kwargs,
         use_existing_data=False,
     )
+
+    # If the sets file was just generated (or the user chose to overwrite it
+    # during Model construction), stop here and ask the user to fill it first.
+    if not sets_file_existed or not sets_file.exists():
+        print(
+            f"\nSets file '{sets_file.name}' has been generated in "
+            f"'{sets_file.parent}'.\n"
+            "Please fill it with model coordinates, then run "
+            "'Initialize model and generate data structures' again.\n"
+        )
+        return
 
     if cfg.model_structure_file is not None:
         answer = input(
@@ -131,27 +149,26 @@ def init_model(cfg: session.SessionConfig, ms: session.ModelState) -> None:
                 update='sets',
             )
 
-    ms.model._load_model_coordinates()
-    ms.model._initialize_blank_data_structure()
+    ms.model.initialize_model_environment()
 
 
 # ------------------------------------------------------------------
-# Initialize and run problems
+# Refresh input data and re-initialize problem(s)
 # ------------------------------------------------------------------
-@menu_action("Initialize and solve numerical problems.")
+@menu_action("Refresh input data and re-initialize problem(s).")
+def init_problem(cfg: session.SessionConfig, ms: session.ModelState) -> None:
+    model = ms.ensure_model(cfg, use_existing_data=True)
+    model.refresh_database_and_initialize_problem()
+
+
+# ------------------------------------------------------------------
+# Run numerical problems
+# ------------------------------------------------------------------
+@menu_action("Run numerical problem(s).")
 def run_model(cfg: session.SessionConfig, ms: session.ModelState) -> None:
     model = ms.ensure_model(cfg, use_existing_data=True)
     model.refresh_database_and_initialize_problem()
     model.run_model(**cfg.solver_kwargs)
-
-
-# ------------------------------------------------------------------
-# Import/Refresh input data to database
-# ------------------------------------------------------------------
-@menu_action("Import/Refresh input data to database.")
-def refresh_input_data(cfg: session.SessionConfig, ms: session.ModelState) -> None:
-    model = ms.ensure_model(cfg, use_existing_data=False)
-    model._load_exogenous_data_to_sqlite_database(force_overwrite=True)
 
 
 # ------------------------------------------------------------------

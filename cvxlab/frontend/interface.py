@@ -114,53 +114,68 @@ def run(
 
     Args:
         model_dir_name (str, optional): The name of the model directory.
-        main_dir_path (str, optional): The main directory path where the model 
-            directory is located. If None, the current working directory is used.
-        model_settings_from (Literal['yml', 'xlsx'], optional): The format of 
-            the model settings file. Can be either 'yml' or 'xlsx'.
-        detailed_validation (bool, optional): If True, performs detailed 
+            Defaults to ``'model'``.
+        main_dir_path (str, optional): The main directory path where the model
+            directory is located. Defaults to the current working directory.
+        model_settings_from (Literal['yml', 'xlsx'], optional): The format of
+            the model settings file. Can be either ``'yml'`` or ``'xlsx'``.
+            Defaults to ``'xlsx'``.
+        detailed_validation (bool, optional): If True, performs detailed
             validation logging of data and model settings during initialization.
-        multiple_input_files (bool, optional): If True, input data Excel files 
-            are generated as one file per data table. If False, all data tables 
-            are generated in a single Excel file with multiple tabs.
+            Defaults to ``False``.
+        multiple_input_files (bool, optional): If True, input data Excel files
+            are generated as one file per data table. If False, all data tables
+            are generated in a single Excel file with multiple tabs. Defaults
+            to ``False``.
         input_data_files_type (Literal['xlsx', 'csv'], optional): The format
-            of the input data files.
+            of the input data files. Defaults to ``'xlsx'``.
         log_level (Literal['info', 'debug', 'warning', 'error'], optional):
-            The logging level for the logger.
+            The logging level for the logger. Defaults to ``'info'``.
         log_format (Literal['standard', 'detailed'], optional): The logging
-            format for the logger.
+            format for the logger. Defaults to ``'standard'``.
         solver (str, optional): The solver to use for solving numerical
-            problems. If None, the default solver specified in
-            'Defaults.NumericalSettings.CVXPY_DEFAULT_SETTINGS' is used.
+            problems. Defaults to ``None``, in which case ``'SCIPY'`` is used
+            (from ``Defaults.NumericalSettings.CVXPY_DEFAULT_SETTINGS``).
         solver_verbose (bool, optional): If True, logs verbose output related
-            to numerical solver operation during the model run.
+            to numerical solver operation during the model run. Defaults to
+            ``False``.
         solver_settings (dict[str, Any], optional): Additional settings
-            for the solver passed as key-value pairs.
+            for the solver passed as key-value pairs. Defaults to ``None``.
         integrated_problems (bool, optional): If True, solve problems
             iteratively using a block Gauss-Seidel (alternating optimization)
             scheme, where updated endogenous variables are exchanged until
-            convergence.
+            convergence. Defaults to ``False``.
         convergence_monitoring (bool, optional): If True, enables convergence
-            monitoring during the solving of integrated problems.
-        convergence_norm (Literal['max_relative', 'max_absolute', 'l1', 'l2', 'linf'], optional): 
-            The norm type to use for convergence monitoring in integrated problems.
-        convergence_tables_to_check (Literal['all_endogenous', 'hybrid_only'] | List[str], optional): 
-            The data tables to consider for convergence monitoring in integrated problems. 
-            Can be 'all_endogenous', 'hybrid_only', or a list of specific data table keys.
+            monitoring during the solving of integrated problems. Defaults to
+            ``True``.
+        convergence_norm (Literal['max_relative', 'max_absolute', 'l1', 'l2', 'linf'], optional):
+            The norm type to use for convergence monitoring in integrated
+            problems. Defaults to ``'l2'`` (Euclidean norm).
+        convergence_tables_to_check (Literal['all_endogenous', 'hybrid_only'] | List[str], optional):
+            The data tables to consider for convergence monitoring in integrated
+            problems. Can be ``'all_endogenous'``, ``'hybrid_only'``, or a list
+            of specific data table keys. Defaults to ``'all_endogenous'``.
         convergence_tables_to_skip (List[str], optional): List of data table
             keys to skip for convergence checking in integrated problems.
+            Defaults to ``None`` (no tables skipped).
         relative_tolerance (float, optional): Numerical tolerance for verifying
             maximum relative change between iterations in integrated problems
-            for each data table. Overrides 'Defaults.NumericalSettings.MODEL_COUPLING_SETTINGS'.
+            for each data table. Overrides
+            ``Defaults.NumericalSettings.MODEL_COUPLING_SETTINGS``. Defaults to
+            ``None``, which applies the coupling setting value of ``0.01``.
         maximum_iterations (int, optional): The maximum number of iterations
-            for solving integrated problems. Overrides 'Defaults.NumericalSettings.MODEL_COUPLING_SETTINGS'.
-        keep_previous_iteration_db (bool, optional): Whether to keep the database 
-            generated during the last-1 iteration. For debugging purpose. 
+            for solving integrated problems. Overrides
+            ``Defaults.NumericalSettings.MODEL_COUPLING_SETTINGS``. Defaults to
+            ``None``, which applies the coupling setting value of ``20``.
+        keep_previous_iteration_db (bool, optional): Whether to keep the
+            database generated during the last-1 iteration. For debugging
+            purposes. Defaults to ``False``.
         model_structure_file (str, optional): Name of the Excel file used to
-            transfer model structure information.
+            transfer model structure information. Defaults to ``None``, which
+            disables actions that depend on a structure file.
         template_file_type (Literal['yml', 'xlsx'], optional): The type of
             template configuration file to generate when creating a model
-            directory. Defaults to 'xlsx'.
+            directory. Defaults to ``'xlsx'``.
 
 
     Example::

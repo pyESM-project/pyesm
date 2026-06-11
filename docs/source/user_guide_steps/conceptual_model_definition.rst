@@ -11,7 +11,8 @@ Definition of convex optimization problems and related mathematical concepts
 lies outside the scope of this documentation. Foundational knowledge of
 Operations Research can be found in several references. Among others, we
 suggest the textbook:
-`Introduction to Operations Research (F. Hillier and G. Lieberman, McGraw Hill Education, 2024) <https://www.mheducation.com/highered/product/Introduction-to-Operations-Research-Hillier.html>`_
+`Introduction to Operations Research (F. Hillier and G. Lieberman, McGraw Hill 
+Education, 2024) <https://www.mheducation.com/highered/product/Introduction-to-Operations-Research-Hillier.html>`_
 
 Since numerical problem generation and solution in CVXlab is grounded on the
 **CVXPY** package, we also recommend referring to the
@@ -363,14 +364,3 @@ CVXlab supports both approaches and any intermediate allocation, allowing users
 to choose the most appropriate abstraction level for their specific modeling
 needs. All formulations are **mathematically equivalent** and produce
 **identical numerical solutions**.
-
-
-Simple example
---------------
-
-A complete illustrative example based on a :ref:`simplified energy system model 
-<tutorial-simplified-energy-system>` is available in the :ref:`tutorials` section. 
-The tutorials distribute examples across the same workflow steps used in the user 
-guide, from conceptual definition to results export. 
-This page focuses on the general concepts. The tutorial is the recommended
-place to see how those concepts are instantiated in a concrete model.

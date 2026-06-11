@@ -223,10 +223,6 @@ MAJOR.MINOR.PATCH[pre-release]
   - `b1, b2, ...` = Beta (feature complete, testing)
   - `rc1, rc2, ...` = Release Candidate (final testing)
 
-### Release Workflow
-
-tbd
-
 (license)=
 ## License
 

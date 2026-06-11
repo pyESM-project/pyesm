@@ -45,7 +45,7 @@ loading, problem generation, and optimization.
         log_level="info",
         log_format="standard",
         multiple_input_files=False,
-        input_data_files_type="xlsx",
+        input_data_files_type="xlsx", # or "csv"
     )
 
 
@@ -88,7 +88,7 @@ Parameters description
      - ``False``
    * - ``input_data_files_type``
      - File type for input data files. If ``multiple_input_files=False``, only
-       ``"xlsx"`` is allowed.
+       ``"xlsx"`` is allowed. Otherwise, it can be either ``"xlsx"`` or ``"csv"``.
      - ``"xlsx"``
 
 

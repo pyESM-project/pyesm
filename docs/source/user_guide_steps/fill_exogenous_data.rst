@@ -76,5 +76,11 @@ Notes
   the existing file (and thus lose all the data already filled) or to keep it. 
   It is suggested to keep a backup copy of the filled Excel file(s) before 
   initializing data structures, to avoid losing data in case of accidental overwrite.
+- In case the ``blank_fill`` attribute is defined for exogenous variables, the user 
+  can fill only a subset of the rows in the related Data Table(s), leaving blank 
+  the other rows. During the next step of numerical problem initialization, CVXlab 
+  will automatically fill the blank entries in the SQLite database with the value 
+  specified in ``blank_fill``. This is particularly useful to avoid filling repetitive 
+  data entries in large Data Tables.
   
   

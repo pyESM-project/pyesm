@@ -70,6 +70,14 @@ html_theme_options = {
     "github_url": github_url,
     "navigation_with_keys": True,
     "show_toc_level": 2,
+    "navbar_center": ["navbar-nav"],
+    "header_links_before_dropdown": 7,
 }
 html_static_path = ['_static']
 html_css_files = ['custom.css']
+myst_enable_extensions = [
+    "colon_fence",
+]
+exclude_patterns = [
+    "tutorials/**/materials/**",
+]
