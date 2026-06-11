@@ -3,6 +3,7 @@
 [![PyPI version](https://img.shields.io/pypi/v/cvxlab?label=PyPI&logo=pypi)](https://pypi.org/project/cvxlab/)
 [![PyPI - Python Version](https://img.shields.io/pypi/pyversions/cvxlab)](https://pypi.org/project/cvxlab/)
 [![Documentation Status](https://readthedocs.org/projects/cvxlab/badge/?version=latest)](https://cvxlab.readthedocs.io/en/latest/?badge=latest)
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.20644006.svg)](https://doi.org/10.5281/zenodo.20644006)
 
 CVXlab is an open-source Python laboratory for modeling and solving convex optimization problems. 
 It extends [cvxpy](https://www.cvxpy.org/) with user-friendly interfaces, integrated data 
@@ -109,9 +110,6 @@ Submit issues and ideas for improvements in GitHub [GitHub Issues](https://githu
 Licensed under the Apache License 2.0. See [LICENSE](LICENSE) for details.
 
 ## Citing
-
-[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.20644006.svg)](https://doi.org/10.5281/zenodo.20644006)
-
 If you use CVXlab in academic work, please cite the software as follows.
 
 **APA**
