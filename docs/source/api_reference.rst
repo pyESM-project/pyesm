@@ -3,7 +3,7 @@ API reference
 
 CVXlab is designed to be intuitive enough so that it may be used without diving 
 into APIs structures. Reading :ref:`User Guide <user_guide>`, practicing with the 
-tutorial notebook available in the :ref:`Tutorials <tutorials>` section, and  
+tutorial notebook available in the :ref:`Resources <resources>` section, and 
 looking at existing models in :ref:`Models gallery <models_gallery>` will suffice 
 in acquainting you with the package. Nonetheless, API reference are here included 
 for those who are comfortable reading technical documentation. 
