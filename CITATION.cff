@@ -1,0 +1,28 @@
+cff-version: 1.2.0
+message: "If you use CVXlab in your work, please cite it using the metadata below."
+type: software
+title: "CVXlab"
+abstract: >-
+  CVXlab is an open-source Python laboratory for modeling and solving convex
+  optimization problems. It extends CVXPY with user-friendly interfaces,
+  integrated SQLite-backed data management, and support for multiple,
+  interconnected optimization models defined via Excel or YAML configuration files.
+version: 1.0.1
+date-released: "2026-06-11"
+license: Apache-2.0
+repository-code: "https://github.com/cvxlab/cvxlab"
+url: "https://cvxlab.readthedocs.io"
+doi: https://doi.org/10.5281/zenodo.20644006
+keywords:
+  - convex optimization
+  - mathematical programming
+  - algebraic modeling
+  - cvxpy
+  - Python
+  - energy systems
+  - operations research
+authors:
+  - family-names: Rocco
+    given-names: Matteo V.
+    email: matteovincenzo.rocco@polimi.it
+    affiliation: "Politecnico di Milano"

@@ -55,7 +55,7 @@ Start here
    * - :doc:`user_guide`
      - The full modeling workflow, from conceptual model definition to results export.
    * - :doc:`resources`
-     - Tutorials, models gallery and related publications.
+     - Tutorials, models gallery, related publications and how to cite CVXlab.
    * - :doc:`api_reference`
      - Technical reference for ``cvxlab.Model``, utilities, operators, constants, and defaults.
 

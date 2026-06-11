@@ -109,9 +109,26 @@ Submit issues and ideas for improvements in GitHub [GitHub Issues](https://githu
 Licensed under the Apache License 2.0. See [LICENSE](LICENSE) for details.
 
 ## Citing
-If you use CVXlab in academic work, please cite our papers. For industry use, 
-we'd love to hear your feedback—reach out via email (matteovincenzo.rocco@polimi.it).
 
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.20644006.svg)](https://doi.org/10.5281/zenodo.20644006)
 
+If you use CVXlab in academic work, please cite the software as follows.
 
+**APA**
+> Rocco, M. V. (2026). *CVXlab* (Version 1.0.1) [Software]. Zenodo. https://doi.org/10.5281/zenodo.20644006
 
+**BibTeX**
+```bibtex
+@software{rocco_cvxlab_2026,
+  author    = {Rocco, Matteo V.},
+  title     = {{CVXlab}},
+  version   = {1.0.1},
+  year      = {2026},
+  publisher = {Zenodo},
+  doi       = {10.5281/zenodo.20644006},
+  url       = {https://doi.org/10.5281/zenodo.20644006}
+}
+```
+
+For industry or non-academic use, we'd love to hear your feedback — reach out via
+email at matteovincenzo.rocco@polimi.it.
