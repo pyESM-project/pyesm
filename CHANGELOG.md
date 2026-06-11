@@ -5,6 +5,11 @@ All notable changes to CVXlab will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Fixed
+- README images now use absolute raw GitHub URLs so they render correctly on PyPI.
+
 ## [1.0.1] - 11 June 2026
 
 ### Added

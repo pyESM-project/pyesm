@@ -1,4 +1,4 @@
-![CVXlab Logo](docs/source/_static/CVXlab_logo_dark.png)
+![CVXlab Logo](https://raw.githubusercontent.com/cvxlab/cvxlab/main/docs/source/_static/CVXlab_logo_dark.png)
 
 [![PyPI version](https://img.shields.io/pypi/v/cvxlab?label=PyPI&logo=pypi)](https://pypi.org/project/cvxlab/)
 [![PyPI - Python Version](https://img.shields.io/pypi/pyversions/cvxlab)](https://pypi.org/project/cvxlab/)
@@ -46,7 +46,7 @@ CVXlab allows you to define optimization problems using:
 The figure below provides a synthetic and simplified overview of the CVXlab modeling 
 process.
 
-![CVXlab workflow](docs/source/_static/CVXlab_nutshell.png)
+![CVXlab workflow](https://raw.githubusercontent.com/cvxlab/cvxlab/main/docs/source/_static/CVXlab_nutshell.png)
 
 In generating and handling a CVXlab model, the user must follow the five fundamental
 activities summarized below:
