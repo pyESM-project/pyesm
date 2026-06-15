@@ -186,7 +186,7 @@ class Core:
                 if isinstance(data_table.coordinates_dataframe, pd.DataFrame):
                     cvxpy_var = self.problem.create_cvxpy_variable(
                         var_type=allowed_var_types['ENDOGENOUS'],
-                        integer=data_table.integer,
+                        variable_domain=data_table.variable_domain,
                         shape=(data_table.table_length, 1),
                         name=data_table_key,
                     )
@@ -199,7 +199,7 @@ class Core:
                     for problem_key, coord_df in data_table.coordinates_dataframe.items():
                         cvxpy_var[problem_key] = self.problem.create_cvxpy_variable(
                             var_type=allowed_var_types['ENDOGENOUS'],
-                            integer=data_table.integer,
+                            variable_domain=data_table.variable_domain,
                             shape=(len(coord_df), 1),
                             name=f"{data_table_key}_{problem_key}",
                         )

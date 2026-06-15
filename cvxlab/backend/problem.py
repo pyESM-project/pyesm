@@ -161,7 +161,7 @@ class Problem:
         self,
         var_type: str,
         shape: Tuple[int, ...],
-        integer: bool = False,
+        variable_domain: Optional[str] = None,
         name: Optional[str] = None,
         value: Optional[int | np.ndarray | np.matrix] = None,
     ) -> cp.Variable | cp.Parameter | cp.Constant:
@@ -169,15 +169,17 @@ class Problem:
 
         This class factory method generates and returns a cvxpy object
         (Variable, Parameter, or Constant) based on the specified type, with
-        attributes defined by arguments (shape, integer, name, value).
+        attributes defined by arguments (shape, variable_domain, name, value).
 
         Args:
             var_type (str): The type of the cvxpy object to create. Valid
                 values are defined in Defaults.SymbolicDefinitions.VARIABLE_TYPES.
             shape (Tuple[int, ...]): The shape of the Variable or Parameter to
                 be created.
-            integer (Optional[bool]): Define an endogenous variable to be
-                integer. Default to False.
+            variable_domain (Optional[str]): Domain of the endogenous variable.
+                Allowed values are defined in Defaults.SymbolicDefinitions.VARIABLE_DOMAINS:
+                'integer' for integer variables, 'boolean' for binary {0,1} variables.
+                None means continuous. Default to None.
             name (Optional[str]): The name assigned to the Variable or Parameter.
                 This is not used for constants. Default to None.
             value (Optional[int | np.ndarray | np.matrix]): The numeric value
@@ -188,17 +190,30 @@ class Problem:
 
         Raises:
             SettingsError: If an unsupported 'var_type' is provided, or if
-                'integer' is True for non-endogenous variables, or if 'value'
+                'variable_domain' is set for non-endogenous variables, or if 'value'
                 is not provided for Constant type.
         """
         allowed_var_types = Defaults.SymbolicDefinitions.VARIABLE_TYPES
+        allowed_domains = Defaults.SymbolicDefinitions.VARIABLE_DOMAINS
 
-        if var_type != allowed_var_types['ENDOGENOUS'] and integer == True:
-            msg = "Only endogenous data tables can be defined as integers."
+        if var_type != allowed_var_types['ENDOGENOUS'] and variable_domain is not None:
+            msg = "Only endogenous data tables can have 'variable_domain' set."
+            raise exc.SettingsError(msg)
+
+        if variable_domain is not None and \
+                variable_domain not in allowed_domains.values():
+            msg = f"Unsupported variable domain: '{variable_domain}'. " \
+                f"Allowed domains: {list(allowed_domains.values())}."
+            self.logger.error(msg)
             raise exc.SettingsError(msg)
 
         if var_type == allowed_var_types['ENDOGENOUS']:
-            return cp.Variable(shape=shape, integer=integer, name=name)
+            return cp.Variable(
+                shape=shape,
+                integer=(variable_domain == allowed_domains['INTEGER']),
+                boolean=(variable_domain == allowed_domains['BOOLEAN']),
+                name=name,
+            )
 
         if var_type == allowed_var_types['EXOGENOUS']:
             return cp.Parameter(shape=shape, name=name)
