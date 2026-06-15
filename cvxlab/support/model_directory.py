@@ -27,7 +27,7 @@ def create_model_dir(
     main_dir_path: Optional[str] = None,
     force_overwrite: bool = False,
     settings_file_type: Defaults.LiteralTypes.SettingsSource = 'yml',
-    Uncertainty: bool = False,
+    uncertainty: bool = False,
     include_user_defined_templates: bool = False,
 ) -> None:
     """Create a model directory with template configuration files.
@@ -90,7 +90,7 @@ def create_model_dir(
             structure_name[0]: structures.SET_STRUCTURE,
             structure_name[1]: (
                 structures.DATA_TABLE_STRUCTURE
-                if not Uncertainty
+                if not uncertainty
                 else structures.DATA_TABLE_STRUCTURE_UNCERTAINTY
             ),
             structure_name[2]: structures.PROBLEM_STRUCTURE,
@@ -107,7 +107,7 @@ def create_model_dir(
     elif settings_file_type == 'xlsx':
         structure_mapping = (
             Defaults.DefaultStructures.XLSX_TEMPLATE_COLUMNS
-            if not Uncertainty
+            if not uncertainty
             else Defaults.DefaultStructures.XLSX_TEMPLATE_COLUMNS_UNCERTAINTY
         )
         template_file_name = config_files.SETUP_XLSX_FILE

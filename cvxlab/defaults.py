@@ -170,7 +170,7 @@ class Defaults:
 
     class UncertaintySettings:
         """Defaults and metadata for uncertainty sampling and GSA analysis."""
-
+        UNCERTAINTY_ENABLED_KEY = "uncertainty_enabled"
         IS_UNCERTAIN_KEY = "is_uncertain"
         UNCERTAINTY_MEASURE_KEY = "uncertainty_measure"
         LOWER_BOUND_KEY = "lower_bound"
@@ -435,6 +435,7 @@ class Defaults:
                 *DATA_TABLE_STRUCTURE[1].keys(),
                 'value',
                 'blank_fill',
+                'nonneg',
                 'set_keys ...'
             ],
             'problem': [
@@ -585,16 +586,22 @@ class Defaults:
     DefaultStructures.DATA_TABLE_STRUCTURE_UNCERTAINTY = (
         'table_key:',
         {
-            DefaultStructures.METADATA: (DefaultStructures.OPTIONAL, str),
+            DefaultStructures.METADATA: (DefaultStructures.OPTIONAL, str,),
             'type': (str, dict),
-            'integer': (DefaultStructures.OPTIONAL, bool),
+            'integer': (DefaultStructures.OPTIONAL, bool,),
             'coordinates': (str, list),
+            UncertaintySettings.UNCERTAINTY_ENABLED_KEY: (DefaultStructures.OPTIONAL, bool,),
             'variables_info': {
                 DefaultStructures.ANY: {
-                    'value': (DefaultStructures.OPTIONAL, str),
-                    'blank_fill': (DefaultStructures.OPTIONAL, Union[int, float]),
-                    'nonneg': (DefaultStructures.OPTIONAL, bool),
-                    UncertaintySettings.IS_UNCERTAIN_KEY: (
+                    'value': (
+                        DefaultStructures.OPTIONAL,
+                        str,
+                    ),
+                    'blank_fill': (
+                        DefaultStructures.OPTIONAL,
+                        Union[int, float],
+                    ),
+                    'nonneg': (
                         DefaultStructures.OPTIONAL,
                         bool,
                     ),
@@ -603,20 +610,31 @@ class Defaults:
                         str,
                         bool,
                     ),
-                    DefaultStructures.ANY: (DefaultStructures.OPTIONAL, {
-                        'dim': (DefaultStructures.OPTIONAL, str),
-                        'filters': (DefaultStructures.OPTIONAL, dict),
-                    }),
+                    DefaultStructures.ANY: (
+                        DefaultStructures.OPTIONAL,
+                        {
+                            'dim': (
+                                DefaultStructures.OPTIONAL,
+                                str,
+                            ),
+                            'filters': (
+                                DefaultStructures.OPTIONAL,
+                                dict,
+                            ),
+                        },
+                    ),
                 }
             },
         },
     )
 
-    DefaultStructures.UNCERTAINTY_VARIABLE_TEMPLATE_COLUMNS = [
-        UncertaintySettings.IS_UNCERTAIN_KEY,
-        UncertaintySettings.UNCERTAINTY_MEASURE_KEY,
+    DefaultStructures.UNCERTAINTY_TABLE_TEMPLATE_COLUMNS = [
+        UncertaintySettings.UNCERTAINTY_ENABLED_KEY,
     ]
 
+    DefaultStructures.UNCERTAINTY_VARIABLE_TEMPLATE_COLUMNS = [
+        UncertaintySettings.UNCERTAINTY_MEASURE_KEY,
+    ]
     DefaultStructures.XLSX_TEMPLATE_COLUMNS_UNCERTAINTY = {
         'structure_sets': [
             'set_key',
@@ -627,7 +645,8 @@ class Defaults:
             *DefaultStructures.DATA_TABLE_STRUCTURE_UNCERTAINTY[1].keys(),
             'value',
             'blank_fill',
-            *DefaultStructures.UNCERTAINTY_VARIABLE_TEMPLATE_COLUMNS,
+            'nonneg',
+            * DefaultStructures.UNCERTAINTY_VARIABLE_TEMPLATE_COLUMNS,
             'set_keys ...'
         ],
         'problem': [

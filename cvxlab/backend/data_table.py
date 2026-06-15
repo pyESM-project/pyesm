@@ -35,6 +35,8 @@ class DataTable:
         Default is None.
     - variables_info (Optional[Dict[str, Any]]): Dictionary containing information
         about variables. Default is None.
+    - uncertainty_enabled (Optional[bool]): Whether the table is marked as uncertain, and 
+        thus may contain uncertain parameters.
     - coordinates_headers (Dict[str, str]): Dictionary mapping coordinates to 
         their headers. Default is an empty dictionary.
     - coordinates_values (Dict[str, Any]): Dictionary mapping coordinates to 
@@ -80,6 +82,8 @@ class DataTable:
         self.integer: Optional[bool] = None
         self.coordinates: Optional[list] = None
         self.variables_info: Optional[Dict[str, Any]] = None
+
+        self.uncertainty_enabled: bool = False
 
         self.fetch_attributes(table_info)
 

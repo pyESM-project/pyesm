@@ -539,9 +539,8 @@ class Index:
         value_key = Defaults.Labels.VALUE_KEY
         blank_fill_key = Defaults.Labels.BLANK_FILL_KEY
         nonneg_key = Defaults.Labels.NONNEG_KEY
-        is_uncertain_key = Defaults.UncertaintySettings.IS_UNCERTAIN_KEY
         uncertainty_measure_key = Defaults.UncertaintySettings.UNCERTAINTY_MEASURE_KEY
-
+        uncertainty_enabled_key = Defaults.UncertaintySettings.UNCERTAINTY_ENABLED_KEY
         problems = {}
 
         for table_key, data_table in self.data.items():
@@ -584,6 +583,31 @@ class Index:
                     problems[path] = f"Missing inter-problem sets in coordinates: " \
                         f"{list(missing_sets)}"
 
+            # if uncertainty is enabled uncertainty can only be enabled for exogenous or hybrid data tables
+            table_uncertainty_enabled = getattr(
+                data_table,
+                uncertainty_enabled_key,
+                False,
+            )
+
+            if table_uncertainty_enabled:
+
+                # uncertainty support must be enabled globally in Model
+                if not self.is_uncertainty_enabled:
+                    problems[f"{table_key}.{uncertainty_enabled_key}"] = (
+                        f"'{uncertainty_enabled_key}=True' requires the model "
+                        "to be initialized with uncertainty=True."
+                    )
+
+                # constant and purely endogenous tables cannot contain uncertain inputs
+                if data_table.type in [
+                    allowed_var_types["ENDOGENOUS"],
+                    allowed_var_types["CONSTANT"],
+                ]:
+                    problems[f"{table_key}.{uncertainty_enabled_key}"] = (
+                        f"'{uncertainty_enabled_key}=True' can only be assigned "
+                        "to exogenous or hybrid data tables."
+                    )
             # for each variable in data table
             for var_key, var_info in data_table.variables_info.items():
                 var_info: dict | None
@@ -630,12 +654,15 @@ class Index:
                                 "Exogenous variables cannot be defined as " \
                                 "non-negative. Check variables settings."
 
-                    # uncertainty-related fields are allowed variable properties
-                    elif property_key in {
-                        is_uncertain_key,
-                        uncertainty_measure_key,
-                    }:
-                        continue
+                    elif property_key == uncertainty_measure_key:
+
+                        if property_value is True and \
+                                data_table.type != allowed_var_types["ENDOGENOUS"]:
+
+                            problems[f"{path}.{uncertainty_measure_key}"] = (
+                                f"'{uncertainty_measure_key}=True' can only be assigned "
+                                "to endogenous variables."
+                            )
 
                     # other properties must be allowed coordinates
                     elif property_key not in data_table.coordinates:
