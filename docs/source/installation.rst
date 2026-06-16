@@ -40,6 +40,30 @@ This command installs CVXlab and all required dependencies (numpy, pandas, cvxpy
 openpyxl, etc.).
 
 
+Install from Dev Branch (Latest Features)
+------------------------------------------
+
+If you want to **try the latest unreleased features** without modifying the source 
+code yourself, you can install directly from the ``dev`` branch on GitHub:
+
+.. code-block:: bash
+
+   pip install git+https://github.com/cvxlab/cvxlab.git@dev
+
+This installs the current state of the ``dev`` branch as a regular (non-editable) 
+package. No git clone is required. To update to the newest commits later, re-run 
+the same command with the ``--upgrade`` flag:
+
+.. code-block:: bash
+
+   pip install --upgrade git+https://github.com/cvxlab/cvxlab.git@dev
+
+.. note::
+
+   The ``dev`` branch may contain features or fixes not yet in the stable PyPI 
+   release. It is generally functional but not guaranteed to be fully stable.
+
+
 Install from Source (Developers)
 ----------------------------------
 
@@ -53,7 +77,7 @@ editable mode from the GitHub repository.
 
    .. code-block:: bash
 
-      git clone https://github.com/cvxgrp/cvxlab.git
+      git clone https://github.com/cvxlab/cvxlab.git
       cd cvxlab
 
 2. With the ``cvxlab`` conda environment active, install in editable mode:
@@ -67,7 +91,7 @@ editable mode from the GitHub repository.
 
 If you plan to submit changes back to the project:
 
-1. Fork the repository on GitHub (click "Fork" at https://github.com/cvxgrp/cvxlab).
+1. Fork the repository on GitHub (click "Fork" at https://github.com/cvxlab/cvxlab).
 
 2. Clone **your fork**:
 
@@ -80,7 +104,7 @@ If you plan to submit changes back to the project:
 
    .. code-block:: bash
 
-      git remote add upstream https://github.com/cvxgrp/cvxlab.git
+      git remote add upstream https://github.com/cvxlab/cvxlab.git
 
 4. With the ``cvxlab`` conda environment active, install in *editable mode* (with 
    the ``-e`` flag), so all changes make to the source code are immediately 
@@ -121,7 +145,7 @@ If the import succeeds and prints the version, CVXlab is ready to use.
 Troubleshooting
 ---------------
 
-- Check the `GitHub Issues <https://github.com/cvxgrp/cvxlab/issues>`_ page.
+- Check the `GitHub Issues <https://github.com/cvxlab/cvxlab/issues>`_ page.
 - Consult the `cvxpy installation guide <https://www.cvxpy.org/install/>`_ for 
   solver-specific troubleshooting.
 - Reach out via email: |author_email|
