@@ -145,9 +145,9 @@ where :math:`\Omega \subseteq \mathcal{S}_1 \times \cdots \times \mathcal{S}_k`.
 Data tables can be classified as:
 
 - **Exogenous**: known parameters :math:`d(s)` for :math:`s \in \Omega`
-- **Endogenous**: unknowns to be determined. These can be further classified as
-  *decision variables* or *auxiliary variables*, and can be continuous or
-  integer.
+- **Endogenous**: unknowns to be determined. Can be further classified as
+  continuous (if nothing is specificed, integer (:math:`\mathbb{Z}`), or boolean 
+  (:math:`\{0,1\}`).
 - **Constants**: fixed values. Multiple built-in constant types are supported,
   and user-defined constants can also be defined at the variable level
   (see :ref:`api_constants_types`).

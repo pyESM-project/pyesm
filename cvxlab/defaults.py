@@ -215,8 +215,10 @@ class Defaults:
         - type: 
             type of the data table, can be one of VARIABLE_TYPES or a dictionary 
             with keys as problem name and corresponding values as allowed types.
-        - integer: 
-            (Optional) if variables of the table are integers (default: False).
+        - variable_domain: 
+            (Optional) domain of the endogenous variable: 'integer' for integer
+            variables, 'boolean' for binary {0,1} variables. If not specified,
+            the variable is continuous (default: None).
         - coordinates: 
             list of table coordinates (set_key symbols) that define the dimensions 
             of the data table.
@@ -311,7 +313,7 @@ class Defaults:
             {
                 METADATA: (OPTIONAL, str),
                 'type': (str, dict),
-                'integer': (OPTIONAL, bool),
+                'variable_domain': (OPTIONAL, str),
                 'coordinates': (str, list),
                 'variables_info': {
                     ANY: {
@@ -399,6 +401,7 @@ class Defaults:
             'operators': [
                 r"==", r">=", r"<=",
                 r"\+", r"-", r"\*", r"/", r"@", f",",
+                r"&",
             ],
             'parentheses': [r"\(", r"\)"],
         }
@@ -420,6 +423,11 @@ class Defaults:
             'CONSTANT': 'constant',
             'EXOGENOUS': 'exogenous',
             'ENDOGENOUS': 'endogenous',
+        }
+
+        VARIABLE_DOMAINS = {
+            'INTEGER': 'integer',
+            'BOOLEAN': 'boolean',
         }
 
         ALLOWED_CONSTANTS = util_constants.CONSTANTS

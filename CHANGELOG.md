@@ -8,10 +8,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **`variable_domain` field for data tables**: replaces the old boolean `integer` field.
+  Accepted values: `integer` (integer variables, $\mathbb{Z}$) or `boolean` (binary
+  variables, $\{0,1\}$). Omitting the field keeps the default continuous domain.
+  The deprecated `integer: true` syntax is still accepted with a warning and
+  automatically migrated to `variable_domain: integer`.
 - Installation docs: new *Install from Dev Branch* section with `git+https` install
   instructions for users who want the latest unreleased features.
 
 ### Fixed
+- **Backward-compatibility migration for `integer` field**: the migration block that
+  converts `integer: true` → `variable_domain: integer`.
 - README images now use absolute raw GitHub URLs so they render correctly on PyPI.
 - Corrected GitHub organization URL (`cvxgrp` → `cvxlab`) throughout installation docs.
 - Replaced unsupported `tab-set`/`tab-item` directives (sphinx-design) with plain RST

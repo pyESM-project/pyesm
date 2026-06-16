@@ -303,6 +303,22 @@ class Index:
             dir_path=self.paths['model_dir'],
         )
 
+        # Backward-compatibility: convert deprecated 'integer: true/false' to 'variable_domain'
+        # Must run before validate_data_structure so 'integer' is not flagged as unexpected.
+        if data_structure_key == config.SETUP_INFO[1]:
+            allowed_domains = Defaults.SymbolicDefinitions.VARIABLE_DOMAINS
+            for table_key, table_value in data.items():
+                if isinstance(table_value, dict) and 'integer' in table_value:
+                    integer_val = table_value.pop('integer')
+                    if integer_val is True:
+                        self.logger.warning(
+                            f"Data table '{table_key}' | Field 'integer' is deprecated. "
+                            f"Substituted by field 'variable_domain' with value: "
+                            f"{allowed_domains['INTEGER']}."
+                        )
+                        table_value.setdefault(
+                            'variable_domain', allowed_domains['INTEGER'])
+
         invalid_entries = {
             key: problems
             for key, value in data.items()
@@ -494,7 +510,7 @@ class Index:
         The following checks are performed looping over data tables:
 
         - Data tables must be of the allowed type (defined in Defaults class).
-        - Exogenous data tables cannot be of 'integer' type.
+        - Exogenous/constant data tables cannot have 'variable_domain' set.
         - Coordinates defining data tables must be valid (defined among sets).
         - All inter-problem sets must be embedded in endogenous data tables coordinates.
 
@@ -545,10 +561,12 @@ class Index:
             ):
                 problems[table_key] = f"Table type not allowed."
 
-            # exogenous data tables cannot be of 'integer' type
-            if data_table.type == allowed_var_types['EXOGENOUS'] and \
-                    getattr(data_table, 'integer', False):
-                problems[table_key] = "Exogenous table data cannot be 'integer'. "
+            # exogenous/constant data tables cannot have a variable_domain set
+            if data_table.type in [
+                allowed_var_types['EXOGENOUS'], allowed_var_types['CONSTANT']
+            ] and data_table.variable_domain is not None:
+                problems[table_key] = (
+                    "Exogenous or constant table data cannot have 'variable_domain' set. ")
 
             # coordinates in data table must be coherent with sets
             invalid_coordinates = [

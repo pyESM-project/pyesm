@@ -15,7 +15,7 @@ def minimal_table_info():
     return {
         "description": "Test table",
         "type": "test_type",
-        "integer": False,
+        "variable_domain": None,
         "coordinates": ["x", "y"],
         "variables_info": {"var1": {}, "var2": {}, },
     }
@@ -27,6 +27,6 @@ def test_initialization_and_attributes(logger, minimal_table_info):
     assert dt.name == "test_table"
     assert dt.description == "Test table"
     assert dt.type == "test_type"
-    assert dt.integer is False
+    assert dt.variable_domain is None
     assert isinstance(dt.coordinates, list)
     assert set(dt.variables_list) == {"var1", "var2"}
