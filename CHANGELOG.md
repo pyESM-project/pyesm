@@ -7,8 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- Installation docs: new *Install from Dev Branch* section with `git+https` install
+  instructions for users who want the latest unreleased features.
+
 ### Fixed
 - README images now use absolute raw GitHub URLs so they render correctly on PyPI.
+- Corrected GitHub organization URL (`cvxgrp` → `cvxlab`) throughout installation docs.
+- Replaced unsupported `tab-set`/`tab-item` directives (sphinx-design) with plain RST
+  in the citation section of the resources page.
 
 ## [1.0.1] - 11 June 2026
 
