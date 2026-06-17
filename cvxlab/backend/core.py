@@ -543,8 +543,8 @@ class Core:
         """Export data from cvxpy endogenous variables to the SQLite database.
 
         This method iterates over each endogenous data table in the Index, and it
-        exports the data from the related cvxpy variable into the corresponding 
-        data table in the SQLite database. 
+        exports the data from the related cvxpy variable into the corresponding
+        data table in the SQLite database.
         The method can export data for all scenarios or for a subset of scenarios
         (scenarios_idx): scenarios are linear combinations of inter-problem sets
         values defined in the index.
@@ -558,9 +558,9 @@ class Core:
             scenarios_idx (Optional[List[int] | int], optional): List of indices
                 of scenarios for which to fetch data. If None, fetches data for
                 all scenarios. Defaults to None.
-            force_overwrite (bool, optional): If True, forces the re-export of 
+            force_overwrite (bool, optional): If True, forces the re-export of
                 data even if the data table already exists. Defaults to False.
-            suppress_warnings (bool, optional): If True, suppresses warnings 
+            suppress_warnings (bool, optional): If True, suppresses warnings
                 during the data export process. Defaults to False.
         """
         self.logger.debug(
@@ -687,47 +687,155 @@ class Core:
                     suppress_warnings=suppress_warnings,
                 )
 
+    # def cvxpy_uncertain_exogenous_data_to_database(
+    #         self,
+    #         force_overwrite: bool = False,
+    #         suppress_warnings: bool = False,
+    # ) -> None:
+    #     """Write current cvxpy values of uncertain exogenous variables into DB values."""
+
+    #     filter_header = Defaults.Labels.FILTER_DICT_KEY
+    #     cvxpy_var_header = Defaults.Labels.CVXPY_VAR
+    #     values_header = Defaults.Labels.VALUES_FIELD["values"][0]
+
+    #     uncertainty_enabled_key = (
+    #         Defaults.UncertaintySettings.UNCERTAINTY_ENABLED_KEY
+    #     )
+
+    #     is_uncertain_header = (
+    #         Defaults.UncertaintySettings.IS_UNCERTAIN_FIELD[
+    #             Defaults.UncertaintySettings.IS_UNCERTAIN_KEY
+    #         ][0]
+    #     )
+
+    #     allowed_var_types = Defaults.SymbolicDefinitions.VARIABLE_TYPES
+
+    #     with db_handler(self.sqltools):
+
+    #         for var_key, variable in self.index.variables.items():
+
+    #             table_name = variable.related_table
+
+    #             data_table = self.index.data[table_name]
+
+    #             if not getattr(
+    #                 data_table,
+    #                 uncertainty_enabled_key,
+    #                 False,
+    #             ):
+    #                 continue
+
+    #             variable_data_items = (
+    #                 variable.data.values()
+    #                 if isinstance(variable.data, dict)
+    #                 else [variable.data]
+    #             )
+
+    #             for variable_data in variable_data_items:
+
+    #                 for combination in variable_data.index:
+
+    #                     table_df = self.sqltools.table_to_dataframe(
+    #                         table_name=variable.related_table,
+    #                         filters_dict=variable_data[filter_header][combination],
+    #                     )
+
+    #                     cvxpy_obj = variable_data[cvxpy_var_header][combination]
+    #                     cvxpy_values = np.asarray(cvxpy_obj.value).reshape(-1)
+
+    #                     table_df[values_header] = cvxpy_values
+
+    #                     table_df = util.normalize_dataframe(
+    #                         df=table_df,
+    #                         all_str_except_numeric=True,
+    #                     )
+
+    #                     self.sqltools.dataframe_to_table(
+    #                         table_name=variable.related_table,
+    #                         dataframe=table_df,
+    #                         action="update",
+    #                         force_overwrite=force_overwrite,
+    #                         suppress_warnings=suppress_warnings,
+    #                     )
+
     def cvxpy_uncertain_exogenous_data_to_database(
             self,
             force_overwrite: bool = False,
             suppress_warnings: bool = False,
     ) -> None:
-        """Write current cvxpy values of uncertain exogenous variables into DB values."""
+        """Write current sampled CVXPY parameter values into uncertain DB rows."""
 
         filter_header = Defaults.Labels.FILTER_DICT_KEY
         cvxpy_var_header = Defaults.Labels.CVXPY_VAR
         values_header = Defaults.Labels.VALUES_FIELD["values"][0]
 
+        uncertainty_enabled_key = (
+            Defaults.UncertaintySettings.UNCERTAINTY_ENABLED_KEY
+        )
+
+        is_uncertain_header = (
+            Defaults.UncertaintySettings.IS_UNCERTAIN_FIELD[
+                Defaults.UncertaintySettings.IS_UNCERTAIN_KEY
+            ][0]
+        )
+
+        allowed_var_types = Defaults.SymbolicDefinitions.VARIABLE_TYPES
+
         with db_handler(self.sqltools):
 
-            for var_key, variable in self.index.variables.items():
+            for variable in self.index.variables.values():
+
+                table_name = variable.related_table
+
+                data_table = self.index.data[table_name]
 
                 if not getattr(
-                    variable,
-                    Defaults.UncertaintySettings.IS_UNCERTAIN_KEY,
+                    data_table,
+                    uncertainty_enabled_key,
                     False,
                 ):
                     continue
 
-                variable_data_items = (
-                    variable.data.values()
-                    if isinstance(variable.data, dict)
-                    else [variable.data]
-                )
+                variable_data_items = [variable.data]
 
                 for variable_data in variable_data_items:
 
                     for combination in variable_data.index:
 
                         table_df = self.sqltools.table_to_dataframe(
-                            table_name=variable.related_table,
-                            filters_dict=variable_data[filter_header][combination],
+                            table_name=table_name,
+                            filters_dict=variable_data[
+                                filter_header
+                            ][combination],
                         )
 
-                        cvxpy_obj = variable_data[cvxpy_var_header][combination]
-                        cvxpy_values = np.asarray(cvxpy_obj.value).reshape(-1)
+                        uncertain_mask = (
+                            table_df[is_uncertain_header]
+                            .astype(str)
+                            .str.strip()
+                            .str.lower()
+                            .isin(["true", "1"])
+                        )
 
+                        if not uncertain_mask.any():
+                            continue
+
+                        cvxpy_obj = variable_data[
+                            cvxpy_var_header
+                        ][combination]
+
+                        cvxpy_values = np.asarray(
+                            cvxpy_obj.value
+                        ).reshape(-1)
+
+                        # Associate the current CVXPY values with the rows
+                        # selected for this variable.
                         table_df[values_header] = cvxpy_values
+
+                        # Write back only the uncertain rows.
+                        table_df = table_df.loc[
+                            uncertain_mask
+                        ].copy()
 
                         table_df = util.normalize_dataframe(
                             df=table_df,
@@ -735,7 +843,7 @@ class Core:
                         )
 
                         self.sqltools.dataframe_to_table(
-                            table_name=variable.related_table,
+                            table_name=table_name,
                             dataframe=table_df,
                             action="update",
                             force_overwrite=force_overwrite,
@@ -1239,7 +1347,6 @@ class Core:
                                 }
 
                                 if self.is_uncertainty_analysis:
-
                                     self.cvxpy_uncertain_exogenous_data_to_database(
                                         force_overwrite=True, suppress_warnings=True)
 

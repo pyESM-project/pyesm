@@ -122,7 +122,7 @@ class Uncertainty:
 
         with db_handler(self.sqltools):
 
-            for table_name, var_keys in uncertainty_tables.items():
+            for table_name, table in uncertainty_tables.items():
                 df = self.sqltools.table_to_dataframe(table_name=table_name)
 
                 uncertain_df = df[
@@ -135,12 +135,19 @@ class Uncertainty:
                     if column not in technical_columns
                 ]
 
-                for _, row in uncertain_df.iterrows():
-                    row_id = row[id_col]
+                var_keys = [
+                    var_key
+                    for var_key, variable in self.index.variables.items()
+                    if variable.related_table == table_name
+                ]
 
+                for _, row in uncertain_df.iterrows():
+
+                    row_id = row[id_col]
                     matched_var_keys = []
 
                     for var_key in var_keys:
+
                         variable = self.index.variables[var_key]
 
                         matches_variable = True
@@ -836,43 +843,36 @@ class Uncertainty:
 
         return float(value_array[0])
 
-    def get_uncertainty_hybrid_tables_list(self) -> list[str]:
+    def get_uncertain_tables(self) -> list[str]:
         """Return data tables containing at least one uncertain variable."""
+        allowed_var_types = Defaults.SymbolicDefinitions.VARIABLE_TYPES
 
-        uncertainty_tables = []
+        uncertain_tables = [
+            table_key
+            for table_key, table in self.index.data.items()
+            if table.type not in [
+                allowed_var_types["ENDOGENOUS"],
+                allowed_var_types["CONSTANT"],
+            ]
+            and table.uncertainty_enabled
+        ]
 
-        for var_key, variable in self.index.variables.items():
-            if getattr(
-                variable,
-                Defaults.UncertaintySettings.IS_UNCERTAIN_KEY,
-                False,
-            ):
-                if variable.related_table is not None:
-                    uncertainty_tables.append(variable.related_table)
+        return uncertain_tables
 
-        return sorted(set(uncertainty_tables))
-
-    def get_fully_deterministic_tables_list(self) -> list[str]:
+    def get_deterministic_tables(self) -> list[str]:
         """Return exogenous data tables containing no uncertain variables."""
 
         allowed_var_types = Defaults.SymbolicDefinitions.VARIABLE_TYPES
 
-        deterministic_tables = []
-
-        for table_key, table in self.index.data.items():
-            if table.type in [
+        deterministic_tables = [
+            table_key
+            for table_key, table in self.index.data.items()
+            if table.type not in [
                 allowed_var_types["ENDOGENOUS"],
                 allowed_var_types["CONSTANT"],
-            ]:
-                continue
-
-            table_has_uncertain_vars = any(
-                self.index.variables[var_key].is_uncertain
-                for var_key in table.variables_info
-            )
-
-            if not table_has_uncertain_vars:
-                deterministic_tables.append(table_key)
+            ]
+            and not table.uncertainty_enabled
+        ]
 
         return deterministic_tables
 
