@@ -85,7 +85,7 @@ class Database:
             self.create_blank_sets_xlsx_file()
 
     @property
-    def is_uncertainty_enabled(self) -> bool:
+    def is_uncertainty_analysis(self) -> bool:
         return bool(self.settings.get(
             Defaults.Labels.UNCERTAINTY_SETTING_KEY,
             False,
@@ -387,7 +387,7 @@ class Database:
         table. A standard ``values`` column is then added to every non-constant
         data table.
 
-        If uncertainty support is enabled globally and the specific data table has
+        If uncertainty is enabled  and the specific data table has
         ``uncertainty_enabled=True``, the following empty columns are also added:
 
         - ``is_uncertain``;
@@ -408,7 +408,7 @@ class Database:
 
         allowed_var_types = Defaults.SymbolicDefinitions.VARIABLE_TYPES
 
-        global_uncertainty_enabled = self.is_uncertainty_enabled
+        is_uncertainty_analysis = self.is_uncertainty_analysis
 
         with db_handler(self.sqltools):
             for table_key, table in self.index.data.items():
@@ -500,7 +500,7 @@ class Database:
                 )
 
                 table_uncertainty_enabled = (
-                    global_uncertainty_enabled
+                    is_uncertainty_analysis
                     and getattr(
                         table,
                         Defaults.UncertaintySettings.UNCERTAINTY_ENABLED_KEY,
@@ -708,7 +708,7 @@ class Database:
 
         other_coordinate_cols = None
 
-        if self.is_uncertainty_enabled:
+        if self.is_uncertainty_analysis:
             lb_field = Defaults.UncertaintySettings.LOWER_BOUND_FIELD[
                 Defaults.UncertaintySettings.LOWER_BOUND_KEY
             ][0]

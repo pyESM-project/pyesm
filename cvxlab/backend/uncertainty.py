@@ -104,18 +104,25 @@ class Uncertainty:
             upper_col,
         }
 
-        uncertain_vars_by_table: dict[str, list[str]] = {}
+        if not self.index.is_uncertainty_analysis:
+            return pd.DataFrame()
 
-        for var_key, variable in self.index.variables.items():
-            if variable.is_uncertain:
-                uncertain_vars_by_table.setdefault(
-                    variable.related_table,
-                    [],
-                ).append(var_key)
+        uncertainty_tables = {
+            table_key: table
+            for table_key, table in self.index.data.items()
+            if table.uncertainty_enabled
+        }
+
+        if not uncertainty_tables:
+            self.logger.warning(
+                "Uncertainty analysis is enabled, but no data table has "
+                "'uncertainty_enabled=True'."
+            )
+            return pd.DataFrame()
 
         with db_handler(self.sqltools):
 
-            for table_name, var_keys in uncertain_vars_by_table.items():
+            for table_name, var_keys in uncertainty_tables.items():
                 df = self.sqltools.table_to_dataframe(table_name=table_name)
 
                 uncertain_df = df[
@@ -161,12 +168,8 @@ class Uncertainty:
                         for column in coordinate_columns
                     }
 
-                    lower_val, upper_val = self._check_bounds(
-                        table_name=table_name,
-                        row_id=row_id,
-                        lower=row[lower_col],
-                        upper=row[upper_col],
-                    )
+                    lower_val = pd.to_numeric(row[lower_col], errors="coerce")
+                    upper_val = pd.to_numeric(row[upper_col], errors="coerce")
 
                     records.append(
                         {
@@ -217,6 +220,185 @@ class Uncertainty:
 
         return mapping_df, problem
 
+    def validate_uncertainty_data(self) -> None:
+        """Validate row-level uncertainty information.
+
+        The check is performed only for tables with
+        ``uncertainty_enabled=True``.
+
+        A row is valid when:
+
+        - both bounds are empty and ``is_uncertain`` is not TRUE; or
+        - both bounds are defined and valid, and ``is_uncertain`` is TRUE.
+
+        No value is modified automatically.
+
+        Raises:
+            exc.SettingsError: If uncertainty information is inconsistent.
+        """
+        is_uncertain_col = (
+            Defaults.UncertaintySettings.IS_UNCERTAIN_FIELD[
+                Defaults.UncertaintySettings.IS_UNCERTAIN_KEY
+            ][0]
+        )
+
+        lower_bound_col = (
+            Defaults.UncertaintySettings.LOWER_BOUND_FIELD[
+                Defaults.UncertaintySettings.LOWER_BOUND_KEY
+            ][0]
+        )
+
+        upper_bound_col = (
+            Defaults.UncertaintySettings.UPPER_BOUND_FIELD[
+                Defaults.UncertaintySettings.UPPER_BOUND_KEY
+            ][0]
+        )
+
+        id_col = Defaults.Labels.ID_FIELD["id"][0]
+
+        if not self.index.is_uncertainty_analysis:
+            return
+
+        uncertainty_tables = {
+            table_name: table
+            for table_name, table in self.index.data.items()
+            if table.uncertainty_enabled
+        }
+
+        if not uncertainty_tables:
+            self.logger.warning(
+                "Uncertainty analysis is enabled, but no uncertain "
+                "data tables were defined."
+            )
+            return
+
+        problems = []
+
+        with db_handler(self.sqltools):
+
+            for table_name, table in uncertainty_tables.items():
+
+                table_df = self.sqltools.table_to_dataframe(
+                    table_name=table_name,
+                )
+
+                required_columns = {
+                    id_col,
+                    is_uncertain_col,
+                    lower_bound_col,
+                    upper_bound_col,
+                }
+
+                missing_columns = required_columns - set(table_df.columns)
+
+                if missing_columns:
+                    problems.append(
+                        f"Table '{table_name}' is uncertainty-enabled but "
+                        f"is missing columns: {sorted(missing_columns)}."
+                    )
+                    continue
+
+                uncertain_col = (
+                    table_df[is_uncertain_col]
+                    .astype(str)
+                    .str.strip()
+                    .str.lower()
+                    .eq("true")
+                )
+
+                lower_values = pd.to_numeric(
+                    table_df[lower_bound_col],
+                    errors="coerce",
+                )
+
+                upper_values = pd.to_numeric(
+                    table_df[upper_bound_col],
+                    errors="coerce",
+                )
+
+                # Table-level check
+                uncertain_table_mask = (
+                    uncertain_col
+                    & lower_values.notna()
+                    & upper_values.notna()
+                )
+
+                if not uncertain_table_mask.any():
+                    self.logger.warning(
+                        f"Table '{table_name}' has uncertainty enabled, but no "
+                        "uncertain parameters are defined."
+                    )
+
+                for row_idx, row in table_df.iterrows():
+
+                    row_id = row[id_col]
+                    lower = row[lower_bound_col]
+                    upper = row[upper_bound_col]
+
+                    is_uncertain = bool(uncertain_col.loc[row_idx])
+
+                    lower_val = pd.to_numeric(
+                        lower,
+                        errors="coerce",
+                    )
+                    upper_val = pd.to_numeric(
+                        upper,
+                        errors="coerce",
+                    )
+
+                    has_lower = not pd.isna(lower_val)
+                    has_upper = not pd.isna(upper_val)
+
+                    # Only one bound is defined
+                    if has_lower != has_upper:
+                        problems.append(
+                            f"Table '{table_name}', id '{row_id}': "
+                            "lower_bound and upper_bound must either both be "
+                            "defined or both be empty."
+                        )
+                        continue
+
+                    bounds_defined = has_lower and has_upper
+
+                    # Bounds require is_uncertain=TRUE
+                    if bounds_defined and not is_uncertain:
+                        problems.append(
+                            f"Table '{table_name}', id '{row_id}': "
+                            "bounds are defined but is_uncertain is not TRUE."
+                        )
+                        continue
+
+                    # is_uncertain=TRUE requires bounds
+                    if is_uncertain and not bounds_defined:
+                        problems.append(
+                            f"Table '{table_name}', id '{row_id}': "
+                            "is_uncertain is TRUE but bounds are missing."
+                        )
+                        continue
+
+                    # Validate numerical order only for uncertain rows
+                    if is_uncertain:
+                        try:
+                            self._check_bounds(
+                                table_name=table_name,
+                                row_id=row_id,
+                                lower=lower,
+                                upper=upper,
+                            )
+                        except ValueError as error:
+                            problems.append(str(error))
+
+        if problems:
+            for problem in problems:
+                self.logger.error(
+                    f"Uncertainty data validation | {problem}"
+                )
+
+            raise exc.SettingsError(
+                "Uncertainty data validation failed. "
+                "Check is_uncertain, lower_bound and upper_bound values."
+            )
+
     def _check_bounds(
         self,
         table_name: str,
@@ -243,8 +425,6 @@ class Uncertainty:
                 f"{Defaults.UncertaintySettings.UPPER_BOUND_KEY} "
                 f"({lower_val} >= {upper_val})"
             )
-
-        return lower_val, upper_val
 
     def sample_data(
         self,

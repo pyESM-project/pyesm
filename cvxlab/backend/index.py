@@ -80,7 +80,7 @@ class Index:
         self.fetch_vars_coordinates_info()
 
     @property
-    def is_uncertainty_enabled(self) -> bool:
+    def is_uncertainty_analysis(self) -> bool:
         return bool(self.settings.get(
             Defaults.Labels.UNCERTAINTY_SETTING_KEY,
             False,
@@ -291,7 +291,7 @@ class Index:
             config.SETUP_INFO[1]: (
                 DataTable,
                 structures.DATA_TABLE_STRUCTURE_UNCERTAINTY[1]
-                if self.is_uncertainty_enabled
+                if self.is_uncertainty_analysis
                 else structures.DATA_TABLE_STRUCTURE[1],
             ),
         }
@@ -593,7 +593,7 @@ class Index:
             if table_uncertainty_enabled:
 
                 # uncertainty support must be enabled globally in Model
-                if not self.is_uncertainty_enabled:
+                if not self.is_uncertainty_analysis:
                     problems[f"{table_key}.{uncertainty_enabled_key}"] = (
                         f"'{uncertainty_enabled_key}=True' requires the model "
                         "to be initialized with uncertainty=True."

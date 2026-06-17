@@ -113,7 +113,7 @@ class Model():
             model_dir_name (str): The name of the model directory.
             main_dir_path (str): The main directory path where the model
                 directory is located. If None, the current working directory is used.
-            Uncertainty (bool, optional): If True, enables uncertainty-related
+            uncertainty (bool, optional): If True, enables uncertainty-related
                 template settings.
                 Defaults to False.
             model_settings_from (Defaults.LiteralTypes.SettingsSource, optional): 
@@ -243,7 +243,7 @@ class Model():
             return True
 
     @property
-    def is_uncertainty_enabled(self) -> bool:
+    def is_uncertainty_analysis(self) -> bool:
         return bool(self.settings.get(
             Defaults.Labels.UNCERTAINTY_SETTING_KEY,
             False,
@@ -571,6 +571,9 @@ class Model():
             force_overwrite=force_overwrite,
             table_key_list=table_key_list,
         )
+
+        if self.is_uncertainty_analysis:
+            self.core.uncertainty.validate_uncertainty_data()
 
     def _initialize_problems(
             self,
@@ -1098,7 +1101,7 @@ class Model():
         **method_kwargs: Any,
     ) -> sampling_settings_config:
 
-        if not self.is_uncertainty_enabled:
+        if not self.is_uncertainty_analysis:
             raise ValueError(
                 "Uncertainty analysis is not enabled. "
                 f"Create the model with "
@@ -1142,7 +1145,7 @@ class Model():
         **method_kwargs: Any,
     ) -> GSA_settings_config:
 
-        if not self.is_uncertainty_enabled:
+        if not self.is_uncertainty_analysis:
             raise ValueError(
                 "Uncertainty analysis is not enabled. "
                 f"Create the model with "
@@ -1195,7 +1198,7 @@ class Model():
     def _validate_uncertainty_run_configuration(self) -> None:
         """Validate that uncertainty analysis can be executed."""
 
-        if not self.is_uncertainty_enabled:
+        if not self.is_uncertainty_analysis:
             raise ValueError(
                 "Uncertainty analysis is not enabled. "
                 f"Create the model with "
@@ -1477,7 +1480,7 @@ class Model():
         the run results manually.
         """
 
-        if not self.is_uncertainty_enabled:
+        if not self.is_uncertainty_analysis:
             raise ValueError(
                 "Uncertainty analysis is not enabled. "
                 "Create the model with Uncertainty=True."
@@ -1563,7 +1566,7 @@ class Model():
         db_name: Optional[str] = None,
     ) -> Path:
 
-        if not self.is_uncertainty_enabled:
+        if not self.is_uncertainty_analysis:
             raise ValueError(
                 "Uncertainty analysis is not enabled. "
                 f"Create the model with "

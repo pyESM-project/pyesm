@@ -148,7 +148,7 @@ class Defaults:
         VALUE_KEY = 'value'
         BLANK_FILL_KEY = 'blank_fill'
         NONNEG_KEY = 'nonneg'
-        UNCERTAINTY_SETTING_KEY = 'Uncertainty'
+        UNCERTAINTY_SETTING_KEY = 'uncertainty'
         TABLE_NAME = 'table_name'
         VARIABLE_NAME = 'variable_name'
 

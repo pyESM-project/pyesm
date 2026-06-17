@@ -115,7 +115,7 @@ class Core:
         )
 
     @property
-    def is_uncertainty_enabled(self) -> bool:
+    def is_uncertainty_analysis(self) -> bool:
         return bool(self.settings.get(
             Defaults.Labels.UNCERTAINTY_SETTING_KEY,
             False,
@@ -1238,7 +1238,7 @@ class Core:
                                     for table_key in tables_to_check
                                 }
 
-                                if self.is_uncertainty_enabled:
+                                if self.is_uncertainty_analysis:
 
                                     self.cvxpy_uncertain_exogenous_data_to_database(
                                         force_overwrite=True, suppress_warnings=True)

@@ -83,7 +83,7 @@ def run(
     # Model.__init__ parameters
     model_dir_name: Optional[str] = None,
     main_dir_path: Optional[str] = None,
-    Uncertainty: Optional[bool] = None,
+    uncertainty: Optional[bool] = None,
     model_settings_from: Optional[Defaults.LiteralTypes.SettingsSource] = None,
     detailed_validation: Optional[bool] = None,
     multiple_input_files: Optional[bool] = None,
