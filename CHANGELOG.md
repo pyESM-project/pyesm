@@ -16,7 +16,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Installation docs: new *Install from Dev Branch* section with `git+https` install
   instructions for users who want the latest unreleased features.
 - Possibility to **run only a selection of scenarios** from Model.run_model() method, 
-  by specifying the `scenarios_idx` attribute as integer or list of integers 
+  by specifying the `scenario_idx` attribute as integer or list of integers 
   corresponding to the index of scenarios in the `Model.scenarios` property.
 
 ### Fixed

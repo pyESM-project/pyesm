@@ -46,6 +46,7 @@ Typical Usage
             solver="ECOS", # Or another supported solver
             solver_verbose=False,
             solver_settings={...}, # Optional: additional solver options
+            scenario_idx=None, # Optional: specify scenario indices to solve
             # Arguments below only applies if integrated_problems=True
             convergence_monitoring=True, 
             convergence_norm="l2",
@@ -86,6 +87,11 @@ Parameters description
      - ``False``
    * - ``solver_settings``
      - Dictionary of additional solver options passed as key-value pairs.
+     - ``None``
+   * - ``scenario_idx``
+     - An optional index or list of indices specifying which scenarios to solve. If
+       ``None``, all scenarios in the DataFrame will be solved. If an integer
+       is provided, it will be treated as a single scenario index.
      - ``None``
    * - ``**kwargs``
      - Additional keyword arguments for solver-specific options.
