@@ -771,6 +771,7 @@ class Core:
             relative_tolerance: Optional[float] = None,
             maximum_iterations: Optional[int] = None,
             keep_previous_iteration_db: bool = False,
+            scenario_idx: Optional[List[int] | int] = None,
             **solver_settings: Any,
     ) -> None:
         """Solve independent or integrated numerical problems.
@@ -811,6 +812,10 @@ class Core:
             keep_previous_iteration_db (bool, optional): If True, does not delete 
                 the database related to the last-1 iteration. For debugging purpose.
                 Default to False.
+            scenario_idx (Optional[List[int] | int], optional): An optional list
+                of indices specifying which scenarios to solve. If None, all
+                scenarios in the DataFrame will be solved. If an integer is provided,
+                it will be treated as a single scenario index. Defaults to None.
             **solver_settings: Additional keyword arguments passed to the solver.
 
         Raises:
@@ -842,10 +847,14 @@ class Core:
                 relative_tolerance=relative_tolerance,
                 maximum_iterations=maximum_iterations,
                 keep_previous_iteration_db=keep_previous_iteration_db,
+                scenario_idx=scenario_idx,
                 **solver_settings,
             )
         else:
-            self.solve_independent_problems(**solver_settings)
+            self.solve_independent_problems(
+                scenario_idx=scenario_idx,
+                **solver_settings
+            )
 
         self.problem.fetch_problem_status()
 
@@ -878,7 +887,10 @@ class Core:
                 tolerance_percentage=values_relative_diff_tolerance,
             )
 
-    def solve_independent_problems(self, **solver_settings: Any) -> None:
+    def solve_independent_problems(
+            self,
+            scenario_idx: Optional[List[int] | int] = None,
+            **solver_settings: Any) -> None:
         """Solve independent numerical problems.
 
         This method get and solve the numerical problem/s in the Problem instance
@@ -887,6 +899,10 @@ class Core:
         to reflect the solution status of each problem.
 
         Args:
+            scenario_idx (Optional[List[int] | int], optional): An optional list
+                of indices specifying which scenarios to solve. If None, all
+                scenarios in the DataFrame will be solved. If an integer is provided,
+                it will be treated as a single scenario index. Defaults to None.
             **solver_settings (Any): Additional arguments to pass to the solver.
 
         Raises:
@@ -898,6 +914,7 @@ class Core:
         if isinstance(numerical_problems, pd.DataFrame):
             self.problem.solve_problem_dataframe(
                 problem_dataframe=numerical_problems,
+                scenarios_idx=scenario_idx,
                 **solver_settings
             )
         elif isinstance(numerical_problems, dict):
@@ -905,6 +922,7 @@ class Core:
                 self.problem.solve_problem_dataframe(
                     problem_dataframe=numerical_problems[sub_problem],
                     problem_name=sub_problem,
+                    scenarios_idx=scenario_idx,
                     **solver_settings
                 )
         else:
@@ -922,6 +940,7 @@ class Core:
             relative_tolerance: Optional[float] = None,
             maximum_iterations: Optional[int] = None,
             keep_previous_iteration_db: bool = False,
+            scenario_idx: Optional[List[int] | int] = None,
             **solver_settings: Any,
     ) -> None:
         """Solve integrated numerical problems iteratively.
@@ -975,6 +994,10 @@ class Core:
             keep_previous_iteration_db (bool, optional): If True, saves the
                 database of the previous iteration for debugging purposes. 
                 Defaults to False.
+            scenario_idx (Optional[List[int] | int], optional): An optional list
+                of indices specifying which scenarios to solve. If None, all
+                scenarios in the DataFrame will be solved. If an integer is provided,
+                it will be treated as a single scenario index. Defaults to None.
             **solver_settings (Any): Arguments to pass to the solver.
         """
         sqlite_db_file_name = Defaults.ConfigFiles.SQLITE_DATABASE_FILE
@@ -1011,6 +1034,13 @@ class Core:
             columns=sub_problems_keys,
         )
 
+        if scenario_idx is None:
+            scenarios_to_solve = list(scenarios_df.index)
+        elif isinstance(scenario_idx, int):
+            scenarios_to_solve = [scenario_idx]
+        else:
+            scenarios_to_solve = list(scenario_idx)
+
         # create a backup copy of the original database
         # (will be restored at the end)
         self.files.copy_file_to_destination(
@@ -1022,7 +1052,7 @@ class Core:
         )
 
         try:
-            for scenario_idx in scenarios_df.index:
+            for scenario_idx in scenarios_to_solve:
 
                 scenario_coords = scenarios_df.loc[
                     scenario_idx,

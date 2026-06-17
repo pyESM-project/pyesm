@@ -1715,13 +1715,11 @@ class Problem:
                 (the solution status).
             problem_name (Optional[str], optional): An optional name for the problem.
                 Useful for logging purpose. Defaults to None.
-            verbose (Optional[bool], optional): If set to True, the solver will
-                print progress information. If verbose is set to False, UserWarnings 
-                from the 'cvxpy.reductions.solvers.solving_chain' module are suppressed.
-                Defaults to True.
-            solver (Optional[str], optional): The solver to use. If None, cvxpy
-                will choose a solver automatically. Defaults to None.
-            **kwargs (Any): Additional arguments to pass to the solver.
+            scenarios_idx (Optional[List[int] | int], optional): An optional list
+                of indices specifying which scenarios to solve. If None, all
+                scenarios in the DataFrame will be solved. If an integer is provided,
+                it will be treated as a single scenario index. Defaults to None.
+            **solver_settings (Any): Additional arguments to pass to the solver.
         """
         if solver_settings['verbose'] == False:
             with warnings.catch_warnings():

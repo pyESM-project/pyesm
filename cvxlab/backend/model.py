@@ -175,6 +175,22 @@ class Model:
         return self.core.index.list_variables
 
     @property
+    def scenarios(self) -> Optional[pd.DataFrame]:
+        """DataFrame of scenarios available in the model.
+
+        Each row represents a scenario, identified by a unique combination of
+        inter-problem set values. The DataFrame index is used as the scenario
+        index in methods that accept a ``scenario_idx`` parameter (e.g.
+        :meth:`run_model`, :meth:`load_results_to_database`).
+
+        Returns:
+            Optional[pd.DataFrame]: A DataFrame with one row per scenario and
+                one column per inter-problem set, or None if no inter-problem
+                sets are defined.
+        """
+        return self.core.index.scenarios_info
+
+    @property
     def is_problem_solved(self) -> bool:
         """Status of the problem solution.
 
@@ -583,6 +599,7 @@ class Model:
         solver: Optional[str] = None,
         solver_verbose: bool = False,
         solver_settings: Optional[dict[str, Any]] = None,
+        scenario_idx: Optional[List[int] | int] = None,
         convergence_norm: Defaults.LiteralTypes.NormType = 'l2',
         convergence_tables_to_check: Defaults.LiteralTypes.ConvergenceTables | List[
             str] = 'all_endogenous',
@@ -616,6 +633,12 @@ class Model:
                 numerical solver operation during the model run. Defaults to False.
             solver_settings (dict[str, Any], optional): Additional settings
                 for the solver passed as key-value pairs. Defaults to None.
+            scenario_idx (Optional[List[int] | int], optional): An optional list
+                of indices specifying which scenarios to solve. Indices must
+                correspond to the index of the :attr:`scenarios` DataFrame
+                (inspect it to identify valid values). If None, all scenarios
+                are solved. If an integer is provided, it will be treated as a
+                single scenario index. Defaults to None.
             convergence_norm (Defaults.LiteralTypes.NormType, optional):
                 The norm type to use for convergence monitoring in integrated
                 problems. Defaults to 'l2' (Euclidean Norm).
@@ -709,6 +732,7 @@ class Model:
                 relative_tolerance=relative_tolerance,
                 maximum_iterations=maximum_iterations,
                 keep_previous_iteration_db=keep_previous_iteration_db,
+                scenario_idx=scenario_idx,
                 **solver_settings,
             )
 
@@ -737,8 +761,10 @@ class Model:
         Args:
             scenarios_idx (Optional[List[int] | int], optional): A list of
                 scenario indices or a single scenario index for which to export
-                results. If None, results for all scenarios are exported. Defaults
-                to None.
+                results. Indices must correspond to the index of the
+                :attr:`scenarios` DataFrame (inspect it to identify valid
+                values). If None, results for all scenarios are exported.
+                Defaults to None.
             force_overwrite (bool, optional): Whether to overwrite/update 
                 existing data without asking user permission. Defaults to False.
             suppress_warnings (bool, optional): Whether to suppress warnings 
