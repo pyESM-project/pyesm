@@ -390,9 +390,10 @@ class Database:
         If uncertainty is enabled  and the specific data table has
         ``uncertainty_enabled=True``, the following empty columns are also added:
 
-        - ``is_uncertain``;
-        - ``lower_bound``;
-        - ``upper_bound``.
+        - ``is_uncertain``: flags if parameter is uncertain
+        - ``lower_bound``: lower bound value of uncertian parameter
+        - ``upper_bound``:  upper bound value of uncertian parameter
+        - ``uncertain_group_Name``: specify parameter group in case of grouped sampling
 
         These columns are left empty and must be populated by the user in the input
         data files.
@@ -549,6 +550,20 @@ class Database:
                         column_type=(
                             Defaults.UncertaintySettings.UPPER_BOUND_FIELD[
                                 Defaults.UncertaintySettings.UPPER_BOUND_KEY
+                            ][1]
+                        ),
+                    )
+
+                    self.sqltools.add_table_column(
+                        table_name=table_key,
+                        column_name=(
+                            Defaults.UncertaintySettings.GROUP_NAME_FIELD[
+                                Defaults.UncertaintySettings.GROUP_NAME_KEY
+                            ][0]
+                        ),
+                        column_type=(
+                            Defaults.UncertaintySettings.GROUP_NAME_FIELD[
+                                Defaults.UncertaintySettings.GROUP_NAME_KEY
                             ][1]
                         ),
                     )
