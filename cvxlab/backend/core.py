@@ -687,77 +687,6 @@ class Core:
                     suppress_warnings=suppress_warnings,
                 )
 
-    # def cvxpy_uncertain_exogenous_data_to_database(
-    #         self,
-    #         force_overwrite: bool = False,
-    #         suppress_warnings: bool = False,
-    # ) -> None:
-    #     """Write current cvxpy values of uncertain exogenous variables into DB values."""
-
-    #     filter_header = Defaults.Labels.FILTER_DICT_KEY
-    #     cvxpy_var_header = Defaults.Labels.CVXPY_VAR
-    #     values_header = Defaults.Labels.VALUES_FIELD["values"][0]
-
-    #     uncertainty_enabled_key = (
-    #         Defaults.UncertaintySettings.UNCERTAINTY_ENABLED_KEY
-    #     )
-
-    #     is_uncertain_header = (
-    #         Defaults.UncertaintySettings.IS_UNCERTAIN_FIELD[
-    #             Defaults.UncertaintySettings.IS_UNCERTAIN_KEY
-    #         ][0]
-    #     )
-
-    #     allowed_var_types = Defaults.SymbolicDefinitions.VARIABLE_TYPES
-
-    #     with db_handler(self.sqltools):
-
-    #         for var_key, variable in self.index.variables.items():
-
-    #             table_name = variable.related_table
-
-    #             data_table = self.index.data[table_name]
-
-    #             if not getattr(
-    #                 data_table,
-    #                 uncertainty_enabled_key,
-    #                 False,
-    #             ):
-    #                 continue
-
-    #             variable_data_items = (
-    #                 variable.data.values()
-    #                 if isinstance(variable.data, dict)
-    #                 else [variable.data]
-    #             )
-
-    #             for variable_data in variable_data_items:
-
-    #                 for combination in variable_data.index:
-
-    #                     table_df = self.sqltools.table_to_dataframe(
-    #                         table_name=variable.related_table,
-    #                         filters_dict=variable_data[filter_header][combination],
-    #                     )
-
-    #                     cvxpy_obj = variable_data[cvxpy_var_header][combination]
-    #                     cvxpy_values = np.asarray(cvxpy_obj.value).reshape(-1)
-
-    #                     table_df[values_header] = cvxpy_values
-
-    #                     table_df = util.normalize_dataframe(
-    #                         df=table_df,
-    #                         all_str_except_numeric=True,
-    #                     )
-
-    #                     self.sqltools.dataframe_to_table(
-    #                         table_name=variable.related_table,
-    #                         dataframe=table_df,
-    #                         action="update",
-    #                         force_overwrite=force_overwrite,
-    #                         suppress_warnings=suppress_warnings,
-    #                     )
-
     def cvxpy_uncertain_exogenous_data_to_database(
             self,
             force_overwrite: bool = False,
@@ -1404,6 +1333,21 @@ class Core:
                                 self.logger.warning(
                                     "Maximum number of iterations hit before "
                                     "reaching convergence")
+
+                                convergence_status = "convergence_not_reached"
+
+                                for problem_df in self.problem.numerical_problems.values():
+                                    problem_df.at[
+                                        scenario_idx,
+                                        problem_status_header,
+                                    ] = convergence_status
+
+                                self.logger.warning(
+                                    "Integrated problem convergence not reached | "
+                                    f"Scenario {scenario_coords} | "
+                                    f"Maximum iterations: {maximum_iterations}."
+                                )
+
                                 break
 
                             iter_count += 1
@@ -1706,17 +1650,23 @@ class Core:
 
             for scenario_key, statuses in statuses_by_scenario.items():
 
+                statuses = [str(status) for status in statuses]
+
                 if all(status == "optimal" for status in statuses):
                     final_statuses[scenario_key] = "optimal"
                     continue
 
-                failed_statuses = [
-                    str(status)
+                failed_statuses = list(dict.fromkeys(
+                    status
                     for status in statuses
-                    if str(status) != "optimal"
-                ]
+                    if status != "optimal"
+                ))
 
-                final_statuses[scenario_key] = " | ".join(failed_statuses)
+                final_statuses[scenario_key] = (
+                    " | ".join(failed_statuses)
+                    if failed_statuses
+                    else "unknown"
+                )
 
             return final_statuses
 
