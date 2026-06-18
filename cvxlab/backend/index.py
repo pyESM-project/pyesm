@@ -592,8 +592,6 @@ class Index:
 
             if table_uncertainty_enabled:
 
-                print("sta facendo check")
-
                 # uncertainty support must be enabled globally in Model
                 if not self.is_uncertainty_analysis:
                     problems[f"{table_key}.{uncertainty_enabled_key}"] = (
