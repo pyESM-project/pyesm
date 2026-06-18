@@ -245,6 +245,12 @@ class Model():
 
     @property
     def is_uncertainty_analysis(self) -> bool:
+        """Return whether uncertainty-analysis functionality is enabled.
+
+        Returns:
+            bool: True if the model was initialized with uncertainty analysis
+            enabled, otherwise False.
+        """
         return bool(self.settings.get(
             Defaults.Labels.UNCERTAINTY_SETTING_KEY,
             False,
@@ -1082,7 +1088,37 @@ class Model():
         groups: bool,
         **kwargs: Any,
     ) -> pd.DataFrame:
+        """Build the sampling problem and generate uncertainty samples.
 
+            The method collects row-level uncertain parameters from the model database,
+            creates the SALib problem specification, generates the sampling problem according
+            the selected sampler, and stores the resulting objects on the Model
+            instance.
+
+            The following attributes are updated:
+
+            - ``self.sampling_problem``: SALib format problem dictionary;
+            - ``self.uncertainty_samples``: generated sample dataframe;
+            - ``self.par_mapping``: mapping between SALib parameter names and
+            CVXLab database rows.
+
+            Args:
+                method(str): selected sampling method
+                groups(Optional[bool]): if True allows to perform sampling by data groups, useful
+                in case of many uncertain parameters to decrease computational cost. Defaults to
+                False
+                **kwargs: Method-specific keyword arguments according to the selected
+                    SALib sampler.
+
+            Returns:
+                pd.DataFrame: Generated samples
+
+            Raises:
+                exc.SettingsError: If the uncertain-parameter configuration or group
+                    definition is invalid.
+                ValueError: If the selected sampling method is unsupported.
+                TypeError: If the sampler arguments are invalid.
+    """
         mapping_df, sample_problem = (
             self.core.uncertainty.create_sampling_problem(
                 groups=groups
@@ -1112,7 +1148,37 @@ class Model():
         file_format: str = "xlsx",
         **method_kwargs: Any,
     ) -> sampling_settings_config:
+        """Configure uncertainty sampling and result collection.
 
+        This method validates the selected SALib sampling method and stores the
+        configuration slected by the user
+
+        Args:
+            method(str): Sampling method name selected by user
+            groups(Optional[bool]): If True allows to perform sampling by data groups, useful
+                in case of many uncertain parameters to decrease computational cost. Defaults to
+                False
+            save_samples: Whether the generated sample dataframe must be exported.
+            save_measures: Whether uncertainty-measure outputs must be exported
+                during and after the model runs.
+            file_format: File format used for exported samples and measures.
+                Supported formats are defined in
+                ``Defaults.UncertaintySettings.AVAILABLE_EXPORT_FORMATS``.
+            **method_kwargs: Keyword arguments passed to the selected SALib
+                sampling function, such as ``N``, ``seed``, ``num_levels`` or
+                ``optimal_trajectories``.
+
+        Returns:
+            sampling_settings_config: Stored sampling configuration.
+
+        Raises:
+            ValueError: If uncertainty analysis is disabled or the sampling method
+                is unsupported.
+            TypeError: If required sampler arguments are missing or unexpected
+                arguments are provided.
+            exc.SettingsError: If grouped sampling is requested with an invalid
+                uncertainty-group configuration.
+        """
         if not self.is_uncertainty_analysis:
             raise ValueError(
                 "Uncertainty analysis is not enabled. "
@@ -1158,7 +1224,35 @@ class Model():
         file_format: str = "xlsx",
         **method_kwargs: Any,
     ) -> GSA_settings_config:
+        """Configure the global sensitivity analysis.
 
+        The method validates the selected SALib analyzer, checks its compatibility
+        with the previously configured sampling design, normalizes optional measure
+        and scenario selections, and stores the configuration selected by the user
+
+        Args:
+            method(str): GSA analysis method name. Supported analyzers are defined in
+                ``Uncertainty.ANALYZERS``.
+            save_analysis(Optional[bool]): Whether the resulting sensitivity indices must be
+                exported to file.
+            measures(list): Uncertainty-measure variables to analyze. A single name may
+                be passed as a string. If None, all available measures are analyzed.
+            scenarios(list): Scenario names to analyze. A single scenario may be passed
+                as a string. If None, all available scenarios are analyzed.
+            file_format(str): File format used to export the GSA result dataframe.
+            **method_kwargs: Keyword arguments passed to the selected SALib
+                analyzer, such as ``num_resamples``, ``conf_level``, ``seed`` or
+                ``print_to_console``.
+
+        Returns:
+            GSA_settings_config: Stored GSA configuration.
+
+        Raises:
+            ValueError: If uncertainty analysis is disabled, the method is
+                unsupported, or it is incompatible with the configured sampler.
+            TypeError: If ``measures`` or ``scenarios`` have an invalid type, or if
+                invalid analyzer keyword arguments are supplied.
+        """
         if not self.is_uncertainty_analysis:
             raise ValueError(
                 "Uncertainty analysis is not enabled. "
@@ -1262,7 +1356,25 @@ class Model():
     def _sort_variables(
         self,
     ) -> list[str]:
+        """Classify variables according to their uncertainty-enabled tables.
 
+        Variables belonging to fully deterministic tables are separated from
+        variables belonging to uncertainty-enabled tables. The two groups are
+        loaded differently during repeated uncertainty runs: deterministic values
+        are assigned once, whereas values from uncertainty-enabled tables are
+        updated for each sampled run.
+
+        Returns:
+            tuple[list[str], list[str]]: A tuple containing:
+
+            - variable keys belonging to fully deterministic tables;
+            - variable keys belonging to uncertainty-enabled tables.
+
+        Notes:
+            The classification is performed at table level. A table returned by
+            ``get_uncertain_tables()`` may contain both uncertain and deterministic
+            rows; row-level sampled-value injection is handled separately.
+        """
         fully_deterministic_tables = (
             self.core.uncertainty.get_deterministic_tables()
         )
