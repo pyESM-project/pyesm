@@ -1211,6 +1211,18 @@ class Model():
                 "Call model.sampling_settings(...) before model.run_uncertainty()."
             )
 
+        uncertainty_measures = (
+            self.core.uncertainty.get_uncertainty_measure_vars_list()
+        )
+
+        if not uncertainty_measures:
+            raise exc.SettingsError(
+                "Uncertainty analysis configuration invalid | "
+                "No uncertainty measures are defined. "
+                "At least one endogenous scalar variable must be marked with "
+                f"'{Defaults.UncertaintySettings.UNCERTAINTY_MEASURE_KEY}=True'."
+            )
+
     def _generate_uncertainty_samples(
             self,
             uncertainty_cfg: sampling_settings_config,
