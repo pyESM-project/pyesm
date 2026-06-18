@@ -189,7 +189,10 @@ class Uncertainty:
 
                     records.append(
                         {
-                            parameter_name_col: f"{table_name}||{row_id}",
+                            parameter_name_col: self._build_parameter_name(
+                                table_name=table_name,
+                                row_id=row_id,
+                            ),
                             table_name_col: table_name,
                             id_col: row_id,
                             variable_name_col: variable_name,
@@ -218,23 +221,79 @@ class Uncertainty:
 
     def create_sampling_problem(
         self,
-    ) -> Dict[str, Any]:
+        groups: bool = False,
+    ) -> tuple[pd.DataFrame, Dict[str, Any]]:
         """Create the SALib problem dictionary from uncertain parameters.
+
+        Args:
+            groups: If True, include uncertainty groups in the SALib problem.
+
         Returns:
-            Dict[str, Any]: SALib-compatible problem dictionary
+            A tuple containing the parameter mapping dataframe and the
+            SALib-compatible problem dictionary.
         """
+
         mapping_df = self.collect_uncertain_parameters()
+
+        parameter_name_col = (
+            Defaults.UncertaintySettings.PARAMETER_NAME
+        )
+
+        group_name_key = (
+            Defaults.UncertaintySettings.UNCERTAINTY_GROUP_NAME_KEY
+        )
 
         problem = {
             "num_vars": len(mapping_df),
             "names": mapping_df[
-                Defaults.UncertaintySettings.PARAMETER_NAME
+                parameter_name_col
             ].tolist(),
             "bounds": mapping_df[[
                 Defaults.UncertaintySettings.LOWER_BOUND_KEY,
                 Defaults.UncertaintySettings.UPPER_BOUND_KEY,
             ]].values.tolist(),
         }
+
+        if groups:
+
+            group_names = mapping_df[group_name_key]
+
+            missing_group_mask = (
+                group_names.isna()
+                | group_names.astype(str).str.strip().eq("")
+            )
+
+            if missing_group_mask.any():
+                missing_parameters = mapping_df.loc[
+                    missing_group_mask,
+                    parameter_name_col,
+                ].tolist()
+
+                raise exc.SettingsError(
+                    "Grouped sampling requires every uncertain parameter "
+                    "to belong to a group. "
+                    f"Missing group name for parameters: {missing_parameters}."
+                )
+
+            normalized_group_names = (
+                group_names
+                .astype(str)
+                .str.strip()
+            )
+
+            unique_group_names = (
+                normalized_group_names
+                .drop_duplicates()
+                .tolist()
+            )
+
+            if len(unique_group_names) < 2:
+                raise exc.SettingsError(
+                    "Grouped sampling requires at least two distinct groups. "
+                    f"Found groups: {unique_group_names}."
+                )
+
+            problem["groups"] = normalized_group_names.tolist()
 
         return mapping_df, problem
 
@@ -506,6 +565,7 @@ class Uncertainty:
     def validate_sampling_config(
             self,
             method: str,
+            groups: bool,
             kwargs: dict[str, Any],
     ) -> None:
         """Validate the selected sampling method and its keyword arguments.
@@ -523,6 +583,18 @@ class Uncertainty:
             raise ValueError(
                 f"Sampling method '{method}' not supported. "
                 f"Available methods: {list(self.SAMPLERS.keys())}"
+            )
+
+        group_supported_methods = {
+            Defaults.UncertaintySettings.MORRIS,
+            Defaults.UncertaintySettings.SOBOL,
+        }
+
+        if groups and method not in group_supported_methods:
+            raise ValueError(
+                "Grouped sampling is only supported for "
+                f"{sorted(group_supported_methods)}. "
+                f"Selected method: '{method}'."
             )
 
         sampler = self.SAMPLERS[method]
@@ -870,6 +942,15 @@ class Uncertainty:
 
         return uncertain_tables
 
+    def _build_parameter_name(
+            self,
+            table_name: str,
+            row_id: Any,
+    ) -> str:
+        """Build the unique SALib name of an uncertain parameter."""
+
+        return f"table: {table_name}; id: {row_id}"
+
     def get_deterministic_tables(self) -> list[str]:
         """Return exogenous data tables containing no uncertain variables."""
 
@@ -963,7 +1044,10 @@ class Uncertainty:
 
         for idx in resolved_df.loc[uncertain_mask].index:
             row_id = resolved_df.at[idx, id_col]
-            parameter_name = f"{table_name}||{row_id}"
+            parameter_name = self._build_parameter_name(
+                table_name=table_name,
+                row_id=row_id,
+            )
 
             if parameter_name not in sample_values:
                 raise exc.MissingDataError(
@@ -1327,23 +1411,48 @@ class Uncertainty:
         return split_problem_coordinate_cols
 
     def _GSA_result_to_dataframe(
-        self,
-        result: Any,
-        problem: dict[str, Any],
-        method: str,
-        measure: str,
-        scenario: str | None,
-        mapping_df: pd.DataFrame | None = None,
+            self,
+            result: Any,
+            problem: dict[str, Any],
+            method: str,
+            measure: str,
+            scenario: str | None,
+            mapping_df: pd.DataFrame | None = None,
     ) -> pd.DataFrame:
         """Convert a SALib analysis result into a long-format dataframe."""
 
-        parameter_name_col = Defaults.UncertaintySettings.PARAMETER_NAME
-        parameter_names = list(problem["names"])
+        parameter_name_col = (
+            Defaults.UncertaintySettings.PARAMETER_NAME
+        )
+
+        group_name_col = (
+            Defaults.UncertaintySettings.UNCERTAINTY_GROUP_NAME_KEY
+        )
+
+        result_dict = dict(result)
+
+        # SALib returns the names corresponding exactly to the sensitivity
+        # arrays. For grouped analyses these are the group names.
+        result_names = result_dict.get("names")
+
+        if result_names is None:
+            raise exc.OperationalError(
+                "SALib result conversion failed | "
+                "The analysis result does not contain the 'names' field."
+            )
+
+        result_names = list(result_names)
+
+        is_grouped = "groups" in problem
+
+        result_name_col = (
+            group_name_col
+            if is_grouped
+            else parameter_name_col
+        )
 
         metadata_keys = {"names"}
         records = []
-
-        result_dict = dict(result)
 
         for metric, values in result_dict.items():
 
@@ -1351,39 +1460,95 @@ class Uncertainty:
                 continue
 
             if np.ma.isMaskedArray(values):
-                values_array = np.ma.filled(values, np.nan)
+                values_array = np.ma.filled(
+                    values,
+                    np.nan,
+                )
             else:
                 values_array = np.asarray(values)
 
             values_array = np.asarray(values_array)
 
+            # Skip scalar metadata and multidimensional results.
             if values_array.ndim != 1:
                 continue
 
-            if len(values_array) != len(parameter_names):
+            if len(values_array) != len(result_names):
+                raise exc.OperationalError(
+                    "SALib result conversion failed | "
+                    f"Metric '{metric}' contains {len(values_array)} values, "
+                    f"but SALib returned {len(result_names)} names: "
+                    f"{result_names}."
+                )
+
+            if not np.issubdtype(
+                values_array.dtype,
+                np.number,
+            ):
                 continue
 
-            if not np.issubdtype(values_array.dtype, np.number):
-                continue
-
-            for parameter_name, value in zip(parameter_names, values_array):
+            for result_name, value in zip(
+                result_names,
+                values_array,
+            ):
                 record = {
                     "method": method,
-                    "measure": measure,
-                    parameter_name_col: parameter_name,
+                    result_name_col: result_name,
                     "metric": metric,
-                    "value": float(value) if pd.notna(value) else np.nan,
+                    "value": (
+                        float(value)
+                        if pd.notna(value)
+                        else np.nan
+                    ),
                 }
 
                 if scenario is not None:
                     record["scenario"] = scenario
 
+                record["measure"] = measure
+
                 records.append(record)
 
         result_df = pd.DataFrame(records)
 
-        if mapping_df is None or result_df.empty:
-            return result_df
+        if result_df.empty:
+            raise exc.OperationalError(
+                "SALib result conversion failed | "
+                "No one-dimensional numerical sensitivity metric "
+                "could be extracted from the analysis result. "
+                f"Available result keys: {list(result_dict.keys())}."
+            )
+
+        last_cols = [
+            "measure",
+            "metric",
+            "value",
+        ]
+
+        # Group-level results cannot be merged with the parameter mapping:
+        # one group generally corresponds to multiple uncertain parameters.
+        if is_grouped:
+            first_cols = [
+                col
+                for col in result_df.columns
+                if col not in last_cols
+            ]
+
+            return result_df[
+                first_cols + last_cols
+            ]
+
+        # Parameter-level analysis without mapping metadata.
+        if mapping_df is None:
+            first_cols = [
+                col
+                for col in result_df.columns
+                if col not in last_cols
+            ]
+
+            return result_df[
+                first_cols + last_cols
+            ]
 
         excluded_metadata_cols = {
             Defaults.Labels.ID_FIELD["id"][0],
@@ -1391,19 +1556,27 @@ class Uncertainty:
             Defaults.UncertaintySettings.LOWER_BOUND_KEY,
             Defaults.UncertaintySettings.UPPER_BOUND_KEY,
             Defaults.UncertaintySettings.METHOD,
-
+            group_name_col,
         }
 
-        split_problem_coordinate_cols = self._get_split_problem_coordinate_columns()
+        split_problem_coordinate_cols = (
+            self._get_split_problem_coordinate_columns()
+        )
 
         metadata_cols = [
-            col for col in mapping_df.columns
+            col
+            for col in mapping_df.columns
             if col not in excluded_metadata_cols
             and col not in split_problem_coordinate_cols
         ]
 
         result_df = result_df.merge(
-            mapping_df[[parameter_name_col, *metadata_cols]].drop_duplicates(),
+            mapping_df[
+                [
+                    parameter_name_col,
+                    *metadata_cols,
+                ]
+            ].drop_duplicates(),
             on=parameter_name_col,
             how="left",
             validate="many_to_one",
@@ -1414,16 +1587,15 @@ class Uncertainty:
             errors="ignore",
         )
 
-        last_cols = ["measure", "metric", "value"]
-
         first_cols = [
-            col for col in result_df.columns
+            col
+            for col in result_df.columns
             if col not in last_cols
         ]
 
-        result_df = result_df[first_cols + last_cols]
-
-        return result_df
+        return result_df[
+            first_cols + last_cols
+        ]
 
     def create_failed_measure_records_for_run(
         self,
