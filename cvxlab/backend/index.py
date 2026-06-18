@@ -592,22 +592,21 @@ class Index:
 
             if table_uncertainty_enabled:
 
+                print("sta facendo check")
+
                 # uncertainty support must be enabled globally in Model
                 if not self.is_uncertainty_analysis:
                     problems[f"{table_key}.{uncertainty_enabled_key}"] = (
                         f"'{uncertainty_enabled_key}=True' requires the model "
                         "to be initialized with uncertainty=True."
                     )
-
-                # constant and purely endogenous tables cannot contain uncertain inputs
-                if data_table.type in [
-                    allowed_var_types["ENDOGENOUS"],
-                    allowed_var_types["CONSTANT"],
-                ]:
+                # only exogenous tables can be uncertain
+                if data_table.type != allowed_var_types["EXOGENOUS"]:
                     problems[f"{table_key}.{uncertainty_enabled_key}"] = (
                         f"'{uncertainty_enabled_key}=True' can only be assigned "
-                        "to exogenous or hybrid data tables."
+                        "to fully exogenous data tables."
                     )
+
             # for each variable in data table
             for var_key, var_info in data_table.variables_info.items():
                 var_info: dict | None
