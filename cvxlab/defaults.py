@@ -175,12 +175,12 @@ class Defaults:
         UNCERTAINTY_MEASURE_KEY = "uncertainty_measure"
         LOWER_BOUND_KEY = "lower_bound"
         UPPER_BOUND_KEY = "upper_bound"
-        GROUP_NAME_KEY = "uncertain_group_Name"
+        UNCERTAINTY_GROUP_NAME_KEY = "uncertain_group_Name"
 
         IS_UNCERTAIN_FIELD = {"is_uncertain": ["is_uncertain", "TEXT"]}
         LOWER_BOUND_FIELD = {"lower_bound": ["lower_bound", "REAL"]}
         UPPER_BOUND_FIELD = {"upper_bound": ["upper_bound", "REAL"]}
-        GROUP_NAME_FIELD = {"uncertain_group_Name": [
+        UNCERTAINTY_GROUP_NAME_FIELD = {"uncertain_group_Name": [
             "uncertain_group_Name", "TEXT"]}
 
         RUN_ID = "run_id"

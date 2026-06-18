@@ -1,5 +1,6 @@
 """Tools for collecting uncertain parameters from exogenous data tables."""
 
+from tokenize import group
 from typing import Any, Dict, List, Tuple
 
 import pandas as pd
@@ -92,6 +93,12 @@ class Uncertainty:
             Defaults.UncertaintySettings.UPPER_BOUND_KEY
         ][0]
 
+        group_name_col = (
+            Defaults.UncertaintySettings.UNCERTAINTY_GROUP_NAME_FIELD[
+                Defaults.UncertaintySettings.UNCERTAINTY_GROUP_NAME_KEY
+            ][0]
+        )
+
         parameter_name_col = Defaults.UncertaintySettings.PARAMETER_NAME
         table_name_col = Defaults.Labels.TABLE_NAME
         variable_name_col = Defaults.Labels.VARIABLE_NAME
@@ -102,6 +109,7 @@ class Uncertainty:
             is_uncertain_col,
             lower_col,
             upper_col,
+            group_name_col,
         }
 
         if not self.index.is_uncertainty_analysis:
@@ -177,6 +185,7 @@ class Uncertainty:
 
                     lower_val = pd.to_numeric(row[lower_col], errors="coerce")
                     upper_val = pd.to_numeric(row[upper_col], errors="coerce")
+                    group_name = row[group_name_col]
 
                     records.append(
                         {
@@ -186,7 +195,9 @@ class Uncertainty:
                             variable_name_col: variable_name,
                             Defaults.UncertaintySettings.LOWER_BOUND_KEY: lower_val,
                             Defaults.UncertaintySettings.UPPER_BOUND_KEY: upper_val,
+                            Defaults.UncertaintySettings.UNCERTAINTY_GROUP_NAME_KEY: group_name,
                             **coordinate_values,
+
                         }
                     )
 
