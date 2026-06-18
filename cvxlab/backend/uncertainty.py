@@ -23,23 +23,33 @@ from cvxlab.log_exc.logger import Logger
 
 class Uncertainty:
 
-    """Handle uncertainty metadata, sampling, and sample export.
+    """Manage data sampling and global sensitivity analysis workflows for 
+    uncertain model parameters.
 
-    This class provides the uncertainty-analysis layer of CVXLab. It identifies
-    uncertain parameters from exogenous data tables, validates their lower and
-    upper bounds, builds the sampling problem required by SALib, generates
-    sampled parameter values, and optionally exports the generated samples.
-
-
-    ASSAKRORFPPOF AGGIUNGERE ALTRE COSE CHE POI METTO RICORDARSIIIII
+    The class implements the uncertainty-analysis layer of CVXLab. It maps
+    row-level uncertain parameters data stored in SQLite tables to SALib format,
+    validates parameters' uncertain bounds and uncertainty metadata, constructs 
+    a Salib format sampling problems, generates sample matrices, injects sampled 
+    values into CVXPY parameters,collects scalar model outputs, and executes
+    results' global sensitivity analyses..
 
     Attributes:
-        sqltools (SQLManager): SQLite manager used to read model data tables.
-        index (Index): Model index containing variables, data tables, and
-            their metadata.
-        paths (Dict): Dictionary of model paths, including the model directory.
-    """
+        sqltools: SQLite manager used to read and update model data tables.
+        index: Model index containing data tables, variables, sets and scenario
+            metadata.
+        paths: Model paths, including the model directory and result folders.
+        logger: Child logger used for uncertainty-related validation and
+            execution messages.
 
+    Class Attributes:
+        SAMPLERS: Mapping between supported sampling-method names and SALib
+            sampling functions.
+        ANALYZERS: Mapping between supported GSA-method names and SALib
+            analyzer functions.
+        ANALYZER_REQUIRED_INPUTS: Positional inputs supplied internally to each
+            analyzer and therefore excluded from user-defined keyword
+            arguments.
+    """
     SAMPLERS: dict[str, Callable] = {
         Defaults.UncertaintySettings.SOBOL: sobol.sample,
         Defaults.UncertaintySettings.LATIN: latin.sample,
@@ -61,8 +71,15 @@ class Uncertainty:
                  paths: Dict,
                  logger: Logger
                  ):
-        """
-         SCRIVERE QUIII AAAAA RICORDATIIIIIAAAA
+        """Initialize the uncertainty-analysis manager.
+
+        Args:
+            sqltools: SQLite manager used to retrieve and update data-table values.
+            index: Model index containing uncertainty-enabled tables, variables,
+                sets and scenario information.
+            paths: Dictionary-like object containing model and result paths.
+            logger: Parent logger from which the uncertainty-specific child logger
+                is created.
         """
 
         self.sqltools = sqltools
@@ -231,6 +248,10 @@ class Uncertainty:
         Returns:
             A tuple containing the parameter mapping dataframe and the
             SALib-compatible problem dictionary.
+        Raises:
+            exc.SettingsError: If grouped sampling is enabled and one or more
+            parameters have no group name, or fewer than two distinct groups are
+            defined.
         """
 
         mapping_df = self.collect_uncertain_parameters()
@@ -514,6 +535,8 @@ class Uncertainty:
         Args:
             method (str): Sampling method name. Must be one of the keys in
                 ``SAMPLERS``.
+            problem: SALib problem dictionary containing parameter names, bounds and,
+                when enabled, uncertainty groups
             **kwargs: Keyword arguments passed to the selected SALib sampler.
 
         Returns:
@@ -534,6 +557,16 @@ class Uncertainty:
         sampler: Callable,
         kwargs: dict[str, Any],
     ) -> None:
+        """Validate user keyword arguments against a SALib sampler signature.
+
+        Args:
+            sampler: SALib sampling function to inspect, selected by user
+            kwargs: Method-specific sampling arguments, selected by user
+
+        Raises:
+            TypeError: If unsupported keyword arguments are provided or required
+                sampler arguments are missing.
+        """
         signature = inspect.signature(sampler)
         allowed_args = set(signature.parameters.keys()) - {"problem"}
 
@@ -572,6 +605,7 @@ class Uncertainty:
 
         Args:
             method (str): Sampling method name.
+            groups(bool): Whether grouped sampling is requested.
             kwargs (dict[str, Any]): Keyword arguments to validate.
 
         Raises:
@@ -927,7 +961,7 @@ class Uncertainty:
         return float(value_array[0])
 
     def get_uncertain_tables(self) -> list[str]:
-        """Return data tables containing at least one uncertain variable."""
+        """Return uncertainty-enabled tables containing uncertain database rows.."""
         allowed_var_types = Defaults.SymbolicDefinitions.VARIABLE_TYPES
 
         uncertain_tables = [
@@ -1067,6 +1101,19 @@ class Uncertainty:
         excluded_args: set[str],
         context: str,
     ) -> None:
+        """Validate user provided arguments against an analysis-function signature.
+
+            Args:
+                function: SALib analysis function (method) to inspect.
+                kwargs: User-supplied analyzer keyword arguments.
+                excluded_args: Function arguments provided internally by CVXLab and
+                    therefore not expected from the user.
+                context: Label used to construct validation error messages.
+
+            Raises:
+                TypeError: If unexpected arguments are supplied or mandatory analyzer
+                arguments are missing.
+        """
         signature = inspect.signature(function)
 
         allowed_args = set(signature.parameters.keys()) - excluded_args
@@ -1171,11 +1218,6 @@ class Uncertainty:
 
         method = method.lower()
 
-        # X = self._prepare_GSA_input_matrix(
-        #     problem=problem,
-        #     samples_df=samples_df,
-        # )
-
         targets = self._prepare_GSA_analysis_targets(
             samples_df=samples_df,
             uncertainty_measures_df=uncertainty_measures_df,
@@ -1252,8 +1294,27 @@ class Uncertainty:
         measures: list[str] | None = None,
         scenarios: list[str] | None = None,
     ) -> list[dict[str, Any]]:
-        """Prepare one output vector Y for each selected measure-scenario pair."""
+        """Build  GSA output vectors for selected measures and scenarios in SALib fridenly
+        format.
 
+        Sample and measure records are aligned by ``run_id``. Failed model runs and
+        non-finite measure values are removed independently for each
+        measure–scenario targe
+
+        Args:
+            samples_df: Input sample dataframe.
+            uncertainty_measures_df: Model-output dataframe collected across runs.
+            measures: Measures to include, or None for all available measures.
+            scenarios: Scenarios to include, or None for all available scenarios.
+
+        Returns:
+            list[dict[str, Any]]: Analysis targets containing the selected measure,
+            scenario, valid run identifiers and aligned output vector ``Y``.
+
+        Raises:
+            ValueError: If requested measures or scenarios are unavailable, or if no
+                valid output remains for a target.
+"""
         run_id_col = Defaults.UncertaintySettings.RUN_ID
         scenario_col = Defaults.UncertaintySettings.SCENARIO
 

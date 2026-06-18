@@ -1431,16 +1431,49 @@ class Model():
             keep_previous_iteration_db: bool = False,
             **kwargs: Any,
     ) -> None:
-        """Run uncertainty analysis over sampled uncertain input values.
+        """Execute the model for all generated uncertainty samples.
 
-        The method samples uncertain parameters, executes one model run per sampled
-        input vector, collects scalar uncertainty-measure outputs, and stores the
-        resulting dataframe in `self.uncertainty_measures`.
+        The method validates the uncertainty configuration, sapmples the data
+        according to user's selection, initializes the symbolic and numerical problem structures,
+        loads deterministic exogenous values, and solves the model for each set of
+        sampled data
 
-        If one or more scenario-runs are infeasible or unbounded, their uncertainty
-        measures are kept as NaN. These NaNs can then be dropped target-by-target
-        before GSA analysis.
-        """
+        Scalar variables marked as uncertainty measures are collected for every
+        successfully solved scenario. Failed scenario-runs are represented by NaN
+        measure records and their solver status is retained.
+
+        Generated samples and measures are stored respectively in
+        ``self.uncertainty_samples`` and ``self.uncertainty_measures``.
+
+        Args:
+            force_overwrite: Whether existing generated problem structures may be
+                overwritten.
+            integrated_problems: Whether linked sub-problems must be solved
+                iteratively.
+            convergence_monitoring: Whether convergence must be checked for integrated
+                problems.
+            solver: CVXPY solver name.
+            solver_verbose: Whether solver output must be displayed.
+            solver_settings: Solver-specific keyword arguments.
+            convergence_norm: Norm used to evaluate convergence.
+            convergence_tables_to_check: Tables included in convergence monitoring.
+            convergence_tables_to_skip: Tables excluded from convergence monitoring.
+            relative_tolerance: Relative convergence tolerance.
+            maximum_iterations: Maximum number of integrated-problem iterations.
+            keep_previous_iteration_db: Whether the database from the previous
+                iteration must be retained.
+            **kwargs: Additional arguments currently reserved for compatibility.
+
+        Raises:
+            ValueError: If uncertainty is disabled, sampling is not configured, or no
+                samples can be generated.
+            exc.SettingsError: If no scalar uncertainty measure is configured or
+                uncertain input data are inconsistent.
+
+        Notes:
+            Deterministic exogenous values are loaded once before the run loop.
+            Values from uncertainty-enabled tables are updated for every run.
+"""
 
         run_id_col = Defaults.UncertaintySettings.RUN_ID
 
@@ -1612,13 +1645,28 @@ class Model():
         method: Optional[str] = None,
         **analysis_kwargs: Any,
     ) -> pd.DataFrame:
-        """Run GSA analysis on the latest stored uncertainty-analysis run.
+        """Compute global sensitivity indices from the latest uncertainty run.
 
-        The method uses samples and uncertainty-measure outputs produced by
-        `run_uncertainty_analysis()`. The user is therefore not required to pass
-        the run results manually.
+        The method analyzes the samples stored in ``self.uncertainty_samples`` and
+        the model outputs stored in ``self.uncertainty_measures`` using the
+        configuration defined by :meth:`GSA_settings`.
+
+        Results are converted to a long-format dataframe, optionally enriched with
+        parameter metadata, stored in ``self.gsa_results`` and optionally exported.
+
+        Args:
+            method: Deprecated or optional analyzer override. The effective method is
+                currently taken from ``self._GSA_settings.method``.
+            **analysis_kwargs: Analyzer arguments that override values stored in the
+                GSA configuration.
+
+        Returns:
+            pd.DataFrame: global sensitivity-analysis results.
+
+        Raises:
+            ValueError: If uncertainty is disabled or required sampling, measure or
+        GSA configuration data are unavailable.
         """
-
         if not self.is_uncertainty_analysis:
             raise ValueError(
                 "Uncertainty analysis is not enabled. "
