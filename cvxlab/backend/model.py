@@ -45,6 +45,7 @@ class sampling_settings_config:
     """
     method: str
     method_kwargs: dict[str, Any] = field(default_factory=dict)
+    groups: bool = False
     save_samples: bool = True
     save_measures: bool = True
     file_format: str = "xlsx"
@@ -1078,13 +1079,23 @@ class Model():
     def _sample_data(
         self,
         method: str,
+        groups: bool,
         **kwargs: Any,
     ) -> pd.DataFrame:
 
-        mapping_df, sample_problem = self.core.uncertainty.create_sampling_problem()
+        mapping_df, sample_problem = (
+            self.core.uncertainty.create_sampling_problem(
+                groups=groups
+            )
+        )
 
-        samples_df = self.core.uncertainty.sample_data(
-            method=method, problem=sample_problem, **kwargs)
+        samples_df = (
+            self.core.uncertainty.sample_data(
+                method=method,
+                problem=sample_problem,
+                **kwargs
+            )
+        )
 
         self.sampling_problem = sample_problem
         self.uncertainty_samples = samples_df
@@ -1095,6 +1106,7 @@ class Model():
     def sampling_settings(
         self,
         method: str,
+        groups: bool = False,
         save_samples: bool = True,
         save_measures: bool = True,
         file_format: str = "xlsx",
@@ -1123,10 +1135,12 @@ class Model():
 
         self.core.uncertainty.validate_sampling_config(
             method=method,
+            groups=groups,
             kwargs=method_kwargs)
 
         self._sampling_settings = sampling_settings_config(
             method=method,
+            groups=groups,
             method_kwargs=method_kwargs,
             save_samples=save_samples,
             save_measures=save_measures,
@@ -1231,6 +1245,7 @@ class Model():
 
         self._sample_data(
             method=uncertainty_cfg.method,
+            groups=uncertainty_cfg.groups,
             **uncertainty_cfg.method_kwargs,
         )
 
