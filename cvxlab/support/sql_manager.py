@@ -755,6 +755,14 @@ class SQLManager:
         ub_field = Defaults.UncertaintySettings.UPPER_BOUND_FIELD[
             Defaults.UncertaintySettings.UPPER_BOUND_KEY
         ][0]
+        is_uncertain_field = Defaults.UncertaintySettings.IS_UNCERTAIN_FIELD[
+            Defaults.UncertaintySettings.IS_UNCERTAIN_KEY
+        ][0]
+        group_name_field = (
+            Defaults.UncertaintySettings.UNCERTAINTY_GROUP_NAME_FIELD[
+                Defaults.UncertaintySettings.UNCERTAINTY_GROUP_NAME_KEY
+            ][0]
+        )
         table_existing_entries = self.count_table_data_entries(table_name)
         df_existing = self.table_to_dataframe(table_name)
 
@@ -831,7 +839,8 @@ class SQLManager:
                 id_field, values_field]
 
             if self.is_uncertainty_enabled:
-                non_coordinate_cols.extend([ub_field, lb_field])
+                non_coordinate_cols.extend(
+                    [ub_field, lb_field, is_uncertain_field, group_name_field])
 
             if other_coordinate_cols:
                 non_coordinate_cols.extend(other_coordinate_cols)

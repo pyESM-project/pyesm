@@ -557,13 +557,13 @@ class Database:
                     self.sqltools.add_table_column(
                         table_name=table_key,
                         column_name=(
-                            Defaults.UncertaintySettings.GROUP_NAME_FIELD[
-                                Defaults.UncertaintySettings.GROUP_NAME_KEY
+                            Defaults.UncertaintySettings.UNCERTAINTY_GROUP_NAME_FIELD[
+                                Defaults.UncertaintySettings.UNCERTAINTY_GROUP_NAME_KEY
                             ][0]
                         ),
                         column_type=(
-                            Defaults.UncertaintySettings.GROUP_NAME_FIELD[
-                                Defaults.UncertaintySettings.GROUP_NAME_KEY
+                            Defaults.UncertaintySettings.UNCERTAINTY_GROUP_NAME_FIELD[
+                                Defaults.UncertaintySettings.UNCERTAINTY_GROUP_NAME_KEY
                             ][1]
                         ),
                     )
@@ -733,8 +733,13 @@ class Database:
             is_uncertain_field = Defaults.UncertaintySettings.IS_UNCERTAIN_FIELD[
                 Defaults.UncertaintySettings.IS_UNCERTAIN_KEY
             ][0]
-
-            other_coordinate_cols = [lb_field, ub_field, is_uncertain_field]
+            group_name_field = (
+                Defaults.UncertaintySettings.UNCERTAINTY_GROUP_NAME_FIELD[
+                    Defaults.UncertaintySettings.UNCERTAINTY_GROUP_NAME_KEY
+                ][0]
+            )
+            other_coordinate_cols = [lb_field, ub_field,
+                                     is_uncertain_field, group_name_field]
 
         if table_key_list == []:
             table_key_list = self.index.data.keys()
