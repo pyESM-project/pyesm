@@ -1572,140 +1572,233 @@ class Model():
 
         self.gsa_results = analysis_df
 
-    # def model_single_run(
-    #     self,
-    #     run_id: int,
-    #     samples_df: Optional[pd.DataFrame] = None,
-    #     force_overwrite: bool = False,
-    #     integrated_problems: bool = False,
-    #     convergence_monitoring: bool = True,
-    #     solver: Optional[str] = None,
-    #     solver_verbose: bool = False,
-    #     solver_settings: Optional[dict[str, Any]] = None,
-    #     convergence_norm: Defaults.LiteralTypes.NormType = "l2",
-    #     convergence_tables_to_check: (
-    #         Defaults.LiteralTypes.ConvergenceTables | List[str]
-    #     ) = "all_endogenous",
-    #     convergence_tables_to_skip: Optional[List[str]] = None,
-    #     relative_tolerance: Optional[float] = None,
-    #     maximum_iterations: Optional[int] = None,
-    #     keep_previous_iteration_db: bool = False,
-    #     db_name: Optional[str] = None,
-    # ) -> Path:
+    def single_run(
+        self,
+        run_id: int,
+        samples_df: Optional[pd.DataFrame] = None,
+        force_overwrite: bool = False,
+        integrated_problems: bool = False,
+        convergence_monitoring: bool = True,
+        solver: Optional[str] = None,
+        solver_verbose: bool = False,
+        solver_settings: Optional[dict[str, Any]] = None,
+        convergence_norm: Defaults.LiteralTypes.NormType = "l2",
+        convergence_tables_to_check: (
+            Defaults.LiteralTypes.ConvergenceTables | List[str]
+        ) = "all_endogenous",
+        convergence_tables_to_skip: Optional[List[str]] = None,
+        relative_tolerance: Optional[float] = None,
+        maximum_iterations: Optional[int] = None,
+        keep_previous_iteration_db: bool = False,
+        db_name: Optional[str] = None,
+    ) -> Path:
+        """Run the model for one uncertainty sample and save its results to a DB.
 
-    #     if not self.is_uncertainty_analysis:
-    #         raise ValueError(
-    #             "Uncertainty analysis is not enabled. "
-    #             f"Create the model with "
-    #             f"{Defaults.Labels.UNCERTAINTY_SETTING_KEY}=True."
-    #         )
+        The selected sample is loaded into the uncertain CVXPY parameters, the
+        corresponding numerical problem is generated and solved, and the sampled
+        inputs and solved endogenous results are written to the model database.
 
-    #     if samples_df is None:
-    #         samples_df = self.uncertainty_samples
+        A copy of the resulting database is then saved in the results directory.
 
-    #     if samples_df is None:
-    #         raise ValueError(
-    #             "No uncertainty samples found. "
-    #             "Pass samples_df explicitly or run the uncertainty sampling first."
-    #         )
+        Args:
+            run_id: Identifier of the uncertainty sample to run.
+            samples_df: Dataframe containing uncertainty samples. If None,
+                ``self.uncertainty_samples`` is used.
+            force_overwrite: Whether existing numerical problems and output files
+                may be overwritten.
+            integrated_problems: Whether linked sub-problems must be solved
+                iteratively.
+            convergence_monitoring: Whether convergence must be monitored for
+                integrated problems.
+            solver: CVXPY solver name.
+            solver_verbose: Whether solver output must be printed.
+            solver_settings: Additional solver-specific options.
+            convergence_norm: Norm used for convergence monitoring.
+            convergence_tables_to_check: Tables used to assess convergence.
+            convergence_tables_to_skip: Tables excluded from convergence checks.
+            relative_tolerance: Relative convergence tolerance.
+            maximum_iterations: Maximum number of integrated-problem iterations.
+            keep_previous_iteration_db: Whether the previous iteration database
+                must be retained.
+            db_name: Name of the run-specific database. If None, the database is
+                named ``database_run_<run_id>.db``.
 
-    #     run_id_col = Defaults.UncertaintySettings.RUN_ID
+        Raises:
+            ValueError: If uncertainty is disabled, samples are unavailable, or
+                the selected run_id does not exist.
+            RuntimeError: If no scenario reaches an optimal solution.
+            FileExistsError: If the destination database already exists and
+                ``force_overwrite`` is False.
+        """
 
-    #     if run_id_col not in samples_df.columns:
-    #         raise ValueError(
-    #             f"Samples dataframe must include column '{run_id_col}'."
-    #         )
+        if not self.is_uncertainty_analysis:
+            raise ValueError(
+                "Uncertainty analysis is not enabled. "
+                f"Create the model with "
+                f"{Defaults.Labels.UNCERTAINTY_SETTING_KEY}=True."
+            )
 
-    #     available_run_ids = set(samples_df[run_id_col].tolist())
+        if isinstance(run_id, bool) or not isinstance(run_id, int):
+            raise TypeError(
+                f"'run_id' must be an integer. Received: {type(run_id).__name__}."
+            )
 
-    #     if run_id not in available_run_ids:
-    #         raise ValueError(
-    #             f"Invalid run_id '{run_id}'. "
-    #             f"Available run_id values: {sorted(available_run_ids)}."
-    #         )
+        # 1. Resolve and validate the samples dataframe.
+        if samples_df is None:
+            samples_df = self.uncertainty_samples
 
-    #     self.core.load_and_validate_symbolic_problem(
-    #         force_overwrite=force_overwrite,
-    #     )
+        if samples_df is None:
+            raise ValueError(
+                "No uncertainty samples are available, generate the samples first."
+            )
 
-    #     self.core.check_exogenous_data_coherence(is_uncertain=True)
+        run_id_col = Defaults.UncertaintySettings.RUN_ID
 
-    #     self.core.initialize_problems_variables()
+        if run_id_col not in samples_df.columns:
+            raise ValueError(
+                f"run '{run_id_col}' not available, available run ids: '{self.uncertainty_samples[run_id_col].values.tolist()}'."
+            )
 
-    #     fully_deterministic_tables = (
-    #         self.core.uncertainty.get_fully_deterministic_tables_list()
-    #     )
+        matching_rows = samples_df.loc[
+            samples_df[run_id_col] == run_id
+        ]
 
-    #     uncertainty_hybrid_tables = (
-    #         self.core.uncertainty.get_uncertainty_hybrid_tables_list()
-    #     )
+        # 2. Initialize the symbolic and CVXPY problem structures.
+        self._initialize_problem_structure(
+            force_overwrite=force_overwrite,
+        )
 
-    #     fully_deterministic_vars = self.core.uncertainty.get_vars_in_tables_list(
-    #         fully_deterministic_tables
-    #     )
+        deterministic_vars, uncertain_vars = self._sort_variables()
 
-    #     uncertainty_hybrid_vars = self.core.uncertainty.get_vars_in_tables_list(
-    #         uncertainty_hybrid_tables
-    #     )
+        # 3. Load deterministic and sampled exogenous values.
+        self.core.data_to_cvxpy_exogenous_vars(
+            allow_none_values=False,
+            var_list_to_update=deterministic_vars,
+        )
 
-    #     self.core.data_to_cvxpy_exogenous_vars(
-    #         allow_none_values=False,
-    #         var_list_to_update=fully_deterministic_vars,
-    #     )
+        self.core.data_to_cvxpy_exogenous_vars(
+            allow_none_values=False,
+            var_list_to_update=uncertain_vars,
+            is_hybrid=True,
+            samples_df=samples_df,
+            run_id=run_id,
+        )
 
-    #     self.core.data_to_cvxpy_exogenous_vars(
-    #         allow_none_values=False,
-    #         var_list_to_update=uncertainty_hybrid_vars,
-    #         is_hybrid=True,
-    #         samples_df=samples_df,
-    #         run_id=run_id,
-    #     )
+        self.logger.info(
+            f"Single uncertainty run | Running model for run_id={run_id}."
+        )
 
-    #     self.core.logger.info(
-    #         f"Running model for uncertainty-analysis run {run_id}."
-    #     )
+        # 4. Generate and solve the selected numerical problem.
+        self.core.problem.generate_numerical_problems(
+            force_overwrite=True,
+        )
 
-    #     self.core.problem.generate_numerical_problems(force_overwrite=True)
+        self.run_model(
+            force_overwrite=force_overwrite,
+            integrated_problems=integrated_problems,
+            convergence_monitoring=convergence_monitoring,
+            solver=solver,
+            solver_verbose=solver_verbose,
+            solver_settings=solver_settings,
+            convergence_norm=convergence_norm,
+            convergence_tables_to_check=convergence_tables_to_check,
+            convergence_tables_to_skip=convergence_tables_to_skip,
+            relative_tolerance=relative_tolerance,
+            maximum_iterations=maximum_iterations,
+            keep_previous_iteration_db=keep_previous_iteration_db,
+        )
 
-    #     self.run_model(
-    #         force_overwrite=force_overwrite,
-    #         integrated_problems=integrated_problems,
-    #         convergence_monitoring=convergence_monitoring,
-    #         solver=solver,
-    #         solver_verbose=solver_verbose,
-    #         solver_settings=solver_settings,
-    #         convergence_norm=convergence_norm,
-    #         convergence_tables_to_check=convergence_tables_to_check,
-    #         convergence_tables_to_skip=convergence_tables_to_skip,
-    #         relative_tolerance=relative_tolerance,
-    #         maximum_iterations=maximum_iterations,
-    #         keep_previous_iteration_db=keep_previous_iteration_db,
-    #     )
+        # 5. Identify which scenarios were successfully solved.
+        statuses_by_scenario = (
+            self.core.get_current_problem_status_by_scenario()
+        )
 
-    #     self.load_results_to_database(
-    #         force_overwrite=True,
-    #         suppress_warnings=True,
-    #     )
+        solved_scenarios = [
+            scenario_key
+            for scenario_key, status in statuses_by_scenario.items()
+            if status == "optimal"
+        ]
 
-    #     if db_name is None:
-    #         db_name = f"database_id{run_id}.db"
+        failed_scenarios = {
+            scenario_key: status
+            for scenario_key, status in statuses_by_scenario.items()
+            if status != "optimal"
+        }
 
-    #     if not db_name.endswith(".db"):
-    #         db_name = f"{db_name}.db"
+        if not solved_scenarios:
+            raise RuntimeError(
+                f"Single uncertainty run failed | run_id={run_id}. "
+                f"Problem statuses: {statuses_by_scenario}. "
+                "No result database was saved."
+            )
 
-    #     source_db_path = self.paths["sqlite_database"]
-    #     destination_db_path = self.paths["model_dir"] / db_name
+        # 6. Write the sampled uncertain inputs to the database.
+        self.core.cvxpy_uncertain_exogenous_data_to_database(
+            force_overwrite=True,
+            suppress_warnings=True,
+        )
 
-    #     if destination_db_path.exists() and not force_overwrite:
-    #         raise FileExistsError(
-    #             f"Database file '{destination_db_path.name}' already exists. "
-    #             "Set force_overwrite=True to overwrite it."
-    #         )
+        # 7. Write only successfully solved endogenous scenarios.
+        #
+        # For a model without split scenarios, the status key is None and
+        # scenarios_idx must remain None.
+        has_split_scenarios = bool(
+            self.core.index.sets_split_problem_dict
+        )
 
-    #     shutil.copy2(source_db_path, destination_db_path)
+        scenarios_idx = (
+            solved_scenarios
+            if has_split_scenarios
+            else None
+        )
 
-    #     self.logger.info(
-    #         f"Run-specific database saved as '{destination_db_path.name}'."
-    #     )
+        self.load_results_to_database(
+            scenarios_idx=scenarios_idx,
+            force_overwrite=True,
+            suppress_warnings=True,
+        )
 
-    #     return destination_db_path
+        # 8. Define the destination database path.
+        results_dir = (
+            self.paths["model_dir"]
+            / Defaults.UncertaintySettings.RESULTS_DIR
+        )
+        results_dir.mkdir(parents=True, exist_ok=True)
+
+        if db_name is None:
+            db_name = f"database_run_{run_id}.db"
+
+        db_name = Path(db_name).name
+
+        if not db_name.lower().endswith(".db"):
+            db_name = f"{db_name}.db"
+
+        source_db_path = Path(self.paths["sqlite_database"])
+        destination_db_path = results_dir / db_name
+
+        if destination_db_path.exists():
+            if not force_overwrite:
+                raise FileExistsError(
+                    f"Database '{destination_db_path}' already exists. "
+                    "Set force_overwrite=True to overwrite it."
+                )
+
+            destination_db_path.unlink()
+
+        shutil.copy2(
+            source_db_path,
+            destination_db_path,
+        )
+
+        self.logger.info(
+            "Single uncertainty run | "
+            f"Database saved to '{destination_db_path}'."
+        )
+
+        if failed_scenarios:
+            self.logger.warning(
+                "Single uncertainty run | "
+                f"run_id={run_id} was only partially solved. "
+                f"Failed scenarios: {failed_scenarios}. "
+                "Only optimal scenarios were exported."
+            )
