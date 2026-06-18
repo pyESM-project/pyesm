@@ -1448,9 +1448,9 @@ class Model():
 
         # 7. Final warning on failed scenario-runs.
         if failed_runs_report:
-            self._warn_failed_uncertainty_runs(failed_runs_report)
+            self._warn_failed_model_runs(failed_runs_report)
 
-    def _warn_failed_uncertainty_runs(
+    def _warn_failed_model_runs(
         self,
         failed_runs_report: dict[int, dict],
     ) -> None:
@@ -1465,14 +1465,14 @@ class Model():
             failed_run_ids = list(failed_runs_report.keys())
 
             self.logger.warning(
-                "Uncertainty analysis | Infeasible runs detected. "
+                "Uncertainty analysis | Failde runs detected. "
                 f"Failed run_id values: {failed_run_ids}."
             )
 
             return
 
         warning_lines = [
-            "Uncertainty analysis | Infeasible scenario-runs detected."
+            "Uncertainty analysis | Failed scenario-runs detected."
         ]
 
         for run_id, failed_scenarios in failed_runs_report.items():
