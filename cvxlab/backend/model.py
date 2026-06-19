@@ -48,6 +48,7 @@ class sampling_settings_config:
     groups: bool = False
     save_samples: bool = True
     save_measures: bool = True
+    temp_save: bool = True
     file_format: str = "xlsx"
 
 
@@ -1145,6 +1146,7 @@ class Model():
         groups: bool = False,
         save_samples: bool = True,
         save_measures: bool = True,
+        temp_save: bool = True,
         file_format: str = "xlsx",
         **method_kwargs: Any,
     ) -> sampling_settings_config:
@@ -1158,9 +1160,11 @@ class Model():
             groups(Optional[bool]): If True allows to perform sampling by data groups, useful
                 in case of many uncertain parameters to decrease computational cost. Defaults to
                 False
-            save_samples: Whether the generated sample dataframe must be exported.
-            save_measures: Whether uncertainty-measure outputs must be exported
+            save_samples(Optional[bool]): Whether the generated sample dataframe must be exported.
+            save_measures(Optional[bool]): Whether uncertainty-measure outputs must be exported
                 during and after the model runs.
+            temp_save (Optional[bool]): If True, save the cumulative uncertainty-measures dataframe
+                contains run 0; after run_id 1 it contains runs 0 and 1.
             file_format: File format used for exported samples and measures.
                 Supported formats are defined in
                 ``Defaults.UncertaintySettings.AVAILABLE_EXPORT_FORMATS``.
@@ -1197,6 +1201,12 @@ class Model():
                 "'save_measures=False'. Measures will not be saved."
             )
 
+        if temp_save and not save_samples:
+            raise ValueError(
+                "Uncertainty analysis | 'temp_save=True' requires "
+                "'save_measures=True' in sampling_settings(...)."
+            )
+
         method = method.lower()
 
         self.core.uncertainty.validate_sampling_config(
@@ -1210,10 +1220,9 @@ class Model():
             method_kwargs=method_kwargs,
             save_samples=save_samples,
             save_measures=save_measures,
+            temp_save=temp_save,
             file_format=file_format,
         )
-
-        # return self._sampling_settings
 
     def GSA_settings(
         self,
@@ -1575,6 +1584,21 @@ class Model():
                 uncertainty_measure_records.append(failed_records)
 
                 failed_runs_report[run_id] = failed_scenarios
+
+            if uncertainty_cfg.temp_save and uncertainty_measure_records:
+                uncertainty_measures_temp_df = pd.concat(
+                    uncertainty_measure_records,
+                    ignore_index=True,
+                )
+
+                self.uncertainty_measures = uncertainty_measures_temp_df
+
+                self.core.uncertainty.save_dataframe(
+                    dataframe=uncertainty_measures_temp_df,
+                    file_name=Defaults.UncertaintySettings.UNCERTAINTY_MEASURES_TEMP_FILE_NAME,
+                    folder_name=Defaults.UncertaintySettings.RESULTS_DIR,
+                    file_format=uncertainty_cfg.file_format,
+                )
 
         uncertainty_measures_df = pd.concat(
             uncertainty_measure_records,

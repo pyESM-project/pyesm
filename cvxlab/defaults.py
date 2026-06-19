@@ -243,6 +243,8 @@ class Defaults:
 
         UNCERTAINTY_SAMPLES_FILE_NAME = "uncertainty_samples"
         UNCERTAINTY_MEASURES_FILE_NAME = "uncertainty_measures"
+        UNCERTAINTY_MEASURES_TEMP_FILE_NAME = "uncertainty_measures_temp"
+
         GSA_FILE_NAME = "GSA_analysis"
 
         STATUS = "status"
