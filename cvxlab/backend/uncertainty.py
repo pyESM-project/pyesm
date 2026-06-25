@@ -87,7 +87,7 @@ class Uncertainty:
         self.paths = paths
         self.logger = logger.get_child(__name__)
 
-    def collect_uncertain_parameters(self) -> pd.DataFrame:
+    def collect_uncertain_parameters_old(self) -> pd.DataFrame:
         """Collect uncertain parameters from uncertainty-enabled exogenous tables.
 
         Returns a mapping table with one row per uncertain sampled parameter.
@@ -235,6 +235,191 @@ class Uncertainty:
         )
 
         return mapping_df
+
+    def collect_uncertain_parameters(self) -> pd.DataFrame:
+        """Collect uncertain parameters from uncertainty-enabled exogenous tables.
+
+        The uncertainty definition is row-level. Each uncertain parameter is
+        identified by the pair (table_name, id), where ``id`` is the row identifier
+        in the source SQLite data table.
+
+        Returns:
+            pd.DataFrame:
+                Mapping table with one row per uncertain sampled parameter. The
+                dataframe includes the SALib parameter name, source table, row id,
+                lower and upper bounds, optional uncertainty group, and all
+                coordinate columns of the source table.
+
+        Raises:
+            exc.SettingsError:
+                If required uncertainty columns are missing, if uncertain rows have
+                invalid bounds, or if duplicate row ids are found inside an
+                uncertainty-enabled table.
+        """
+
+        records: list[dict[str, Any]] = []
+
+        id_col = Defaults.Labels.ID_FIELD["id"][0]
+        values_col = Defaults.Labels.VALUES_FIELD["values"][0]
+
+        is_uncertain_col = (
+            Defaults.UncertaintySettings.IS_UNCERTAIN_FIELD[
+                Defaults.UncertaintySettings.IS_UNCERTAIN_KEY
+            ][0]
+        )
+
+        lower_col = (
+            Defaults.UncertaintySettings.LOWER_BOUND_FIELD[
+                Defaults.UncertaintySettings.LOWER_BOUND_KEY
+            ][0]
+        )
+
+        upper_col = (
+            Defaults.UncertaintySettings.UPPER_BOUND_FIELD[
+                Defaults.UncertaintySettings.UPPER_BOUND_KEY
+            ][0]
+        )
+
+        group_name_col = (
+            Defaults.UncertaintySettings.UNCERTAINTY_GROUP_NAME_FIELD[
+                Defaults.UncertaintySettings.UNCERTAINTY_GROUP_NAME_KEY
+            ][0]
+        )
+
+        parameter_name_col = Defaults.UncertaintySettings.PARAMETER_NAME
+        table_name_col = Defaults.Labels.TABLE_NAME
+
+        lower_bound_key = Defaults.UncertaintySettings.LOWER_BOUND_KEY
+        upper_bound_key = Defaults.UncertaintySettings.UPPER_BOUND_KEY
+        group_name_key = (
+            Defaults.UncertaintySettings.UNCERTAINTY_GROUP_NAME_KEY
+        )
+
+        technical_columns = {
+            id_col,
+            values_col,
+            is_uncertain_col,
+            lower_col,
+            upper_col,
+            group_name_col,
+        }
+
+        if not self.index.is_uncertainty_analysis:
+            return pd.DataFrame()
+
+        uncertainty_tables = {
+            table_key: table
+            for table_key, table in self.index.data.items()
+            if table.uncertainty_enabled
+        }
+
+        if not uncertainty_tables:
+            self.logger.warning(
+                "Uncertainty analysis is enabled, but no data table has "
+                "'uncertainty_enabled=True'."
+            )
+            return pd.DataFrame()
+
+        required_columns = {
+            id_col,
+            is_uncertain_col,
+            lower_col,
+            upper_col,
+            group_name_col,
+        }
+
+        with db_handler(self.sqltools):
+
+            for table_name, table in uncertainty_tables.items():
+
+                df = self.sqltools.table_to_dataframe(table_name=table_name)
+
+                missing_columns = required_columns.difference(df.columns)
+                if missing_columns:
+                    raise exc.SettingsError(
+                        "Uncertainty parameter collection failed | "
+                        f"Table '{table_name}' is uncertainty-enabled but is "
+                        f"missing required columns: {sorted(missing_columns)}."
+                    )
+
+                if df[id_col].duplicated().any():
+                    duplicated_ids = (
+                        df.loc[df[id_col].duplicated(), id_col]
+                        .dropna()
+                        .tolist()
+                    )
+                    raise exc.SettingsError(
+                        "Uncertainty parameter collection failed | "
+                        f"Table '{table_name}' contains duplicated ids: "
+                        f"{duplicated_ids}."
+                    )
+
+                is_uncertain_mask = (
+                    df[is_uncertain_col]
+                    .astype(str)
+                    .str.strip()
+                    .str.lower()
+                    .isin(["true"])
+                )
+
+                uncertain_df = df.loc[is_uncertain_mask].copy()
+
+                if uncertain_df.empty:
+                    continue
+
+                coordinate_columns = [
+                    column
+                    for column in df.columns
+                    if column not in technical_columns
+                ]
+
+                for _, row in uncertain_df.iterrows():
+
+                    row_id = row[id_col]
+
+                    lower_val = pd.to_numeric(row[lower_col], errors="coerce")
+                    upper_val = pd.to_numeric(row[upper_col], errors="coerce")
+
+                    if pd.isna(lower_val) or pd.isna(upper_val):
+                        raise exc.SettingsError(
+                            "Uncertainty parameter collection failed | "
+                            f"Table '{table_name}', id '{row_id}' is marked as "
+                            "uncertain but has missing or non-numeric bounds. "
+                            f"lower_bound='{row[lower_col]}', "
+                            f"upper_bound='{row[upper_col]}'."
+                        )
+
+                    if lower_val > upper_val:
+                        raise exc.SettingsError(
+                            "Uncertainty parameter collection failed | "
+                            f"Table '{table_name}', id '{row_id}' has invalid "
+                            f"bounds: lower_bound={lower_val} > "
+                            f"upper_bound={upper_val}."
+                        )
+
+                    coordinate_values = {
+                        column: row[column]
+                        for column in coordinate_columns
+                    }
+
+                    group_name = row[group_name_col]
+
+                    records.append(
+                        {
+                            parameter_name_col: self._build_parameter_name(
+                                table_name=table_name,
+                                row_id=row_id,
+                            ),
+                            table_name_col: table_name,
+                            id_col: row_id,
+                            lower_bound_key: lower_val,
+                            upper_bound_key: upper_val,
+                            group_name_key: group_name,
+                            **coordinate_values,
+                        }
+                    )
+
+        return pd.DataFrame(records)
 
     def create_sampling_problem(
         self,
