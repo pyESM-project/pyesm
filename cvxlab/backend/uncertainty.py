@@ -87,155 +87,6 @@ class Uncertainty:
         self.paths = paths
         self.logger = logger.get_child(__name__)
 
-    def collect_uncertain_parameters_old(self) -> pd.DataFrame:
-        """Collect uncertain parameters from uncertainty-enabled exogenous tables.
-
-        Returns a mapping table with one row per uncertain sampled parameter.
-        The table includes the SALib parameter name, source table, row id,
-        variable name, bounds, and one column per coordinate.
-        """
-
-        records: list[dict[str, Any]] = []
-
-        id_col = Defaults.Labels.ID_FIELD["id"][0]
-        values_col = Defaults.Labels.VALUES_FIELD["values"][0]
-
-        is_uncertain_col = Defaults.UncertaintySettings.IS_UNCERTAIN_FIELD[
-            Defaults.UncertaintySettings.IS_UNCERTAIN_KEY
-        ][0]
-        lower_col = Defaults.UncertaintySettings.LOWER_BOUND_FIELD[
-            Defaults.UncertaintySettings.LOWER_BOUND_KEY
-        ][0]
-        upper_col = Defaults.UncertaintySettings.UPPER_BOUND_FIELD[
-            Defaults.UncertaintySettings.UPPER_BOUND_KEY
-        ][0]
-
-        group_name_col = (
-            Defaults.UncertaintySettings.UNCERTAINTY_GROUP_NAME_FIELD[
-                Defaults.UncertaintySettings.UNCERTAINTY_GROUP_NAME_KEY
-            ][0]
-        )
-
-        parameter_name_col = Defaults.UncertaintySettings.PARAMETER_NAME
-        table_name_col = Defaults.Labels.TABLE_NAME
-        variable_name_col = Defaults.Labels.VARIABLE_NAME
-
-        technical_columns = {
-            id_col,
-            values_col,
-            is_uncertain_col,
-            lower_col,
-            upper_col,
-            group_name_col,
-        }
-
-        if not self.index.is_uncertainty_analysis:
-            return pd.DataFrame()
-
-        uncertainty_tables = {
-            table_key: table
-            for table_key, table in self.index.data.items()
-            if table.uncertainty_enabled
-        }
-
-        if not uncertainty_tables:
-            self.logger.warning(
-                "Uncertainty analysis is enabled, but no data table has "
-                "'uncertainty_enabled=True'."
-            )
-            return pd.DataFrame()
-
-        with db_handler(self.sqltools):
-
-            for table_name, table in uncertainty_tables.items():
-                df = self.sqltools.table_to_dataframe(table_name=table_name)
-
-                uncertain_df = df[
-                    df[is_uncertain_col].astype(str).str.lower().eq("true")
-                ]
-
-                coordinate_columns = [
-                    column
-                    for column in df.columns
-                    if column not in technical_columns
-                ]
-
-                var_keys = [
-                    var_key
-                    for var_key, variable in self.index.variables.items()
-                    if variable.related_table == table_name
-                ]
-
-                for _, row in uncertain_df.iterrows():
-
-                    row_id = row[id_col]
-                    matched_var_keys = []
-
-                    for var_key in var_keys:
-
-                        variable = self.index.variables[var_key]
-
-                        matches_variable = True
-
-                        for header, allowed_values in variable.all_coordinates_w_headers.items():
-                            if row[header] not in allowed_values:
-                                matches_variable = False
-                                break
-
-                        if matches_variable:
-                            matched_var_keys.append(var_key)
-
-                    if len(matched_var_keys) != 1:
-                        raise exc.OperationalError(
-                            "Uncertain-parameter mapping failed | "
-                            f"Table '{table_name}', id '{row_id}' matches "
-                            f"{len(matched_var_keys)} uncertain variables: "
-                            f"{matched_var_keys}. Expected exactly one."
-                        )
-
-                    variable_name = matched_var_keys[0]
-
-                    coordinate_values = {
-                        column: row[column]
-                        for column in coordinate_columns
-                    }
-
-                    lower_val = pd.to_numeric(row[lower_col], errors="coerce")
-                    upper_val = pd.to_numeric(row[upper_col], errors="coerce")
-                    group_name = row[group_name_col]
-
-                    records.append(
-                        {
-                            parameter_name_col: self._build_parameter_name(
-                                table_name=table_name,
-                                row_id=row_id,
-                            ),
-                            table_name_col: table_name,
-                            id_col: row_id,
-                            variable_name_col: variable_name,
-                            Defaults.UncertaintySettings.LOWER_BOUND_KEY: lower_val,
-                            Defaults.UncertaintySettings.UPPER_BOUND_KEY: upper_val,
-                            Defaults.UncertaintySettings.UNCERTAINTY_GROUP_NAME_KEY: group_name,
-                            **coordinate_values,
-
-                        }
-                    )
-
-            return pd.DataFrame(records)
-
-        mapping_df = pd.DataFrame(
-            records,
-            columns=[
-                parameter_name_col,
-                table_name_col,
-                "id",
-                Defaults.UncertaintySettings.LOWER_BOUND_KEY,
-                Defaults.UncertaintySettings.UPPER_BOUND_KEY,
-            ],
-        )
-
-        return mapping_df
-
     def collect_uncertain_parameters(self) -> pd.DataFrame:
         """Collect uncertain parameters from uncertainty-enabled exogenous tables.
 
@@ -1036,8 +887,8 @@ class Uncertainty:
         if isinstance(scenario_coordinates, list):
             return " | ".join(str(item) for item in scenario_coordinates)
 
-            return scenario_coordinates
-
+        return scenario_coordinates
+    
     def collect_uncertainty_measures_for_run(
         self,
         run_id: int,
@@ -1045,8 +896,10 @@ class Uncertainty:
     ) -> pd.DataFrame:
         """Collect scalar uncertainty-measure values after one solved uncertainty run.
 
-        If `scenarios_to_collect` is provided, collect only those scenario keys.
-        This avoids extracting values from infeasible scenarios.
+        If the model has split scenarios and ``scenarios_to_collect`` is provided,
+        collect only those scenario keys. For non-split models, scenario filtering is
+        skipped because the single problem may be represented either as ``None`` or
+        as ``0`` in different internal dataframes.
         """
 
         cvxpy_var_header = Defaults.Labels.CVXPY_VAR
@@ -1054,13 +907,20 @@ class Uncertainty:
 
         run_id_col = Defaults.UncertaintySettings.RUN_ID
         scenario_col = Defaults.UncertaintySettings.SCENARIO
-        status_col = Defaults.UncertaintySettings.STATUS
+
+        status_col = getattr(
+            Defaults.UncertaintySettings,
+            "STATUS",
+            Defaults.Labels.PROBLEM_STATUS,
+        )
 
         uncertainty_measure_vars = self.get_uncertainty_measure_vars_list()
 
         records = {}
+        has_split_scenarios = bool(self.index.sets_split_problem_dict)
 
         for var_key in uncertainty_measure_vars:
+
             variable = self.index.variables[var_key]
 
             variable_data_by_problem = self._normalize_variable_data_by_problem(
@@ -1069,7 +929,11 @@ class Uncertainty:
 
             for _, variable_data in variable_data_by_problem.items():
 
+                if variable_data is None or variable_data.empty:
+                    continue
+
                 for _, row in variable_data.iterrows():
+
                     cvxpy_obj = row[cvxpy_var_header]
 
                     scenario_key = row.get(sub_problem_key_header, None)
@@ -1077,13 +941,23 @@ class Uncertainty:
                     if pd.isna(scenario_key):
                         scenario_key = None
 
-                    if scenarios_to_collect is not None and scenario_key not in scenarios_to_collect:
+                    if (
+                        has_split_scenarios
+                        and scenarios_to_collect is not None
+                        and scenario_key not in scenarios_to_collect
+                    ):
                         continue
 
-                    scenario_name = self._get_scenario_name(scenario_key)
-                    record_key = scenario_name
+                    scenario_name = (
+                        self._get_scenario_name(scenario_key)
+                        if has_split_scenarios
+                        else None
+                    )
+
+                    record_key = scenario_name if has_split_scenarios else None
 
                     if record_key not in records:
+
                         record = {
                             run_id_col: run_id,
                             status_col: "optimal",
@@ -1103,10 +977,14 @@ class Uncertainty:
                     records[record_key][var_key] = value
 
         if not records:
-            return pd.DataFrame([{run_id_col: run_id}])
+            raise exc.OperationalError(
+                "Uncertainty-measure collection failed | "
+                f"No measure value was collected for run_id={run_id}. "
+                f"Measure variables found: {uncertainty_measure_vars}. "
+                "Check variable.data, sub_problem_key filtering, and cvxpy values."
+            )
 
         return pd.DataFrame(records.values())
-
     def _normalize_variable_data_by_problem(
             self,
             variable_data,
