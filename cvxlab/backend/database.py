@@ -82,9 +82,9 @@ class Database:
         self.paths = paths
 
         if not self.settings['use_existing_data']:
-            self.create_blank_sets_xlsx_file()
+            self._create_blank_sets_xlsx_file()
 
-    def create_blank_sets_xlsx_file(self) -> None:
+    def _create_blank_sets_xlsx_file(self) -> None:
         """Create a blank Excel file for getting sets information.
 
         This method first checks if the sets Excel file specified in the settings 
@@ -135,6 +135,41 @@ class Database:
             excel_dir_path=self.paths['model_dir'],
             excel_file_name=sets_file_name,
         )
+
+    def _clear_database_tables(
+        self,
+        table_names: Optional[List[str] | str] = None,
+    ) -> None:
+        """Clear specified tables or all tables from the SQLite database.
+
+        This method parse all or a list 'table_names' of the data tables in the
+        Index and delete the tables from the SQLite database.
+
+        Args:
+            table_names (Optional[List[str] | str]): A list of table names or a
+                single table name to clear. If None, all tables in the database
+                will be cleared.
+        """
+        with db_handler(self.sqltools):
+            existing_tables = self.sqltools.get_existing_tables_names
+
+            if not table_names:
+                tables_to_clear = existing_tables
+                self.logger.info(
+                    "Clearing all tables from SQLite database "
+                    f"{Defaults.ConfigFiles.SQLITE_DATABASE_FILE}"
+                )
+
+            else:
+                tables_to_clear = list(table_names)
+                self.logger.info(
+                    f"Clearing tables '{tables_to_clear}' from SQLite database "
+                    f"{Defaults.ConfigFiles.SQLITE_DATABASE_FILE}"
+                )
+
+            for table_name in tables_to_clear:
+                if table_name in self.index.data.keys():
+                    self.sqltools.drop_table(table_name)
 
     def create_blank_sqlite_database(self) -> None:
         """Create a blank SQLite database.
@@ -224,6 +259,35 @@ class Database:
                 )
 
                 self.sqltools.dataframe_to_table(table_name, dataframe)
+
+    def compare_databases(
+            self,
+            values_relative_diff_tolerance: float,
+            other_db_dir_path: Path | str,
+            other_db_name: str,
+    ) -> None:
+        """Compare model database results with another SQLite database.
+
+        This method compares the results stored in the model's SQLite database
+        with those in a reference database. The reference database must be
+        specified via the 'other_db_dir_path' and 'other_db_name' arguments.
+        The comparison uses the 'check_databases_equality' method and applies a
+        relative difference tolerance.
+
+        Args:
+            values_relative_diff_tolerance (float): The relative difference
+                tolerance (%) to use when comparing the databases. It overwrites
+                the default setting in Defaults.
+            other_db_dir_path (Path | str): The directory path of the reference
+                database.
+            other_db_name (str): The name of the reference database.
+        """
+        with db_handler(self.sqltools):
+            self.sqltools.check_databases_equality(
+                other_db_dir_path=other_db_dir_path,
+                other_db_name=other_db_name,
+                tolerance_percentage=values_relative_diff_tolerance,
+            )
 
     def update_sets_in_sqlite_database(
             self,
@@ -468,41 +532,6 @@ class Database:
                     column_name=Defaults.Labels.VALUES_FIELD['values'][0],
                     column_type=Defaults.Labels.VALUES_FIELD['values'][1],
                 )
-
-    def clear_database_tables(
-        self,
-        table_names: Optional[List[str] | str] = None,
-    ) -> None:
-        """Clear specified tables or all tables from the SQLite database.
-
-        This method parse all or a list 'table_names' of the data tables in the
-        Index and delete the tables from the SQLite database.
-
-        Args:
-            table_names (Optional[List[str] | str]): A list of table names or a
-                single table name to clear. If None, all tables in the database
-                will be cleared.
-        """
-        with db_handler(self.sqltools):
-            existing_tables = self.sqltools.get_existing_tables_names
-
-            if not table_names:
-                tables_to_clear = existing_tables
-                self.logger.info(
-                    "Clearing all tables from SQLite database "
-                    f"{Defaults.ConfigFiles.SQLITE_DATABASE_FILE}"
-                )
-
-            else:
-                tables_to_clear = list(table_names)
-                self.logger.info(
-                    f"Clearing tables '{tables_to_clear}' from SQLite database "
-                    f"{Defaults.ConfigFiles.SQLITE_DATABASE_FILE}"
-                )
-
-            for table_name in tables_to_clear:
-                if table_name in self.index.data.keys():
-                    self.sqltools.drop_table(table_name)
 
     def generate_blank_data_input_files(
         self,

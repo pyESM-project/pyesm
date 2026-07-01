@@ -120,6 +120,28 @@ class Problem:
             return len(self.numerical_problems)
 
     @property
+    def problems_keys(self) -> list:
+        """List of keys identifying the sub-problems in the numerical model.
+
+        This property returns a list of keys corresponding to the sub-problems
+        defined in the numerical model. Each key uniquely identifies a sub-problem
+        in the numerical_problems attribute, which can be a DataFrame (for single
+        sub-problem) or a dictionary of DataFrames (for multiple sub-problems).
+
+        Returns:
+            list: A list of keys for the sub-problems in the numerical model.
+        """
+        if self.numerical_problems is None:
+            self.logger.warning("No numerical problems defined.")
+            return []
+
+        if isinstance(self.numerical_problems, pd.DataFrame):
+            return [None]
+
+        if isinstance(self.numerical_problems, dict):
+            return list(self.numerical_problems.keys())
+
+    @property
     def endogenous_tables_all(self) -> list:
         """List of keys of the data tables that collect endogenous data.
 
@@ -231,7 +253,7 @@ class Problem:
         self.logger.error(error)
         raise exc.SettingsError(error)
 
-    def slice_cvxpy_variable(
+    def _slice_cvxpy_variable(
             self,
             var_type: str,
             shape: Tuple[int],
@@ -609,7 +631,7 @@ class Problem:
                 sub_problem_key = var_data.at[row, headers['sub_problem_key']]
 
                 var_data.at[row, headers['cvxpy']] = \
-                    self.slice_cvxpy_variable(
+                    self._slice_cvxpy_variable(
                         var_type=variable_type,
                         shape=variable.shape_size,
                         related_table_key=variable.related_table,
@@ -1110,7 +1132,7 @@ class Problem:
             self.logger.error(msg)
             raise exc.ConceptualModelError(msg)
 
-    def find_vars_sets_intra_problem(
+    def _find_vars_sets_intra_problem(
         self,
         variables_subset: DotDict,
     ) -> Dict[str, str]:
@@ -1133,7 +1155,7 @@ class Problem:
 
         return intra_problem_sets
 
-    def find_common_vars_coords(
+    def _find_common_vars_coords(
         self,
         variables_subset: DotDict,
         coord_category: str,
@@ -1225,14 +1247,14 @@ class Problem:
                     "Defining cvxpy numerical problems based on symbolic problems.")
 
             if util.find_dict_depth(self.symbolic_problem) == 1:
-                self.numerical_problems = self.generate_problem_dataframe(
+                self.numerical_problems = self._generate_problem_dataframe(
                     symbolic_problem=self.symbolic_problem
                 )
                 self.problem_status = None
 
             elif util.find_dict_depth(self.symbolic_problem) == 2:
                 self.numerical_problems = {
-                    problem_key: self.generate_problem_dataframe(
+                    problem_key: self._generate_problem_dataframe(
                         symbolic_problem=problem,
                         problem_key=problem_key,
                     )
@@ -1247,7 +1269,7 @@ class Problem:
                 self.logger.error(msg)
                 raise exc.SettingsError(msg)
 
-    def generate_problem_dataframe(
+    def _generate_problem_dataframe(
             self,
             symbolic_problem: DotDict,
             problem_key: Optional[int] = None,
@@ -1317,7 +1339,7 @@ class Problem:
 
             # define problem expressions (user-defined)
             symbolic_expressions = symbolic_problem.get(headers['expressions'])
-            expressions = self.define_expressions_list(
+            expressions = self._define_expressions_list(
                 symbolic_expressions=symbolic_expressions,
                 problem_filter=problem_filter,
                 problem_key=problem_key,
@@ -1331,7 +1353,7 @@ class Problem:
             if symbolic_objective:
                 # in case of multiple expressions, sum is used as default
                 objective = sum(
-                    self.define_expressions_list(
+                    self._define_expressions_list(
                         symbolic_expressions=symbolic_objective,
                         problem_filter=problem_filter,
                         problem_key=problem_key,
@@ -1349,7 +1371,7 @@ class Problem:
 
         return problems_df
 
-    def fetch_allowed_cvxpy_variables(
+    def _fetch_allowed_cvxpy_variables(
             self,
             variables_set_dict: Dict[str, Variable],
             problem_filter: pd.DataFrame,
@@ -1490,7 +1512,7 @@ class Problem:
 
         return allowed_variables
 
-    def execute_cvxpy_code(
+    def _execute_cvxpy_code(
             self,
             expression: str,
             allowed_variables: Dict[str, cp.Parameter | cp.Variable],
@@ -1543,7 +1565,7 @@ class Problem:
 
         return local_vars['output']
 
-    def define_expressions_list(
+    def _define_expressions_list(
             self,
             symbolic_expressions: List[str],
             problem_filter: pd.DataFrame,
@@ -1613,19 +1635,19 @@ class Problem:
                 and variable.type == allowed_var_types['CONSTANT']
             })
 
-            sets_intra_problem = self.find_vars_sets_intra_problem(
+            sets_intra_problem = self._find_vars_sets_intra_problem(
                 variables_subset=vars_subset,
             )
 
             # case of no intra-problem sets
             if not sets_intra_problem:
-                allowed_variables = self.fetch_allowed_cvxpy_variables(
+                allowed_variables = self._fetch_allowed_cvxpy_variables(
                     variables_set_dict={**vars_subset, **constants_subset},
                     problem_filter=problem_filter,
                     problem_key=problem_key,
                 )
 
-                cvxpy_expression = self.execute_cvxpy_code(
+                cvxpy_expression = self._execute_cvxpy_code(
                     expression=expression,
                     allowed_variables=allowed_variables,
                 )
@@ -1635,7 +1657,7 @@ class Problem:
             # case of one or more intra-problem sets
             else:
                 # check for common filtered intra-problem set coordinates
-                sets_intra_problem_coords = self.find_common_vars_coords(
+                sets_intra_problem_coords = self._find_common_vars_coords(
                     variables_subset=vars_subset,
                     coord_category='intra',
                 )
@@ -1662,7 +1684,7 @@ class Problem:
                     sets_data = list(sets_combination.values())
 
                     # fetch allowed cvxpy variables
-                    allowed_variables = self.fetch_allowed_cvxpy_variables(
+                    allowed_variables = self._fetch_allowed_cvxpy_variables(
                         variables_set_dict={
                             **vars_subset, **constants_subset},
                         problem_filter=problem_filter,
@@ -1672,7 +1694,7 @@ class Problem:
                     )
 
                     # define expression
-                    cvxpy_expression = self.execute_cvxpy_code(
+                    cvxpy_expression = self._execute_cvxpy_code(
                         expression=expression,
                         allowed_variables=allowed_variables,
                     )

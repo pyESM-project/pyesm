@@ -1,0 +1,17 @@
+# SYMBOLIC PROBLEM
+
+objective: 
+    - Maximize(c @ tran(x))
+
+expressions:
+    - e @ tran(x) - E <= 0
+    - m @ tran(x) - M <= 0
+    - c - c_s @ diag(x) - c_0 == 0
+    - x >= 0
+
+description:
+    - maximization of total profit
+    - energy use less than endowment
+    - material use less than endowment
+    - unit profit as a function of product demand
+    - positive products supply

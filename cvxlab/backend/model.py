@@ -596,9 +596,9 @@ class Model:
         force_overwrite: bool = False,
         integrated_problems: bool = False,
         convergence_monitoring: bool = True,
-        solver: Optional[str] = None,
-        solver_verbose: bool = False,
-        solver_settings: Optional[dict[str, Any]] = None,
+        solver: Optional[str | dict[str, str]] = None,
+        solver_verbose: bool | dict[str, bool] = False,
+        solver_settings: Optional[dict[str, Any] | dict[str, dict[str, Any]]] = None,
         scenario_idx: Optional[List[int] | int] = None,
         convergence_norm: Defaults.LiteralTypes.NormType = 'l2',
         convergence_tables_to_check: Defaults.LiteralTypes.ConvergenceTables | List[
@@ -626,13 +626,21 @@ class Model:
                 Defaults to False.
             convergence_monitoring (bool, optional): If True, enables convergence
                 monitoring during the solving of integrated problems. Defaults to True.
-            solver (str, optional): The solver to use for solving numerical 
-                problems. Defaults to None, in which case the default solver 
-                specified in 'Defaults.NumericalSettings.CVXPY_DEFAULT_SETTINGS' is used.
-            solver_verbose (bool, optional): If True, logs verbose output related to 
-                numerical solver operation during the model run. Defaults to False.
-            solver_settings (dict[str, Any], optional): Additional settings
-                for the solver passed as key-value pairs. Defaults to None.
+            solver (str | dict[str, str], optional): The solver to use for
+                solving numerical problems. When multiple sub-problems are
+                available, a dictionary keyed by problem key can be used to
+                define one solver per sub-problem. Defaults to None, in which
+                case the default solver specified in
+                'Defaults.NumericalSettings.CVXPY_DEFAULT_SETTINGS' is used.
+            solver_verbose (bool | dict[str, bool], optional): If True, logs
+                verbose output related to numerical solver operation during the
+                model run. When multiple sub-problems are available, a
+                dictionary keyed by problem key can be used to define verbosity
+                per sub-problem. Defaults to False.
+            solver_settings (dict[str, Any] | dict[str, dict[str, Any]], optional):
+                Additional solver settings. When multiple sub-problems are
+                available, a dictionary keyed by problem key can be used to
+                define dedicated settings per sub-problem. Defaults to None.
             scenario_idx (Optional[List[int] | int], optional): An optional list
                 of indices specifying which scenarios to solve. Indices must
                 correspond to the index of the :attr:`scenarios` DataFrame
@@ -659,63 +667,30 @@ class Model:
             keep_previous_iteration_db (bool, optional): Whether keep or not the database 
                 generated during the last-1 iteration. For debugging purpose. Default to 
                 False.
-            **kwargs: Additional keyword arguments to be passed to the solver. Useful 
-                for setting solver-specific options.
+            **kwargs: Additional keyword arguments passed to the solver as
+                shared settings for all numerical problems.
 
         Raises:
             exc.SettingsError: In case solver is not supported by current cvxpy version.
             exc.SettingsError: If no numerical problems are found, or if integrated
                 problems are requested but only one problem is found.
         """
-        cvxpy_defaults = Defaults.NumericalSettings.CVXPY_DEFAULT_SETTINGS
-        cvxpy_allowed_solvers = Defaults.NumericalSettings.ALLOWED_SOLVERS
-        sub_problems = self.core.problem.number_of_sub_problems
-        problem_scenarios = len(self.core.index.scenarios_info)
-
-        # Merge order: defaults < solver_settings < kwargs < explicit 'solver' arg
-        solver_config = {
-            **cvxpy_defaults,
-            **(solver_settings or {}),
-            **kwargs,
-        }
-
-        if solver is not None:
-            solver_config['solver'] = solver
-
-        selected_solver = solver_config.get('solver', cvxpy_defaults['solver'])
-
-        if selected_solver not in cvxpy_allowed_solvers:
-            msg = f"Solver '{selected_solver}' not supported by current CVXPY " \
-                f"version. Available solvers: {cvxpy_allowed_solvers}"
-            self.logger.error(msg)
-            raise exc.SettingsError(msg)
-
-        solver_settings = solver_config.copy()
-        solver_settings['solver'] = selected_solver
-        solver_settings['verbose'] = solver_verbose
-
-        if sub_problems == 0:
-            msg = "Numerical problem not found. Initialize problem first."
-            self.logger.error(msg)
-            raise exc.SettingsError(msg)
-
-        if integrated_problems and sub_problems == 1:
-            msg = "Only one problem found. Integrated problems not possible."
-            self.logger.error(msg)
-            raise exc.SettingsError(msg)
-
-        if integrated_problems and sub_problems > 1:
-            solution_type = 'integrated'
-        else:
-            solution_type = 'independent'
-
-        problem_count = '1' if sub_problems == 1 else f'{sub_problems}'
+        solution_strategy = self.core._define_solution_strategy(
+            integrated_problems=integrated_problems,
+            solver=solver,
+            solver_verbose=solver_verbose,
+            solver_settings=solver_settings,
+            solver_kwargs=kwargs,
+        )
 
         self.logger.info(
-            f"Model run | Solution mode: {solution_type}' | Solver: '{selected_solver}' | "
-            f"Problems: {problem_count} | Scenarios: {problem_scenarios}")
+            "Model run | "
+            f"Solution mode: {solution_strategy['solution_type']}' | "
+            f"Solver: '{solution_strategy['selected_solver']}' | "
+            f"Problems: {solution_strategy['problem_count']} | "
+            f"Scenarios: {solution_strategy['problem_scenarios']}")
 
-        if solver_verbose:
+        if solution_strategy['solver_verbose']:
             self.logger.info("Model run | CVXPY logs below")
 
         with self.logger.log_timing(
@@ -724,7 +699,7 @@ class Model:
         ):
             self.core.solve_numerical_problems(
                 force_overwrite=force_overwrite,
-                integrated_problems=integrated_problems,
+                integrated_problems=solution_strategy['integrated_problems'],
                 convergence_monitoring=convergence_monitoring,
                 convergence_norm=convergence_norm,
                 convergence_tables_to_check=convergence_tables_to_check,
@@ -733,7 +708,7 @@ class Model:
                 maximum_iterations=maximum_iterations,
                 keep_previous_iteration_db=keep_previous_iteration_db,
                 scenario_idx=scenario_idx,
-                **solver_settings,
+                **solution_strategy['solver_settings'],
             )
 
         msg = "Numerical problems status report:"
@@ -921,7 +896,7 @@ class Model:
             message=f"Check model results...",
             level='info',
         ):
-            self.core.compare_databases(
+            self.core.database.compare_databases(
                 values_relative_diff_tolerance=numerical_tolerance,
                 other_db_dir_path=other_db_dir_path,
                 other_db_name=other_db_name,
