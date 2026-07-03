@@ -223,6 +223,67 @@ MAJOR.MINOR.PATCH[pre-release]
   - `b1, b2, ...` = Beta (feature complete, testing)
   - `rc1, rc2, ...` = Release Candidate (final testing)
 
+### Minimal Release Workflow
+Follow this minimal, maintainer-focused workflow to prepare and publish a release.
+
+1. Create a release branch from `dev` (example for vX.Y.Z):
+```bash
+git checkout dev
+git pull origin dev
+git checkout -b release/X.Y.Z
+```
+
+2. Update the changelog: move `## [Unreleased]` entries under a new
+`## [X.Y.Z] - YYYY-MM-DD` heading and save `CHANGELOG.md`.
+
+3. Set the release version in `pyproject.toml` (remove any `.dev` marker),
+   e.g. `version = "X.Y.Z"`.
+
+4. Run tests and build checks locally:
+```bash
+pytest
+python -m build   # optional quick sanity build
+```
+
+5. Commit release-prep changes and push the branch:
+```bash
+git add pyproject.toml CHANGELOG.md
+git commit -m "chore(release): prepare X.Y.Z"
+git push origin release/X.Y.Z
+```
+
+6. Open a Pull Request from `release/X.Y.Z` → `main`, request reviews, and merge 
+   when approved.
+
+7. Tag the release on `main` and push tags:
+```bash
+git checkout main
+git pull origin main
+git tag -a vX.Y.Z -m "Release vX.Y.Z"
+git push origin main --tags
+```
+
+8. Build and publish distributions (on a CI runner or local machine with credentials):
+```bash
+python -m build
+twine upload dist/*
+```
+
+9. Post-release: update the `dev` branch to the next development version 
+   (e.g. `X.Y.(Z+1).dev0`), commit, and push:
+```bash
+# update pyproject.toml to X.Y.(Z+1).dev0
+git checkout dev
+git pull origin dev
+git commit -am "chore: bump version to X.Y.(Z+1).dev0"
+git push origin dev
+```
+
+Notes:
+- Keep `CHANGELOG.md` and `pyproject.toml` edits minimal and focused to ease review.
+- Ensure CI (tests, linters, docs) pass on the release branch/PR before merging.
+- Use `release/*` branches for traceability; tags always reference `main` for published releases.
+
 (license)=
 ## License
 

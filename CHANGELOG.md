@@ -18,6 +18,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Possibility to **run only a selection of scenarios** from Model.run_model() method, 
   by specifying the `scenario_idx` attribute as integer or list of integers 
   corresponding to the index of scenarios in the `Model.scenarios` property.
+- Per-problem solver and solver-settings routing for multi-problem runs (backend: 
+  `core.py`, `problem.py`, `database.py`).
+
+### Changed
+- Reorganized backend solve flow; moved database comparison/cleanup into dedicated 
+  helpers (`backend/database.py`, `backend/core.py`).
+- Split nonlinear tutorial assets into separate `model_nonlinear` and `model_decomposition` 
+  sets under `docs/source/tutorials/production_planning_nonlinear`.
+- Bumped minimum `cvxpy` version to `>=1.9.1` (see `pyproject.toml`).
+- Adjusted numerical default: `Defaults.NumericalSettings.SPARSE_MATRIX_ZEROS_THRESHOLD` 
+  changed from `0.3` to `0.7` (`defaults.py`).
 
 ### Fixed
 - **Backward-compatibility migration for `integer` field**: the migration block that
@@ -26,6 +37,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Corrected GitHub organization URL (`cvxgrp` → `cvxlab`) throughout installation docs.
 - Replaced unsupported `tab-set`/`tab-item` directives (sphinx-design) with plain RST
   in the citation section of the resources page.
+- Integration tests and CI: integration tests now run across tutorial models and were 
+  updated to cover solver routing and tutorial assets (`tests/integration/test_integration.py`).
+
 
 ## [1.0.1] - 11 June 2026
 
