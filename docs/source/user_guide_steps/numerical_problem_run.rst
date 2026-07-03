@@ -80,13 +80,19 @@ Parameters description
      - ``False``
    * - ``solver``
      - Solver to use, for example ``"ECOS"`` or ``"SCS"``. If ``None``, the
-       default solver from ``Defaults`` is used.
-     - ``None``
+       default solver from ``Defaults`` is used. When multiple sub-problems are 
+       available, a dictionary keyed by problem key can be used to define one 
+       solver per sub-problem.
+     - ``None`` (Default solver from ``Defaults``)
    * - ``solver_verbose``
-     - If ``True``, enables verbose output from the solver.
+     - If ``True``, enables verbose output from the solver. When multiple 
+       sub-problems are available, a dictionary keyed by problem key can be used 
+       to define verbosity for each sub-problem.
      - ``False``
    * - ``solver_settings``
-     - Dictionary of additional solver options passed as key-value pairs.
+     - Dictionary of additional solver options passed as key-value pairs. When multiple 
+       sub-problems are available, a dictionary keyed by problem key can be used 
+       to define solver settings for each sub-problem.
      - ``None``
    * - ``scenario_idx``
      - An optional index or list of indices specifying which scenarios to solve. If

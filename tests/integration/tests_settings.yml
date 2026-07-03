@@ -2,17 +2,26 @@ log_level: 'info'
 
 # Default method settings (applied to all models unless overridden)
 methods:
-    update_database_and_problem: {force_overwrite: True}
-    initialize_problems: {force_overwrite: True}
+    refresh_database_and_initialize_problem: {force_overwrite: True}
     run_model: {force_overwrite: True}
     load_results_to_database: {force_overwrite: True}
     check_model_results: {}
 
 # Model-specific method overrides
 model_overrides:
-    model_simple:
+    production_planning:
+        run_model: {
+            force_overwrite: True, 
+        }
+    production_planning_decomposition:
         run_model: {
             force_overwrite: True, 
             integrated_problems: True,
             convergence_monitoring: False,
+        }
+    production_planning_nonlinear:
+        run_model: {
+            force_overwrite: True, 
+            solver: 'IPOPT',
+            solver_settings: {'nlp': True},
         }

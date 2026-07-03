@@ -23,12 +23,15 @@ from tests.integration.conftest import (
 
 # Defaults and paths
 tests_settings_file = 'tests_settings.yml'
-model_fixture_dir = 'fixtures'
+# Previously tests used a `fixtures` folder. Now scan the tutorials
+# for model folders at `docs/source/tutorials/*/materials/model`.
 db_name = Defaults.ConfigFiles.SQLITE_DATABASE_FILE
 
 root_path = Path(__file__).parent
 test_settings_path = Path(root_path, tests_settings_file)
-fixtures_dir_path = Path(root_path, model_fixture_dir)
+
+# Path to tutorials directory (repo root / docs / source / tutorials)
+tutorials_root = Path(root_path.parent.parent, 'docs', 'source', 'tutorials')
 
 # Create an isolated working directory for test runs
 work_dir_path = root_path / ".work"
@@ -44,13 +47,26 @@ def _cleanup_work_dir():
 
 # Load test settings and list of models
 settings = load_test_settings(test_settings_path)
-models_list = os.listdir(fixtures_dir_path)
+
+# Build a list of (model_name, model_src_path) pairs from tutorials.
+models_info = []
+if tutorials_root.exists():
+    for tutorial_dir in sorted(tutorials_root.iterdir()):
+        model_src = tutorial_dir / 'materials' / 'model'
+        if model_src.exists() and model_src.is_dir():
+            models_info.append((tutorial_dir.name, model_src))
+
+# Fallback: if no tutorials found, fall back to legacy `fixtures` folder
+if not models_info:
+    fixtures_dir_path = Path(root_path, 'fixtures')
+    if fixtures_dir_path.exists():
+        for name in sorted(os.listdir(fixtures_dir_path)):
+            models_info.append((name, fixtures_dir_path / name))
 
 # Generating testing functions and fixtures dynamically
-for model_name in models_list:
+for model_name, model_src_path in models_info:
 
-    # Prepare a per-model working copy of the fixture
-    model_src_path = fixtures_dir_path / model_name
+    # Prepare a per-model working copy of the model folder
     model_work_path = work_dir_path / model_name
     shutil.copytree(model_src_path, model_work_path)
 

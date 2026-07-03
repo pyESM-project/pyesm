@@ -952,8 +952,10 @@ class Core:
                                     problem_status_header
                                 ]
 
-                                problems_status.at[scenario_idx, sub_problem] = \
-                                    status
+                                problems_status.at[
+                                    scenario_idx,
+                                    sub_problem
+                                ] = status
 
                             if not all(
                                 problems_status.loc[scenario_idx] == 'optimal'
@@ -980,6 +982,7 @@ class Core:
                                     "Setting convergence thresholds as relative "
                                     "tolerances of tables scales.")
 
+                                # must be done for scenarios_idx only
                                 with db_handler(self.sqltools):
                                     tables_scales = \
                                         self.sqltools.get_tables_values_scale(
@@ -1043,9 +1046,12 @@ class Core:
                                 break
 
                             if iter_count == maximum_iterations:
-                                self.logger.warning(
-                                    "Maximum number of iterations hit before "
-                                    "reaching convergence")
+                                msg = "Maximum number of iterations hit before " \
+                                    "reaching convergence"
+                                lines.append("")
+                                lines.append(msg)
+                                conv_log("\n".join(lines))
+                                self.logger.warning(msg)
                                 break
 
                             iter_count += 1
@@ -1619,6 +1625,10 @@ class Core:
             )
 
         self.problem.fetch_problem_status()
+
+        if integrated_problems:
+            # adding logs for scenarios solution status
+            pass
 
     def __repr__(self):
         """Return a string representation of the Core instance."""

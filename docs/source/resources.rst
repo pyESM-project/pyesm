@@ -17,7 +17,6 @@ downloaded from the table below, so that you can run them locally on your machin
 Tutorials
 ---------
 
-
 .. list-table::
     :header-rows: 1
     :widths: 30 60 10
@@ -33,8 +32,14 @@ Tutorials
     * - :doc:`Production planning (non-linear) <tutorials/production_planning_nonlinear/production_planning_nonlinear>`
       - Complete workflow for definining and solving a non-linear production planning 
         under resource constraints. Similar to previous production planning tutorial, 
-        but handling non-linearities. 
+        but handling non-linearities explicitly. 
       - :download:`link <tutorials/production_planning_nonlinear/production_planning_nonlinear.zip>`
+    * - :doc:`Production planning (decomposition) <tutorials/production_planning_decomposition/production_planning_decomposition>`
+      - Detailed guide on reformulating and decomposing the previous non-linear 
+        production planning problem into coupled convex sub-problems solved iteratively 
+        (block Gauss–Seidel). Includes YAML snippets, hybrid table examples, 
+        convergence logs, and troubleshooting.
+      - :download:`link <tutorials/production_planning_decomposition/production_planning_decomposition.zip>`
 
 
 .. toctree::
@@ -44,6 +49,7 @@ Tutorials
 
    tutorials/production_planning/production_planning
    tutorials/production_planning_nonlinear/production_planning_nonlinear
+   tutorials/production_planning_decomposition/production_planning_decomposition
 
 
 .. _models_gallery:

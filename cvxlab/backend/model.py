@@ -405,7 +405,7 @@ class Model:
 
         - A blank SQLite database with set tables and data tables, filling data 
             tables with sets information.
-        - A blank Excel input data file/s with normalized data tables for getting
+        - A blank Excel/CSV input data file/s with normalized data tables for getting
             exogenous variables data from the user. 
 
         """
@@ -598,11 +598,15 @@ class Model:
         convergence_monitoring: bool = True,
         solver: Optional[str | dict[str, str]] = None,
         solver_verbose: bool | dict[str, bool] = False,
-        solver_settings: Optional[dict[str, Any] | dict[str, dict[str, Any]]] = None,
+        solver_settings: Optional[
+            dict[str, Any] |
+            dict[str, dict[str, Any]]
+        ] = None,
         scenario_idx: Optional[List[int] | int] = None,
         convergence_norm: Defaults.LiteralTypes.NormType = 'l2',
-        convergence_tables_to_check: Defaults.LiteralTypes.ConvergenceTables | List[
-            str] = 'all_endogenous',
+        convergence_tables_to_check:
+            Defaults.LiteralTypes.ConvergenceTables |
+            List[str] = 'all_endogenous',
         convergence_tables_to_skip: Optional[List[str]] = None,
         relative_tolerance: Optional[float] = None,
         maximum_iterations: Optional[int] = None,
