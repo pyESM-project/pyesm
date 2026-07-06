@@ -57,6 +57,7 @@ class Defaults:
         HandleModelInstance = Literal['save', 'load']
         ExcelEngine = Literal['openpyxl', 'xlsxwriter']
         TableHandling = Literal['update', 'overwrite']
+        SolutionMode = Literal['parallel', 'sequential', 'integrated']
 
     class ConfigFiles:
         """Defaults related to configuration and file management.

@@ -107,7 +107,7 @@ class Core:
 
     def _define_solution_strategy(
         self,
-        integrated_problems: bool,
+        solution_mode: str,
         solver: Optional[str | dict[str, str]],
         solver_verbose: bool | dict[str, bool],
         solver_settings: Optional[dict[str, Any] | dict[str, dict[str, Any]]],
@@ -121,8 +121,7 @@ class Core:
         numerical problems are available.
 
         Args:
-            integrated_problems (bool): Whether integrated problem solving was
-                requested.
+            solution_mode (str): The solution mode requested.
             solver (Optional[str | dict[str, str]]): Explicit solver requested
                 for model solving. When multiple sub-problems are available, a
                 dictionary keyed by problem key can define one solver per
@@ -156,11 +155,11 @@ class Core:
             msg = "Numerical problem not found. Initialize problem first."
             err_msg.append(msg)
 
-        if integrated_problems and sub_problems == 1:
+        if solution_mode and sub_problems == 1:
             msg = "Only one problem found. Integrated problems not possible."
             err_msg.append(msg)
 
-        if integrated_problems and sub_problems > 1:
+        if solution_mode and sub_problems > 1:
             solution_type = 'integrated'
         else:
             solution_type = 'independent'
@@ -287,7 +286,7 @@ class Core:
         problem_count = '1' if sub_problems == 1 else f'{sub_problems}'
 
         return {
-            'integrated_problems': integrated_problems,
+            'integrated_problems': solution_mode,
             'problem_count': problem_count,
             'problem_scenarios': problem_scenarios,
             'selected_solver': selected_solver,

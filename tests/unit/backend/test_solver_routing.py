@@ -32,7 +32,7 @@ def test_define_solution_strategy_supports_per_problem_solver_settings():
     solver_b = available_solvers[-1]
 
     strategy = core._define_solution_strategy(
-        integrated_problems=False,
+        solution_mode=False,
         solver={
             'problem_a': solver_a,
             'problem_b': solver_b,
@@ -63,7 +63,7 @@ def test_define_solution_strategy_rejects_invalid_problem_keys():
 
     with pytest.raises(exc.SettingsError):
         core._define_solution_strategy(
-            integrated_problems=False,
+            solution_mode=False,
             solver={'problem_x': 'SCIPY'},
             solver_verbose=False,
             solver_settings=None,

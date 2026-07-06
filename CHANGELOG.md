@@ -20,6 +20,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   corresponding to the index of scenarios in the `Model.scenarios` property.
 - Per-problem solver and solver-settings routing for multi-problem runs (backend: 
   `core.py`, `problem.py`, `database.py`).
+- Centralized backward-compatibility helpers: added `cvxlab.backward_compat.BackwardCompat`
+  to host short-lived translation helpers for deprecated public API (e.g., mapping
+  `integrated_problems` → `solution_mode`). This keeps core modules clean and makes
+  deprecation removal straightforward in future releases.
 
 ### Changed
 - Reorganized backend solve flow; moved database comparison/cleanup into dedicated 
@@ -33,6 +37,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 - **Backward-compatibility migration for `integer` field**: the migration block that
   converts `integer: true` → `variable_domain: integer`.
+  - Added backward-compatibility mapping for `integrated_problems` → `solution_mode`.
 - README images now use absolute raw GitHub URLs so they render correctly on PyPI.
 - Corrected GitHub organization URL (`cvxgrp` → `cvxlab`) throughout installation docs.
 - Replaced unsupported `tab-set`/`tab-item` directives (sphinx-design) with plain RST

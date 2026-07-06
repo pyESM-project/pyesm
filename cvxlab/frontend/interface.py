@@ -5,6 +5,7 @@ from typing import Any, Dict, List, Optional
 from cvxlab.defaults import Defaults
 from cvxlab.frontend import actions, display, session
 from cvxlab.log_exc.exceptions import CVXLabError
+from cvxlab.backward_compat import BackwardCompat
 
 
 # Parameter groups — each name must match a run() parameter.
@@ -195,6 +196,8 @@ def run(
 
     model_kw = _collect_group(_MODEL_PARAM_NAMES)
     solver_kw = _collect_group(_SOLVER_PARAM_NAMES)
+    # Normalize deprecated frontend solver kwargs (e.g., `integrated_problems`).
+    solver_kw = BackwardCompat.normalize_solver_kwargs(solver_kw)
     session_kw = _collect_group(_SESSION_PARAM_NAMES)
 
     cfg = session.SessionConfig(

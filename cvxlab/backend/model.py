@@ -23,6 +23,7 @@ from cvxlab.log_exc.logger import Logger
 from cvxlab.support.dotdict import DotDict
 from cvxlab.support.file_manager import FileManager
 from cvxlab.support import util
+from cvxlab.backward_compat import BackwardCompat
 
 
 class Model:
@@ -594,7 +595,7 @@ class Model:
     def run_model(
         self,
         force_overwrite: bool = False,
-        integrated_problems: bool = False,
+        solution_mode: Defaults.LiteralTypes.SolutionMode = 'parallel',
         convergence_monitoring: bool = True,
         solver: Optional[str | dict[str, str]] = None,
         solver_verbose: bool | dict[str, bool] = False,
@@ -624,10 +625,8 @@ class Model:
         Args:
             force_overwrite (bool, optional): If True, overwrites existing results. 
                 Defaults to False.
-            integrated_problems (bool, optional): If True, solve problems iteratively 
-                using a block Gauss-Seidel (alternating optimization) scheme, where 
-                updated endogenous variables are exchanged until convergence. 
-                Defaults to False.
+            solution_mode (Defaults.LiteralTypes.SolutionMode, optional): The solution 
+                mode to use. Defaults to 'parallel'.
             convergence_monitoring (bool, optional): If True, enables convergence
                 monitoring during the solving of integrated problems. Defaults to True.
             solver (str | dict[str, str], optional): The solver to use for
@@ -679,8 +678,13 @@ class Model:
             exc.SettingsError: If no numerical problems are found, or if integrated
                 problems are requested but only one problem is found.
         """
+        # Normalize deprecated kwargs (keeps Model.run_model body clean)
+        solution_mode, kwargs = BackwardCompat.run_model_params(
+            solution_mode=solution_mode, kwargs=kwargs, logger=self.logger
+        )
+
         solution_strategy = self.core._define_solution_strategy(
-            integrated_problems=integrated_problems,
+            solution_mode=solution_mode,
             solver=solver,
             solver_verbose=solver_verbose,
             solver_settings=solver_settings,
@@ -689,7 +693,7 @@ class Model:
 
         self.logger.info(
             "Model run | "
-            f"Solution mode: {solution_strategy['solution_type']}' | "
+            f"Solution mode: '{solution_strategy['solution_type']}' | "
             f"Solver: '{solution_strategy['selected_solver']}' | "
             f"Problems: {solution_strategy['problem_count']} | "
             f"Scenarios: {solution_strategy['problem_scenarios']}")
@@ -703,7 +707,7 @@ class Model:
         ):
             self.core.solve_numerical_problems(
                 force_overwrite=force_overwrite,
-                integrated_problems=solution_strategy['integrated_problems'],
+                solution_mode=solution_strategy['solution_mode'],
                 convergence_monitoring=convergence_monitoring,
                 convergence_norm=convergence_norm,
                 convergence_tables_to_check=convergence_tables_to_check,

@@ -166,6 +166,11 @@ Follow the guidelines below when contributing code to CVXlab.
   ```
 - **Update documentation**: If your changes affect user-facing functionality, 
    update the relevant pages in `docs/source/`
+- **Backward-compatibility helpers**: For short-lived compatibility translations
+   (deprecated argument names or behavior), add a static helper to
+   `cvxlab.backward_compat.BackwardCompat`. Keep helpers minimal, document the
+   deprecation in `CHANGELOG.md`, and add tests that assert the legacy inputs
+   are correctly normalized. Remove these helpers in the next major release.
 - **Build and preview docs locally**: Verify documentation builds without 
    errors and renders correctly
   ```sh
