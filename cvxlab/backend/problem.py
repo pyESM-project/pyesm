@@ -705,7 +705,7 @@ class Problem:
 
         if invalid_entries:
             self.logger.error(
-                f"Validation error report ===================================")
+                f"Validation error report {'=' * 35}")
             if self.settings['detailed_validation']:
                 for key, error_log in invalid_entries.items():
                     for coord, error in error_log.items():

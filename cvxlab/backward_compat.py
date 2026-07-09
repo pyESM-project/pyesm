@@ -12,6 +12,8 @@ clean and makes it easy to add further translations.
 """
 from typing import Any, Dict, Optional, Tuple
 
+from cvxlab.log_exc.logger import Logger
+
 
 class BackwardCompat:
     """Container for backward-compatibility helpers.
@@ -26,7 +28,7 @@ class BackwardCompat:
     def run_model_params(
         solution_mode: str,
         kwargs: Dict[str, Any],
-        logger: Optional[Any] = None,
+        logger: Optional[Logger] = None,
     ) -> Tuple[str, Dict[str, Any]]:
         """Normalize deprecated kwargs for ``Model.run_model``.
 
@@ -56,7 +58,7 @@ class BackwardCompat:
 
             solution_mode = 'integrated' if integrated_flag else 'parallel'
 
-        return solution_mode, kwargs
+        return solution_mode
 
     @staticmethod
     def normalize_solver_kwargs(solver_kwargs: Dict[str, Any]) -> Dict[str, Any]:

@@ -596,14 +596,18 @@ class Model:
         self,
         force_overwrite: bool = False,
         solution_mode: Defaults.LiteralTypes.SolutionMode = 'parallel',
-        convergence_monitoring: bool = True,
+        scenario_idx: Optional[List[int] | int] = None,
+        # arguments for solver settings
         solver: Optional[str | dict[str, str]] = None,
         solver_verbose: bool | dict[str, bool] = False,
         solver_settings: Optional[
             dict[str, Any] |
             dict[str, dict[str, Any]]
         ] = None,
-        scenario_idx: Optional[List[int] | int] = None,
+        # arguments for sequential solution mode
+        sequential_solution_chain: Optional[List[str | int]] = None,
+        # arguments for integrated solution mode
+        convergence_monitoring: bool = True,
         convergence_norm: Defaults.LiteralTypes.NormType = 'l2',
         convergence_tables_to_check:
             Defaults.LiteralTypes.ConvergenceTables |
@@ -616,19 +620,22 @@ class Model:
     ) -> None:
         """Solve numerical problems defined by the model instance.
 
-        This method first performs some coherence checks (if solver is supported,
-        if numerical problems are defined, if integrated problems are possible).
-        Then, it solves the numerical problems, either independently or in an
-        integrated manner, based on the 'integrated_problems' flag.
-        Finally, it logs a summary of the problems status.
+        Central method to solve numerical problems. First, it performs coherence 
+        checks and define a dictionary with solution strategy information. Then, 
+        it solves the numerical problems accordingly. Finally, it logs a summary 
+        of the problems/sceanarios solution status.
 
         Args:
             force_overwrite (bool, optional): If True, overwrites existing results. 
                 Defaults to False.
             solution_mode (Defaults.LiteralTypes.SolutionMode, optional): The solution 
                 mode to use. Defaults to 'parallel'.
-            convergence_monitoring (bool, optional): If True, enables convergence
-                monitoring during the solving of integrated problems. Defaults to True.
+            scenario_idx (Optional[List[int] | int], optional): An optional list
+                of indices specifying which scenarios to solve. Indices must
+                correspond to the index of the :attr:`scenarios` DataFrame
+                (inspect it to identify valid values). If None, all scenarios
+                are solved. If an integer is provided, it will be treated as a
+                single scenario index. Defaults to None.
             solver (str | dict[str, str], optional): The solver to use for
                 solving numerical problems. When multiple sub-problems are
                 available, a dictionary keyed by problem key can be used to
@@ -644,12 +651,12 @@ class Model:
                 Additional solver settings. When multiple sub-problems are
                 available, a dictionary keyed by problem key can be used to
                 define dedicated settings per sub-problem. Defaults to None.
-            scenario_idx (Optional[List[int] | int], optional): An optional list
-                of indices specifying which scenarios to solve. Indices must
-                correspond to the index of the :attr:`scenarios` DataFrame
-                (inspect it to identify valid values). If None, all scenarios
-                are solved. If an integer is provided, it will be treated as a
-                single scenario index. Defaults to None.
+            sequential_solution_chain (Optional[List[str | int]], optional): An 
+                optional list of problem keys or scenario indices specifying the 
+                order in which to solve the problems. If None, problems are solved 
+                in the default order. Defaults to None.
+            convergence_monitor (bool, optional): If True, enables convergence
+                monitoring during the solving of integrated problems. Defaults to True.
             convergence_norm (Defaults.LiteralTypes.NormType, optional):
                 The norm type to use for convergence monitoring in integrated
                 problems. Defaults to 'l2' (Euclidean Norm).
@@ -658,48 +665,58 @@ class Model:
                 monitoring in integrated problems. Can be 'all_endogenous', 
                 'hybrid_only', or a list of specific data table keys. Defaults 
                 to 'all_endogenous'.
-            convergence_tables_to_skip (Optional[List[str]], optional): List of data table
-                keys to skip for convergence checking in integrated problems. If None,
-                no tables are skipped. Defaults to None.
+            convergence_tables_to_skip (Optional[List[str]], optional): List of 
+                data table keys to skip for convergence checking in integrated 
+                problems. If None, no tables are skipped. Defaults to None.
             relative_tolerance (float, optional): Numerical tolerance for verifying
                 maximum relative change between iterations in integrated problems for 
                 each data table. Overrides 'Defaults.NumericalSettings.MODEL_COUPLING_SETTINGS'.
             maximum_iterations (int, optional): The maximum number of iterations 
                 for solving integrated problems. Overrides 
                 'Defaults.NumericalSettings.MODEL_COUPLING_SETTINGS'.
-            keep_previous_iteration_db (bool, optional): Whether keep or not the database 
-                generated during the last-1 iteration. For debugging purpose. Default to 
-                False.
-            **kwargs: Additional keyword arguments passed to the solver as
-                shared settings for all numerical problems.
-
-        Raises:
-            exc.SettingsError: In case solver is not supported by current cvxpy version.
-            exc.SettingsError: If no numerical problems are found, or if integrated
-                problems are requested but only one problem is found.
+            keep_previous_iteration_db (bool, optional): Whether keep or not the 
+                database generated during the last-1 iteration. For debugging purpose. 
+                Default to False.
+            **kwargs: Additional keyword arguments for backward compatibility.
         """
-        # Normalize deprecated kwargs (keeps Model.run_model body clean)
-        solution_mode, kwargs = BackwardCompat.run_model_params(
+        # Normalize deprecated arguments (keeps Model.run_model body clean)
+        solution_mode = BackwardCompat.run_model_params(
             solution_mode=solution_mode, kwargs=kwargs, logger=self.logger
         )
 
-        solution_strategy = self.core._define_solution_strategy(
+        run_settings = self.core._define_and_validate_run_settings(
             solution_mode=solution_mode,
+            scenario_idx=scenario_idx,
             solver=solver,
             solver_verbose=solver_verbose,
             solver_settings=solver_settings,
-            solver_kwargs=kwargs,
+            sequential_solution_chain=sequential_solution_chain,
+            convergence_monitoring=convergence_monitoring,
+            convergence_norm=convergence_norm,
+            convergence_tables_to_check=convergence_tables_to_check,
+            convergence_tables_to_skip=convergence_tables_to_skip,
+            relative_tolerance=relative_tolerance,
+            maximum_iterations=maximum_iterations,
+            keep_previous_iteration_db=keep_previous_iteration_db,
         )
 
         self.logger.info(
-            "Model run | "
-            f"Solution mode: '{solution_strategy['solution_type']}' | "
-            f"Solver: '{solution_strategy['selected_solver']}' | "
-            f"Problems: {solution_strategy['problem_count']} | "
-            f"Scenarios: {solution_strategy['problem_scenarios']}")
-
-        if solution_strategy['solver_verbose']:
-            self.logger.info("Model run | CVXPY logs below")
+            f"Model run | Solution mode: '{run_settings['solution_mode']}'"
+        )
+        problems_count = len(self.core.problem.problems_keys)
+        if run_settings.get('solution_mode') == 'sequential':
+            self.logger.info(
+                f"Model run | Problems count: {problems_count} | Solution order: "
+                f"{run_settings.get('sequential_solution_chain')}"
+            )
+        else:
+            self.logger.info(
+                f"Model run | Problems count: {problems_count} | Problems keys: "
+                f"{self.core.problem.problems_keys}"
+            )
+        self.logger.info(
+            f"Model run | Scenarios run: {run_settings['scenario_idx']}"
+        )
 
         with self.logger.log_timing(
             message=f"Solving numerical problems...",
@@ -707,26 +724,20 @@ class Model:
         ):
             self.core.solve_numerical_problems(
                 force_overwrite=force_overwrite,
-                solution_mode=solution_strategy['solution_mode'],
-                convergence_monitoring=convergence_monitoring,
-                convergence_norm=convergence_norm,
-                convergence_tables_to_check=convergence_tables_to_check,
-                convergence_tables_to_skip=convergence_tables_to_skip,
-                relative_tolerance=relative_tolerance,
-                maximum_iterations=maximum_iterations,
-                keep_previous_iteration_db=keep_previous_iteration_db,
-                scenario_idx=scenario_idx,
-                **solution_strategy['solver_settings'],
+                run_settings=run_settings,
             )
 
-        msg = "Numerical problems status report:"
-        self.logger.info("="*len(msg))
-        self.logger.info(msg)
+        # deve essere rivisto in base al solution mode:
+        # se è parallel o sequential, va bene il problem status (e per ogni scenario)
+        # se è integrated, i problemi hanno girato più volte, ha senso solo per ogni scenario
+        # msg = "Numerical problems status report:"
+        # self.logger.info("="*len(msg))
+        # self.logger.info(msg)
 
-        for info, status in self.core.problem.problem_status.items():
-            self.logger.info(
-                f"{info}: {status}" if info else f"{status}"
-            )
+        # for info, status in self.core.problem.problem_status.items():
+        #     self.logger.info(
+        #         f"{info}: {status}" if info else f"{status}"
+        #     )
 
     def load_results_to_database(
         self,
