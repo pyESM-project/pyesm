@@ -17,6 +17,7 @@ from cvxlab.backend.data_table import DataTable
 from cvxlab.backend.database import Database
 from cvxlab.backend.index import Index, Variable
 from cvxlab.backend.problem import Problem
+from cvxlab.backend.run_settings import RunSettings
 from cvxlab.log_exc import exceptions as exc
 from cvxlab.log_exc.logger import Logger
 from cvxlab.defaults import Defaults
@@ -104,255 +105,6 @@ class Core:
             settings=self.settings,
             index=self.index
         )
-
-    def _define_and_validate_run_settings(
-        self,
-        solution_mode: str,
-        scenario_idx: Optional[List[int] | int],
-        # arguments for solver settings
-        solver: Optional[str | dict[str, str]],
-        solver_verbose: bool | dict[str, bool],
-        solver_settings: Optional[dict[str, Any] | dict[str, dict[str, Any]]],
-        # arguments for sequential solution mode
-        sequential_solution_chain: Optional[List[str | int]],
-        # arguments for integrated solution mode
-        convergence_monitoring: bool,
-        convergence_norm: Defaults.LiteralTypes.NormType,
-        convergence_tables_to_check:
-            Defaults.LiteralTypes.ConvergenceTables | List[str],
-        convergence_tables_to_skip: Optional[List[str]],
-        relative_tolerance: Optional[float],
-        maximum_iterations: Optional[int],
-        keep_previous_iteration_db: bool,
-    ) -> dict[str, Any]:
-        """Normalize and validate solution instructions for model run.
-
-        This helper centralizes the resolution of user-provided solver arguments
-        into a single instructions dictionary. Solver options can be shared
-        across all numerical problems, or defined per sub-problem when multiple
-        numerical problems are available.
-
-        Args:
-            solution_mode (str): The solution mode requested.
-            solution_chain (Optional[List[str | int]]): An optional list of
-                problem keys or scenario indices specifying the order in which
-                to solve the problems. If None, problems are solved in the default
-                order.
-            solver (Optional[str | dict[str, str]]): Explicit solver requested
-                for model solving. When multiple sub-problems are available, a
-                dictionary keyed by problem key can define one solver per
-                sub-problem.
-            solver_verbose (bool | dict[str, bool]): Whether CVXPY solver
-                verbosity is enabled. A dictionary keyed by problem key can be
-                used to define verbosity per sub-problem.
-            solver_settings (Optional[dict[str, Any] | dict[str, dict[str, Any]]]):
-                Optional solver settings dictionary. When multiple sub-problems
-                are available, a dictionary keyed by problem key can define
-                settings per sub-problem.
-            solver_kwargs (dict[str, Any]): Additional shared solver keyword
-                arguments.
-
-        Returns:
-            dict[str, Any]: Normalized solution instructions for solve methods.
-
-        Raises:
-            exc.SettingsError: If the selected solver is unsupported, if no
-                numerical problems are defined, or if integrated solving is
-                requested for a single problem.
-        """
-        cvxpy_allowed_solvers = Defaults.NumericalSettings.ALLOWED_SOLVERS
-        cvxpy_defaults = Defaults.NumericalSettings.CVXPY_DEFAULT_SETTINGS
-        available_solution_modes = Defaults.LiteralTypes.SolutionMode.__args__
-        all_scenarios_idx = list(self.index.scenarios_info.index)
-        err_msg = []
-
-        self.logger.debug(
-            "Validate model run settings and define solution strategy.")
-
-        # Preliminary conditions
-        if self.problem.number_of_sub_problems == 0:
-            err_msg.append(
-                "Numerical problem/s not found. Initialize problem/s first.")
-
-        if solution_mode not in available_solution_modes:
-            err_msg.append(
-                f"Solution mode '{solution_mode}' not allowed. "
-                f"Available modes: {available_solution_modes}")
-        else:
-            if self.problem.number_of_sub_problems < 2 and \
-                    solution_mode in ['sequential', 'integrated']:
-                err_msg.append(
-                    f"Solution mode '{solution_mode}' requires multiple sub-problems. "
-                    f"Current sub-problems: {self.problem.number_of_sub_problems}.")
-
-        # Validate scenario indices to be run
-        if scenario_idx is not None:
-            if not isinstance(scenario_idx, (list, int)):
-                err_msg.append(
-                    f"Invalid type for 'scenario_idx': {type(scenario_idx)}. "
-                    f"Expected types: list or int.")
-
-            if isinstance(scenario_idx, list) and not \
-                    all(isinstance(idx, int) for idx in scenario_idx):
-                err_msg.append(
-                    f"Invalid type in 'scenario_idx' list: all elements must "
-                    "be of type int.")
-
-            if isinstance(scenario_idx, int):
-                scenario_idx = [scenario_idx]
-
-            invalid_scenarios = set(scenario_idx) - set(all_scenarios_idx)
-            if invalid_scenarios:
-                err_msg.append(
-                    f"Invalid scenario indices passed to 'scenario_idx': "
-                    f"{sorted(invalid_scenarios)}. Available scenarios: "
-                    f"{all_scenarios_idx}")
-        else:
-            scenario_idx = all_scenarios_idx
-
-        # Validate sequential solution mode arguments
-        if solution_mode == 'sequential':
-            if sequential_solution_chain is None:
-                sequential_solution_chain = self.problem.problems_keys
-            else:
-                if not isinstance(sequential_solution_chain, list):
-                    err_msg.append(
-                        "Solution chain must be a list of problem keys.")
-
-                invalid_keys = set(sequential_solution_chain) - \
-                    set(self.problem.problems_keys)
-                if invalid_keys:
-                    err_msg.append(
-                        "Invalid problem keys passed to 'sequential_solution_chain' "
-                        f"argument: {invalid_keys}. Available problem keys: "
-                        f"{self.problem.problems_keys}")
-        else:
-            if sequential_solution_chain is not None:
-                err_msg.append(
-                    "Argument 'sequential_solution_chain' is only valid for "
-                    "solution mode 'sequential'.")
-
-        # Validate integrated solution mode arguments
-        # ... add here
-
-        # Validate and normalize solver settings
-        per_problem_solver_settings = None
-        common_solver_settings = {}
-
-        # solver_settings may be either:
-        # - a common dict of settings applied to all problems
-        # - a dict keyed by problem_key with per-problem dict (or None)
-        if isinstance(solver_settings, dict) and solver_settings != {}:
-            if set(solver_settings).issubset(set(self.problem.problems_keys)) and all(
-                    (value is None) or isinstance(value, dict)
-                for value in solver_settings.values()
-            ):
-                # per-problem settings provided
-                if self.problem.number_of_sub_problems == 1:
-                    err_msg.append(
-                        "Per-problem 'solver_settings' require multiple problems."
-                    )
-                per_problem_solver_settings = solver_settings
-            else:
-                # treat as common settings applied to all problems
-                common_solver_settings = solver_settings
-
-        # If common settings were provided, expand them into a per-problem mapping
-        # so downstream logic always works with a per-problem dict.
-        if common_solver_settings and per_problem_solver_settings is None:
-            per_problem_solver_settings = {
-                problem_key: common_solver_settings.copy()
-                for problem_key in self.problem.problems_keys
-            }
-            common_solver_settings = {}
-
-        # Validate solver and solver_verbose dict keys when provided
-        if isinstance(solver, dict):
-            if self.problem.number_of_sub_problems == 1:
-                err_msg.append(
-                    "Per-problem 'solver' settings require multiple problems.")
-            invalid_keys = set(solver) - set(self.problem.problems_keys)
-            if invalid_keys:
-                err_msg.append(
-                    f"Invalid problem keys passed to 'solver': {invalid_keys}. "
-                    f"Available problem keys: {self.problem.problems_keys}")
-
-        if isinstance(solver_verbose, dict):
-            if self.problem.number_of_sub_problems == 1:
-                err_msg.append(
-                    "Per-problem 'solver_verbose' settings require multiple problems.")
-            invalid_keys = set(solver_verbose) - \
-                set(self.problem.problems_keys)
-            if invalid_keys:
-                err_msg.append(
-                    f"Invalid problem keys passed to 'solver_verbose': {invalid_keys}. "
-                    f"Available problem keys: {self.problem.problems_keys}")
-
-        # Build normalized per-problem solver settings dict
-        normalized_solver_settings = {}
-        selected_solver_log = []
-
-        for problem_key in self.problem.problems_keys:
-            # start from CVXPY defaults
-            problem_solver_settings = {**cvxpy_defaults}
-
-            # overlay per-problem settings (this includes expanded common settings)
-            if per_problem_solver_settings is not None:
-                problem_solver_settings.update(
-                    per_problem_solver_settings.get(problem_key) or {})
-
-            # overlay solver selection
-            if isinstance(solver, dict):
-                if problem_key in solver:
-                    problem_solver_settings['solver'] = solver[problem_key]
-            elif solver is not None:
-                problem_solver_settings['solver'] = solver
-
-            # determine selected solver and validate against allowed list
-            selected_solver = problem_solver_settings.get(
-                'solver', cvxpy_defaults['solver'])
-            if selected_solver not in cvxpy_allowed_solvers:
-                err_msg.append(
-                    f"Problem {problem_key} | Solver '{selected_solver}' "
-                    "not supported by installed CVXPY version. "
-                    f"Available solvers: {cvxpy_allowed_solvers}"
-                )
-            problem_solver_settings['solver'] = selected_solver
-
-            # verbosity per-problem
-            if isinstance(solver_verbose, dict):
-                problem_solver_settings['verbose'] = solver_verbose.get(
-                    problem_key, False)
-            else:
-                problem_solver_settings['verbose'] = solver_verbose
-
-            normalized_solver_settings[problem_key] = problem_solver_settings
-            selected_solver_log.append(f"{problem_key}={selected_solver}")
-
-        # Aggregate selected_solver for logging/return
-        selected_solver = ', '.join(selected_solver_log)
-        any_solver_verbose = any(
-            s['verbose'] for s in normalized_solver_settings.values()
-        )
-
-        if err_msg != []:
-            for msg in err_msg:
-                self.logger.error(f"Run settings validation | {msg}")
-            raise exc.SettingsError("Run settings validation | Failed.")
-
-        return {
-            'solution_mode': solution_mode,
-            'scenario_idx': scenario_idx,
-            'sequential_solution_chain': sequential_solution_chain,
-            'convergence_monitoring': convergence_monitoring,
-            'convergence_norm': convergence_norm,
-            'convergence_tables_to_check': convergence_tables_to_check,
-            'convergence_tables_to_skip': convergence_tables_to_skip,
-            'relative_tolerance': relative_tolerance,
-            'maximum_iterations': maximum_iterations,
-            'keep_previous_iteration_db': keep_previous_iteration_db,
-            'solver_settings': normalized_solver_settings,
-        }
 
     def _initialize_problems_variables(self) -> None:
         """Initialize data structures for handling problem variables.
@@ -756,10 +508,10 @@ class Core:
                         self.logger.warning(
                             f"Negative values found for variable '{var_key}'")
 
-    def _solve_independent_problems(
+    def _solve_parallel(
         self,
-        scenario_idx: Optional[List[int] | int] = None,
-        **solver_settings: dict[str, Any] | dict[str, dict[str, Any]]
+        scenario_idx: Optional[List[int] | int],
+        solver_settings: dict[str, dict[str, Any]]
     ) -> None:
         """Solve independent numerical problems.
 
@@ -773,48 +525,31 @@ class Core:
                 of indices specifying which scenarios to solve. If None, all
                 scenarios in the DataFrame will be solved. If an integer is provided,
                 it will be treated as a single scenario index. Defaults to None.
-            **solver_settings (dict[str, Any] | dict[str, dict[str, Any]]): Additional arguments to pass to the solver.
+            solver_settings (dict[str, Any]): Per-problem solver settings.
 
         Raises:
             exc.OperationalError: If 'numerical_problems' has not defined as Problem
                 property.
         """
-        numerical_problems = self.problem.numerical_problems
-        per_problem_solver_settings = (
-            isinstance(numerical_problems, dict) and
-            set(solver_settings) == set(numerical_problems) and
-            all(isinstance(settings, dict)
-                for settings in solver_settings.values())
-        )
+        if self.problem.numerical_problems is None:
+            msg = "Numerical problems must be defined first."
+            self.logger.warning(msg)
+            raise exc.OperationalError(msg)
 
-        if isinstance(numerical_problems, pd.DataFrame):
+        for problem_key, problem_df in self.problem.numerical_problems.items():
+
             self.problem.solve_problem_dataframe(
-                problem_dataframe=numerical_problems,
+                problem_dataframe=problem_df,
+                problem_name=problem_key,
                 scenarios_idx=scenario_idx,
-                **solver_settings
+                solver_settings=solver_settings.get(problem_key, {})
             )
-        elif isinstance(numerical_problems, dict):
-            for sub_problem in numerical_problems.keys():
-                sub_problem_solver_settings = \
-                    solver_settings[sub_problem] \
-                    if per_problem_solver_settings else solver_settings
-                self.problem.solve_problem_dataframe(
-                    problem_dataframe=numerical_problems[sub_problem],
-                    problem_name=sub_problem,
-                    scenarios_idx=scenario_idx,
-                    **sub_problem_solver_settings
-                )
-        else:
-            if numerical_problems is None:
-                msg = "Numerical problems must be defined first."
-                self.logger.warning(msg)
-                raise exc.OperationalError(msg)
 
-    def _solve_sequential_problems(
+    def _solve_sequential(
         self,
         solution_chain: Optional[List[str]] = None,
         scenario_idx: Optional[List[int] | int] = None,
-        **solver_settings: dict[str, Any] | dict[str, dict[str, Any]]
+        solver_settings: Optional[dict[str, dict[str, Any]]] = None
     ) -> None:
         """Solve sequential numerical problems.
 
@@ -823,7 +558,7 @@ class Core:
         """
         pass
 
-    def _solve_integrated_problems(
+    def _solve_integrated(
             self,
             convergence_monitoring: bool = True,
             convergence_norm: Defaults.LiteralTypes.NormType = 'l2',
@@ -833,7 +568,7 @@ class Core:
             maximum_iterations: Optional[int] = None,
             keep_previous_iteration_db: bool = False,
             scenario_idx: Optional[List[int] | int] = None,
-            **solver_settings: dict[str, Any] | dict[str, dict[str, Any]],
+            solver_settings: Optional[dict[str, dict[str, Any]]] = None,
     ) -> None:
         """Solve integrated numerical problems iteratively.
 
@@ -890,8 +625,8 @@ class Core:
                 of indices specifying which scenarios to solve. If None, all
                 scenarios in the DataFrame will be solved. If an integer is provided,
                 it will be treated as a single scenario index. Defaults to None.
-            **solver_settings (dict[str, Any] | dict[str, dict[str, Any]]): Arguments 
-                to pass to the solver.
+            solver_settings (Optional[dict[str, dict[str, Any]]], optional): Arguments 
+                to pass to the solver. Defaults to None.
         """
         sqlite_db_file_name = Defaults.ConfigFiles.SQLITE_DATABASE_FILE
         sqlite_db_file_name_bkp = Defaults.ConfigFiles.SQLITE_DATABASE_FILE_BKP
@@ -903,11 +638,6 @@ class Core:
         sqlite_db_file_name_previous = f"{base_name}_previous{extension}"
         sub_problems_keys = list(self.problem.numerical_problems.keys())
         scenarios_df = self.index.scenarios_info
-        per_problem_solver_settings = (
-            set(solver_settings) == set(sub_problems_keys) and
-            all(isinstance(settings, dict)
-                for settings in solver_settings.values())
-        )
 
         model_coupling_settings = Defaults.NumericalSettings.MODEL_COUPLING_SETTINGS
         min_guard_tolerance = model_coupling_settings['absolute_minimum_guard_tolerance']
@@ -1007,17 +737,14 @@ class Core:
                                     validate_types=False,
                                 )
 
-                            for sub_problem, problem_df \
+                            for problem_key, problem_df \
                                     in self.problem.numerical_problems.items():
-                                sub_problem_solver_settings = \
-                                    solver_settings[sub_problem] \
-                                    if per_problem_solver_settings else solver_settings
 
                                 self.problem.solve_problem_dataframe(
-                                    problem_name=sub_problem,
+                                    problem_name=problem_key,
                                     problem_dataframe=problem_df,
                                     scenarios_idx=scenario_idx,
-                                    **sub_problem_solver_settings
+                                    solver_settings=solver_settings[problem_key]
                                 )
 
                                 status = problem_df.loc[
@@ -1027,7 +754,7 @@ class Core:
 
                                 problems_status.at[
                                     scenario_idx,
-                                    sub_problem
+                                    problem_key
                                 ] = status
 
                             if not all(
@@ -1604,7 +1331,7 @@ class Core:
     def solve_numerical_problems(
             self,
             force_overwrite: bool,
-            run_settings: dict[str, dict[str, Any]],
+            run_settings: RunSettings,
     ) -> None:
         """Solve numerical problems based on different solution modes.
 
@@ -1634,8 +1361,8 @@ class Core:
         Args:
             force_overwrite (bool): If True, forces the re-solution of problems 
                 even if they have already been solved without prompting the user.
-            run_settings (dict[str, dict[str, Any]]): Arguments for the model run  
-                settings, including run mode, solver, verbosity, and other parameters.
+            run_settings (RunSettings): Validated and normalized run configuration
+                produced by :class:`RunSettings`.
 
         Raises:
             OperationalError: If numerical problems have not been defined yet.
@@ -1649,51 +1376,45 @@ class Core:
 
         problem_status = self.problem.problem_status
 
-        if (isinstance(problem_status, dict) and
-            not all(value is None for value in problem_status.values())) or \
-                (problem_status is not None and not isinstance(problem_status, dict)):
-
+        if not all(value is None for value in problem_status.values()):
             if not force_overwrite:
                 self.logger.warning("Numeric problems already solved.")
                 if not util.get_user_confirmation("Solve again numeric problems?"):
                     self.logger.warning("Numeric problem NOT solved.")
                     return
 
-        match run_settings.get('solution_mode'):
+        match run_settings.solution_mode:
 
             case 'parallel':
-                self._solve_independent_problems(
-                    scenario_idx=scenario_idx,
-                    **run_settings
+                self._solve_parallel(
+                    scenario_idx=run_settings.scenario_idx,
+                    solver_settings=run_settings.solver_settings,
                 )
             case 'sequential':
-                self._solve_sequential_problems(
-                    solution_chain=solution_chain,
-                    scenario_idx=scenario_idx,
-                    **run_settings
+                self._solve_sequential(
+                    solution_chain=run_settings.sequential_solution_chain,
+                    scenario_idx=run_settings.scenario_idx,
+                    solver_settings=run_settings.solver_settings,
                 )
             case 'integrated':
-                self._solve_integrated_problems(
-                    convergence_monitoring=convergence_monitoring,
-                    convergence_norm=convergence_norm,
-                    tables_to_check=convergence_tables_to_check,
-                    tables_to_skip=convergence_tables_to_skip,
-                    relative_tolerance=relative_tolerance,
-                    maximum_iterations=maximum_iterations,
-                    keep_previous_iteration_db=keep_previous_iteration_db,
-                    scenario_idx=scenario_idx,
-                    **run_settings,
+                self._solve_integrated(
+                    convergence_monitoring=run_settings.convergence_monitoring,
+                    convergence_norm=run_settings.convergence_norm,
+                    tables_to_check=run_settings.convergence_tables_to_check,
+                    tables_to_skip=run_settings.convergence_tables_to_skip,
+                    relative_tolerance=run_settings.relative_tolerance,
+                    maximum_iterations=run_settings.maximum_iterations,
+                    keep_previous_iteration_db=run_settings.keep_previous_iteration_db,
+                    scenario_idx=run_settings.scenario_idx,
+                    solver_settings=run_settings.solver_settings,
                 )
             case _:
-                msg = f"Invalid solution mode '{solution_mode}'"
+                msg = f"Invalid solution mode '{run_settings.solution_mode}'"
                 self.logger.error(msg)
                 raise exc.SettingsError(msg)
 
+        # adding scenarios solution status (per scenario, not per problem)
         self.problem.fetch_problem_status()
-
-        if solution_mode:
-            # adding final logs for scenarios solution status (per scenario, not per problem)
-            pass
 
     def __repr__(self):
         """Return a string representation of the Core instance."""

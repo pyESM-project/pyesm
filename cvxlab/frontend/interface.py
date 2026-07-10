@@ -20,7 +20,7 @@ _MODEL_PARAM_NAMES = {
 
 _SOLVER_PARAM_NAMES = {
     'solver', 'solver_verbose', 'solver_settings',
-    'integrated_problems', 'convergence_monitoring', 'convergence_norm',
+    'solution_mode', 'convergence_monitoring', 'convergence_norm',
     'convergence_tables_to_check', 'convergence_tables_to_skip',
     'relative_tolerance', 'maximum_iterations', 'keep_previous_iteration_db',
 }
@@ -93,7 +93,7 @@ def run(
     solver: Optional[str] = None,
     solver_verbose: Optional[bool] = None,
     solver_settings: Optional[Dict[str, Any]] = None,
-    integrated_problems: Optional[bool] = None,
+    solution_mode: Optional[str] = None,
     convergence_monitoring: Optional[bool] = None,
     convergence_norm: Optional[Defaults.LiteralTypes.NormType] = None,
     convergence_tables_to_check: Optional[
@@ -105,6 +105,8 @@ def run(
     # Frontend-only parameters
     model_structure_file: Optional[str] = None,
     template_file_type: Optional[Defaults.LiteralTypes.SettingsSource] = None,
+    # Catch-all for deprecated arguments (e.g. ``integrated_problems``).
+    **kwargs: Any,
 ) -> None:
     """Launch the CVXlab guided user interface.
 
@@ -142,10 +144,12 @@ def run(
             ``False``.
         solver_settings (dict[str, Any], optional): Additional settings
             for the solver passed as key-value pairs. Defaults to ``None``.
-        integrated_problems (bool, optional): If True, solve problems
-            iteratively using a block Gauss-Seidel (alternating optimization)
-            scheme, where updated endogenous variables are exchanged until
-            convergence. Defaults to ``False``.
+        solution_mode (str, optional): Solution strategy. Use
+            ``'parallel'`` (default) to solve each sub-problem independently,
+            or ``'integrated'`` for an iterative block Gauss-Seidel scheme
+            where endogenous variables are exchanged until convergence.
+            Passing the deprecated ``integrated_problems`` keyword via
+            ``**kwargs`` is still accepted and maps to this parameter.
         convergence_monitoring (bool, optional): If True, enables convergence
             monitoring during the solving of integrated problems. Defaults to
             ``True``.
@@ -196,8 +200,10 @@ def run(
 
     model_kw = _collect_group(_MODEL_PARAM_NAMES)
     solver_kw = _collect_group(_SOLVER_PARAM_NAMES)
-    # Normalize deprecated frontend solver kwargs (e.g., `integrated_problems`).
-    solver_kw = BackwardCompat.normalize_solver_kwargs(solver_kw)
+    # Merge any deprecated kwargs passed via **kwargs (e.g. `integrated_problems`)
+    # before normalizing so BackwardCompat can translate them.
+    solver_kw.update(kwargs)
+    solver_kw = BackwardCompat.run_params(solver_kw)
     session_kw = _collect_group(_SESSION_PARAM_NAMES)
 
     cfg = session.SessionConfig(
@@ -218,7 +224,15 @@ def run(
 
 # Import-time validation: param groups ↔ run() signature
 def _validate_param_groups() -> None:
-    sig_params = set(inspect.signature(run).parameters)
+    # Exclude *args / **kwargs — they are not individual named parameters.
+    sig_params = {
+        name
+        for name, param in inspect.signature(run).parameters.items()
+        if param.kind not in (
+            inspect.Parameter.VAR_POSITIONAL,
+            inspect.Parameter.VAR_KEYWORD,
+        )
+    }
     grouped = _MODEL_PARAM_NAMES | _SOLVER_PARAM_NAMES | _SESSION_PARAM_NAMES
 
     missing_from_groups = sig_params - grouped

@@ -1,16 +1,17 @@
 """Backward-compatibility utilities.
 
 Expose a compact, readable API for translating deprecated keyword
-arguments into the current form. Callers can import the module-level
-instance ``backwardCompat`` and invoke clearly-named methods, e.g.
+arguments into the current form. Callers can invoke clearly-named
+static methods, e.g.
 
-    from cvxlab.backward_compat import backwardCompat
-    solution_mode, kwargs = backwardCompat.run_model_params(...)
+    from cvxlab.backward_compat import BackwardCompat
+    solution_mode = BackwardCompat.run_model_params(...)
+    solver_kw   = BackwardCompat.run_params(...)
 
 Keeping compatibility logic in one place keeps the rest of the codebase
 clean and makes it easy to add further translations.
 """
-from typing import Any, Dict, Optional, Tuple
+from typing import Any, Dict, Optional
 
 from cvxlab.log_exc.logger import Logger
 
@@ -29,13 +30,14 @@ class BackwardCompat:
         solution_mode: str,
         kwargs: Dict[str, Any],
         logger: Optional[Logger] = None,
-    ) -> Tuple[str, Dict[str, Any]]:
+    ) -> str:
         """Normalize deprecated kwargs for ``Model.run_model``.
 
         - Maps deprecated ``integrated_problems`` -> ``solution_mode``.
-        - Removes the deprecated key from ``kwargs`` so it is not forwarded.
+        - Removes the deprecated key from ``kwargs`` in-place so it is
+          not forwarded to the backend.
 
-        Returns (solution_mode, kwargs).
+        Returns the (possibly updated) ``solution_mode`` string.
         """
 
         if 'integrated_problems' in kwargs:
@@ -61,19 +63,22 @@ class BackwardCompat:
         return solution_mode
 
     @staticmethod
-    def normalize_solver_kwargs(solver_kwargs: Dict[str, Any]) -> Dict[str, Any]:
-        """Normalize frontend `solver` kwargs for backward compatibility.
+    def run_params(
+        solver_kwargs: Dict[str, Any],
+        logger: Optional[Logger] = None,
+    ) -> Dict[str, Any]:
+        """Normalize deprecated kwargs for ``interface.run``.
 
-        If the old `integrated_problems` flag is present, translate it into
-        the new `solution_mode` key and remove the deprecated key.
+        If the old ``integrated_problems`` flag is present, translate it
+        into the new ``solution_mode`` key and remove the deprecated key.
+
+        Returns a new dict with the canonical kwargs.
         """
-        # Use run_model_params to translate the deprecated flag and get the
-        # canonical `solution_mode` value.
-        solution_mode, new_kwargs = BackwardCompat.run_model_params(
-            solution_mode=solver_kwargs.get('solution_mode', 'parallel'),
-            kwargs=dict(solver_kwargs),
-            logger=None,
+        new_kwargs = dict(solver_kwargs)
+        solution_mode = BackwardCompat.run_model_params(
+            solution_mode=new_kwargs.pop('solution_mode', 'parallel'),
+            kwargs=new_kwargs,
+            logger=logger,
         )
-
         new_kwargs['solution_mode'] = solution_mode
         return new_kwargs

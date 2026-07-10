@@ -18,6 +18,7 @@ import pandas as pd
 
 from cvxlab.defaults import Defaults
 from cvxlab.backend.core import Core
+from cvxlab.backend.run_settings import RunSettings
 from cvxlab.log_exc import exceptions as exc
 from cvxlab.log_exc.logger import Logger
 from cvxlab.support.dotdict import DotDict
@@ -684,7 +685,12 @@ class Model:
             solution_mode=solution_mode, kwargs=kwargs, logger=self.logger
         )
 
-        run_settings = self.core._define_and_validate_run_settings(
+        run_settings: RunSettings = RunSettings(
+            # context primitives from the model's Problem and Index
+            problems_keys=self.core.problem.problems_keys,
+            number_of_sub_problems=self.core.problem.number_of_sub_problems,
+            all_scenarios_idx=list(self.core.index.scenarios_info.index),
+            # user-provided arguments
             solution_mode=solution_mode,
             scenario_idx=scenario_idx,
             solver=solver,
@@ -698,16 +704,17 @@ class Model:
             relative_tolerance=relative_tolerance,
             maximum_iterations=maximum_iterations,
             keep_previous_iteration_db=keep_previous_iteration_db,
+            logger=self.logger,
         )
 
         self.logger.info(
-            f"Model run | Solution mode: '{run_settings['solution_mode']}'"
+            f"Model run | Solution mode: '{run_settings.solution_mode}'"
         )
         problems_count = len(self.core.problem.problems_keys)
-        if run_settings.get('solution_mode') == 'sequential':
+        if run_settings.solution_mode == 'sequential':
             self.logger.info(
                 f"Model run | Problems count: {problems_count} | Solution order: "
-                f"{run_settings.get('sequential_solution_chain')}"
+                f"{run_settings.sequential_solution_chain}"
             )
         else:
             self.logger.info(
@@ -715,7 +722,7 @@ class Model:
                 f"{self.core.problem.problems_keys}"
             )
         self.logger.info(
-            f"Model run | Scenarios run: {run_settings['scenario_idx']}"
+            f"Model run | Scenarios run: {run_settings.scenario_idx}"
         )
 
         with self.logger.log_timing(

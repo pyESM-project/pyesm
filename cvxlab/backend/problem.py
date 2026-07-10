@@ -113,11 +113,7 @@ class Problem:
             self.logger.warning("No numerical problems defined.")
             return 0
 
-        if isinstance(self.numerical_problems, pd.DataFrame):
-            return 1
-
-        if isinstance(self.numerical_problems, dict):
-            return len(self.numerical_problems)
+        return len(self.numerical_problems)
 
     @property
     def problems_keys(self) -> list:
@@ -135,11 +131,7 @@ class Problem:
             self.logger.warning("No numerical problems defined.")
             return []
 
-        if isinstance(self.numerical_problems, pd.DataFrame):
-            return [None]
-
-        if isinstance(self.numerical_problems, dict):
-            return list(self.numerical_problems.keys())
+        return list(self.numerical_problems.keys())
 
     @property
     def endogenous_tables_all(self) -> list:
@@ -726,11 +718,11 @@ class Problem:
             self.logger.error(msg)
             raise exc.SettingsError(msg)
 
-        if util.find_dict_depth(data) == 1:
-            self.symbolic_problem = DotDict(data)
+        self.symbolic_problem = {}
 
-        elif util.find_dict_depth(data) == 2:
-            self.symbolic_problem = {}
+        if util.find_dict_depth(data) == 1:
+            self.symbolic_problem[None] = DotDict(data)
+        else:
             for key, problem in data.items():
                 self.symbolic_problem[key] = DotDict(problem)
 
@@ -957,11 +949,6 @@ class Problem:
 
         problems_expressions = self._collect_problems_expressions()
 
-        if util.find_dict_depth(self.symbolic_problem) == 1:
-            symbolic_problem = {None: self.symbolic_problem}
-        else:
-            symbolic_problem = self.symbolic_problem
-
         # Collect variables in all expressions for all problems
         problems_vars: Dict[Optional[int | str], List[str]] = {}
         for problem_key, expr_list in problems_expressions.items():
@@ -972,12 +959,12 @@ class Problem:
             problems_vars[problem_key] = list(var_keys)
 
         implicit_expr_by_problem: Dict[Optional[int | str], List[str]] = {
-            problem_key: [] for problem_key in symbolic_problem
+            problem_key: [] for problem_key in self.symbolic_problem
         }
         errors: List[str] = []
 
         # Add implicit expressions based on variable sign attributes
-        for problem_key, problem in symbolic_problem.items():
+        for problem_key, problem in self.symbolic_problem.items():
 
             for var_key, variable in self.index.variables.items():
                 variable: Variable
@@ -1036,7 +1023,7 @@ class Problem:
             raise exc.ConceptualModelError(msg)
 
         # Append implicit expressions to symbolic problem
-        for problem_key, problem in symbolic_problem.items():
+        for problem_key, problem in self.symbolic_problem.items():
             implicit_expressions = implicit_expr_by_problem.get(
                 problem_key, [])
 
@@ -1101,7 +1088,7 @@ class Problem:
                         )
 
             # pure endogenous variables from same data table used in multiple problems
-            if isinstance(self.symbolic_problem, dict):
+            if self.number_of_sub_problems > 1:
                 if data_table.type == data_table_types['ENDOGENOUS']:
 
                     for variable in data_table.variables_list:
@@ -1246,28 +1233,15 @@ class Problem:
                 self.logger.debug(
                     "Defining cvxpy numerical problems based on symbolic problems.")
 
-            if util.find_dict_depth(self.symbolic_problem) == 1:
-                self.numerical_problems = self._generate_problem_dataframe(
-                    symbolic_problem=self.symbolic_problem
+            self.numerical_problems = {
+                problem_key: self._generate_problem_dataframe(
+                    symbolic_problem=problem,
+                    problem_key=problem_key,
                 )
-                self.problem_status = None
-
-            elif util.find_dict_depth(self.symbolic_problem) == 2:
-                self.numerical_problems = {
-                    problem_key: self._generate_problem_dataframe(
-                        symbolic_problem=problem,
-                        problem_key=problem_key,
-                    )
-                    for problem_key, problem in self.symbolic_problem.items()
-                }
-                self.problem_status = {
-                    key: None for key in self.symbolic_problem}
-
-            else:
-                msg = "Invalid symbolic problem structure. " \
-                    "Check symbolic problem definition."
-                self.logger.error(msg)
-                raise exc.SettingsError(msg)
+                for problem_key, problem in self.symbolic_problem.items()
+            }
+            self.problem_status = {
+                key: None for key in self.symbolic_problem}
 
     def _generate_problem_dataframe(
             self,
@@ -1721,7 +1695,7 @@ class Problem:
             problem_dataframe: pd.DataFrame,
             problem_name: Optional[str] = None,
             scenarios_idx: Optional[List[int] | int] = None,
-            **solver_settings: Any,
+            solver_settings: Optional[Dict[str, Any]] = None,
     ) -> None:
         """Solve numerical problems defined in problem DataFrame.
 
@@ -1741,9 +1715,10 @@ class Problem:
                 of indices specifying which scenarios to solve. If None, all
                 scenarios in the DataFrame will be solved. If an integer is provided,
                 it will be treated as a single scenario index. Defaults to None.
-            **solver_settings (Any): Additional arguments to pass to the solver.
+            solver_settings (Optional[Dict[str, Any]], optional): Arguments to pass 
+                to the solver. Defaults to None.
         """
-        if solver_settings['verbose'] == False:
+        if not solver_settings['verbose']:
             with warnings.catch_warnings():
                 warnings.simplefilter('ignore')
             warnings.filterwarnings(
@@ -1780,11 +1755,17 @@ class Problem:
                 msg = "Solving cvxpy problem"
 
             if scenario_info:
-                msg += f" | Scenario {scenario_info}."
+                msg += f" | Scenario '{scenario}' | Coordinates {scenario_info}."
 
             self.logger.info(msg)
 
+            if solver_settings.get('verbose'):
+                self.logger.solver_banner(f" SOLVER OUTPUT | {msg}")
+
             cvxpy_problem.solve(**solver_settings)
+
+            if solver_settings.get('verbose'):
+                self.logger.solver_banner(f" END SOLVER OUTPUT")
 
             self.logger.info(f"Problem status: '{cvxpy_problem.status}'")
 
@@ -1805,27 +1786,13 @@ class Problem:
         status_header = Defaults.Labels.PROBLEM_STATUS
         scenario_header = Defaults.Labels.SCENARIO_COORDINATES
 
-        if isinstance(self.numerical_problems, pd.DataFrame):
-            problem_df = self.numerical_problems
-
-            problem_status = {
-                f'Scenario {info}'
-                if len(problem_df) > 1 else '': status
-                for info, status
-                in zip(problem_df[scenario_header], problem_df[status_header])
-            }
-
-        elif isinstance(self.numerical_problems, dict):
-
-            problem_status = {
-                f'Sub-problem [{sub_problem_key}]' +
-                (f' - Scenario {info}' if len(problem_df) > 1 else ''): status
-                for sub_problem_key, problem_df in self.numerical_problems.items()
-                for info, status
-                in zip(problem_df[scenario_header], problem_df[status_header])
-            }
-
-        self.problem_status = problem_status
+        self.problem_status = {
+            f'Sub-problem [{sub_problem_key}]' +
+            (f' - Scenario {info}' if len(problem_df) > 1 else ''): status
+            for sub_problem_key, problem_df in self.numerical_problems.items()
+            for info, status
+            in zip(problem_df[scenario_header], problem_df[status_header])
+        }
 
     def __repr__(self):
         """Return a string representation of the Problem instance."""

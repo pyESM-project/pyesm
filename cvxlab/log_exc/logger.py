@@ -45,6 +45,7 @@ class Logger:
         'WARNING': '\033[38;5;214m',    # Orange
         'ERROR': '\033[31m',            # Red
         'DEBUG': '\033[32m',            # Green
+        'SOLVER': '\033[36m',           # Cyan
         'RESET': '\033[0m',             # Reset to default
     }
 
@@ -159,6 +160,24 @@ class Logger:
             message (str): Message to log.
         """
         self.logger.log(msg=message, level=logging.ERROR)
+
+    def solver_banner(self, message: str) -> None:
+        """Write a cyan-colored banner directly to the log stream.
+
+        Bypasses the standard log record format to emit a plain colored line,
+        intended to visually delimit solver (cvxpy) output from cvxlab logs.
+
+        Args:
+            message (str): Banner message to display.
+        """
+        cyan = self.COLORS['SOLVER']
+        reset = self.COLORS['RESET']
+        separator = f"{cyan}{'─' * 60}{reset}"
+        text = f"{cyan}{message}{reset}"
+        stream = self.logger.handlers[0].stream \
+            if self.logger.handlers else sys.stderr
+        stream.write(f"{separator}\n{text}\n{separator}\n")
+        stream.flush()
 
     @contextmanager
     def log_timing(
@@ -302,9 +321,30 @@ class Logger:
                     )
 
                 elif system == 'Linux':
-                    self.logger.warning(
-                        "Terminal-based convergence monitoring is not implemented "
-                        "for Linux systems in this version.")
+                    bash_cmd = (
+                        f"while true; do clear; cat '{convergence_file_path}'; "
+                        f"sleep {refresh_interval}; done"
+                    )
+                    # Try common terminal emulators in order of preference
+                    terminals = [
+                        ['gnome-terminal', '--', 'bash', '-c', bash_cmd],
+                        ['xterm', '-e', bash_cmd],
+                        ['konsole', '--noclose', '-e', 'bash', '-c', bash_cmd],
+                        ['xfce4-terminal', '-e', bash_cmd],
+                        ['lxterminal', '-e', bash_cmd],
+                        ['tilix', '-e', bash_cmd],
+                    ]
+                    for cmd in terminals:
+                        try:
+                            terminal_process = subprocess.Popen(cmd)
+                            break
+                        except FileNotFoundError:
+                            continue
+                    else:
+                        self.logger.warning(
+                            "No supported terminal emulator found for convergence "
+                            f"monitoring. Logging to file only: {convergence_file_path}"
+                        )
 
                 else:
                     self.logger.warning(
