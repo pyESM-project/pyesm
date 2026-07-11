@@ -10,7 +10,6 @@ The Problem class interacts with various components of the system such as data t
 variables, and settings, leveraging the Index class for accessing and managing structured
 data related to the optimization models.
 """
-from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 from scipy.sparse import csr_matrix
 
@@ -111,7 +110,6 @@ class Problem:
             int: The number of sub-problems in the numerical model.
         """
         if self.numerical_problems is None:
-            self.logger.warning("No numerical problems defined.")
             return 0
 
         return len(self.numerical_problems)
@@ -129,7 +127,6 @@ class Problem:
             list: A list of keys for the sub-problems in the numerical model.
         """
         if self.numerical_problems is None:
-            self.logger.warning("No numerical problems defined.")
             return []
 
         return list(self.numerical_problems.keys())
@@ -171,6 +168,47 @@ class Problem:
             table_key for table_key, data_table in self.index.data.items()
             if isinstance(data_table.type, dict)
         ]
+
+    @property
+    def problems_data_tables_variables(
+        self,
+    ) -> dict[Optional[int | str], dict[str, list[str]]]:
+        """Map each problem key to its used data tables and variables.
+
+        Returns:
+            dict[Optional[int | str], dict[str, list[str]]]: Nested dictionary
+                where first-level keys are problem keys and values are
+                dictionaries mapping data table keys to ordered variable keys
+                referenced in that problem objective/constraint expressions.
+                Table order follows ``self.index.data.keys()`` and variables
+                order follows each table ``variables_list``.
+        """
+        problems_expressions = self._collect_problems_expressions()
+        if not problems_expressions:
+            return {}
+
+        problem_tables_variables = {}
+
+        for problem_key, expressions_list in problems_expressions.items():
+            variables_found = {
+                var_key
+                for expression in expressions_list
+                for var_key in self._get_vars_in_expression(expression).keys()
+            }
+
+            tables_variables: dict[str, list[str]] = {}
+            for table_key, data_table in self.index.data.items():
+                table_variables = [
+                    var_key
+                    for var_key in data_table.variables_list
+                    if var_key in variables_found
+                ]
+                if table_variables:
+                    tables_variables[table_key] = table_variables
+
+            problem_tables_variables[problem_key] = tables_variables
+
+        return problem_tables_variables
 
     def create_cvxpy_variable(
         self,
@@ -1062,6 +1100,18 @@ class Problem:
         for table_key, data_table in self.index.data.items():
             data_table: DataTable
 
+            # mapping of variables used in each problem expression
+            for variable in data_table.variables_list:
+                used_in_problems = [
+                    problem_key
+                    for problem_key, expr_list in problems_expressions.items()
+                    if any(
+                        var_key == variable
+                        for expression in expr_list
+                        for var_key in self._get_vars_in_expression(expression).keys()
+                    )
+                ]
+
             # hybrid type data tables must specify data type for all problems (also
             # in case a variable is not used at all in a specific problem)
             if isinstance(data_table.type, dict):
@@ -1078,36 +1128,29 @@ class Problem:
                     )
 
                 # check for missing problem keys (only if no invalid keys found)
-                # QUI DEVO CONTROLLARE SOLO CHE LE VARIABILI SIANO ASSOCIATE AI PROBLEMI
-                # NEI QUALI EFFETTIVAMENTE LE VARIABILI VENGONO USATE
+                # the error is raised only if the problem key is missing from a
+                # data table that is effectively used in the problem expressions
+                # (otherwise, the data table and related variables are not used
+                # in that problem)
                 else:
                     missing_keys = valid_problem_keys - defined_keys
-                    if missing_keys:
+
+                    if missing_keys and \
+                            missing_keys.intersection(set(used_in_problems)):
                         errors.append(
                             f"Data table '{table_key}' | Missing type definition "
                             f"for problem keys: {missing_keys}."
                         )
 
-            # pure endogenous variables from same data table used in multiple problems
+            # pure endogenous data tables cannot be used in multiple problems
+            # or they will be reinitialized and overridden in the latest problem solved
             if self.number_of_sub_problems > 1:
                 if data_table.type == data_table_types['ENDOGENOUS']:
-
-                    for variable in data_table.variables_list:
-                        used_in_problems = [
-                            problem_key
-                            for problem_key, expr_list in problems_expressions.items()
-                            if any(
-                                var_key == variable
-                                for expression in expr_list
-                                for var_key in self._get_vars_in_expression(expression).keys()
-                            )
-                        ]
-                        if len(used_in_problems) > 1:
-                            errors.append(
-                                f"Data table '{table_key}' | Variable '{variable}' | "
-                                f"Pure endogenous variable cannot be used in multiple problems: "
-                                f"{used_in_problems}."
-                            )
+                    if len(used_in_problems) > 1:
+                        errors.append(
+                            f"Data table '{table_key}' | Pure endogenous variables "
+                            f"cannot be used in multiple problems: {used_in_problems}."
+                        )
 
         if errors:
             self.logger.error(
@@ -1751,9 +1794,11 @@ class Problem:
                 scenario, problem_header]
 
             if problem_name is not None:
-                msg = f"Solving cvxpy sub-problem '{problem_name}'"
+                msg = f"Solving cvxpy sub-problem '{problem_name}' | " \
+                    f"Solver: {solver_settings.get('solver')}"
             else:
-                msg = "Solving cvxpy problem"
+                msg = f"Solving cvxpy problem | " \
+                    f"Solver: {solver_settings.get('solver')}"
 
             if scenario_info:
                 msg += f" | Scenario '{scenario}' | Coordinates {scenario_info}."

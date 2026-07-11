@@ -98,7 +98,7 @@ class FileManager:
         Returns:
             bool: True if erased, False otherwise.
         """
-        dir_name = str(dir_path).rsplit('\\', maxsplit=1)[-1]
+        dir_name = str(dir_path).rsplit('/', maxsplit=1)[-1]
 
         if os.path.exists(dir_path):
             if not force_erase:

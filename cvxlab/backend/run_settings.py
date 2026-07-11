@@ -26,6 +26,10 @@ class RunSettings:
       'sequential', otherwise ``None``.
     - ``solver_settings`` is always a per-problem mapping
       ``{problem_key: {setting: value, ...}}``.
+    - ``maximum_iterations`` is always a positive ``int``; defaults to
+      ``MODEL_COUPLING_SETTINGS['max_iterations']`` when not provided.
+    - ``relative_tolerance`` is always a positive ``float``; defaults to
+      ``MODEL_COUPLING_SETTINGS['relative_tolerance']`` when not provided.
 
     Context arguments (``problems_keys``, ``number_of_sub_problems``,
     ``all_scenarios_idx``) carry the model state needed for validation but are
@@ -45,7 +49,7 @@ class RunSettings:
         all_scenarios_idx: List[int],
         # User-provided arguments (mirror Model.run_model signature)
         solution_mode: str,
-        scenario_idx: Optional[List[int] | int],
+        scenarios_idx: Optional[List[int] | int],
         solver: Optional[str | dict[str, str]],
         solver_verbose: bool | dict[str, bool],
         solver_settings: Optional[dict[str, Any] | dict[str, dict[str, Any]]],
@@ -66,20 +70,36 @@ class RunSettings:
             all_scenarios_idx: All valid scenario indices from the index.
             solution_mode: Requested solution mode ('parallel', 'sequential',
                 'integrated').
-            scenario_idx: Scenarios to solve. ``None`` → all scenarios.
+            scenarios_idx: Scenarios to solve. ``None`` → all scenarios.
             solver: Solver name or per-problem dict of solver names.
             solver_verbose: Verbosity flag or per-problem dict of flags.
             solver_settings: Common or per-problem solver keyword settings.
             sequential_solution_chain: Ordered list of problem keys for
                 'sequential' mode.
-            convergence_monitoring: Enable convergence logging (integrated mode).
-            convergence_norm: Norm type used for convergence checking.
-            convergence_tables_to_check: Tables to monitor for convergence.
-            convergence_tables_to_skip: Tables to exclude from convergence check.
-            relative_tolerance: Per-table relative convergence tolerance.
-            maximum_iterations: Maximum iterations for integrated solving.
-            keep_previous_iteration_db: Retain previous-iteration DB (debug).
-            logger: Optional logger for per-error messages before raising.
+            convergence_monitoring: If ``True``, writes a convergence log file
+                during integrated solving. Defaults to ``True``.
+            convergence_norm: Norm metric used to measure per-table change between
+                consecutive iterations. Must be one of the norms defined in
+                ``MODEL_COUPLING_SETTINGS['allowed_norms']``
+                ('max_relative', 'max_absolute', 'l1', 'l2', 'linf').
+                Validated only when *solution_mode* is 'integrated'.
+            convergence_tables_to_check: Data tables (or alias) to monitor for
+                convergence in integrated solving. Accepts 'all_endogenous',
+                'hybrid_only', a single table name, or a list of table names.
+                Table-level validity is checked by ``Core`` (requires model state).
+            convergence_tables_to_skip: Table keys to exclude from convergence
+                monitoring. ``None`` means no tables are skipped.
+            relative_tolerance: Maximum relative change per table accepted as
+                convergence criterion (e.g. ``0.01`` → 1 %). Must be positive
+                if provided; defaults to ``MODEL_COUPLING_SETTINGS`` value.
+                Validated only when *solution_mode* is 'integrated'.
+            maximum_iterations: Upper bound on Gauss–Seidel iterations for
+                integrated solving. Must be greater than 1 if provided; defaults
+                to ``MODEL_COUPLING_SETTINGS`` value.
+                Validated only when *solution_mode* is 'integrated'.
+            keep_previous_iteration_db: If ``True``, retains the database
+                snapshot from the previous iteration for debugging purposes.
+            logger: Logger used to emit per-error messages before raising.
 
         Raises:
             exc.SettingsError: If any validation rule is violated.
@@ -99,8 +119,8 @@ class RunSettings:
         self._validate_solution_mode(
             solution_mode, number_of_sub_problems, err_msg)
 
-        normalized_scenario_idx = self._normalize_scenario_idx(
-            scenario_idx, all_scenarios_idx, err_msg
+        normalized_scenario_idx = self._normalize_scenarios_idx(
+            scenarios_idx, all_scenarios_idx, err_msg
         )
 
         normalized_chain = self._normalize_sequential_chain(
@@ -116,6 +136,15 @@ class RunSettings:
             err_msg=err_msg,
         )
 
+        normalized_max_iter, normalized_rel_tol = \
+            self._validate_solve_integrated_args(
+                solution_mode=solution_mode,
+                convergence_norm=convergence_norm,
+                maximum_iterations=maximum_iterations,
+                relative_tolerance=relative_tolerance,
+                err_msg=err_msg,
+            )
+
         if err_msg:
             for msg in err_msg:
                 logger.error(f"Run settings validation | {msg}")
@@ -128,8 +157,8 @@ class RunSettings:
         self.convergence_norm = convergence_norm
         self.convergence_tables_to_check = convergence_tables_to_check
         self.convergence_tables_to_skip = convergence_tables_to_skip
-        self.relative_tolerance = relative_tolerance
-        self.maximum_iterations = maximum_iterations
+        self.relative_tolerance = normalized_rel_tol
+        self.maximum_iterations = normalized_max_iter
         self.keep_previous_iteration_db = keep_previous_iteration_db
         self.solver_settings = normalized_solver_settings
 
@@ -162,7 +191,7 @@ class RunSettings:
             )
 
     @staticmethod
-    def _normalize_scenario_idx(
+    def _normalize_scenarios_idx(
         scenario_idx: Optional[List[int] | int],
         all_scenarios_idx: List[int],
         err_msg: list[str],
@@ -348,3 +377,75 @@ class RunSettings:
             normalized[problem_key] = ps
 
         return normalized
+
+    @staticmethod
+    def _validate_solve_integrated_args(
+        solution_mode: str,
+        convergence_norm: str,
+        maximum_iterations: Optional[int],
+        relative_tolerance: Optional[float],
+        err_msg: list[str],
+    ) -> tuple[int, float]:
+        """Validate and normalize arguments specific to the 'integrated' solution mode.
+
+        Applies defaults for *maximum_iterations* and *relative_tolerance* from
+        ``MODEL_COUPLING_SETTINGS`` when not provided. Validation of
+        *convergence_norm* and numeric constraints is performed only when
+        *solution_mode* is 'integrated'; for other modes the method still returns
+        properly defaulted values so all ``RunSettings`` attributes are always
+        valid numbers.
+
+        Args:
+            solution_mode: Active solution mode; convergence rules are only
+                enforced when this is 'integrated'.
+            convergence_norm: Norm type for convergence checking.
+            maximum_iterations: Maximum Gauss–Seidel iterations. ``None``
+                triggers the ``MODEL_COUPLING_SETTINGS`` default.
+            relative_tolerance: Per-table relative convergence tolerance.
+                ``None`` triggers the ``MODEL_COUPLING_SETTINGS`` default.
+            err_msg: Accumulator list; errors are appended (not raised) so the
+                caller can collect all failures before raising.
+
+        Returns:
+            ``(maximum_iterations, relative_tolerance)`` with defaults applied.
+            Falls back to safe defaults on validation error so further errors
+            can still be collected before the caller raises.
+        """
+        coupling = Defaults.NumericalSettings.MODEL_COUPLING_SETTINGS
+
+        # Apply defaults unconditionally so stored attributes are always valid numbers
+        normalized_max_iter: int = (
+            maximum_iterations if maximum_iterations
+            else coupling['max_iterations']
+        )
+        normalized_rel_tol: float = (
+            relative_tolerance if relative_tolerance
+            else coupling['relative_tolerance']
+        )
+
+        if solution_mode != 'integrated':
+            return normalized_max_iter, normalized_rel_tol
+
+        # Validate convergence_norm
+        allowed_norms = Defaults.LiteralTypes.NormType.__args__
+        if convergence_norm not in allowed_norms:
+            err_msg.append(
+                f"Convergence norm '{convergence_norm}' is not allowed. "
+                f"Available norms: {list(allowed_norms)}."
+            )
+
+        # Validate maximum_iterations
+        if maximum_iterations is not None and maximum_iterations <= 1:
+            err_msg.append(
+                "Argument 'maximum_iterations' must be greater than 1."
+            )
+            normalized_max_iter = coupling['max_iterations']
+
+        # Validate relative_tolerance
+        if relative_tolerance is not None and relative_tolerance <= 0:
+            err_msg.append(
+                "Argument 'relative_tolerance' must be a positive value."
+            )
+            normalized_rel_tol = coupling['relative_tolerance']
+
+        return normalized_max_iter, normalized_rel_tol

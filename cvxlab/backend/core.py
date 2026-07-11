@@ -510,21 +510,20 @@ class Core:
 
     def _solve_parallel(
         self,
-        scenario_idx: Optional[List[int] | int],
+        scenario_idx: List[int],
         solver_settings: dict[str, dict[str, Any]]
     ) -> None:
         """Solve independent numerical problems.
 
         This method get and solve the numerical problem/s in the Problem instance
         based on solver settings as keyworded arguments.
-        The method updates the 'status' field of the input DataFrame(s) in-place 
-        to reflect the solution status of each problem.
+        The method solve all problems as if they were independent, without any 
+        exchange of information between them (even if hybrid Data Tables are 
+        present).
 
         Args:
-            scenario_idx (Optional[List[int] | int], optional): An optional list
-                of indices specifying which scenarios to solve. If None, all
-                scenarios in the DataFrame will be solved. If an integer is provided,
-                it will be treated as a single scenario index. Defaults to None.
+            scenario_idx (List[int]): Validated list of scenario indices to solve,
+                as produced by RunSettings.
             solver_settings (dict[str, Any]): Per-problem solver settings.
 
         Raises:
@@ -547,19 +546,150 @@ class Core:
 
     def _solve_sequential(
         self,
-        solution_chain: Optional[List[str]] = None,
-        scenario_idx: Optional[List[int] | int] = None,
-        solver_settings: Optional[dict[str, dict[str, Any]]] = None
+        scenario_idx: List[int],
+        solver_settings: dict[str, dict[str, Any]],
+        sequential_solution_chain: List[int | str],
     ) -> None:
         """Solve sequential numerical problems.
 
-        This method 
+        This method solve the problems sequentially, based on the 'sequential_solution_chain' 
+        list of problem keys, which defines the order of solution. 
+        Each time a problem is solved, the method updates the hybrid type Data Tables
+        with the endogenous output, then the next problem in the chain is solved 
+        using the updated data. Because of this approach, the solution routes is 
+        performed one scenario at a time, and the method iterates over all scenarios.
 
+        This method is useful in case some data provided to a problem needs to be 
+        pre-processed by another problem, or when the solution of a problem is used 
+        as input for another problem.
+
+        Args:
+            scenario_idx (List[int]): Validated list of scenario indices to solve,
+                as produced by RunSettings.
+            solver_settings (dict[str, dict[str, Any]]): Per-problem solver settings.
+            sequential_solution_chain (List[int | str]): Ordered list of problem keys
+                defining the solution sequence, as produced by RunSettings.
         """
-        pass
+        sqlite_db_file_name = Defaults.ConfigFiles.SQLITE_DATABASE_FILE
+        sqlite_db_file_name_bkp = Defaults.ConfigFiles.SQLITE_DATABASE_FILE_BKP
+        scenarios_header = Defaults.Labels.SCENARIO_COORDINATES
+        problem_status_header = Defaults.Labels.PROBLEM_STATUS
+
+        sqlite_db_path = self.paths.model_dir
+        scenarios_df = self.index.scenarios_info
+
+        problems_status = pd.DataFrame(
+            index=scenarios_df.index,
+            columns=self.problem.problems_keys,
+        )
+
+        # create a backup copy of the original database
+        # (will be restored at the end)
+        self.files.copy_file_to_destination(
+            path_destination=sqlite_db_path,
+            path_source=sqlite_db_path,
+            file_name=sqlite_db_file_name,
+            file_new_name=sqlite_db_file_name_bkp,
+            force_overwrite=True,
+        )
+
+        try:
+            for scenario in scenario_idx:
+
+                scenario_coords = scenarios_df.loc[
+                    scenario,
+                    scenarios_header
+                ]
+
+                msg = f"Solving chained problems | Sequence {sequential_solution_chain}"
+
+                if scenario_coords:
+                    scenario_label = '-'.join(map(str, scenario_coords))
+                    msg += f" | Scenario: '{scenario_label}'"
+                else:
+                    scenario_label = None
+
+                self.logger.info(msg)
+
+                for problem_key in sequential_solution_chain:
+
+                    problem_df = self.problem.numerical_problems[problem_key]
+
+                    self.problem.solve_problem_dataframe(
+                        problem_name=problem_key,
+                        problem_dataframe=problem_df,
+                        scenarios_idx=scenario,
+                        solver_settings=solver_settings[problem_key]
+                    )
+
+                    problem_status = \
+                        problem_df.loc[scenario, problem_status_header]
+
+                    problems_status.loc[scenario, problem_key] = \
+                        problem_status
+
+                    if problem_status != 'optimal':
+                        self.logger.warning(
+                            f"Problem '{problem_key}' infeasible for scenario "
+                            f"{scenario_coords}."
+                        )
+                        break
+
+                    msg = f"Problem '{problem_key}' "
+                    if scenario_coords:
+                        msg += f"| Scenario {scenario_coords} "
+                    msg += f"| Exporting endogenous data to database."
+                    self.logger.info(msg)
+
+                    # only endogenous data tables that are actually used in the
+                    # problem are exported to avoid that data are overwritten in
+                    # the database by endogenous data tables that are not used in the problem
+                    data_tables_in_problem = list(
+                        self.problem.problems_data_tables_variables[problem_key])
+
+                    endogenous_data_tables = list(
+                        set(data_tables_in_problem) &
+                        set(self.problem.endogenous_tables_all)
+                    )
+
+                    self.cvxpy_endogenous_data_to_database(
+                        scenarios_idx=scenario,
+                        tables_to_export=endogenous_data_tables,
+                        force_overwrite=True,
+                        suppress_warnings=True,
+                    )
+
+                    self.logger.info(
+                        "Updating exogenous data before the next problem run.")
+
+                    self._data_to_cvxpy_exogenous_vars(
+                        scenarios_idx=scenario,
+                        filter_negative_values=True,
+                        warnings_on_negatives=True,
+                        validate_types=False,
+                    )
+
+        finally:
+            # after solution chain is concluded for all scenarios
+            # erase the database modified during the iterations
+            # and restore original database from backup
+            self.files.erase_file(
+                dir_path=sqlite_db_path,
+                file_name=sqlite_db_file_name,
+                force_erase=True,
+                confirm=False,
+            )
+
+            self.files.rename_file(
+                dir_path=sqlite_db_path,
+                name_old=sqlite_db_file_name_bkp,
+                name_new=sqlite_db_file_name,
+            )
 
     def _solve_integrated(
             self,
+            scenario_idx: List[int],
+            solver_settings: dict[str, dict[str, Any]],
             convergence_monitoring: bool = True,
             convergence_norm: Defaults.LiteralTypes.NormType = 'l2',
             tables_to_check: str | List[str] = 'all_endogenous',
@@ -567,8 +697,6 @@ class Core:
             relative_tolerance: Optional[float] = None,
             maximum_iterations: Optional[int] = None,
             keep_previous_iteration_db: bool = False,
-            scenario_idx: Optional[List[int] | int] = None,
-            solver_settings: Optional[dict[str, dict[str, Any]]] = None,
     ) -> None:
         """Solve integrated numerical problems iteratively.
 
@@ -600,10 +728,13 @@ class Core:
         solve all sub-problems iteratively for the same case (combination of sets).
 
         Args:
+            scenario_idx (List[int]): Validated list of scenario indices to solve,
+                as produced by RunSettings.
+            solver_settings (dict[str, dict[str, Any]]): Per-problem solver settings.
             convergence_monitoring (bool, optional): If True, enables convergence
                 monitoring during the solving of integrated problems. Defaults to True.
-            convergence_norm (Defaults.LiteralTypes.NormType, optional): The type of norm to use for convergence 
-                checking. Defaults to 'l2'.
+            convergence_norm (Defaults.LiteralTypes.NormType, optional): The type 
+                of norm to use for convergence checking. Defaults to 'l2'.
             tables_to_check (str | List[str], optional): List of data table keys to 
                 check for convergence. If 'all_endogenous', all endogenous data tables 
                 are checked. If 'hybrid_only', only hybrid endogenous data tables are 
@@ -621,12 +752,6 @@ class Core:
             keep_previous_iteration_db (bool, optional): If True, saves the
                 database of the previous iteration for debugging purposes. 
                 Defaults to False.
-            scenario_idx (Optional[List[int] | int], optional): An optional list
-                of indices specifying which scenarios to solve. If None, all
-                scenarios in the DataFrame will be solved. If an integer is provided,
-                it will be treated as a single scenario index. Defaults to None.
-            solver_settings (Optional[dict[str, dict[str, Any]]], optional): Arguments 
-                to pass to the solver. Defaults to None.
         """
         sqlite_db_file_name = Defaults.ConfigFiles.SQLITE_DATABASE_FILE
         sqlite_db_file_name_bkp = Defaults.ConfigFiles.SQLITE_DATABASE_FILE_BKP
@@ -636,21 +761,11 @@ class Core:
         sqlite_db_path = self.paths.model_dir
         base_name, extension = os.path.splitext(sqlite_db_file_name)
         sqlite_db_file_name_previous = f"{base_name}_previous{extension}"
-        sub_problems_keys = list(self.problem.numerical_problems.keys())
         scenarios_df = self.index.scenarios_info
 
-        model_coupling_settings = Defaults.NumericalSettings.MODEL_COUPLING_SETTINGS
-        min_guard_tolerance = model_coupling_settings['absolute_minimum_guard_tolerance']
-
-        if not maximum_iterations:
-            maximum_iterations = model_coupling_settings['max_iterations']
-        elif maximum_iterations <= 1:
-            msg = "Maximum iterations for integrated problems must be greater than 1."
-            self.logger.error(msg)
-            raise exc.SettingsError(msg)
-
-        if not relative_tolerance:
-            relative_tolerance = model_coupling_settings['relative_tolerance']
+        min_guard_tolerance = Defaults.NumericalSettings.MODEL_COUPLING_SETTINGS[
+            'absolute_minimum_guard_tolerance'
+        ]
 
         tables_to_check = self._validate_and_filter_tables_to_check(
             tables_to_check=tables_to_check,
@@ -659,15 +774,8 @@ class Core:
 
         problems_status = pd.DataFrame(
             index=scenarios_df.index,
-            columns=sub_problems_keys,
+            columns=self.problem.problems_keys,
         )
-
-        if scenario_idx is None:
-            scenarios_to_solve = list(scenarios_df.index)
-        elif isinstance(scenario_idx, int):
-            scenarios_to_solve = [scenario_idx]
-        else:
-            scenarios_to_solve = list(scenario_idx)
 
         # create a backup copy of the original database
         # (will be restored at the end)
@@ -680,10 +788,10 @@ class Core:
         )
 
         try:
-            for scenario_idx in scenarios_to_solve:
+            for scenario in scenario_idx:
 
                 scenario_coords = scenarios_df.loc[
-                    scenario_idx,
+                    scenario,
                     scenarios_header
                 ]
 
@@ -731,7 +839,7 @@ class Core:
                                     "Updating exogenous variables data from previous iteration.")
 
                                 self._data_to_cvxpy_exogenous_vars(
-                                    scenarios_idx=scenario_idx,
+                                    scenarios_idx=scenario,
                                     filter_negative_values=True,
                                     warnings_on_negatives=True,
                                     validate_types=False,
@@ -743,22 +851,22 @@ class Core:
                                 self.problem.solve_problem_dataframe(
                                     problem_name=problem_key,
                                     problem_dataframe=problem_df,
-                                    scenarios_idx=scenario_idx,
+                                    scenarios_idx=scenario,
                                     solver_settings=solver_settings[problem_key]
                                 )
 
                                 status = problem_df.loc[
-                                    scenario_idx,
+                                    scenario,
                                     problem_status_header
                                 ]
 
                                 problems_status.at[
-                                    scenario_idx,
+                                    scenario,
                                     problem_key
                                 ] = status
 
                             if not all(
-                                problems_status.loc[scenario_idx] == 'optimal'
+                                problems_status.loc[scenario] == 'optimal'
                             ):
                                 self.logger.warning(
                                     "One or more sub-problems infeasible for scenario "
@@ -771,7 +879,7 @@ class Core:
                                 "SQLite database.")
 
                             self.cvxpy_endogenous_data_to_database(
-                                scenarios_idx=scenario_idx,
+                                scenarios_idx=scenario,
                                 force_overwrite=True,
                                 suppress_warnings=True,
                             )
@@ -1078,6 +1186,7 @@ class Core:
     def cvxpy_endogenous_data_to_database(
             self,
             scenarios_idx: Optional[List[int] | int] = None,
+            tables_to_export: Optional[List[str]] = None,
             force_overwrite: bool = False,
             suppress_warnings: bool = False,
     ) -> None:
@@ -1123,14 +1232,22 @@ class Core:
                 self.logger.error(msg)
                 raise TypeError(msg)
 
+        if tables_to_export is not None:
+            if not util.items_in_list(
+                items=tables_to_export,
+                control_list=self.problem.endogenous_tables_all,
+            ):
+                msg = "One or more tables in 'tables_to_export' are not endogenous tables."
+                self.logger.error(msg)
+                raise exc.OperationalError(msg)
+        else:
+            tables_to_export = self.problem.endogenous_tables_all
+
         with db_handler(self.sqltools):
             for data_table_key, data_table in self.index.data.items():
                 data_table: DataTable
 
-                if data_table.type in [
-                    allowed_var_types['EXOGENOUS'],
-                    allowed_var_types['CONSTANT']
-                ]:
+                if data_table_key not in tables_to_export:
                     continue
 
                 if isinstance(data_table.coordinates_dataframe, pd.DataFrame):
@@ -1199,8 +1316,9 @@ class Core:
                 if cvxpy_var_with_nones:
                     self.logger.warning(
                         f"Data table '{data_table_key}' | "
-                        "No data available in cvxpy variable (probably not "
-                        "used in model expressions). Exporting zeros to corresponding "
+                        "No data available in cvxpy variable (not used in model "
+                        "expressions, or not within the scenarios solution in the "
+                        "model run scope). Exporting zeros to corresponding "
                         "SQLite data table."
                     )
 
@@ -1392,12 +1510,14 @@ class Core:
                 )
             case 'sequential':
                 self._solve_sequential(
-                    solution_chain=run_settings.sequential_solution_chain,
                     scenario_idx=run_settings.scenario_idx,
                     solver_settings=run_settings.solver_settings,
+                    sequential_solution_chain=run_settings.sequential_solution_chain,
                 )
             case 'integrated':
                 self._solve_integrated(
+                    scenario_idx=run_settings.scenario_idx,
+                    solver_settings=run_settings.solver_settings,
                     convergence_monitoring=run_settings.convergence_monitoring,
                     convergence_norm=run_settings.convergence_norm,
                     tables_to_check=run_settings.convergence_tables_to_check,
@@ -1405,8 +1525,6 @@ class Core:
                     relative_tolerance=run_settings.relative_tolerance,
                     maximum_iterations=run_settings.maximum_iterations,
                     keep_previous_iteration_db=run_settings.keep_previous_iteration_db,
-                    scenario_idx=run_settings.scenario_idx,
-                    solver_settings=run_settings.solver_settings,
                 )
             case _:
                 msg = f"Invalid solution mode '{run_settings.solution_mode}'"

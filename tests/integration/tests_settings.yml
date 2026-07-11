@@ -16,7 +16,7 @@ model_overrides:
     production_planning_decomposition:
         run_model: {
             force_overwrite: True, 
-            integrated_problems: True,
+            solution_mode: 'integrated',
             convergence_monitoring: False,
         }
     production_planning_nonlinear:
@@ -24,4 +24,10 @@ model_overrides:
             force_overwrite: True, 
             solver: 'IPOPT',
             solver_settings: {'nlp': True},
+        }
+    sequential_problems:
+        run_model: {
+            force_overwrite: True, 
+            solution_mode: 'sequential',
+            sequential_solution_chain: ['process_1', 'process_2', 'process_3'],
         }
