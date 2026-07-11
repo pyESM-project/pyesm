@@ -28,6 +28,7 @@ from cvxlab.support import util, util_text
 from cvxlab.support.file_manager import FileManager
 from cvxlab.support.dotdict import DotDict
 from cvxlab.backend.index import Index, Variable
+from cvxlab.backend.model_settings import ModelSettings, ModelPaths
 
 
 class Problem:
@@ -64,8 +65,8 @@ class Problem:
             self,
             logger: Logger,
             files: FileManager,
-            paths: Dict[str, Path],
-            settings: Dict[str, str],
+            paths: ModelPaths,
+            settings: ModelSettings,
             index: Index,
     ) -> None:
         """Initialize a new instance of the Problem class.
@@ -79,8 +80,8 @@ class Problem:
         Args:
             logger (Logger): Logger object for logging operations.
             files (FileManager): FileManager object for managing file operations.
-            paths (Dict[str, Path]): Dictionary mapping of paths used in file operations.
-            settings (Dict[str, str]): A dictionary containing configuration settings.
+            paths (ModelPaths): Validated container with model file-system paths.
+            settings (ModelSettings): Validated container with model configuration settings.
             index (Index): Index object that facilitates access to structured
                 data related to optimization variables and tables.
         """
@@ -650,7 +651,7 @@ class Problem:
         Raises:
             exc.SettingsError: _description_
         """
-        source = self.settings['model_settings_from']
+        source = self.settings.model_settings_from
         problem_key = Defaults.ConfigFiles.SETUP_INFO[2]
         problem_structure = Defaults.DefaultStructures.PROBLEM_STRUCTURE[1]
 
@@ -670,7 +671,7 @@ class Problem:
         data = self.files.load_data_structure(
             structure_key=problem_key,
             source=source,
-            dir_path=self.paths['model_dir'],
+            dir_path=self.paths.model_dir,
         )
 
         invalid_entries = {}
@@ -698,7 +699,7 @@ class Problem:
         if invalid_entries:
             self.logger.error(
                 f"Validation error report {'=' * 35}")
-            if self.settings['detailed_validation']:
+            if self.settings.detailed_validation:
                 for key, error_log in invalid_entries.items():
                     for coord, error in error_log.items():
                         self.logger.error(
@@ -712,7 +713,7 @@ class Problem:
 
             msg = f"'{problem_key}' data validation not successful. " \
                 f"Check setup '{source}' file. "
-            if not self.settings['detailed_validation']:
+            if not self.settings.detailed_validation:
                 msg += "Set 'detailed_validation=True' for more information."
 
             self.logger.error(msg)
@@ -815,7 +816,7 @@ class Problem:
         self.logger.debug(
             f"Validating symbolic problem expressions coherence.")
 
-        source_format = self.settings['model_settings_from']
+        source_format = self.settings.model_settings_from
         token_patterns = Defaults.SymbolicDefinitions.TOKEN_PATTERNS
         allowed_operators = Defaults.SymbolicDefinitions.ALLOWED_OPERATORS
 
@@ -1052,7 +1053,7 @@ class Problem:
         self.logger.debug(
             f"Checking coherence between symbolic problems and data tables.")
 
-        source_format = self.settings['model_settings_from']
+        source_format = self.settings.model_settings_from
         data_table_types = Defaults.SymbolicDefinitions.VARIABLE_TYPES
         problems_expressions = self._collect_problems_expressions()
 

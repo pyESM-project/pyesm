@@ -16,6 +16,7 @@ import cvxpy as cp
 from cvxlab.backend.data_table import DataTable
 from cvxlab.backend.database import Database
 from cvxlab.backend.index import Index, Variable
+from cvxlab.backend.model_settings import ModelSettings, ModelPaths
 from cvxlab.backend.problem import Problem
 from cvxlab.backend.run_settings import RunSettings
 from cvxlab.log_exc import exceptions as exc
@@ -43,8 +44,8 @@ class Core:
 
     - logger (Logger): Logger object for logging information.
     - files (FileManager): FileManager object for file operations.
-    - settings (Dict[str, str]): Settings for various file paths and configurations.
-    - paths (Dict[str, Path]): Paths to various directories and files used in the model.
+    - settings (ModelSettings): Validated container with model configuration settings.
+    - paths (ModelPaths): Validated container with model file-system paths.
     - sqltools (SQLManager): SQLManager object for database interactions.
     - index (Index): Index object for managing data table and variable indices.
     - database (Database): Database object for database operations.
@@ -56,8 +57,8 @@ class Core:
             self,
             logger: Logger,
             files: FileManager,
-            settings: Dict[str, str],
-            paths: Dict[str, Path],
+            settings: ModelSettings,
+            paths: ModelPaths,
     ):
         """Initialize the Core class with logger, files, settings and paths.
 
@@ -66,10 +67,9 @@ class Core:
                 error messages.
             files (FileManager): An instance of FileManager for managing
                 file-related operations.
-            settings (Dict[str, str]): A dictionary containing configuration
-                settings for the application.
-            paths (Dict[str, Path]): A dictionary containing paths used throughout
-                operations, such as for files and directories.
+            settings (ModelSettings): Validated container with model configuration
+                settings.
+            paths (ModelPaths): Validated container with model file-system paths.
         """
         self.logger = logger.get_child(__name__)
         self.files = files
@@ -78,7 +78,7 @@ class Core:
 
         self.sqltools = SQLManager(
             logger=self.logger,
-            database_path=self.paths['sqlite_database'],
+            database_path=self.paths.sqlite_database,
             database_name=Defaults.ConfigFiles.SQLITE_DATABASE_FILE,
         )
 
@@ -633,7 +633,7 @@ class Core:
         scenarios_header = Defaults.Labels.SCENARIO_COORDINATES
         problem_status_header = Defaults.Labels.PROBLEM_STATUS
 
-        sqlite_db_path = self.paths['model_dir']
+        sqlite_db_path = self.paths.model_dir
         base_name, extension = os.path.splitext(sqlite_db_file_name)
         sqlite_db_file_name_previous = f"{base_name}_previous{extension}"
         sub_problems_keys = list(self.problem.numerical_problems.keys())
@@ -1153,14 +1153,14 @@ class Core:
                 )
 
                 if values_headers not in data_table_dataframe.columns:
-                    if self.settings['log_level'] == 'debug' or \
+                    if self.settings.log_level == 'debug' or \
                             not suppress_warnings:
                         self.logger.warning(
                             f"Column '{values_headers}' already exists in data "
                             f"table '{data_table_key}'")
 
                 if data_table.cvxpy_var is None:
-                    if self.settings['log_level'] == 'debug' or \
+                    if self.settings.log_level == 'debug' or \
                             not suppress_warnings:
                         self.logger.warning(
                             f"No data available in cvxpy variable '{data_table_key}'")

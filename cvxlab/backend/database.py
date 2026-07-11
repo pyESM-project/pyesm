@@ -15,6 +15,7 @@ import pandas as pd
 
 from cvxlab.backend.data_table import DataTable
 from cvxlab.backend.index import Index
+from cvxlab.backend.model_settings import ModelSettings, ModelPaths
 from cvxlab.backend.set_table import SetTable
 from cvxlab.backend.variable import Variable
 from cvxlab.defaults import Defaults
@@ -41,8 +42,8 @@ class Database:
     - files (FileManager): Manages file-related operations with files.
     - sqltools (SQLManager): Manages SQL database interactions.
     - index (Index): Central index for managing set tables and data tables.
-    - paths (Dict): Dictionary mapping of paths used in file operations.
-    - settings (Dict): Configuration settings for the application.
+    - paths (ModelPaths): Validated container with model file-system paths.
+    - settings (ModelSettings): Validated container with model configuration settings.
 
     """
 
@@ -52,8 +53,8 @@ class Database:
             files: FileManager,
             sqltools: SQLManager,
             index: Index,
-            paths: Dict,
-            settings: Dict,
+            paths: ModelPaths,
+            settings: ModelSettings,
     ):
         """Initialize a new instance of the Database class.
 
@@ -70,8 +71,8 @@ class Database:
             sqltools (SQLManager): SQLManager object for managing SQLite database.
             index (Index): Index object for getting information about model structure
                 (data tables, variables).
-            paths (Dict): Dictionary mapping of paths used in file operations.
-            settings (Dict): A dictionary containing configuration settings.
+            paths (ModelPaths): Validated container with model file-system paths.
+            settings (ModelSettings): Validated container with model configuration settings.
         """
         self.logger = logger.get_child(__name__)
 
@@ -81,7 +82,7 @@ class Database:
         self.settings = settings
         self.paths = paths
 
-        if not self.settings['use_existing_data']:
+        if not self.settings.use_existing_data:
             self._create_blank_sets_xlsx_file()
 
     def _create_blank_sets_xlsx_file(self) -> None:
@@ -99,10 +100,10 @@ class Database:
         """
         sets_file_name = Defaults.ConfigFiles.SETS_FILE
 
-        if Path(self.paths['sets_excel_file']).exists():
-            if not self.settings['use_existing_data']:
+        if Path(self.paths.sets_excel_file).exists():
+            if not self.settings.use_existing_data:
                 erased = self.files.erase_file(
-                    dir_path=self.paths['model_dir'],
+                    dir_path=self.paths.model_dir,
                     file_name=sets_file_name,
                     force_erase=False,
                     confirm=True,
@@ -132,7 +133,7 @@ class Database:
 
         self.files.dict_to_excel_headers(
             dict_name=dict_headers,
-            excel_dir_path=self.paths['model_dir'],
+            excel_dir_path=self.paths.model_dir,
             excel_file_name=sets_file_name,
         )
 
@@ -563,20 +564,15 @@ class Database:
         value_field = Defaults.Labels.VALUES_FIELD['values'][0]
 
         if file_extension is None:
-            file_extension = self.settings['input_data_files_type']
+            file_extension = self.settings.input_data_files_type
         else:
             util.validate_selection(
                 selection=file_extension,
                 valid_options=Defaults.ConfigFiles.AVAILABLE_DATA_FILES_EXTENSIONS,
             )
 
-        if not Path(self.paths['input_data_dir']).exists():
-            self.files.create_dir(self.paths['input_data_dir'])
-
-        if not self.settings['multiple_input_files'] and file_extension == 'csv':
-            msg = "'csv' data file format is only allowed for multiple input files."
-            self.logger.error(msg)
-            raise exc.SettingsError(msg)
+        if not Path(self.paths.input_data_dir).exists():
+            self.files.create_dir(self.paths.input_data_dir)
 
         with db_handler(self.sqltools):
             for table_key, table in self.index.data.items():
@@ -591,7 +587,7 @@ class Database:
                 ]:
                     continue
 
-                if self.settings['multiple_input_files']:
+                if self.settings.multiple_input_files:
                     output_file_name = f"{table_key}.{file_extension}"
                     force_overwrite = False
                 else:
@@ -608,7 +604,7 @@ class Database:
                     self.files.dataframe_to_excel(
                         dataframe=dataframe,
                         excel_filename=output_file_name,
-                        excel_dir_path=self.paths['input_data_dir'],
+                        excel_dir_path=self.paths.input_data_dir,
                         sheet_name=table_key,
                         force_overwrite=force_overwrite,
                     )
@@ -616,7 +612,7 @@ class Database:
                     self.files.dataframe_to_csv(
                         dataframe=dataframe,
                         csv_filename=output_file_name,
-                        csv_dir_path=self.paths['input_data_dir'],
+                        csv_dir_path=self.paths.input_data_dir,
                     )
                 else:
                     msg = f"File extension '{file_extension}' not supported."
@@ -648,8 +644,8 @@ class Database:
             "Loading data from input file/s filled by the user "
             "to SQLite database.")
 
-        file_extension = self.settings['input_data_files_type']
-        multiple_data_file = self.settings['multiple_input_files']
+        file_extension = self.settings.input_data_files_type
+        multiple_data_file = self.settings.multiple_input_files
 
         if table_key_list == []:
             table_key_list = self.index.data.keys()
@@ -669,11 +665,11 @@ class Database:
 
         # case 1: load from a single excel file with multiple tabs
         # data are all loaded into a dataframe, then commited to the database
-        if not self.settings['multiple_input_files']:
+        if not self.settings.multiple_input_files:
             file_name = Defaults.ConfigFiles.INPUT_DATA_FILE_NAME
 
             data_dict = self.files.excel_to_dataframes_dict(
-                excel_file_dir_path=self.paths['input_data_dir'],
+                excel_file_dir_path=self.paths.input_data_dir,
                 excel_file_name=f"{file_name}.{file_extension}",
             )
 
@@ -715,7 +711,7 @@ class Database:
 
                         data_dict[table_key] = self.files.file_to_dataframe(
                             file_name=file_name,
-                            file_dir_path=self.paths['input_data_dir'],
+                            file_dir_path=self.paths.input_data_dir,
                         )
 
                         dataframe = util.normalize_dataframe(

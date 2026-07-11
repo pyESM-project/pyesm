@@ -18,10 +18,10 @@ import pandas as pd
 
 from cvxlab.defaults import Defaults
 from cvxlab.backend.core import Core
+from cvxlab.backend.model_settings import ModelSettings, ModelPaths
 from cvxlab.backend.run_settings import RunSettings
 from cvxlab.log_exc import exceptions as exc
 from cvxlab.log_exc.logger import Logger
-from cvxlab.support.dotdict import DotDict
 from cvxlab.support.file_manager import FileManager
 from cvxlab.support import util
 from cvxlab.backward_compat import BackwardCompat
@@ -41,9 +41,9 @@ class Model:
 
     - logger (Logger): Logger object for logging information, warnings, and errors.
     - files (FileManager): An instance of FileManager to manage file operations.
-    - settings (DotDict): A dictionary-like object storing configurations such as \
-        model name, file paths, and operational flags.
-    - paths (DotDict): A dictionary-like object storing the paths for model \
+    - settings (ModelSettings): Validated container storing model configurations such as \
+        model name, settings source, and operational flags.
+    - paths (ModelPaths): Validated container storing the paths for model \
         directories and associated files.
     - core (Core): An instance of Core that manages the core functionality of the \
         model (it embeds Index, Database and Problem instances).
@@ -98,8 +98,6 @@ class Model:
             log_format (Defaults.LiteralTypes.LogFormat, optional): The logging 
                 format for the logger. Defaults to 'standard'.
         """
-        config = Defaults.ConfigFiles
-
         if main_dir_path is None:
             main_dir_path = str(Path.cwd())
 
@@ -117,25 +115,23 @@ class Model:
         ):
             self.files = FileManager(logger=self.logger)
 
-            self.settings = DotDict({
-                'log_level': log_level,
-                'model_name': model_dir_name,
-                'model_settings_from': model_settings_from,
-                'use_existing_data': use_existing_data,
-                'multiple_input_files': multiple_input_files,
-                'input_data_files_type': input_data_files_type,
-                'detailed_validation': detailed_validation,
-            })
+            self.settings = ModelSettings(
+                logger=self.logger,
+                log_level=log_level,
+                model_name=model_dir_name,
+                model_settings_from=model_settings_from,
+                use_existing_data=use_existing_data,
+                multiple_input_files=multiple_input_files,
+                input_data_files_type=input_data_files_type,
+                detailed_validation=detailed_validation,
+            )
 
-            self.paths = DotDict({
-                'model_dir': model_dir_path,
-                'input_data_dir': model_dir_path / config.INPUT_DATA_DIR,
-                'sets_excel_file': model_dir_path / config.SETS_FILE,
-                'sqlite_database': model_dir_path / config.SQLITE_DATABASE_FILE,
-            })
-
-            self._check_model_dir()
-            self._check_settings_consistency()
+            self.paths = ModelPaths(
+                logger=self.logger,
+                model_dir_path=model_dir_path,
+                model_settings_from=model_settings_from,
+                use_existing_data=use_existing_data,
+            )
             self._import_custom_scripts()
 
             self.core = Core(
@@ -145,7 +141,7 @@ class Model:
                 paths=self.paths,
             )
 
-            if self.settings['use_existing_data']:
+            if self.settings.use_existing_data:
                 self._load_model_coordinates()
                 self._initialize_problems()
 
@@ -207,107 +203,6 @@ class Model:
         else:
             return True
 
-    def _check_model_dir(self) -> None:
-        """Validate the existence of the model directory and required files.
-
-        This method checks if the model directory and all the required files exist.
-        This method is called during the initialization of the Model instance, and 
-        it is not meant to be called directly by the user.
-
-        Depending on the 'use_existing_data' flag, the method checks for the existence
-        of different files: if the flag is set to False, it checks for the existence
-        of the basic model settings files (.yml or .xlsx). If the flag is set to 
-        True, it also includes in the check the existence of the SQLite database file,
-        the sets Excel file, and the input data directory.
-
-        Raises:
-            exc.SettingsError: If the 'model_settings_from' parameter is not recognized.
-            exc.SettingsError: If the model directory or any of the required 
-                setup files are missing.
-        """
-        files_type = self.settings['model_settings_from']
-        model_dir_path = self.paths['model_dir']
-        files_to_check = []
-        subdir_to_check = []
-
-        util.validate_selection(
-            valid_selections=Defaults.ConfigFiles.AVAILABLE_SETUP_SOURCES,
-            selection=files_type,
-        )
-
-        if files_type == 'yml':
-            files_to_check += [
-                file + '.yml'
-                for file in Defaults.ConfigFiles.SETUP_INFO.values()
-            ]
-        elif files_type == 'xlsx':
-            files_to_check += [Defaults.ConfigFiles.SETUP_XLSX_FILE]
-
-        if self.settings['use_existing_data']:
-            files_to_check += [
-                Defaults.ConfigFiles.SETS_FILE,
-                Defaults.ConfigFiles.SQLITE_DATABASE_FILE,
-            ]
-            subdir_to_check += [Defaults.ConfigFiles.INPUT_DATA_DIR]
-
-        err_msg = []
-
-        if not Path(model_dir_path).exists():
-            self.logger.error(
-                "Model directory validation | Model directory is missing."
-            )
-            raise exc.SettingsError("Model directory validation | Failed.")
-
-        for subdir in subdir_to_check:
-            if not Path(model_dir_path / subdir).exists():
-                err_msg.append(
-                    f"Model directory validation | '{subdir}' directory is missing."
-                )
-
-        for file in files_to_check:
-            if not Path(model_dir_path / file).exists():
-                err_msg.append(
-                    f"Model directory validation | '{file}' file is missing."
-                )
-
-        if err_msg == []:
-            self.logger.debug(
-                f"Model directory validation | Success.")
-        else:
-            [self.logger.error(msg) for msg in err_msg]
-            raise exc.SettingsError("Model directory validation | Failed.")
-
-    def _check_settings_consistency(self) -> None:
-        """Check consistency of model settings.
-
-        This method checks the consistency of the model settings, ensuring that
-        the configurations provided by the user are coherent.
-        This method is called during the initialization of the Model instance, and 
-        it is not meant to be called directly by the user.
-
-        Raises:
-            exc.SettingsError: If any inconsistency or invalid configuration 
-                is found in the model settings.
-        """
-        err_msg = []
-
-        # Check that input data csv files are only used for multiple input files
-        if self.settings['input_data_files_type'] == 'csv' and not \
-                self.settings['multiple_input_files']:
-            err_msg.append(
-                "Input data files of type 'csv' can only be used when "
-                "'multiple_input_files' setting is True."
-            )
-
-        # Add further checks below...
-
-        if err_msg == []:
-            self.logger.debug(
-                f"Model settings validation | Success.")
-        else:
-            [self.logger.error(msg) for msg in err_msg]
-            raise exc.SettingsError("Model settings validation | Failed.")
-
     def _import_custom_scripts(self) -> None:
         """Import user-defined custom operators and constants.
 
@@ -332,7 +227,7 @@ class Model:
         for script_type, config in custom_scripts.items():
 
             custom_functions = self.files.load_functions_from_module(
-                dir_path=self.paths['model_dir'],
+                dir_path=self.paths.model_dir,
                 file_name=config['file_name'],
             )
 
@@ -382,7 +277,7 @@ class Model:
                 sets_xlsx_file = Defaults.ConfigFiles.SETS_FILE
                 self.core.index.load_sets_data_to_index(
                     excel_file_name=sets_xlsx_file,
-                    excel_file_dir_path=self.paths['model_dir']
+                    excel_file_dir_path=self.paths.model_dir
                 )
             except FileNotFoundError as e:
                 msg = f"'{sets_xlsx_file}' file missing. Set 'use_existing_data' " \
@@ -411,10 +306,10 @@ class Model:
             exogenous variables data from the user. 
 
         """
-        use_existing_data = self.settings['use_existing_data']
+        use_existing_data = self.settings.use_existing_data
         sqlite_db_name = Defaults.ConfigFiles.SQLITE_DATABASE_FILE
-        sqlite_db_path = Path(self.paths['sqlite_database'])
-        input_files_dir_path = Path(self.paths['input_data_dir'])
+        sqlite_db_path = Path(self.paths.sqlite_database)
+        input_files_dir_path = Path(self.paths.input_data_dir)
 
         erased_db = False
         erased_input_dir = False
@@ -430,7 +325,7 @@ class Model:
         ):
             if sqlite_db_path.exists():
                 erased_db = self.files.erase_file(
-                    dir_path=self.paths['model_dir'],
+                    dir_path=self.paths.model_dir,
                     file_name=sqlite_db_name,
                     force_erase=False,
                     confirm=True,
@@ -551,7 +446,7 @@ class Model:
             exc.SettingsError: If the sets Excel file specified in the settings 
                 is missing when loading model coordinates.
         """
-        if self.settings['use_existing_data']:
+        if self.settings.use_existing_data:
             self.logger.info(
                 "Relying on existing model environment (sets coordinates, "
                 "SQLite database, input data files)."
@@ -819,7 +714,7 @@ class Model:
             exc.SettingsError: If any of the specified table keys are invalid 
                 (i.e., not exogenous data tables).
         """
-        input_files_dir_path = Path(self.paths['input_data_dir'])
+        input_files_dir_path = Path(self.paths.input_data_dir)
 
         if not input_files_dir_path.exists():
             msg = "Input data directory missing. Initialize blank data " \
@@ -909,7 +804,7 @@ class Model:
             raise exc.SettingsError(msg)
 
         if other_db_dir_path is None:
-            other_db_dir_path = self.paths['model_dir']
+            other_db_dir_path = self.paths.model_dir
 
         if other_db_name is None:
             other_db_name = Defaults.ConfigFiles.SQLITE_DATABASE_FILE_TEST

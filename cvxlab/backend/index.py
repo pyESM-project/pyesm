@@ -15,6 +15,7 @@ import pandas as pd
 import cvxpy as cp
 
 from cvxlab.backend.data_table import DataTable
+from cvxlab.backend.model_settings import ModelSettings, ModelPaths
 from cvxlab.backend.set_table import SetTable
 from cvxlab.backend.variable import Variable
 from cvxlab.defaults import Defaults
@@ -32,7 +33,7 @@ class Index:
 
     - logger (Logger): Logger object for logging information, warnings, and errors.
     - files (FileManager): Manages file-related operations with files.
-    - paths (Dict[str, Path]): Dictionary mapping of paths used in file operations.
+    - paths (ModelPaths): Validated container with model file-system paths.
     - sets (Dict[str, SetTable]): Dictionary of set tables loaded upon initialization.
     - data (Dict[str, DataTable]): Dictionary of data tables loaded upon initialization.
     - variables (Dict[str, Variable]): Dictionary of variables fetched upon initialization.
@@ -43,8 +44,8 @@ class Index:
             self,
             logger: Logger,
             files: FileManager,
-            settings: Dict[str, str],
-            paths: Dict[str, Path],
+            settings: ModelSettings,
+            paths: ModelPaths,
     ):
         """Initialize a new instance of the Index class.
 
@@ -58,8 +59,8 @@ class Index:
         Args:
             logger (Logger): Logger object for logging operations.
             files (FileManager): FileManager object for managing file operations.
-            settings (Dict[str, str]): A dictionary containing configuration settings.
-            paths (Dict[str, Path]): Dictionary mapping of paths used in file operations.
+            settings (ModelSettings): Validated container with model configuration settings.
+            paths (ModelPaths): Validated container with model file-system paths.
         """
         self.logger = logger.get_child(__name__)
 
@@ -277,7 +278,7 @@ class Index:
         structures = Defaults.DefaultStructures
         config = Defaults.ConfigFiles
 
-        source = self.settings['model_settings_from']
+        source = self.settings.model_settings_from
 
         structures_mapping = {
             config.SETUP_INFO[0]: (SetTable, structures.SET_STRUCTURE[1]),
@@ -300,7 +301,7 @@ class Index:
         data = self.files.load_data_structure(
             structure_key=data_structure_key,
             source=source,
-            dir_path=self.paths['model_dir'],
+            dir_path=self.paths.model_dir,
         )
 
         # Backward-compatibility: convert deprecated 'integer: true/false' to 'variable_domain'
@@ -330,7 +331,7 @@ class Index:
         }
 
         if invalid_entries:
-            if self.settings['detailed_validation']:
+            if self.settings.detailed_validation:
                 self.logger.error(
                     f"Validation error report ===================================")
                 for key, error_log in invalid_entries.items():
@@ -345,7 +346,7 @@ class Index:
 
             msg = f"'{data_structure_key}' data validation not successful. " \
                 f"Check setup '{source}' file. "
-            if not self.settings['detailed_validation']:
+            if not self.settings.detailed_validation:
                 msg += "Set 'detailed_validation=True' for more information."
 
             self.logger.error(msg)
@@ -416,7 +417,7 @@ class Index:
                             f"copied set table and source set table '{set_table_source_key}'."
 
         if problems:
-            if self.settings['detailed_validation']:
+            if self.settings.detailed_validation:
                 for key, error_log in problems.items():
                     self.logger.error(
                         f"Set tables coherence check | {key} | {error_log}")
@@ -427,7 +428,7 @@ class Index:
 
             msg = "Sets tables coherence check not successful. " \
                 "Check setup files."
-            if not self.settings['detailed_validation']:
+            if not self.settings.detailed_validation:
                 msg += "Set 'detailed_validation=True' for more information."
 
             self.logger.error(msg)
@@ -481,7 +482,7 @@ class Index:
                 f"Variable names must be unique across all data tables."
 
         if problems:
-            if self.settings['detailed_validation']:
+            if self.settings.detailed_validation:
                 for key, error_log in problems.items():
                     self.logger.error(
                         f"Naming coherence check | {key} | {error_log}")
@@ -492,7 +493,7 @@ class Index:
 
             msg = "Data tables and variables naming coherence check not successful. " \
                 "Check setup files."
-            if not self.settings['detailed_validation']:
+            if not self.settings.detailed_validation:
                 msg += " Set 'detailed_validation=True' for more information."
 
             self.logger.error(msg)
@@ -677,7 +678,7 @@ class Index:
                                         f"related '{property_key}' set filter values."
 
         if problems:
-            if self.settings['detailed_validation']:
+            if self.settings.detailed_validation:
                 for key, error_log in problems.items():
                     self.logger.error(
                         f"Data coherence check | {key} | {error_log}")
@@ -688,7 +689,7 @@ class Index:
 
             msg = "Sets and Data tables coherence check not successful. " \
                 "Check setup files."
-            if not self.settings['detailed_validation']:
+            if not self.settings.detailed_validation:
                 msg += "Set 'detailed_validation=True' for more information."
 
             self.logger.error(msg)
@@ -892,7 +893,7 @@ class Index:
             # ...
 
         if problems:
-            if self.settings['detailed_validation']:
+            if self.settings.detailed_validation:
                 self.logger.error(
                     f"Validation error report ===================================")
                 for key, error_log in problems.items():
@@ -905,7 +906,7 @@ class Index:
 
             msg = "Variables coherence check not successful. " \
                 "Check setup files and sets information."
-            if not self.settings['detailed_validation']:
+            if not self.settings.detailed_validation:
                 msg += "Set 'detailed_validation=True' for more information."
 
             self.logger.error(msg)
