@@ -7,7 +7,6 @@ SQLManager), and Problem (defining symbolic and numerical problems).
 """
 import os
 from typing import Any, Dict, List, Optional
-from pathlib import Path
 
 import numpy as np
 import pandas as pd
@@ -144,8 +143,12 @@ class Core:
                     f"Data table '{data_table_key}'")
 
                 # get all coordinates for the data table based on sets
+                data_table_inter_problem_sets = \
+                    self.index.data_tables_inter_problem_sets.get(
+                        data_table_key, None
+                    )
                 data_table.generate_coordinates_dataframes(
-                    sets_split_problems=self.index.sets_split_problem_dict
+                    sets_split_problems=data_table_inter_problem_sets
                 )
 
                 # data table coordinates dataframe are filtered to keep only
@@ -336,17 +339,16 @@ class Core:
                 raise exc.SettingsError(msg)
 
             if var_list_to_update == []:
-                var_list_to_update = self.index.list_variables
+                selected_var_keys = self.index.list_variables
+            else:
+                selected_var_keys = var_list_to_update
 
             with db_handler(self.sqltools):
-                for var_key, variable in self.index.variables.items():
-                    variable: Variable
+                for var_key in selected_var_keys:
+                    variable: Variable = self.index.variables[var_key]
 
                     var_sing_data_update = False
                     var_has_negatives = False
-
-                    if var_key not in var_list_to_update:
-                        continue
 
                     if variable.type in [
                         allowed_var_types['ENDOGENOUS'],
@@ -375,11 +377,10 @@ class Core:
                     # for variables whose type is end/exo depending on the problem,
                     # fetch exogenous variable data.
                     # notice that a variable may be exogenous for more than one problem.
-                    if isinstance(variable.type, dict):
-                        problem_keys = util.find_dict_keys_corresponding_to_value(
-                            variable.type, allowed_var_types['EXOGENOUS'])
-                    else:
-                        problem_keys = [None]
+                    problem_keys = self.problem.problem_keys_for_variable_type(
+                        variable=variable,
+                        expected_type=allowed_var_types['EXOGENOUS'],
+                    )
 
                     for problem_key in problem_keys:
 
@@ -574,9 +575,11 @@ class Core:
         sqlite_db_file_name_bkp = Defaults.ConfigFiles.SQLITE_DATABASE_FILE_BKP
         scenarios_header = Defaults.Labels.SCENARIO_COORDINATES
         problem_status_header = Defaults.Labels.PROBLEM_STATUS
+        data_table_types = Defaults.SymbolicDefinitions.VARIABLE_TYPES
 
         sqlite_db_path = self.paths.model_dir
         scenarios_df = self.index.scenarios_info
+        problems_expressions = self.problem._collect_problems_expressions()
 
         problems_status = pd.DataFrame(
             index=scenarios_df.index,
@@ -614,6 +617,33 @@ class Core:
                 for problem_key in sequential_solution_chain:
 
                     problem_df = self.problem.numerical_problems[problem_key]
+                    problem_expressions = problems_expressions[problem_key]
+
+                    problem_vars = {
+                        var_key: variable
+                        for expression in problem_expressions
+                        for var_key, variable in
+                        self.problem._get_vars_in_expression(
+                            expression).items()
+                    }
+                    problem_vars_by_type = \
+                        self.problem.map_variables_types_by_problem(
+                            variables=problem_vars,
+                            problem_key=problem_key,
+                        )
+                    problem_exogenous_vars = set(
+                        problem_vars_by_type.get(
+                            data_table_types['EXOGENOUS'], [],
+                        )
+                    )
+
+                    self._data_to_cvxpy_exogenous_vars(
+                        scenarios_idx=scenario,
+                        var_list_to_update=list(problem_exogenous_vars),
+                        filter_negative_values=True,
+                        warnings_on_negatives=True,
+                        validate_types=False,
+                    )
 
                     self.problem.solve_problem_dataframe(
                         problem_name=problem_key,
@@ -644,29 +674,30 @@ class Core:
                     # only endogenous data tables that are actually used in the
                     # problem are exported to avoid that data are overwritten in
                     # the database by endogenous data tables that are not used in the problem
-                    data_tables_in_problem = list(
-                        self.problem.problems_data_tables_variables[problem_key])
+                    selected_data_table_keys = [
+                        data_table_key
+                        for data_table_key in
+                        self.problem.problems_data_tables_variables[problem_key]
+                        if data_table_key in self.index.data
+                    ]
 
-                    endogenous_data_tables = list(
-                        set(data_tables_in_problem) &
-                        set(self.problem.endogenous_tables_all)
-                    )
+                    endogenous_data_tables = set()
+
+                    for data_table_key in selected_data_table_keys:
+                        data_table: DataTable = self.index.data[data_table_key]
+
+                        if self.problem.data_table_is_type(
+                            data_table=data_table,
+                            expected_type=data_table_types['ENDOGENOUS'],
+                            problem_key=problem_key,
+                        ):
+                            endogenous_data_tables.add(data_table_key)
 
                     self.cvxpy_endogenous_data_to_database(
                         scenarios_idx=scenario,
                         tables_to_export=endogenous_data_tables,
                         force_overwrite=True,
                         suppress_warnings=True,
-                    )
-
-                    self.logger.info(
-                        "Updating exogenous data before the next problem run.")
-
-                    self._data_to_cvxpy_exogenous_vars(
-                        scenarios_idx=scenario,
-                        filter_negative_values=True,
-                        warnings_on_negatives=True,
-                        validate_types=False,
                     )
 
         finally:
@@ -1214,11 +1245,10 @@ class Core:
                 during the data export process. Defaults to False.
         """
         self.logger.debug(
-            "Exporting data from cvxpy endogenous variable (in data table) "
-            f"to SQLite database '{Defaults.ConfigFiles.SQLITE_DATABASE_FILE}' ")
+            "Exporting data from cvxpy endogenous variable to SQLite database "
+            f"'{Defaults.ConfigFiles.SQLITE_DATABASE_FILE}' ")
 
         values_headers = Defaults.Labels.VALUES_FIELD['values'][0]
-        allowed_var_types = Defaults.SymbolicDefinitions.VARIABLE_TYPES
 
         if scenarios_idx is None:
             scenarios_list = list(self.index.scenarios_info.index)
@@ -1243,12 +1273,15 @@ class Core:
         else:
             tables_to_export = self.problem.endogenous_tables_all
 
-        with db_handler(self.sqltools):
-            for data_table_key, data_table in self.index.data.items():
-                data_table: DataTable
+        selected_data_table_keys = [
+            data_table_key
+            for data_table_key in tables_to_export
+            if data_table_key in self.index.data
+        ]
 
-                if data_table_key not in tables_to_export:
-                    continue
+        with db_handler(self.sqltools):
+            for data_table_key in selected_data_table_keys:
+                data_table: DataTable = self.index.data[data_table_key]
 
                 if isinstance(data_table.coordinates_dataframe, pd.DataFrame):
                     data_table_dataframe = data_table.coordinates_dataframe

@@ -591,7 +591,9 @@ class Model:
             solver=solver,
             solver_verbose=solver_verbose,
             solver_settings=solver_settings,
+            # arguments for sequential solution mode
             sequential_solution_chain=sequential_solution_chain,
+            # arguments for integrated solution mode
             convergence_monitoring=convergence_monitoring,
             convergence_norm=convergence_norm,
             convergence_tables_to_check=convergence_tables_to_check,

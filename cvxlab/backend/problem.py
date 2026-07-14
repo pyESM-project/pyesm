@@ -829,6 +829,119 @@ class Problem:
             if var_key in text_tokens
         }
 
+    def get_variable_type_by_problem(
+        self,
+        variable: Variable,
+        problem_key: Optional[int | str] = None,
+    ) -> Optional[str]:
+        """Return effective variable type for a specific problem.
+
+        For variables whose type is problem-dependent (hybrid type dict),
+        this method returns the mapped type for the passed ``problem_key``.
+        For variables with a global type (string), that type is returned.
+
+        Args:
+            variable (Variable): Variable instance to inspect.
+            problem_key (Optional[int | str], optional): Numerical problem key.
+
+        Returns:
+            Optional[str]: Effective type for the given problem or ``None`` if
+                no mapping is available for a hybrid variable.
+        """
+        if isinstance(variable.type, dict):
+            return variable.type.get(problem_key)
+
+        return variable.type
+
+    def variable_is_type(
+        self,
+        variable: Variable,
+        expected_type: str,
+        problem_key: Optional[int | str] = None,
+    ) -> bool:
+        """Check whether a variable has the expected type for a problem key."""
+        return self.get_variable_type_by_problem(
+            variable=variable,
+            problem_key=problem_key,
+        ) == expected_type
+
+    def map_variables_types_by_problem(
+        self,
+        variables: Dict[str, Variable],
+        problem_key: Optional[int | str] = None,
+    ) -> Dict[str, List[str]]:
+        """Map variable keys by effective type for a specific problem.
+
+        Args:
+            variables (Dict[str, Variable]): Variables to map.
+            problem_key (Optional[int | str], optional): Numerical problem key.
+
+        Returns:
+            Dict[str, List[str]]: Mapping ``{var_type: [var_keys...]}``.
+        """
+        mapped_variables: Dict[str, List[str]] = {
+            var_type: []
+            for var_type in Defaults.SymbolicDefinitions.VARIABLE_TYPES.values()
+        }
+
+        for var_key, variable in variables.items():
+            var_type = self.get_variable_type_by_problem(
+                variable=variable,
+                problem_key=problem_key,
+            )
+            if var_type in mapped_variables:
+                mapped_variables[var_type].append(var_key)
+
+        return {
+            var_type: var_keys
+            for var_type, var_keys in mapped_variables.items()
+            if var_keys
+        }
+
+    def problem_keys_for_variable_type(
+        self,
+        variable: Variable,
+        expected_type: str,
+    ) -> List[Optional[int | str]]:
+        """Return problem keys where a variable has the expected type.
+
+        Returns ``[None]`` for globally-typed variables matching ``expected_type``.
+        """
+        if isinstance(variable.type, dict):
+            return [
+                problem_key
+                for problem_key, var_type in variable.type.items()
+                if var_type == expected_type
+            ]
+
+        if variable.type == expected_type:
+            return [None]
+
+        return []
+
+    def get_data_table_type_by_problem(
+        self,
+        data_table: DataTable,
+        problem_key: Optional[int | str] = None,
+    ) -> Optional[str]:
+        """Return effective data table type for a specific problem."""
+        if isinstance(data_table.type, dict):
+            return data_table.type.get(problem_key)
+
+        return data_table.type
+
+    def data_table_is_type(
+        self,
+        data_table: DataTable,
+        expected_type: str,
+        problem_key: Optional[int | str] = None,
+    ) -> bool:
+        """Check whether a data table has the expected type for a problem key."""
+        return self.get_data_table_type_by_problem(
+            data_table=data_table,
+            problem_key=problem_key,
+        ) == expected_type
+
     def validate_symbolic_expressions(self) -> None:
         """Validate symbolic expressions.
 
@@ -857,6 +970,7 @@ class Problem:
         source_format = self.settings.model_settings_from
         token_patterns = Defaults.SymbolicDefinitions.TOKEN_PATTERNS
         allowed_operators = Defaults.SymbolicDefinitions.ALLOWED_OPERATORS
+        variable_types = Defaults.SymbolicDefinitions.VARIABLE_TYPES
 
         errors = []
 
@@ -920,19 +1034,20 @@ class Problem:
                         msg_str + f"Variable names overlapped with custom operators: "
                         f"{non_allowed_vars_keys}.")
 
-                # intra-problem sets in a variable must not be a dimension in other variables
+                # intra-problem sets in a variable must not be a dimension in
+                # other variables
                 vars_in_expression = self._get_vars_in_expression(
                     expression, tokens)
 
-                intra_problem_sets = set()
-                shape_set_map = {}
-
-                for var_key, variable in vars_in_expression.items():
-                    variable: Variable
-                    intra_problem_sets.update(variable.intra_sets or [])
-                    shape_set_map[var_key] = set(
-                        util.flattening_list(variable.shape_sets)
-                    )
+                intra_problem_sets = set([
+                    variable.intra_sets
+                    for variable in vars_in_expression.values()
+                    if variable.intra_sets
+                ])
+                shape_set_map = {
+                    var_key: set(util.flattening_list(variable.shape_sets))
+                    for var_key, variable in vars_in_expression.items()
+                }
 
                 for var_key, dim_sets in shape_set_map.items():
                     overlapping_sets = intra_problem_sets & dim_sets
@@ -942,6 +1057,49 @@ class Problem:
                             f"Variable '{var_key}' has shape_set(s) overlapped "
                             f"with intra-problem set(s) of the expression: "
                             f"{intra_problem_sets}."
+                        )
+
+                # validation of inter-problem sets for exogenous variables in each
+                # expression
+                inter_problem_sets = set()
+                exogenous_vars_inter_problem_sets = set()
+
+                for variable in vars_in_expression.values():
+                    variable: Variable
+
+                    if variable.inter_sets:
+                        inter_problem_sets.update(variable.inter_sets)
+
+                        if self.variable_is_type(
+                            variable=variable,
+                            expected_type=variable_types['EXOGENOUS'],
+                            problem_key=problem_key,
+                        ):
+                            exogenous_vars_inter_problem_sets.update(
+                                variable.inter_sets)
+
+                # each endogenous variable must be defined at least for all
+                # inter-problem sets appearing in the exogenous variables.
+                for var_key, variable in vars_in_expression.items():
+                    variable: Variable
+
+                    is_endogenous = self.variable_is_type(
+                        variable=variable,
+                        expected_type=variable_types['ENDOGENOUS'],
+                        problem_key=problem_key,
+                    )
+
+                    if not is_endogenous:
+                        continue
+
+                    missing_inter_sets = exogenous_vars_inter_problem_sets - \
+                        set(variable.inter_sets)
+
+                    if missing_inter_sets:
+                        errors.append(
+                            msg_str +
+                            f"Inter-problem set(s) {missing_inter_sets} not "
+                            f"defined for endogenous variable '{var_key}'."
                         )
 
                 # other checks can be added here ...
@@ -1112,8 +1270,7 @@ class Problem:
                     )
                 ]
 
-            # hybrid type data tables must specify data type for all problems (also
-            # in case a variable is not used at all in a specific problem)
+            # check if problems keys in hybrid data tables type are correctly defined
             if isinstance(data_table.type, dict):
 
                 valid_problem_keys = set(self.symbolic_problem.keys())

@@ -23,10 +23,10 @@ from tests.integration.conftest import (
 
 # Defaults and paths
 tests_settings_file = 'tests_settings.yml'
+
 # Previously tests used a `fixtures` folder. Now scan the tutorials
 # for model folders at `docs/source/tutorials/*/materials/model`.
 db_name = Defaults.ConfigFiles.SQLITE_DATABASE_FILE
-
 root_path = Path(__file__).parent
 test_settings_path = Path(root_path, tests_settings_file)
 

@@ -210,6 +210,21 @@ class Variable:
         return list(intra_dim_dict.keys())
 
     @property
+    def inter_sets(self) -> List[str]:
+        """Return a list of inter-problem sets of the variable.
+
+        Returns:
+            List[str]: A list containing the inter-problem sets keys.
+        """
+        inter_dim_key = Defaults.SymbolicDefinitions.DIMENSIONS['INTER']
+        inter_dim_dict: dict = self.coordinates_info.get(inter_dim_key, None)
+
+        if inter_dim_dict is None:
+            return []
+
+        return list(inter_dim_dict.keys())
+
+    @property
     def shape_size(self) -> List[int]:
         """Return the rows-cols dimension size of the variable.
 

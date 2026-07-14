@@ -1,6 +1,6 @@
 supply_1:
     type: {process_1: 'endogenous', process_3: 'exogenous'}
-    coordinates: [products, resources]
+    coordinates: [products]
     variables_info: 
         s_1: 
             blank_fill: 0.0
@@ -9,7 +9,7 @@ supply_1:
 
 supply_2:
     type: endogenous
-    coordinates: [products, resources]
+    coordinates: [products]
     variables_info:
         s_2: 
             products:

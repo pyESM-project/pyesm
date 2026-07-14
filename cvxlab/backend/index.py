@@ -246,6 +246,36 @@ class Index:
             if isinstance(variable.type, dict)
         ]
 
+    @property
+    def data_tables_inter_problem_sets(self) -> Dict[str, Dict[str, str]]:
+        """Dictionary of inter-problem sets for each data table.
+
+        This property returns a dictionary where keys are data table identifiers
+        and values are lists of inter-problem sets associated with each data table.
+        An empty dictionary is returned if no inter-problem sets are found.
+
+        Returns:
+            Dict[str, List[str]]: A dictionary mapping data table identifiers to
+                their corresponding inter-problem sets.
+        """
+        data_tables_inter_problem_sets = {}
+
+        for table_key, data_table in self.data.items():
+            data_table: DataTable
+
+            for set_key in data_table.coordinates:
+
+                if set_key in self.sets_split_problem_dict:
+                    set_table: SetTable = self.sets[set_key]
+                    set_header = set_table.set_name_header
+
+                    if table_key not in data_tables_inter_problem_sets:
+                        data_tables_inter_problem_sets[table_key] = {}
+
+                    data_tables_inter_problem_sets[table_key][set_key] = set_header
+
+        return data_tables_inter_problem_sets
+
     def load_and_validate_structure(
             self,
             data_structure_key: str,
@@ -577,17 +607,6 @@ class Index:
             if invalid_coordinates:
                 path = f"{table_key}.{coordinates_key}"
                 problems[path] = f"Invalid coordinates: {invalid_coordinates}"
-
-            # all inter-problem sets must be embedded in endogenous data tables coordinates
-            if data_table.type == allowed_var_types['ENDOGENOUS'] or \
-                    isinstance(data_table.type, dict):
-                missing_sets = set(self.sets_split_problem_dict) - \
-                    set(data_table.coordinates)
-
-                if missing_sets:
-                    path = f"{table_key}.{coordinates_key}"
-                    problems[path] = f"Missing inter-problem sets in coordinates: " \
-                        f"{list(missing_sets)}"
 
             # for each variable in data table
             for var_key, var_info in data_table.variables_info.items():
