@@ -391,8 +391,6 @@ class Variable:
                 and related items.
         """
         if not self.coordinates_info:
-            self.logger.warning(
-                f"Coordinates not defined for variable '{self.symbol}'.")
             return []
 
         all_coordinates = {}
@@ -415,13 +413,9 @@ class Variable:
                 headers and and related items as values.
         """
         if not self.coordinates_info:
-            self.logger.warning(
-                f"Coordinates not defined for variable '{self.symbol}'.")
             return []
 
         if not self.coordinates:
-            self.logger.warning(
-                f"Coordinates not defined for variable '{self.symbol}'.")
             return []
 
         all_coords_w_headers = {}

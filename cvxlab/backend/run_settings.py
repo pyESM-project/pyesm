@@ -39,6 +39,28 @@ class RunSettings:
         exc.SettingsError: If any validation rule is violated.
     """
 
+    _RUN_MODEL_PARAM_NAMES: tuple[str, ...] = (
+        'force_overwrite',
+        'solution_mode',
+        'scenarios_idx',
+        'solver',
+        'solver_verbose',
+        'solver_settings',
+        'sequential_solution_chain',
+        'convergence_monitoring',
+        'convergence_norm',
+        'convergence_tables_to_check',
+        'convergence_tables_to_skip',
+        'relative_tolerance',
+        'maximum_iterations',
+        'keep_previous_iteration_db',
+    )
+
+    @classmethod
+    def run_model_param_names(cls) -> tuple[str, ...]:
+        """Return names of ``Model.run_model``-aligned user arguments."""
+        return cls._RUN_MODEL_PARAM_NAMES
+
     def __init__(
         self,
         *,

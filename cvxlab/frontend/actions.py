@@ -71,7 +71,7 @@ def gen_directory(cfg: session.SessionConfig, ms: session.ModelState) -> None:
     cl.create_model_dir(
         main_dir_path=cfg.main_dir_path,
         model_dir_name=cfg.model_dir_name,
-        settings_file_type=cfg.model_settings_from,
+        settings_file_type=cfg.resolved_template_file_type,
     )
 
 
@@ -158,7 +158,10 @@ def init_model(cfg: session.SessionConfig, ms: session.ModelState) -> None:
 @menu_action("Refresh input data and re-initialize problem(s).")
 def init_problem(cfg: session.SessionConfig, ms: session.ModelState) -> None:
     model = ms.ensure_model(cfg, use_existing_data=True)
-    model.refresh_database_and_initialize_problem()
+    model.refresh_database_and_initialize_problem(
+        table_key_list=cfg.table_key_list,
+        force_overwrite=cfg.force_overwrite,
+    )
 
 
 # ------------------------------------------------------------------
@@ -167,7 +170,10 @@ def init_problem(cfg: session.SessionConfig, ms: session.ModelState) -> None:
 @menu_action("Run numerical problem(s).")
 def run_model(cfg: session.SessionConfig, ms: session.ModelState) -> None:
     model = ms.ensure_model(cfg, use_existing_data=True)
-    model.refresh_database_and_initialize_problem()
+    model.refresh_database_and_initialize_problem(
+        table_key_list=cfg.table_key_list,
+        force_overwrite=cfg.force_overwrite,
+    )
     model.run_model(**cfg.solver_kwargs)
 
 
@@ -182,7 +188,10 @@ def export_results(cfg: session.SessionConfig, ms: session.ModelState) -> None:
         print("\nNo results to export. Please run the model first.\n")
         return
 
-    model.load_results_to_database()
+    model.load_results_to_database(
+        scenarios_idx=cfg.scenarios_idx,
+        force_overwrite=cfg.force_overwrite,
+    )
 
 
 # ------------------------------------------------------------------

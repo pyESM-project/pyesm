@@ -1,7 +1,9 @@
 """Interface loop engine and public entry-point function."""
 import inspect
-from typing import Any, Dict, List, Optional
+from typing import Any, List, Optional
 
+from cvxlab.backend.model_settings import ModelSettings
+from cvxlab.backend.run_settings import RunSettings
 from cvxlab.defaults import Defaults
 from cvxlab.frontend import actions, display, session
 from cvxlab.log_exc.exceptions import CVXLabError
@@ -12,20 +14,17 @@ from cvxlab.backward_compat import BackwardCompat
 # Import-time validation ensures these stay in sync with the
 # function signature; a mismatch causes an immediate RuntimeError.
 
-_MODEL_PARAM_NAMES = {
-    'model_dir_name', 'main_dir_path', 'model_settings_from',
-    'detailed_validation', 'multiple_input_files', 'input_data_files_type',
-    'log_level', 'log_format',
-}
+_MODEL_PARAM_NAMES = set(ModelSettings.model_init_param_names())
 
-_SOLVER_PARAM_NAMES = {
-    'solver', 'solver_verbose', 'solver_settings',
-    'solution_mode', 'convergence_monitoring', 'convergence_norm',
-    'convergence_tables_to_check', 'convergence_tables_to_skip',
-    'relative_tolerance', 'maximum_iterations', 'keep_previous_iteration_db',
-}
+_SOLVER_PARAM_NAMES = set(RunSettings.run_model_param_names())
 
-_SESSION_PARAM_NAMES = {'model_structure_file', 'template_file_type'}
+_SESSION_PARAM_NAMES = {
+    'model_structure_file',
+    'template_file_type',
+    'force_overwrite',
+    'table_key_list',
+    'scenarios_idx',
+}
 
 
 def _run_menu(
@@ -89,11 +88,20 @@ def run(
     input_data_files_type: Optional[Defaults.LiteralTypes.DataFileType] = None,
     log_level: Optional[Defaults.LiteralTypes.LogLevel] = None,
     log_format: Optional[Defaults.LiteralTypes.LogFormat] = None,
-    # Model.run_model parameters
-    solver: Optional[str] = None,
-    solver_verbose: Optional[bool] = None,
-    solver_settings: Optional[Dict[str, Any]] = None,
-    solution_mode: Optional[str] = None,
+    # Other methods parameters
+    force_overwrite: Optional[bool] = None,
+    table_key_list: Optional[list[str]] = None,
+    model_structure_file: Optional[str] = None,
+    template_file_type: Optional[Defaults.LiteralTypes.SettingsSource] = None,
+    solution_mode: Optional[Defaults.LiteralTypes.SolutionMode] = None,
+    scenarios_idx: Optional[List[int] | int] = None,
+    solver: Optional[str | dict[str, str]] = None,
+    solver_verbose: Optional[bool | dict[str, bool]] = None,
+    solver_settings: Optional[
+        dict[str, Any] |
+        dict[str, dict[str, Any]]
+    ] = None,
+    sequential_solution_chain: Optional[List[str | int]] = None,
     convergence_monitoring: Optional[bool] = None,
     convergence_norm: Optional[Defaults.LiteralTypes.NormType] = None,
     convergence_tables_to_check: Optional[
@@ -102,9 +110,6 @@ def run(
     relative_tolerance: Optional[float] = None,
     maximum_iterations: Optional[int] = None,
     keep_previous_iteration_db: Optional[bool] = None,
-    # Frontend-only parameters
-    model_structure_file: Optional[str] = None,
-    template_file_type: Optional[Defaults.LiteralTypes.SettingsSource] = None,
     # Catch-all for deprecated arguments (e.g. ``integrated_problems``).
     **kwargs: Any,
 ) -> None:
@@ -136,20 +141,32 @@ def run(
             The logging level for the logger. Defaults to ``'info'``.
         log_format (Literal['standard', 'detailed'], optional): The logging
             format for the logger. Defaults to ``'standard'``.
-        solver (str, optional): The solver to use for solving numerical
-            problems. Defaults to ``None``, in which case ``'SCIPY'`` is used
-            (from ``Defaults.NumericalSettings.CVXPY_DEFAULT_SETTINGS``).
-        solver_verbose (bool, optional): If True, logs verbose output related
-            to numerical solver operation during the model run. Defaults to
-            ``False``.
-        solver_settings (dict[str, Any], optional): Additional settings
-            for the solver passed as key-value pairs. Defaults to ``None``.
-        solution_mode (str, optional): Solution strategy. Use
-            ``'parallel'`` (default) to solve each sub-problem independently,
-            or ``'integrated'`` for an iterative block Gauss-Seidel scheme
-            where endogenous variables are exchanged until convergence.
-            Passing the deprecated ``integrated_problems`` keyword via
-            ``**kwargs`` is still accepted and maps to this parameter.
+        force_overwrite (bool, optional): If True, overwrites existing
+            results. Defaults to ``False``.
+        solution_mode (Literal['parallel', 'sequential', 'integrated'], optional):
+            The solution mode to use. Defaults to ``'parallel'``.
+        scenarios_idx (Optional[List[int] | int], optional): An optional list
+            of indices specifying which scenarios to solve. Indices must
+            correspond to the index of the :attr:`Model.scenarios` DataFrame.
+            If ``None``, all scenarios are solved. If an integer is provided,
+            it is treated as a single scenario index. Defaults to ``None``.
+        solver (str | dict[str, str], optional): The solver to use for solving
+            numerical problems. When multiple sub-problems are available,
+            a dictionary keyed by problem key can be used to define one solver
+            per sub-problem. Defaults to ``None``.
+        solver_verbose (bool | dict[str, bool], optional): If True, logs
+            verbose output related to numerical solver operation during the
+            model run. When multiple sub-problems are available, a dictionary
+            keyed by problem key can be used to define verbosity per
+            sub-problem. Defaults to ``False``.
+        solver_settings (dict[str, Any] | dict[str, dict[str, Any]], optional):
+            Additional solver settings. When multiple sub-problems are
+            available, a dictionary keyed by problem key can be used to define
+            dedicated settings per sub-problem. Defaults to ``None``.
+        sequential_solution_chain (Optional[List[str | int]], optional): An
+            optional list of problem keys or scenario indices specifying the
+            order in which to solve the problems. If ``None``, problems are
+            solved in the default order. Defaults to ``None``.
         convergence_monitoring (bool, optional): If True, enables convergence
             monitoring during the solving of integrated problems. Defaults to
             ``True``.
@@ -180,18 +197,8 @@ def run(
             disables actions that depend on a structure file.
         template_file_type (Literal['yml', 'xlsx'], optional): The type of
             template configuration file to generate when creating a model
-            directory. Defaults to ``'xlsx'``.
-
-
-    Example::
-
-        import cvxlab
-        cvxlab.run(
-            model_dir_name='my_model',
-            main_dir_path='/path/to/models',
-            log_level='debug',
-            solver='ECOS',
-        )
+            directory. If ``None``, the value of ``model_settings_from`` is
+            used.
     """
     all_args = locals()
 
@@ -200,10 +207,13 @@ def run(
 
     model_kw = _collect_group(_MODEL_PARAM_NAMES)
     solver_kw = _collect_group(_SOLVER_PARAM_NAMES)
+
     # Merge any deprecated kwargs passed via **kwargs (e.g. `integrated_problems`)
     # before normalizing so BackwardCompat can translate them.
+
     solver_kw.update(kwargs)
     solver_kw = BackwardCompat.run_params(solver_kw)
+
     session_kw = _collect_group(_SESSION_PARAM_NAMES)
 
     cfg = session.SessionConfig(

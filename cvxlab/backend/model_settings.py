@@ -25,6 +25,22 @@ class ModelSettings:
         exc.SettingsError: If any settings combination is invalid.
     """
 
+    _MODEL_INIT_PARAM_NAMES: tuple[str, ...] = (
+        'model_dir_name',
+        'main_dir_path',
+        'model_settings_from',
+        'detailed_validation',
+        'multiple_input_files',
+        'input_data_files_type',
+        'log_level',
+        'log_format',
+    )
+
+    @classmethod
+    def model_init_param_names(cls) -> tuple[str, ...]:
+        """Return frontend-facing ``Model.__init__`` argument names."""
+        return cls._MODEL_INIT_PARAM_NAMES
+
     def __init__(
         self,
         *,

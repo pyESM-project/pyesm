@@ -1039,11 +1039,11 @@ class Problem:
                 vars_in_expression = self._get_vars_in_expression(
                     expression, tokens)
 
-                intra_problem_sets = set([
-                    variable.intra_sets
+                intra_problem_sets = {
+                    intra_set
                     for variable in vars_in_expression.values()
-                    if variable.intra_sets
-                ])
+                    for intra_set in (variable.intra_sets or [])
+                }
                 shape_set_map = {
                     var_key: set(util.flattening_list(variable.shape_sets))
                     for var_key, variable in vars_in_expression.items()
