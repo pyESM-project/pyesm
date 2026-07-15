@@ -91,7 +91,6 @@ def run(
     # Other methods parameters
     force_overwrite: Optional[bool] = None,
     table_key_list: Optional[list[str]] = None,
-    model_structure_file: Optional[str] = None,
     template_file_type: Optional[Defaults.LiteralTypes.SettingsSource] = None,
     solution_mode: Optional[Defaults.LiteralTypes.SolutionMode] = None,
     scenarios_idx: Optional[List[int] | int] = None,
@@ -110,6 +109,7 @@ def run(
     relative_tolerance: Optional[float] = None,
     maximum_iterations: Optional[int] = None,
     keep_previous_iteration_db: Optional[bool] = None,
+    model_structure_file: Optional[str] = None,
     # Catch-all for deprecated arguments (e.g. ``integrated_problems``).
     **kwargs: Any,
 ) -> None:
@@ -143,6 +143,14 @@ def run(
             format for the logger. Defaults to ``'standard'``.
         force_overwrite (bool, optional): If True, overwrites existing
             results. Defaults to ``False``.
+        table_key_list (List[str], optional): A list of exogenous data table
+            keys to target when loading/updating input data in actions that
+            support selective table processing. If ``None``, all applicable
+            tables are considered.
+        template_file_type (Literal['yml', 'xlsx'], optional): The type of
+            template configuration file to generate when creating a model
+            directory. If ``None``, the value of ``model_settings_from`` is
+            used.
         solution_mode (Literal['parallel', 'sequential', 'integrated'], optional):
             The solution mode to use. Defaults to ``'parallel'``.
         scenarios_idx (Optional[List[int] | int], optional): An optional list
@@ -193,12 +201,14 @@ def run(
             database generated during the last-1 iteration. For debugging
             purposes. Defaults to ``False``.
         model_structure_file (str, optional): Name of the Excel file used to
-            transfer model structure information. Defaults to ``None``, which
-            disables actions that depend on a structure file.
-        template_file_type (Literal['yml', 'xlsx'], optional): The type of
-            template configuration file to generate when creating a model
-            directory. If ``None``, the value of ``model_settings_from`` is
-            used.
+            transfer model structure information. This is useful in case of complex 
+            settings, in order to create a layer of separation between real model 
+            settings files, that can be updated from another source file. 
+            Defaults to ``None``, which disables actions that depend on a 
+            structure file in the interface.
+        **kwargs: Additional deprecated keyword arguments accepted for
+            backward compatibility (for example, ``integrated_problems``),
+            normalized via :class:`~cvxlab.backward_compat.BackwardCompat`.
     """
     all_args = locals()
 

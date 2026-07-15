@@ -774,8 +774,9 @@ class Core:
                 keys to skip for convergence checking. Useful in case of problematic 
                 tables. Defaults to None.
             relative_tolerance (Optional[float], optional): The maximum
-                relative tolerance that all value tables must respect as a convergence
-                criterion (0.1 -> 10%). Overwrite default setting in Defaults. 
+                relative tolerance that all value tables must respect to be
+                considered converged (for example, 0.1 means 10 percent).
+                It overwrites the default setting in Defaults.
                 Defaults to None.
             maximum_iterations (Optional[int], optional): The maximum number of 
                 iterations for the solver. Overwrite default setting in Defaults. 
@@ -1229,16 +1230,19 @@ class Core:
         The method can export data for all scenarios or for a subset of scenarios
         (scenarios_idx): scenarios are linear combinations of inter-problem sets
         values defined in the index.
-        The method can optionally suppress warnings during the export process (
-        force_overwrite, useful for testing purpose).
         The method can optionally force the re-export of data even if the data
-        table already exists (suppress_warnings, useful for continuous user model
-        run, when only a subset of endogenous variables need to be exported).
+        table already exists (``force_overwrite``, useful for testing).
+        It can also suppress warnings during export (``suppress_warnings``,
+        useful for repeated runs when only a subset of endogenous variables is
+        exported).
 
         Args:
             scenarios_idx (Optional[List[int] | int], optional): List of indices
                 of scenarios for which to fetch data. If None, fetches data for
                 all scenarios. Defaults to None.
+            tables_to_export (Optional[List[str]], optional): Optional subset of
+                endogenous table keys to export. If None, all endogenous data
+                tables are exported.
             force_overwrite (bool, optional): If True, forces the re-export of 
                 data even if the data table already exists. Defaults to False.
             suppress_warnings (bool, optional): If True, suppresses warnings 
@@ -1446,6 +1450,10 @@ class Core:
         and validate the symbolic problem definitions from a file.
         The method also performs a coherence check between data tables and problem
         definitions based on 'check_data_tables_and_problem_coherence' method.
+
+        Args:
+            force_overwrite (bool, optional): If True, symbolic problem data are
+                reloaded even when already available. Defaults to False.
         """
         with self.logger.log_timing(
             message=f"Loading and validating symbolic problem...",

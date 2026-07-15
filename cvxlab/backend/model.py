@@ -551,7 +551,7 @@ class Model:
                 optional list of problem keys or scenario indices specifying the
                 order in which to solve the problems. If None, problems are solved
                 in the default order. Defaults to None.
-            convergence_monitor (bool, optional): If True, enables convergence
+            convergence_monitoring (bool, optional): If True, enables convergence
                 monitoring during the solving of integrated problems. Defaults to True.
             convergence_norm (Defaults.LiteralTypes.NormType, optional):
                 The norm type to use for convergence monitoring in integrated

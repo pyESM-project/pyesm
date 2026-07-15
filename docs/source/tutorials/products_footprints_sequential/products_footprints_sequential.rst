@@ -1,7 +1,7 @@
-.. _tutorial-production-planning:
+.. _tutorial-products-footprints:
 
-Production planning model
-=========================
+Products footprinting model
+===========================
 
 This tutorial illustrates how to build a simple optimal allocation model for
 production planning under resource constraints. The tutorial mirrors the workflow
@@ -38,8 +38,8 @@ start if you are a CVXlab newbie.
 
   :math:`E = (250, 300) kWh`, :math:`M = (60, 90) kg` 
 
-In the :download:`zip directory <production_planning.zip>`, the materials related 
-to this tutorial are available, including:
+In the :download:`zip directory <products_footprints_sequential.zip>`, the materials 
+related to this tutorial are available, including:
 
 - ``notebook.ipynb`` file: Jupyter Notebook with the complete workflow of the 
   tutorial, including code and comments.

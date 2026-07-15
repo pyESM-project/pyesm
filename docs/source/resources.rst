@@ -27,19 +27,22 @@ Tutorials
     * - :doc:`Production planning <tutorials/production_planning/production_planning>`
       - Complete workflow for definining and solving a simple production planning 
         under resource constraints. Step by step guide aligned with :ref:`User 
-        Guide <model_generation_from_scratch>`. *Ideal for newbies*.
+        Guide <model_generation_from_scratch>`. **[Ideal for newbies]**.
       - :download:`link <tutorials/production_planning/production_planning.zip>`
     * - :doc:`Production planning (non-linear) <tutorials/production_planning_nonlinear/production_planning_nonlinear>`
-      - Complete workflow for definining and solving a non-linear production planning 
-        under resource constraints. Similar to previous production planning tutorial, 
-        but handling non-linearities explicitly. 
+      - Non-linear production planning under resource constraints. Similar to the 
+        previous production planning tutorial, but handling non-linearities explicitly. 
       - :download:`link <tutorials/production_planning_nonlinear/production_planning_nonlinear.zip>`
     * - :doc:`Production planning (decomposition) <tutorials/production_planning_decomposition/production_planning_decomposition>`
-      - Detailed guide on reformulating and decomposing the previous non-linear 
-        production planning problem into coupled convex sub-problems solved iteratively 
-        (block Gauss–Seidel). Includes YAML snippets, hybrid table examples, 
-        convergence logs, and troubleshooting.
+      - Reformulating and decomposing the previous non-linear production planning 
+        problem into coupled convex sub-problems solved iteratively (block Gauss–Seidel).
       - :download:`link <tutorials/production_planning_decomposition/production_planning_decomposition.zip>`
+    * - :doc:`Products footprinting <tutorials/products_footprints_sequential/products_footprints_sequential>`
+      - Linear algebraic problem for calculating the environmental footprint of 
+        products based on Environmentally Extended Input-Output (EEIO) analysis based 
+        on national accounting data. Illustrates how split the problem into sequential 
+        sub-problems (data processing and footprinting).
+      - :download:`link <tutorials/products_footprints_sequential/products_footprints_sequential.zip>`
 
 
 .. toctree::
@@ -50,6 +53,7 @@ Tutorials
    tutorials/production_planning/production_planning
    tutorials/production_planning_nonlinear/production_planning_nonlinear
    tutorials/production_planning_decomposition/production_planning_decomposition
+   tutorials/products_footprints_sequential/products_footprints_sequential
 
 
 .. _models_gallery:

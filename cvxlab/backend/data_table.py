@@ -140,6 +140,10 @@ class DataTable:
         are not None.
         If the 'coordinates' attribute is provided as a string, it is converted 
         to a list containing that string.
+
+        Args:
+            table_info (Dict[str, Any]): Dictionary with data-table attributes
+                loaded from model settings.
         """
         for key, value in table_info.items():
             if value is not None:

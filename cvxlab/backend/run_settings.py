@@ -198,7 +198,13 @@ class RunSettings:
         number_of_sub_problems: int,
         err_msg: list[str],
     ) -> None:
-        """Append errors if *solution_mode* is invalid or incompatible."""
+        """Append errors if *solution_mode* is invalid or incompatible.
+
+        Args:
+            solution_mode (str): Requested solution mode.
+            number_of_sub_problems (int): Number of available sub-problems.
+            err_msg (list[str]): Accumulator list for validation errors.
+        """
         available = Defaults.LiteralTypes.SolutionMode.__args__
         if solution_mode not in available:
             err_msg.append(
@@ -222,6 +228,16 @@ class RunSettings:
 
         Falls back to *all_scenarios_idx* when validation fails so that the
         caller can still collect further errors before raising.
+
+        Args:
+            scenario_idx (Optional[List[int] | int]): Requested scenario index
+                or indices.
+            all_scenarios_idx (List[int]): Full list of available scenario
+                indices.
+            err_msg (list[str]): Accumulator list for validation errors.
+
+        Returns:
+            List[int]: Normalized scenario indices to use in the run.
         """
         if scenario_idx is None:
             return list(all_scenarios_idx)
@@ -263,6 +279,17 @@ class RunSettings:
 
         Returns ``None`` when *solution_mode* is not 'sequential'.
         Defaults to the full *problems_keys* list when the chain is not given.
+
+        Args:
+            solution_mode (str): Requested solution mode.
+            sequential_solution_chain (Optional[List[str | int]]): Optional
+                user-defined chain of problem keys.
+            problems_keys (List[Optional[str]]): Available problem keys.
+            err_msg (list[str]): Accumulator list for validation errors.
+
+        Returns:
+            Optional[List[Optional[str]]]: Validated sequential chain, or None
+                when sequential mode is not active.
         """
         if solution_mode != 'sequential':
             if sequential_solution_chain is not None:
@@ -306,6 +333,21 @@ class RunSettings:
         *solver* selection, and the *solver_verbose* flag.
 
         Returns a dict keyed by every entry in *problems_keys*.
+
+        Args:
+            solver (Optional[str | dict[str, str]]): Common solver name or
+                per-problem solver mapping.
+            solver_verbose (bool | dict[str, bool]): Common verbosity flag or
+                per-problem verbosity mapping.
+            solver_settings (Optional[dict[str, Any] | dict[str, dict[str, Any]]]):
+                Common solver options or per-problem solver-options mapping.
+            problems_keys (List[Optional[str]]): Available problem keys.
+            number_of_sub_problems (int): Number of available sub-problems.
+            err_msg (list[str]): Accumulator list for validation errors.
+
+        Returns:
+            dict[Optional[str], dict[str, Any]]: Complete per-problem solver
+                settings map.
         """
         cvxpy_defaults: dict[str,
                              Any] = Defaults.NumericalSettings.CVXPY_DEFAULT_SETTINGS

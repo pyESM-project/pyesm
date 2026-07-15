@@ -859,7 +859,17 @@ class Problem:
         expected_type: str,
         problem_key: Optional[int | str] = None,
     ) -> bool:
-        """Check whether a variable has the expected type for a problem key."""
+        """Check whether a variable has the expected type for a problem key.
+
+        Args:
+            variable (Variable): Variable instance to inspect.
+            expected_type (str): Target type to match.
+            problem_key (Optional[int | str], optional): Numerical problem key
+                used for hybrid variables. Defaults to None.
+
+        Returns:
+            bool: True if the variable effective type matches ``expected_type``.
+        """
         return self.get_variable_type_by_problem(
             variable=variable,
             problem_key=problem_key,
@@ -924,7 +934,16 @@ class Problem:
         data_table: DataTable,
         problem_key: Optional[int | str] = None,
     ) -> Optional[str]:
-        """Return effective data table type for a specific problem."""
+        """Return effective data table type for a specific problem.
+
+        Args:
+            data_table (DataTable): Data table instance to inspect.
+            problem_key (Optional[int | str], optional): Numerical problem key.
+
+        Returns:
+            Optional[str]: Effective type for the given problem or None when
+                no mapping is available for a hybrid data table.
+        """
         if isinstance(data_table.type, dict):
             return data_table.type.get(problem_key)
 
@@ -936,7 +955,18 @@ class Problem:
         expected_type: str,
         problem_key: Optional[int | str] = None,
     ) -> bool:
-        """Check whether a data table has the expected type for a problem key."""
+        """Check whether a data table has the expected type for a problem key.
+
+        Args:
+            data_table (DataTable): Data table instance to inspect.
+            expected_type (str): Target type to match.
+            problem_key (Optional[int | str], optional): Numerical problem key
+                used for hybrid data tables. Defaults to None.
+
+        Returns:
+            bool: True if the effective data-table type matches
+                ``expected_type``.
+        """
         return self.get_data_table_type_by_problem(
             data_table=data_table,
             problem_key=problem_key,
@@ -1407,7 +1437,7 @@ class Problem:
         Args:
             force_overwrite (bool, optional): If set to True, existing numerical
                 problems will be overwritten without prompting the user for
-                confirmation (for testing purposes). Defaults to False.
+                user input. This is mainly useful for testing. Defaults to False.
 
         Raises:
             exc.OperationalError: If no symbolic problem has been loaded.

@@ -277,7 +277,8 @@ class Database:
 
         Args:
             values_relative_diff_tolerance (float): The relative difference
-                tolerance (%) to use when comparing the databases. It overwrites
+                tolerance in percentage points used when comparing database
+                values. It overwrites
                 the default setting in Defaults.
             other_db_dir_path (Path | str): The directory path of the reference
                 database.
