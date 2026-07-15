@@ -104,8 +104,15 @@ class SQLManager:
             self.logger.warning(
                 f"Connection to '{self.database_name}' already opened.")
 
-    def close_connection(self) -> None:
+    def close_connection(
+            self,
+            suppress_warning: bool = False,
+    ) -> None:
         """Close the currently open database connection.
+
+        Args:
+            suppress_warning (bool): If True, suppresses warning messages when
+                attempting to close an already closed connection. Defaults to False.
 
         This method terminates the database connection and resets the connection 
         and cursor attributes to None. If no connection is open, it logs a warning.
@@ -114,16 +121,26 @@ class SQLManager:
             OperationalError: If there is an error closing the database connection,
                 which is logged.
         """
-        if self.connection:
+        if self.cursor is not None:
+            try:
+                self.cursor.close()
+            except sqlite3.Error as error:
+                msg = f"Error closing cursor for '{self.database_name}'."
+                self.logger.error(msg)
+                raise exc.OperationalError(msg) from error
+            finally:
+                self.cursor = None
+
+        if self.connection is not None:
             try:
                 self.connection.close()
-                self.connection = None
             except sqlite3.Error as error:
                 msg = f"Error closing connection to '{self.database_name}'."
                 self.logger.error(msg)
                 raise exc.OperationalError(msg) from error
-
-        else:
+            finally:
+                self.connection = None
+        elif not suppress_warning:
             self.logger.warning(
                 f"Connection to '{self.database_name}' "
                 "already closed or does not exist.")
@@ -1351,26 +1368,26 @@ class SQLManager:
         other_db_connection = sqlite3.connect(other_db_path)
         other_db_cursor = other_db_connection.cursor()
 
-        self.check_databases_equality(
-            other_db_dir_path=other_db_dir_path,
-            other_db_name=other_db_name,
-            check_values=False,
-        )
-
-        if tables_names is None:
-            tables_names = self.get_existing_tables_names
-        else:
-            if not all([
-                table in self.get_existing_tables_names
-                for table in tables_names
-            ]):
-                msg = "One or more tables not found in the database."
-                self.logger.error(msg)
-                raise exc.TableNotFoundError(msg)
-
-        changes: Dict[str, float] = {}
-
         try:
+            self.check_databases_equality(
+                other_db_dir_path=other_db_dir_path,
+                other_db_name=other_db_name,
+                check_values=False,
+            )
+
+            if tables_names is None:
+                tables_names = self.get_existing_tables_names
+            else:
+                if not all([
+                    table in self.get_existing_tables_names
+                    for table in tables_names
+                ]):
+                    msg = "One or more tables not found in the database."
+                    self.logger.error(msg)
+                    raise exc.TableNotFoundError(msg)
+
+            changes: Dict[str, float] = {}
+
             for table in tables_names:
                 self.cursor.execute(f"SELECT \"values\" FROM \"{table}\"")
                 current_values = [row[0] for row in self.cursor.fetchall()]

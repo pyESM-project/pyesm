@@ -704,17 +704,13 @@ class Core:
             # after solution chain is concluded for all scenarios
             # erase the database modified during the iterations
             # and restore original database from backup
-            self.files.erase_file(
-                dir_path=sqlite_db_path,
-                file_name=sqlite_db_file_name,
-                force_erase=True,
-                confirm=False,
-            )
+            self.sqltools.close_connection(suppress_warning=True)
 
             self.files.rename_file(
                 dir_path=sqlite_db_path,
                 name_old=sqlite_db_file_name_bkp,
                 name_new=sqlite_db_file_name,
+                force_overwrite=True,
             )
 
     def _solve_integrated(
@@ -999,28 +995,31 @@ class Core:
                         finally:
                             if iter_count >= 1 and \
                                     not keep_previous_iteration_db:
-                                self.files.erase_file(
+                                self.sqltools.close_connection(
+                                    suppress_warning=True)
+                                erased = self.files.erase_file(
                                     dir_path=sqlite_db_path,
                                     file_name=sqlite_db_file_name_previous,
                                     force_erase=True,
                                     confirm=False,
                                 )
+                                if not erased:
+                                    self.logger.warning(
+                                        f"Temporary SQLite file '{sqlite_db_file_name_previous}' "
+                                        "not deleted (likely open/locked on this OS)."
+                                    )
 
         finally:
             # after iterations are concluded for all scenarios
             # erase the database modified during the iterations
             # and restore original database from backup
-            self.files.erase_file(
-                dir_path=sqlite_db_path,
-                file_name=sqlite_db_file_name,
-                force_erase=True,
-                confirm=False,
-            )
+            self.sqltools.close_connection(suppress_warning=True)
 
             self.files.rename_file(
                 dir_path=sqlite_db_path,
                 name_old=sqlite_db_file_name_bkp,
                 name_new=sqlite_db_file_name,
+                force_overwrite=True,
             )
 
     def _validate_and_filter_tables_to_check(

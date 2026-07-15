@@ -362,6 +362,7 @@ class FileManager:
             name_old: str,
             name_new: str,
             file_extension: Optional[str] = None,
+            force_overwrite: bool = False,
     ) -> None:
         """Rename a file in the specified directory.
 
@@ -370,6 +371,7 @@ class FileManager:
             name_old (str): Current name of the file.
             name_new (str): New name for the file.
             file_extension (Optional[str]): File extension if not included.
+            force_overwrite (bool): If True, replace destination if it exists.
 
         Raises:
             FileNotFoundError: If file does not exist.
@@ -392,11 +394,15 @@ class FileManager:
         if not file_path.exists():
             raise FileNotFoundError(f"File '{file_path}' does not exist.")
 
-        if new_file_path.exists():
+        if new_file_path.exists() and not force_overwrite:
             raise FileExistsError(
                 f"A file named '{name_new}' already exists. Operation aborted.")
 
-        file_path.rename(new_file_path)
+        if force_overwrite:
+            os.replace(file_path, new_file_path)
+        else:
+            file_path.rename(new_file_path)
+
         self.logger.debug(f"File '{name_old}' renamed to '{name_new}'.")
 
     def dict_to_excel_headers(
