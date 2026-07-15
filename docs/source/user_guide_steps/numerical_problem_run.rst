@@ -29,33 +29,33 @@ Typical Usage
 
 .. code-block:: python
 
-    import cvxlab
+  import cvxlab
 
-    # Previous steps: 
-    # - Create model directory and setup files
-    # - Create Model instance
-    # - Fill sets data (coordinates)
-    # - Initialization of data structures
-    # - Fill input data Excel file(s)
-    # - Initialization of numerical problem(s) 
+  # Previous steps: 
+  # - Create model directory and setup files
+  # - Create Model instance
+  # - Fill sets data (coordinates)
+  # - Initialization of data structures
+  # - Fill input data Excel file(s)
+  # - Initialization of numerical problem(s) 
 
-    # [CURRENT STEP] Solve the numerical problem(s)
-    model.run_model(
-            force_overwrite=False,
-            integrated_problems=False, # Set True for integrated (iterative) solution
-            solver="ECOS", # Or another supported solver
-            solver_verbose=False,
-            solver_settings={...}, # Optional: additional solver options
-            scenario_idx=None, # Optional: specify scenario indices to solve
-            # Arguments below only applies if integrated_problems=True
-            convergence_monitoring=True, 
-            convergence_norm="l2",
-            convergence_tables_to_check="all_endogenous",
-            convergence_tables_to_skip=None,
-            relative_tolerance=None,
-            maximum_iterations=None,
-            keep_previous_iteration_db=False,
-    )
+  # [CURRENT STEP] Solve the numerical problem(s)
+  model.run_model(
+          force_overwrite=False,
+          integrated_problems=False, # Set True for integrated (iterative) solution
+          solver="ECOS", # Or another supported solver
+          solver_verbose=False,
+          solver_settings={...}, # Optional: additional solver options
+          scenario_idx=None, # Optional: specify scenario indices to solve
+          # Arguments below only applies if integrated_problems=True
+          convergence_monitoring=True, 
+          convergence_norm="l2",
+          convergence_tables_to_check="all_endogenous",
+          convergence_tables_to_skip=None,
+          relative_tolerance=None,
+          maximum_iterations=None,
+          keep_previous_iteration_db=False,
+  )
 
 
 Parameters description

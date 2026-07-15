@@ -30,66 +30,66 @@ loading, problem generation, and optimization.
 
 .. code-block:: python
 
-    import cvxlab
+  import cvxlab
 
-    # Previous steps: 
-    # - Create model directory and setup files
-    
-    # [CURRENT STEP] Create Model instance
-    model = cvxlab.Model(
-        model_dir_name="my_model",
-        main_dir_path="path/to/parent",
-        model_settings_from="yml",  # or "xlsx"
-        detailed_validation=False,
-        use_existing_data=False,
-        log_level="info",
-        log_format="standard",
-        multiple_input_files=False,
-        input_data_files_type="xlsx", # or "csv"
-    )
+  # Previous steps: 
+  # - Create model directory and setup files
+  
+  # [CURRENT STEP] Create Model instance
+  model = cvxlab.Model(
+      model_dir_name="my_model",
+      main_dir_path="path/to/parent",
+      model_settings_from="yml",  # or "xlsx"
+      detailed_validation=False,
+      use_existing_data=False,
+      log_level="info",
+      log_format="standard",
+      multiple_input_files=False,
+      input_data_files_type="xlsx", # or "csv"
+  )
 
 
 Parameters description
 ----------------------
 
 .. list-table::
-   :header-rows: 1
-   :widths: 24 56 20
+  :header-rows: 1
+  :widths: 24 56 20
 
-   * - Parameter
-     - Description
-     - Default
-   * - ``model_dir_name``
-     - Name of the model directory where model files are stored.
-     - ``"model"``
-   * - ``main_dir_path``
-     - Parent directory where the model directory is located.
-     - Current working directory
-   * - ``model_settings_from``
-     - Format of the model settings file, either ``"yml"`` or ``"xlsx"``.
-     - ``"xlsx"``
-   * - ``detailed_validation``
-     - If ``True``, returns detailed validation errors for model sets, data
-       tables, variables, and expressions.
-     - ``False``
-   * - ``use_existing_data``
-     - If ``True``, relies on existing data structures instead of generating new
-       database and input files.
-     - ``False``
-   * - ``log_level``
-     - Logging level for the model instance.
-     - ``"info"``
-   * - ``log_format``
-     - Logging format used by the model logger.
-     - ``"standard"``
-   * - ``multiple_input_files``
-     - If ``True``, exports one input data file per exogenous data table;
-       otherwise, uses a single workbook with multiple sheets.
-     - ``False``
-   * - ``input_data_files_type``
-     - File type for input data files. If ``multiple_input_files=False``, only
-       ``"xlsx"`` is allowed. Otherwise, it can be either ``"xlsx"`` or ``"csv"``.
-     - ``"xlsx"``
+  * - Parameter
+    - Description
+    - Default
+  * - ``model_dir_name``
+    - Name of the model directory where model files are stored.
+    - ``"model"``
+  * - ``main_dir_path``
+    - Parent directory where the model directory is located.
+    - Current working directory
+  * - ``model_settings_from``
+    - Format of the model settings file, either ``"yml"`` or ``"xlsx"``.
+    - ``"xlsx"``
+  * - ``detailed_validation``
+    - If ``True``, returns detailed validation errors for model sets, data
+      tables, variables, and expressions.
+    - ``False``
+  * - ``use_existing_data``
+    - If ``True``, relies on existing data structures instead of generating new
+      database and input files.
+    - ``False``
+  * - ``log_level``
+    - Logging level for the model instance.
+    - ``"info"``
+  * - ``log_format``
+    - Logging format used by the model logger.
+    - ``"standard"``
+  * - ``multiple_input_files``
+    - If ``True``, exports one input data file per exogenous data table;
+      otherwise, uses a single workbook with multiple sheets.
+    - ``False``
+  * - ``input_data_files_type``
+    - File type for input data files. If ``multiple_input_files=False``, only
+      ``"xlsx"`` is allowed. Otherwise, it can be either ``"xlsx"`` or ``"csv"``.
+    - ``"xlsx"``
 
 
 Class constructor workflow
