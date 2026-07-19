@@ -25,8 +25,8 @@ in the :ref:`resources` section.
 .. _fig:cvxlab_in_a_nutshell:
 
 .. figure:: _static/CVXlab_nutshell.png
-   :alt: CVXlab modeling process in a nutshell
-   :align: center
+  :alt: CVXlab modeling process in a nutshell
+  :align: center
 
 
 Why CVXlab
@@ -45,35 +45,35 @@ Start here
 ----------
 
 .. list-table::
-   :header-rows: 1
-   :widths: 24 76
+  :header-rows: 1
+  :widths: 24 76
 
-   * - Section
-     - What you will find
-   * - :doc:`installation`
-     - How to install CVXlab and verify that the environment is ready.
-   * - :doc:`user_guide`
-     - The full modeling workflow, from conceptual model definition to results export.
-   * - :doc:`resources`
-     - Tutorials, models gallery, related publications and how to cite CVXlab.
-   * - :doc:`api_reference`
-     - Technical reference for ``cvxlab.Model``, utilities, operators, constants, and defaults.
+  * - Section
+    - What you will find
+  * - :doc:`installation`
+    - How to install CVXlab and verify that the environment is ready.
+  * - :doc:`user_guide`
+    - The full modeling workflow, from conceptual model definition to results export.
+  * - :doc:`resources`
+    - Tutorials, models gallery, related publications and how to cite CVXlab.
+  * - :doc:`api_reference`
+    - Technical reference for ``cvxlab.Model``, utilities, operators, constants, and defaults.
 
 
 .. toctree::
-   :maxdepth: 1
-   :hidden:
+  :maxdepth: 1
+  :hidden:
 
-   installation
-   user_guide
-   resources
-   api_reference
-   changelog
-   contributing
+  installation
+  user_guide
+  resources
+  api_reference
+  changelog
+  contributing
 
 
 .. note::
-   CVXlab is developed by `Matteo V. Rocco <https://www.energia.polimi.it/en/people/rocco-matteo-vincenzo-2/>`_,
-   Associate Professor at *SESAM group*, `Department of Energy, Politecnico di Milano
-   <https://www.energia.polimi.it/en/>`_. The project is released under the
-   `Apache License 2.0 <http://www.apache.org/licenses/>`_.
+  CVXlab is developed by `Matteo V. Rocco <https://www.energia.polimi.it/en/people/rocco-matteo-vincenzo-2/>`_,
+  Associate Professor at *SESAM group*, `Department of Energy, Politecnico di Milano
+  <https://www.energia.polimi.it/en/>`_. The project is released under the
+  `Apache License 2.0 <http://www.apache.org/licenses/>`_.

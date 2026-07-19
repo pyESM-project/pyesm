@@ -71,15 +71,17 @@ When :py:meth:`~cvxlab.Model.refresh_database_and_initialize_problem` is called
 on a Model instance:
 
 - Loads exogenous data from the *input data Excel file(s)*, assigning values to 
-  exogenous data tables in the *SQLite database*. 
-- Parses exogenous variables, and fills the empty entries in the related data 
+  exogenous data tables in the *SQLite database*. In case ``table_key_list`` is 
+  specified, only the listed tables are refreshed; otherwise, all exogenous data 
+  tables are refreshed. 
+- Parses exogenous Data Tables, and fills the *NULL* entries in the related data 
   tables with value provided by the ``blank_fill`` variable attribute. This 
-  facilitates the user in filling repetitive data entries in data tables.
+  facilitates the user in filling repetitive data entries in data tables. 
 - Loads and parses *symbolic problem expressions* from model settings, *validating 
   problem structure* against a validation schema and raising explicit errors if 
   any issues are found.
 - Checks if all variables numeric data are present in the SQLite database: in 
-  case NULL entries are found, the method logs the table name and the corresponding 
+  case *NULL* entries are found, the method logs the table name and the corresponding 
   row IDs, and raises an error.
 - Initializes model variables structures, including all variables information such 
   as the *type* (endogenous, exogenous, constants, hybrid), *shape* (rows and 

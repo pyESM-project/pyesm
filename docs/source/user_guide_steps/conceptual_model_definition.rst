@@ -19,7 +19,7 @@ Since numerical problem generation and solution in CVXlab is grounded on the
 `CVXPY documentation <https://www.cvxpy.org/tutorial/intro/index.html>`_ for a
 comprehensive description of supported problem types.
 
-Before generating a CVXlab Model, the items below must be conceptually defined.
+A CVXlab Model is based on the conceptual abstractions below.
 
 
 .. list-table::
@@ -145,18 +145,21 @@ where :math:`\Omega \subseteq \mathcal{S}_1 \times \cdots \times \mathcal{S}_k`.
 Data tables can be classified as:
 
 - **Exogenous**: known parameters :math:`d(s)` for :math:`s \in \Omega`
-- **Endogenous**: unknowns to be determined. Can be further classified as
-  continuous (if nothing is specificed, integer (:math:`\mathbb{Z}`), or boolean 
-  (:math:`\{0,1\}`).
+- **Endogenous**: unknowns to be determined. Numerical domain can be further 
+  specified as *Continuous* (:math:`d(s) \in \mathbb{R}`, default), *Integer* 
+  (:math:`d(s) \in \mathbb{Z}`) or *Boolean* (:math:`d(s) \in \{0,1\}`)
+
 - **Constants**: fixed values. Multiple built-in constant types are supported,
   and user-defined constants can also be defined at the variable level
   (see :ref:`api_constants_types`).
 
 .. admonition:: Hybrid Data Tables
   
-  In case of integrated problems solved iteratively, variables can be defined as
-  endogenous or exogenous depending on the role they play in each problem,
-  avoiding circular dependencies (see :ref:`definig-expressions-and-problems`). 
+  A same variable can be used in multiple numerical problems within the same model.
+  Therefore, the variable can be defined as endogenous or exogenous depending 
+  on the role played in each problem. This is particularly useful in formulating 
+  chained or coupled numerical problems, where the solution of one problem depends 
+  on the solution of another problem (see :ref:`definig-expressions-and-problems`). 
   In this case, Data Tables can be classified as **hybrid**, meaning that the 
   variables stemming from them are defined as endogenous for some problems and 
   exogenous for others.
@@ -164,18 +167,15 @@ Data tables can be classified as:
 A **variable** :math:`x` associated with a data table :math:`D` is a symbolic
 reference to values in :math:`D`, defined over the same domain :math:`\Omega`,
 or over a filtered sub-domain :math:`\Omega'`. Multiple variables can reference
-the same data table, characterized by:
-
-- A different allocation of dimension sets, defining different sets as shapes
-  and intra-problem sets.
-- Different filterings, referring to sub-domains
-  :math:`\Omega' \subseteq \Omega`.
-- Different constant definitions, in case the table stores constants.
+the same data table, defining variables with different allocation of dimension sets 
+(*shapes* or *intra-problem* sets), filterings domains (referring to sub-domains 
+:math:`\Omega' \subseteq \Omega`), and constants types (in case the table stores 
+constants).
 
 The reason why data tables and variables are defined separately is to allow
-multiple variables to reference the same data table in different ways,
-increasing flexibility in problem definition and optimizing data management in
-the model SQLite database.
+multiple variables to stem from a same data table in different ways, increasing 
+flexibility in problem definition and optimizing data management in the model 
+SQLite database.
 
 
 .. _definig-expressions-and-problems:
@@ -261,15 +261,17 @@ schemes are supported:
 - **Parallel** (independent problems): problems with no coupling, meaning no
   shared endogenous variables in expressions, can be solved independently and in
   parallel over the inter-problem sets.
-
-- **Iterative decomposition** (coupled or nonlinear): if a problem is nonlinear
-  due to products of endogenous variables, it can be split into two or more
-  convex subproblems. CVXlab solves them iteratively with a *block Gauss-Seidel*
-  (alternating optimization) scheme, updating shared endogenous variables
-  between subproblems until convergence. In this case, data tables must be
-  classified as endogenous or exogenous per subproblem to allow proper
-  information exchange and avoid circular dependencies within the same
-  subproblem.
+- **Sequential** (chained problems): problems can be solved sequentially, where
+  the solution of one problem is used as input for the next problem in a user-defined
+  chain. In this case, the variables serving as joints between problems stem from 
+  data tables classified as *hybrid* (i.e. endogenous/exogenous depending on the 
+  problem).
+- **Integrated** (coupled problems): if two or more problems are coupled, meaning
+  that they share endogenous variables in expressions, they can be solved
+  iteratively with a *block Gauss-Seidel* (alternating optimization) scheme,
+  updating shared endogenous variables between problems until convergence. In
+  this case, the variable updated each iteration are stemming from *hybrid* data 
+  tables (i.e. endogenous/exogenous depending on the problem).
 
 .. admonition:: Non-linear problem decomposition
   

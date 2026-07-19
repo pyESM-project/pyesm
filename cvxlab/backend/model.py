@@ -548,9 +548,9 @@ class Model:
                 available, a dictionary keyed by problem key can be used to
                 define dedicated settings per sub-problem. Defaults to None.
             sequential_solution_chain (Optional[List[str | int]], optional): An
-                optional list of problem keys or scenario indices specifying the
-                order in which to solve the problems. If None, problems are solved
-                in the default order. Defaults to None.
+                optional list of problem keys specifying the order in which to 
+                solve the problems. If None, problems are solved in the order as 
+                specified by model settings files. Defaults to None.
             convergence_monitoring (bool, optional): If True, enables convergence
                 monitoring during the solving of integrated problems. Defaults to True.
             convergence_norm (Defaults.LiteralTypes.NormType, optional):

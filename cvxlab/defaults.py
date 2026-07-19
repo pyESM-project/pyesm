@@ -508,6 +508,11 @@ class Defaults:
             'max_iterations': 20,
         }
 
+        @staticmethod
+        def get_installed_solvers():
+            """Return the currently available CVXPY solvers."""
+            return cp.installed_solvers()
+
     _SUBGROUPS = [
         LiteralTypes,
         ConfigFiles,

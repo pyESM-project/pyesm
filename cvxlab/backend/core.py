@@ -553,7 +553,7 @@ class Core:
     ) -> None:
         """Solve sequential numerical problems.
 
-        This method solve the problems sequentially, based on the 'sequential_solution_chain' 
+        This method solve the problems sequentially, based on the ``sequential_solution_chain`` 
         list of problem keys, which defines the order of solution. 
         Each time a problem is solved, the method updates the hybrid type Data Tables
         with the endogenous output, then the next problem in the chain is solved 

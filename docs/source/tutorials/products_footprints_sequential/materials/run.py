@@ -3,13 +3,13 @@ import cvxlab
 model = cvxlab.Model(
     log_level='debug',
     model_settings_from='yml',  # or 'xlsx'
-    use_existing_data=True,
+    use_existing_data=False,
     multiple_input_files=False,
     input_data_files_type="xlsx",  # or "csv"
     detailed_validation=True,
 )
 
-# model.initialize_model_environment()
+model.initialize_model_environment()
 
 # model.refresh_database_and_initialize_problem()
 

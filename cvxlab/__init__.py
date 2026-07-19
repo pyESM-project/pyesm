@@ -18,6 +18,7 @@ from cvxlab.support.model_directory import (
 from cvxlab.frontend import (
     run
 )
+installed_solvers = Defaults.NumericalSettings.get_installed_solvers
 
 
 try:

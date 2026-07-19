@@ -175,13 +175,10 @@ The practical meaning of these fields, and guidance on which columns should or
 should not be edited by the user, are provided in
 :ref:`Fill exogenous model data <fill-exogenous-data>`.
 
-The two settings controlling the export layout are:
-
-- ``multiple_input_files``: selects whether exogenous data tables are exported to
-  one file or to one file per table.
-- ``input_data_files_type``: selects the file format of the exported input data.
-
-The supported combinations are summarized below:
+The two settings controlling the export layout are: ``multiple_input_files``, 
+defining whether exogenous data tables are exported to one file or to one file 
+per table; and ``input_data_files_type``, selecting the file format of the exported 
+input data. The supported combinations and related behavior are summarized below:
 
 .. list-table:: Input data export behavior
    :header-rows: 1

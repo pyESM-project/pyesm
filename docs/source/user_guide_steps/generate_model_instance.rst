@@ -111,36 +111,48 @@ Once a Model instance is generated, the actions below are occurring:
 - The ``Core`` class is initialized within the Model instance, which in turn 
   initializes inner classes with different responsibilies:
 
-  - ``Index``: it consists in a *centralized registry* for managing sets, data tables 
-    and variables. Once initialized, it fetches and validates data structures from 
-    the model settings file/s, eventually highlighting errors and inconsistencies in 
-    the definition of sets, data tables, and variables. All information about the 
-    latter objects are stored and accessed in this class.
+  .. list-table::
+    :header-rows: 1
+    :widths: 20 80
 
-  - ``Database``: it embeds subclasses and methods for interacting and operating 
-    on the *SQLite database* and the Excel/CSV input data files.
-  
-  - ``Problem``: it embeds tools for reading symbolic problem defined by the user, 
-    and to automatically generate and solve the related `CVXPY 
-    <https://www.cvxpy.org/tutorial/intro/index.html>`_ optimization problem based 
-    on the defined sets, variables and expressions. 
+    * - Class
+      - Description
+    * - ``Index``
+      - *centralized registry* for managing sets, data tables and variables. Once 
+        initialized, it fetches and validates data structures from the model settings 
+        file/s, eventually highlighting errors and inconsistencies in the definition 
+        of sets, data tables, and variables. All information about the latter objects 
+        are stored and accessed in this class.
+    * - ``Database``
+      - Embeds subclasses and methods for interacting and operating on the *SQLite
+        database* and the Excel/CSV input data files.
+    * - ``Problem``
+      - Embeds tools for reading symbolic problem defined by the user, and to
+        automatically generate and solve the related `CVXPY 
+        <https://www.cvxpy.org/tutorial/intro/index.html>`_ optimization problem based
+        on the defined sets, variables and expressions.
 
 - Finally, the two following cases may occur:
 
-  - If ``use_existing_data`` is set to *False*: the *sets.xlsx* file is generated 
-    based on the model settings, in order to be subsequently filled by the user (
-    see :ref:`Fill sets data <fill-sets-data>` section). The process ends here, 
-    and the model instance is ready to be used for subsequent steps through its 
-    own :ref:`Model class APIs <api_model>`.
+  .. list-table::
+      :header-rows: 1
+      :widths: 20 80
 
-  - If ``use_existing_data`` is set to *True*: it is assumed that the fundamental data 
-    structures (namely the *sets excel file*, the *input data files* and the model 
-    *SQLite database*) are already present in the model directory and filled with 
-    data. In this case, the model *coordinates* (i.e. the sets data), the information 
-    related to data tables, variables and problems expressions are all loaded in the 
-    ``Index``, the *numerical problem* is initialized in the ``Problem`` class, 
-    and data fetched from the SQLite database through the ``Database`` class. 
-
+      * - Argument 
+        - Behavior
+      * - ``use_existing_data=False``
+        - The *sets.xlsx* file is generated based on the model settings, in order 
+          to be subsequently filled by the user (see :ref:`Fill sets data <fill-sets-data>` 
+          section). The process ends here, and the model instance is ready to be 
+          used for subsequent steps through its own :ref:`Model class APIs <api_model>`.
+      * - ``use_existing_data=True``
+        - The fundamental data structures (namely the *sets excel file*, the 
+          *input data files* and the model *SQLite database*) are already present 
+          in the model directory and filled with data. In this case, the model 
+          *coordinates* (i.e. the sets data), the information related to data tables, 
+          variables and problems expressions are all loaded in the ``Index``, the 
+          *numerical problem* is initialized in the ``Problem`` class, and data 
+          fetched from the SQLite database through the ``Database`` class. 
 
 In case of errors or inconsitencies in the definition of model settings of model 
 data structures, error messages are logged and returned, with different levels of detail

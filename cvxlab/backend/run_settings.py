@@ -349,13 +349,13 @@ class RunSettings:
             dict[Optional[str], dict[str, Any]]: Complete per-problem solver
                 settings map.
         """
-        cvxpy_defaults: dict[str,
-                             Any] = Defaults.NumericalSettings.CVXPY_DEFAULT_SETTINGS
+        cvxpy_defaults: \
+            dict[str, Any] = Defaults.NumericalSettings.CVXPY_DEFAULT_SETTINGS
         allowed_solvers: list[str] = Defaults.NumericalSettings.ALLOWED_SOLVERS
 
         # Determine whether solver_settings are common or per-problem
-        per_problem_settings: Optional[dict[Optional[str],
-                                            dict[str, Any]]] = None
+        per_problem_settings: \
+            Optional[dict[Optional[str], dict[str, Any]]] = None
         common_settings: dict[str, Any] = {}
 
         if solver_settings:
