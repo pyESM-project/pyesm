@@ -145,6 +145,12 @@ the solution status for each problem and scenario.
 
 The solution process proceeds as follows based on the value of ``solution_mode``.
 
+.. _fig:solution_modes:
+
+.. figure:: ../_static/solution_mode.png
+  :alt: solution modes available in ``solution_mode`` argument
+  :align: center
+
 .. rubric:: ``solution_mode="parallel"``
 
 In this case, the method solves all numerical problems as if they were independent,
