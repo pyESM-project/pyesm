@@ -1,6 +1,0 @@
-set_key:
-    description: str # optional
-    split_problem: bool # optional
-    copy_from: str # optional
-    filters: # optional 
-        _: list

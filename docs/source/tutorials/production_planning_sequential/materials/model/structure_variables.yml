@@ -1,0 +1,73 @@
+total_supply_0:
+    description: total products supply, time 0
+
+    type: exogenous
+    coordinates: [Products]
+    variables_info:
+        x_0:
+            Products:
+                dim: cols
+
+total_quantities_0:
+    description: total values of profit, energy use, material use, time 0
+    type: exogenous
+    coordinates: [Products, Attributes]
+    variables_info:
+        T_0:
+            Products:
+                dim: cols
+            Attributes:
+                dim: rows
+
+production:
+    description: products supply
+    type: endogenous
+    coordinates: [Products, Scenarios_energy, Scenarios_material]
+    variables_info:
+        x:
+            Products: 
+                dim: cols
+
+products_data:
+    description: attributes of products | profits, energy use, material use
+    type: {data_calibration: endogenous, planning_model: exogenous}
+    coordinates: [Products, Attributes]
+    variables_info:
+        a:
+            blank_fill: 1
+            Products: 
+                dim: cols
+            Attributes:
+                dim: rows
+        c:
+            Products:
+                dim: cols
+            Attributes:
+                dim: rows
+                filters: {type: profit}
+        e:
+            Products:
+                dim: cols
+            Attributes:
+                dim: rows
+                filters: {type: energy}
+        m:
+            Products:
+                dim: cols
+            Attributes:
+                dim: rows
+                filters: {type: material}
+
+energy_avail:
+    description: availability scenarios for energy
+    type: exogenous
+    coordinates: [Scenarios_energy]
+    variables_info:
+        E:
+    
+material_avail:
+    description: availability scenarios for material
+    type: exogenous
+    coordinates: [Scenarios_material]
+    variables_info:
+        M:

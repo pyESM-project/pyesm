@@ -48,6 +48,10 @@ docs = [
 ]
 solvers = [
     "gurobipy>=9.5.0",
+    # cyipopt requires IPOPT C libraries pre-installed on the system.
+    # On Linux/macOS install via apt/brew; on Windows use conda-forge instead:
+    #   conda install -c conda-forge cyipopt
+    "cyipopt>=1.1.0",
 ]
 
 [project.urls]

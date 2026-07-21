@@ -12,6 +12,7 @@ project = 'CVXlab'
 copyright = '2025, Matteo V. Rocco'
 author = 'Matteo V. Rocco'
 github_url = "https://github.com/cvxlab/cvxlab"
+pypi_url = "https://pypi.org/project/cvxlab/"
 
 # Avoid importing the package; read version from metadata
 try:
@@ -68,6 +69,14 @@ html_theme_options = {
         "image_dark": "CVXlab_logo_dark.png",
     },
     "github_url": github_url,
+    "icon_links": [
+        {
+            "name": "PyPI",
+            "url": pypi_url,
+            "icon": "fa-solid fa-box",
+            "type": "fontawesome",
+        },
+    ],
     "navigation_with_keys": True,
     "show_toc_level": 2,
     "navbar_center": ["navbar-nav"],

@@ -1,7 +1,7 @@
 .. _tutorial-production-planning-decomposition:
 
-Production planning model (convex problems decomposition)
-=========================================================
+Non-linear problem decomposition
+================================
 
 This tutorial extends the :ref:`tutorial-production-planning` by illustrating how 
 to handle a **non-linearity** in problems expressions. It is designed to be read 
@@ -81,7 +81,7 @@ The table below summarises all elements that differ from the
        :math:`c = c_0 + c_s \odot x`. The existing expressions are now placed
        under the named sub-problem ``production``.
    * - **Solving**
-     - ``model.run_model()`` must be called with ``integrated_problems=True``
+     - ``model.run_model()`` must be called with ``solution_mode='integrated'``
        to activate the iterative coupled solver.
 
 
@@ -258,15 +258,15 @@ coupled *convex* sub-problems, CVXlab solves them iteratively with a **block
 Gauss–Seidel** scheme. Specifically, the two sub-problems are:
 
 .. math::
-   \begin{aligned}
-   &\textbf{Sub-problem } \texttt{production}: \\[4pt]
-   &\quad \max_{x} \quad c \cdot x' \\
-   &\quad \text{s.t.} \quad e \cdot x' - E \leq 0 \\
-   &\quad\phantom{\text{s.t.}\;} m \cdot x' - M \leq 0 \\
-   &\quad\phantom{\text{s.t.}\;} x \geq 0 \\[8pt]
-   &\textbf{Sub-problem } \texttt{profit}: \\[4pt]
-   &\quad c - c_s \cdot \mathrm{diag}(x) - c_0 = 0
-   \end{aligned}
+  \begin{aligned}
+  &\textbf{Sub-problem } \texttt{production}: \\[4pt]
+  &\quad \max_{x} \quad c \cdot x' \\
+  &\quad \text{s.t.} \quad e \cdot x' - E \leq 0 \\
+  &\quad\phantom{\text{s.t.}\;} m \cdot x' - M \leq 0 \\
+  &\quad\phantom{\text{s.t.}\;} x \geq 0 \\[8pt]
+  &\textbf{Sub-problem } \texttt{profit}: \\[4pt]
+  &\quad c - c_s \cdot \mathrm{diag}(x) - c_0 = 0
+  \end{aligned}
 
 At each iteration, :math:`c` is held fixed while ``production`` optimises
 :math:`x`; then :math:`x` is held fixed while ``profit`` updates :math:`c`.
@@ -710,12 +710,12 @@ Solution of numerical problem(s)
 
 Because the two sub-problems are **coupled** (i.e., the output of ``production``
 feeds into ``profit`` and vice versa) they cannot be solved independently.
-The ``integrated_problems`` argument must be set to ``True`` to activate the
+The ``solution_mode`` argument must be set to ``'integrated'`` to activate the
 iterative block Gauss–Seidel solver.
 
 .. code-block:: python
 
-   model.run_model(integrated_problems=True)
+   model.run_model(solution_mode='integrated')
 
 During execution, CVXlab logs the convergence progress at each iteration,
 reporting the norm of the change in endogenous values between successive

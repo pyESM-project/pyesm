@@ -1,7 +1,7 @@
 .. _tutorial-production-planning-nonlinear:
 
-Production planning model (with non-linearities)
-================================================
+Handling non-linearities explicitly
+===================================
 
 This tutorial extends the :ref:`tutorial-production-planning` by illustrating how 
 to handle a **non-linearity** in problems expressions explicitly. It is designed 
@@ -615,15 +615,15 @@ Solution of numerical problem(s)
 | Related user guide step: :ref:`numerical-problem-run`
 | Related API: :py:meth:`~cvxlab.Model.run_model`
 
-Because the two sub-problems are **coupled** (i.e., the output of ``production``
-feeds into ``profit`` and vice versa) they cannot be solved independently.
-The ``integrated_problems`` argument must be set to ``True`` to activate the
-iterative block Gauss–Seidel solver.
+Problem solution is **identical** to the base tutorial, with one exception: since
+the problem is now non-linear, a non-linear capable solver must be specified in the
+``solver`` argument of ``run_model()``. The ``solver_settings`` dictionary must also
+be specified with the ``nlp`` argument set to ``True`` to activate the non-linear
+solver mode.
 
 .. code-block:: python
 
   model.run_model(
-    integrated_problems=False, # could be avoided since it is the default value
     solver='IPOPT', # or any other nonlinear-capable solver available to CVXPY backend
     solver_settings={'nlp': True}, # must be specified for nonlinear problems
   )

@@ -8,6 +8,21 @@ looking at existing models in :ref:`Models gallery <models_gallery>` will suffic
 in acquainting you with the package. Nonetheless, API reference are here included 
 for those who are comfortable reading technical documentation. 
 
+The package structure is illustrated in the figure below, where the main classes 
+and their hierarchy are shown. At the top level, ``cvxlab.Model`` orchestrates 
+the workflow by coordinating ``Core``, settings utilities, and support utilities. 
+``Core`` groups modelling components (``Index``, ``Database``, and ``Problem``), 
+with ``Index`` organizing structural abstractions (``SetTable``, ``DataTable``, 
+and ``Variable``), while settings classes (``ModelSettings`` and ``RunSettings``) 
+centralize configuration, and support classes (``FileManager``, ``SQLManager``, 
+and utility functions) provide shared operational services.
+
+.. _fig:package_structure:
+
+.. figure:: _static/package_structure.png
+  :alt: package structure
+  :align: center
+
 The classes and functions documented in this section are those imported into the 
 *CVXlab* namespace. The documentation is grouped in the following sections:
 

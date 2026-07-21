@@ -1,0 +1,15 @@
+Products:
+    description: products | dimension set
+
+Attributes:
+    description: attributes of the products | dimension set
+    filters:
+        type: [profit, energy, material]
+
+Scenarios_energy:
+    description: energy availability scenarios | inter-problem set
+    split_problem: True
+
+Scenarios_material:
+    description: material availability scenarios | inter-problem set
+    split_problem: True

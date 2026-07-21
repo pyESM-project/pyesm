@@ -1,0 +1,25 @@
+# SYMBOLIC PROBLEM
+
+data_calibration:
+
+    expressions:
+        - a @ diag(x_0) - T_0 == 0
+
+    description:
+        - calculation of model coefficients
+
+planning_model:
+
+    objective: 
+        - Maximize(c @ tran(x))
+
+    expressions:
+        - e @ tran(x) - E <= 0
+        - m @ tran(x) - M <= 0
+        - x >= 0
+
+    description:
+        - maximization of total profit
+        - energy use less than endowment
+        - material use less than endowment
+        - positive products supply

@@ -29,20 +29,19 @@ Tutorials
         under resource constraints. Step by step guide aligned with :ref:`User 
         Guide <model_generation_from_scratch>`. **[Ideal for newbies]**.
       - :download:`link <tutorials/production_planning/production_planning.zip>`
-    * - :doc:`Production planning (non-linear) <tutorials/production_planning_nonlinear/production_planning_nonlinear>`
+    * - :doc:`Handling non-linearities <tutorials/production_planning_nonlinear/production_planning_nonlinear>`
       - Non-linear production planning under resource constraints. Similar to the 
         previous production planning tutorial, but handling non-linearities explicitly. 
       - :download:`link <tutorials/production_planning_nonlinear/production_planning_nonlinear.zip>`
-    * - :doc:`Production planning (decomposition) <tutorials/production_planning_decomposition/production_planning_decomposition>`
+    * - :doc:`Problem decomposition <tutorials/production_planning_decomposition/production_planning_decomposition>`
       - Reformulating and decomposing the previous non-linear production planning 
         problem into coupled convex sub-problems solved iteratively (block Gauss–Seidel).
       - :download:`link <tutorials/production_planning_decomposition/production_planning_decomposition.zip>`
-    * - :doc:`Products footprinting <tutorials/products_footprints_sequential/products_footprints_sequential>`
-      - Linear algebraic problem for calculating the environmental footprint of 
-        products based on Environmentally Extended Input-Output (EEIO) analysis based 
-        on national accounting data. Illustrates how split the problem into sequential 
-        sub-problems (data processing and footprinting).
-      - :download:`link <tutorials/products_footprints_sequential/products_footprints_sequential.zip>`
+    * - :doc:`Sequential problems solution <tutorials/production_planning_sequential/production_planning_sequential>`
+      - Sequential solution of the original production planning problem, by first 
+        calibrating the model deriving parameters, then solving the production 
+        planning problem with calibrated parameters.
+      - :download:`link <tutorials/production_planning_sequential/production_planning_sequential.zip>`
 
 
 .. toctree::
@@ -53,7 +52,7 @@ Tutorials
    tutorials/production_planning/production_planning
    tutorials/production_planning_nonlinear/production_planning_nonlinear
    tutorials/production_planning_decomposition/production_planning_decomposition
-   tutorials/products_footprints_sequential/products_footprints_sequential
+   tutorials/production_planning_sequential/production_planning_sequential
 
 
 .. _models_gallery:

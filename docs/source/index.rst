@@ -5,14 +5,17 @@ CVXlab documentation
 optimization models from low-level settings, structured data, and symbolic 
 expressions. It combines *YAML* or *Excel*-based model setup, *SQLite*-backed 
 data management, and *CVXPY*-based numerical solving in one unique and reproducible 
-workflow.
+workflow. Beyond single-problem modeling, it can orchestrate linked optimization 
+sub-models with managed data exchange in *parallel*, *sequential*, and 
+*integrated* solution modes.
 
 **Version:** |version|
 **Date:** |today|
 
 **Useful links**: `PyPI <https://pypi.org/project/cvxlab/>`_ | 
 `Source code <https://github.com/cvxlab/cvxlab>`_ | 
-`Issue tracker <https://github.com/cvxlab/cvxlab/issues>`_
+`Issue tracker <https://github.com/cvxlab/cvxlab/issues>`_ | 
+`GitHub discussions <https://github.com/cvxlab/cvxlab/discussions>`_
 
 
 How it works
@@ -37,6 +40,8 @@ Why CVXlab
   templates instead of hand-coding every object.
 - **Centralized data management**. Organize data in a *SQLite* database for 
   traceable, reusable data handling.
+- **Linked-model orchestration**. Coordinate multiple optimization sub-models 
+  and exchange data across independent, chained, or iterative solving workflows.
 - **Powerful engine embedded**. Build convex and decomposed optimization workflows 
   on top of `CVXPY <https://www.cvxpy.org/tutorial/intro/index.html>`_.
 

@@ -25,9 +25,9 @@ model_overrides:
             solver: 'IPOPT',
             solver_settings: {'nlp': True},
         }
-    sequential_problems:
+    production_planning_sequential:
         run_model: {
             force_overwrite: True, 
             solution_mode: 'sequential',
-            sequential_solution_chain: ['process_1', 'process_2', 'process_3'],
+            sequential_solution_chain: ['data_calibration', 'planning_model'],
         }
