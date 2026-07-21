@@ -24,6 +24,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   to host short-lived translation helpers for deprecated public API (e.g., mapping
   `integrated_problems` → `solution_mode`). This keeps core modules clean and makes
   deprecation removal straightforward in future releases.
+- **Sequential solution mode** (`solution_mode='sequential'` in `Model.run_model()`):
+  multiple numerical sub-problems can now be solved in a user-defined order via the
+  `sequential_solution_chain` argument. After each sub-problem is solved, endogenous
+  results are exported to the SQLite database and hybrid variables are automatically
+  passed downstream to subsequent problems in the chain.
+- **`RunSettings` class** (`backend/run_settings.py`): centralizes collection and
+  validation of all `run_model()` arguments (solution mode, solver, solver settings,
+  scenario selection, sequential chain, integrated-solver tolerances). Removes scattered
+  argument validation from `Core` and `Model`.
+- **`ModelSettings` and `ModelPaths` classes** (`backend/model_settings.py`): replace
+  `DotDict`-based settings and path containers with dedicated typed objects that
+  validate eagerly on construction and expose attributes instead of dict keys.
+  All backend modules (`core.py`, `database.py`, `index.py`, `problem.py`) updated
+  to use attribute access.
+- Added `cyipopt>=1.1.0` to the `solvers` optional extra in `pyproject.toml` for
+  IPOPT support via pip (note: source-only on PyPI; Windows users should use
+  `conda install -c conda-forge cyipopt`).
 
 ### Changed
 - Reorganized backend solve flow; moved database comparison/cleanup into dedicated 
@@ -33,6 +50,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Bumped minimum `cvxpy` version to `>=1.9.1` (see `pyproject.toml`).
 - Adjusted numerical default: `Defaults.NumericalSettings.SPARSE_MATRIX_ZEROS_THRESHOLD` 
   changed from `0.3` to `0.7` (`defaults.py`).
+- Integration tests now run directly against tutorial model directories instead of
+  isolated fixtures; the `sequential_problems` test key renamed to
+  `production_planning_sequential` with an updated `sequential_solution_chain`
+  (`data_calibration` → `planning_model`).
+- Tutorial gallery: replaced `products_footprints_sequential` with a new
+  `production_planning_sequential` tutorial (sequential calibration + planning
+  workflow); renamed gallery entries "Production planning (non-linear)" →
+  "Handling non-linearities" and "Production planning (decomposition)" →
+  "Problem decomposition".
 
 ### Fixed
 - **Backward-compatibility migration for `integer` field**: the migration block that
@@ -44,6 +70,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   in the citation section of the resources page.
 - Integration tests and CI: integration tests now run across tutorial models and were 
   updated to cover solver routing and tutorial assets (`tests/integration/test_integration.py`).
+- **Windows: hardened SQLite cleanup and DB restore** in sequential and integrated
+  solver flows (`backend/core.py`, `support/sql_manager.py`, `support/file_manager.py`):
+  explicitly close cursor and connection before file operations; use atomic
+  `os.replace` in `FileManager.rename_file` (`force_overwrite` flag); emit a warning
+  instead of crashing when a temp iteration DB is locked and cannot be deleted.
+
+### Documentation
+- Added package structure diagram (`_static/package_structure.png`) to
+  `api_reference.rst` with a description of the class hierarchy
+  (`Model` → `Core` → `Index` / `Database` / `Problem`, settings, support utilities).
+- Added PyPI icon link to the Sphinx navbar (`conf.py`).
+- Updated `index.rst` homepage: expanded description to mention parallel, sequential,
+  and integrated solution modes; added "Linked-model orchestration" feature bullet;
+  added GitHub Discussions link.
+- Added `.. _installation:` cross-reference anchor to `installation.rst`.
+- Updated user guide steps: conceptual model definition, data structures
+  initialization, and numerical problem run pages revised; solution mode figure added.
 
 
 ## [1.0.1] - 11 June 2026
