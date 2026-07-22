@@ -8,11 +8,11 @@ objects from configured sources and provides properties to access metadata and
 operational characteristics related to these entities.
 """
 from pathlib import Path
-from scipy.sparse import issparse
 from typing import Dict, List, Optional
 
 import pandas as pd
 import cvxpy as cp
+from scipy.sparse import issparse
 
 from cvxlab.backend.data_table import DataTable
 from cvxlab.backend.model_settings import ModelSettings, ModelPaths
@@ -79,6 +79,19 @@ class Index:
 
         self.variables: DotDict[str, Variable] = self.generate_variables()
         self.fetch_vars_coordinates_info()
+
+    @property
+    def is_uncertainty_analysis(self) -> bool:
+        """Return whether uncertainty-analysis functionality is enabled.
+
+        Returns:
+            bool: True if the model was initialized with uncertainty analysis
+            enabled, otherwise False.
+        """
+        return bool(self.settings.get(
+            Defaults.Labels.UNCERTAINTY_SETTING_KEY,
+            False,
+        ))
 
     @property
     def sets_split_problem_dict(self) -> Dict[str, str]:
@@ -312,7 +325,12 @@ class Index:
 
         structures_mapping = {
             config.SETUP_INFO[0]: (SetTable, structures.SET_STRUCTURE[1]),
-            config.SETUP_INFO[1]: (DataTable, structures.DATA_TABLE_STRUCTURE[1]),
+            config.SETUP_INFO[1]: (
+                DataTable,
+                structures.DATA_TABLE_STRUCTURE_UNCERTAINTY[1]
+                if self.is_uncertainty_analysis
+                else structures.DATA_TABLE_STRUCTURE[1],
+            ),
         }
 
         if data_structure_key in structures_mapping:
@@ -574,7 +592,8 @@ class Index:
         value_key = Defaults.Labels.VALUE_KEY
         blank_fill_key = Defaults.Labels.BLANK_FILL_KEY
         nonneg_key = Defaults.Labels.NONNEG_KEY
-
+        uncertainty_measure_key = Defaults.UncertaintySettings.UNCERTAINTY_MEASURE_KEY
+        uncertainty_enabled_key = Defaults.UncertaintySettings.UNCERTAINTY_ENABLED_KEY
         problems = {}
 
         for table_key, data_table in self.data.items():
@@ -607,6 +626,39 @@ class Index:
             if invalid_coordinates:
                 path = f"{table_key}.{coordinates_key}"
                 problems[path] = f"Invalid coordinates: {invalid_coordinates}"
+
+            # all inter-problem sets must be embedded in endogenous data tables coordinates
+            if data_table.type == allowed_var_types['ENDOGENOUS'] or \
+                    isinstance(data_table.type, dict):
+                missing_sets = set(self.sets_split_problem_dict) - \
+                    set(data_table.coordinates)
+
+                if missing_sets:
+                    path = f"{table_key}.{coordinates_key}"
+                    problems[path] = f"Missing inter-problem sets in coordinates: " \
+                        f"{list(missing_sets)}"
+
+            # if uncertainty is enabled uncertainty can only be enabled for exogenous or hybrid data tables
+            table_uncertainty_enabled = getattr(
+                data_table,
+                uncertainty_enabled_key,
+                False,
+            )
+
+            if table_uncertainty_enabled:
+
+                # uncertainty support must be enabled globally in Model
+                if not self.is_uncertainty_analysis:
+                    problems[f"{table_key}.{uncertainty_enabled_key}"] = (
+                        f"'{uncertainty_enabled_key}=True' requires the model "
+                        "to be initialized with uncertainty=True."
+                    )
+                # only exogenous tables can be uncertain
+                if data_table.type != allowed_var_types["EXOGENOUS"]:
+                    problems[f"{table_key}.{uncertainty_enabled_key}"] = (
+                        f"'{uncertainty_enabled_key}=True' can only be assigned "
+                        "to fully exogenous data tables."
+                    )
 
             # for each variable in data table
             for var_key, var_info in data_table.variables_info.items():
@@ -653,6 +705,16 @@ class Index:
                             problems[f"{path}.{nonneg_key}"] = \
                                 "Exogenous variables cannot be defined as " \
                                 "non-negative. Check variables settings."
+
+                    elif property_key == uncertainty_measure_key:
+
+                        if property_value is True and \
+                                data_table.type != allowed_var_types["ENDOGENOUS"]:
+
+                            problems[f"{path}.{uncertainty_measure_key}"] = (
+                                f"'{uncertainty_measure_key}=True' can only be assigned "
+                                "to endogenous variables."
+                            )
 
                     # other properties must be allowed coordinates
                     elif property_key not in data_table.coordinates:

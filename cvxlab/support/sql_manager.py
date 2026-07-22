@@ -44,6 +44,7 @@ class SQLManager:
         logger: Logger,
         database_path: Path,
         database_name: str,
+        settings: Dict,
         xls_engine: Defaults.LiteralTypes.ExcelEngine = 'openpyxl',
     ):
         """Initialize the SQLManager class.
@@ -64,6 +65,7 @@ class SQLManager:
         self.connection: Optional[sqlite3.Connection] = None
         self.cursor: Optional[sqlite3.Cursor] = None
         self.foreign_keys_enabled = None
+        self.settings = settings
 
     @property
     def get_existing_tables_names(self) -> List[str]:
@@ -79,6 +81,13 @@ class SQLManager:
             return [table[0] for table in result]
 
         return []
+
+    @property
+    def is_uncertainty_enabled(self) -> bool:
+        return bool(self.settings.get(
+            Defaults.Labels.UNCERTAINTY_SETTING_KEY,
+            False,
+        ))
 
     def open_connection(self) -> None:
         """Open a connection to the SQLite database.
@@ -701,6 +710,7 @@ class SQLManager:
         table_name: str,
         dataframe: pd.DataFrame,
         action: Defaults.LiteralTypes.TableHandling = 'overwrite',
+        other_coordinate_cols: Optional[List[str]] = None,
         force_overwrite: bool = False,
         suppress_warnings: bool = False,
         batch_size: Optional[int] = None,
@@ -723,6 +733,10 @@ class SQLManager:
             action (Defaults.LiteralTypes.TableHandling, optional): The action to
                 perform: 'update' to modify existing entries, 'overwrite' to
                 replace all entries. Defaults to 'overwrite'.
+            other_coordinate_cols (Optional[List[str]], optional): Columns to
+                exclude from structural coordinate matching when
+                `action='update' other than the ID and values
+                fields.
             force_overwrite (bool, optional): If True, existing table entries 
                 will be overwritten without asking user permission. Defaults to 
                 False.
@@ -752,6 +766,20 @@ class SQLManager:
 
         id_field = Defaults.Labels.ID_FIELD['id'][0]
         values_field = Defaults.Labels.VALUES_FIELD['values'][0]
+        lb_field = Defaults.UncertaintySettings.LOWER_BOUND_FIELD[
+            Defaults.UncertaintySettings.LOWER_BOUND_KEY
+        ][0]
+        ub_field = Defaults.UncertaintySettings.UPPER_BOUND_FIELD[
+            Defaults.UncertaintySettings.UPPER_BOUND_KEY
+        ][0]
+        is_uncertain_field = Defaults.UncertaintySettings.IS_UNCERTAIN_FIELD[
+            Defaults.UncertaintySettings.IS_UNCERTAIN_KEY
+        ][0]
+        group_name_field = (
+            Defaults.UncertaintySettings.UNCERTAINTY_GROUP_NAME_FIELD[
+                Defaults.UncertaintySettings.UNCERTAINTY_GROUP_NAME_KEY
+            ][0]
+        )
         table_existing_entries = self.count_table_data_entries(table_name)
         df_existing = self.table_to_dataframe(table_name)
 
@@ -824,6 +852,16 @@ class SQLManager:
         # case where all or a part of data entries need to be replaced
         elif table_existing_entries > 0 or action == 'update':
 
+            non_coordinate_cols = [
+                id_field, values_field]
+
+            if self.is_uncertainty_enabled:
+                non_coordinate_cols.extend(
+                    [ub_field, lb_field, is_uncertain_field, group_name_field])
+
+            if other_coordinate_cols:
+                non_coordinate_cols.extend(other_coordinate_cols)
+
             # case of passed dataframe has more entry then existing table
             if len(dataframe) > len(df_existing):
                 msg = \
@@ -834,9 +872,14 @@ class SQLManager:
                 self.logger.error(msg)
                 raise exc.OperationalError(msg)
 
+            non_coordinate_cols = [
+                col for col in non_coordinate_cols
+                if col in df_existing.columns
+            ]
+
             coordinates_cols = [
-                column for column in df_existing.columns
-                if column not in [id_field, values_field]
+                col for col in df_existing.columns
+                if col not in non_coordinate_cols
             ]
 
             # merge dataframes to get a resulting dataframe with updated values

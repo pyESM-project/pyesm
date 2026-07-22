@@ -15,6 +15,12 @@ from cvxlab.backward_compat import BackwardCompat
 # function signature; a mismatch causes an immediate RuntimeError.
 
 _MODEL_PARAM_NAMES = set(ModelSettings.model_init_param_names())
+_MODEL_PARAM_NAMES = {
+    'model_dir_name', 'main_dir_path',
+    Defaults.Labels.UNCERTAINTY_SETTING_KEY, 'model_settings_from',
+    'detailed_validation', 'multiple_input_files', 'input_data_files_type',
+    'log_level', 'log_format',
+}
 
 _SOLVER_PARAM_NAMES = set(RunSettings.run_model_param_names())
 
@@ -82,6 +88,7 @@ def run(
     # Model.__init__ parameters
     model_dir_name: Optional[str] = None,
     main_dir_path: Optional[str] = None,
+    uncertainty: Optional[bool] = None,
     model_settings_from: Optional[Defaults.LiteralTypes.SettingsSource] = None,
     detailed_validation: Optional[bool] = None,
     multiple_input_files: Optional[bool] = None,
@@ -129,6 +136,13 @@ def run(
             the model settings file. Can be either ``'yml'`` or ``'xlsx'``.
             Defaults to ``'xlsx'``.
         detailed_validation (bool, optional): If True, performs detailed
+        main_dir_path (str, optional): The main directory path where the model 
+            directory is located. If None, the current working directory is used.
+        Uncertainty (bool, optional): If True, include uncertainty-related
+            columns in the generated model settings template.
+        model_settings_from (Literal['yml', 'xlsx'], optional): The format of 
+            the model settings file. Can be either 'yml' or 'xlsx'.
+        detailed_validation (bool, optional): If True, performs detailed 
             validation logging of data and model settings during initialization.
             Defaults to ``False``.
         multiple_input_files (bool, optional): If True, input data Excel files

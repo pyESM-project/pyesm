@@ -178,7 +178,7 @@ def arange_0(dimension: List[int]) -> np.ndarray:
 
 @constant('arange_1')
 def arange_0(dimension: List[int]) -> np.ndarray:
-    """Define a reshaped range array starting from zero."""
+    """Define a reshaped range array starting from one."""
     return arange(dimension=dimension, start_from=1)
 
 
@@ -218,5 +218,42 @@ def lower_triangular_matrix(dimension: List[int]) -> np.array:
 
     return matrix
 
+@constant('lower_triangular_special')
+def tril_special_matrix(dimension: List[int]) -> np.array:
+    """Define a strict lower triangular matrix.
+
+    Generate a square matrix with ones below the main diagonal and zeros
+    elsewhere, including zeros on the diagonal.
+
+    Args:
+        dimension (List[int]): The dimension of the matrix row/col.
+
+    Returns:
+        np.ndarray: A square matrix with ones strictly below the main diagonal
+            and zeros elsewhere.
+
+    Raises:
+        exc.SettingsError: If passed dimension is not a list containing integers,
+            or if it does not represent a vector, i.e. at least one element
+            must be equal to 1.
+    """
+    if not isinstance(dimension, List) or not \
+            all(isinstance(i, int) for i in dimension):
+        raise exc.SettingsError(
+            "Constant definition | Strict lower triangular matrix accepts as "
+            "argument only a list of integers."
+        )
+
+    if len(dimension) != 2 or not any(i == 1 for i in dimension):
+        raise exc.SettingsError(
+            "Constant definition | Strict lower triangular matrix accepts as "
+            "argument a list representing a vector only one dimension. "
+            "Check variable shape."
+        )
+
+    size = max(dimension)
+    matrix = np.tril(np.ones((size, size)), k=-1)
+
+    return matrix
 
 CONSTANTS = _CONSTANTS_REGISTRY

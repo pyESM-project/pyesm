@@ -34,6 +34,8 @@ class Variable:
     - blank_fill (Optional[float]): Value to fill in case of missing data. Only 
         defined for exogenous variables, reducing effort in inserting numerical 
         data by the user.
+    - uncertainty_measure (Optional[str | bool]): Uncertainty measure metadata
+        associated with the variable, if any.
     - related_table (Optional[str]): The database table that collect the subset
         numerical data associated to the variable.
     - var_info (Optional[Dict[str, Any]]): Raw information about the variable
@@ -79,6 +81,7 @@ class Variable:
         self.cols: Dict[str, Any] = {}
         self.value: Optional[str] = None
         self.blank_fill: Optional[float] = None
+        self.uncertainty_measure: Optional[bool] = False
         self.related_table: Optional[str] = None
         self.var_info: Optional[Dict[str, Any]] = None
         self.nonneg: Optional[bool] = False
@@ -117,6 +120,7 @@ class Variable:
         set_key = Defaults.Labels.SET
         dim_key = Defaults.Labels.DIM
         sign_key = Defaults.Labels.NONNEG_KEY
+        uncertainty_measure_key = Defaults.UncertaintySettings.UNCERTAINTY_MEASURE_KEY
         dimensions = Defaults.SymbolicDefinitions.DIMENSIONS
 
         if self.var_info is None:
@@ -125,6 +129,10 @@ class Variable:
         self.value = self.var_info.get(value_key, None)
         self.blank_fill = self.var_info.get(blank_fill_key, None)
         self.nonneg = self.var_info.get(sign_key, False)
+        self.uncertainty_measure = self.var_info.get(
+            uncertainty_measure_key,
+            None,
+        )
 
         # get rows and cols information
         for dimension in [dimensions['ROWS'], dimensions['COLS']]:

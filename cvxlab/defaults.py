@@ -25,6 +25,7 @@ class Defaults:
     - LiteralTypes: Shared Literal type aliases for validating settings and type hints.
     - ConfigFiles: Defaults related to configuration and file management.
     - Labels: Standard headers and field names.
+    - UncertaintySettings: Defaults and metadata for uncertainty workflows.
     - DefaultStructures: Default structures for data validation.
     - SymbolicDefinitions: Allowed constants and operators for symbolic problem definitions.
     - NumericalSettings: Settings for numerical solvers and tolerances.
@@ -148,6 +149,9 @@ class Defaults:
         VALUE_KEY = 'value'
         BLANK_FILL_KEY = 'blank_fill'
         NONNEG_KEY = 'nonneg'
+        UNCERTAINTY_SETTING_KEY = 'uncertainty'
+        TABLE_NAME = 'table_name'
+        VARIABLE_NAME = 'variable_name'
 
         SUB_PROBLEM_KEY = 'sub_problem_key'
         FILTER_DICT_KEY = 'filter'
@@ -355,6 +359,7 @@ class Defaults:
                 *DATA_TABLE_STRUCTURE[1].keys(),
                 'value',
                 'blank_fill',
+                'nonneg',
                 'set_keys ...'
             ],
             'problem': [
@@ -513,6 +518,162 @@ class Defaults:
             """Return the currently available CVXPY solvers."""
             return cp.installed_solvers()
 
+    class UncertaintySettings:
+        """Defaults and metadata for uncertainty sampling and GSA analysis."""
+        UNCERTAINTY_ENABLED_KEY = "uncertainty_enabled"
+        IS_UNCERTAIN_KEY = "is_uncertain"
+        UNCERTAINTY_MEASURE_KEY = "uncertainty_measure"
+        LOWER_BOUND_KEY = "lower_bound"
+        UPPER_BOUND_KEY = "upper_bound"
+        UNCERTAINTY_GROUP_NAME_KEY = "uncertain_group_Name"
+
+        IS_UNCERTAIN_FIELD = {"is_uncertain": ["is_uncertain", "TEXT"]}
+        LOWER_BOUND_FIELD = {"lower_bound": ["lower_bound", "REAL"]}
+        UPPER_BOUND_FIELD = {"upper_bound": ["upper_bound", "REAL"]}
+        UNCERTAINTY_GROUP_NAME_FIELD = {"uncertain_group_Name": [
+            "uncertain_group_Name", "TEXT"]}
+
+        RUN_ID = "run_id"
+        PARAMETER_NAME = "parameter_name"
+        SAMPLED_VALUE = "sampled_value"
+        OUTPUT_NAME = "output_name"
+        INDEX_NAME = "index"
+        INDEX_VALUE = "value"
+        PARAMETER_NAME_2 = "parameter_name_2"
+        METHOD = "method"
+        SCENARIO = "scenario"
+
+        SOBOL = "sobol"
+        MORRIS = "morris"
+        LATIN = "latin"
+        DELTA = "delta"
+        RBD_FAST = "rbd_fast"
+        SALTELLI = "saltelli"
+
+        ANALYZER_REQUIRED_INPUTS = {
+            SOBOL: {"problem", "Y"},
+            MORRIS: {"problem", "X", "Y"},
+            DELTA: {"problem", "X", "Y"},
+            RBD_FAST: {"problem", "X", "Y"},
+        }
+
+        ANALYSIS_COMPATIBILITY = {
+            SOBOL: {SOBOL, SALTELLI},
+            MORRIS: {MORRIS},
+            DELTA: {LATIN, SOBOL, SALTELLI, MORRIS},
+            RBD_FAST: {LATIN, SOBOL, SALTELLI, MORRIS},
+        }
+
+        ANALYSIS_DEFAULTS = {
+            SOBOL: {
+                "calc_second_order": False,
+                "print_to_console": True,
+            },
+            MORRIS: {
+                "num_levels": 4,
+                "print_to_console": True,
+            },
+            DELTA: {
+                "print_to_console": True,
+            },
+            RBD_FAST: {
+                "print_to_console": True,
+            },
+        }
+
+        XLSX = "xlsx"
+        CSV = "csv"
+        PARQUET = "parquet"
+
+        AVAILABLE_EXPORT_FORMATS = [
+            XLSX,
+            CSV,
+            PARQUET,
+        ]
+
+        UNCERTAINTY_SAMPLES_FILE_NAME = "uncertainty_samples"
+        UNCERTAINTY_MEASURES_FILE_NAME = "uncertainty_measures"
+        UNCERTAINTY_MEASURES_TEMP_FILE_NAME = "uncertainty_measures_temp"
+
+        GSA_FILE_NAME = "GSA_analysis"
+
+        STATUS = "status"
+        INDEX_VALUE = "value"
+
+        RESULTS_DIR = "results"
+
+    DefaultStructures.DATA_TABLE_STRUCTURE_UNCERTAINTY = (
+        'table_key:',
+        {
+            DefaultStructures.METADATA: (DefaultStructures.OPTIONAL, str,),
+            'type': (str, dict),
+            'integer': (DefaultStructures.OPTIONAL, bool,),
+            'coordinates': (str, list),
+            UncertaintySettings.UNCERTAINTY_ENABLED_KEY: (DefaultStructures.OPTIONAL, bool,),
+            'variables_info': {
+                DefaultStructures.ANY: {
+                    'value': (
+                        DefaultStructures.OPTIONAL,
+                        str,
+                    ),
+                    'blank_fill': (
+                        DefaultStructures.OPTIONAL,
+                        Union[int, float],
+                    ),
+                    'nonneg': (
+                        DefaultStructures.OPTIONAL,
+                        bool,
+                    ),
+                    UncertaintySettings.UNCERTAINTY_MEASURE_KEY: (
+                        DefaultStructures.OPTIONAL,
+                        str,
+                        bool,
+                    ),
+                    DefaultStructures.ANY: (
+                        DefaultStructures.OPTIONAL,
+                        {
+                            'dim': (
+                                DefaultStructures.OPTIONAL,
+                                str,
+                            ),
+                            'filters': (
+                                DefaultStructures.OPTIONAL,
+                                dict,
+                            ),
+                        },
+                    ),
+                }
+            },
+        },
+    )
+
+    DefaultStructures.UNCERTAINTY_TABLE_TEMPLATE_COLUMNS = [
+        UncertaintySettings.UNCERTAINTY_ENABLED_KEY,
+    ]
+
+    DefaultStructures.UNCERTAINTY_VARIABLE_TEMPLATE_COLUMNS = [
+        UncertaintySettings.UNCERTAINTY_MEASURE_KEY,
+    ]
+    DefaultStructures.XLSX_TEMPLATE_COLUMNS_UNCERTAINTY = {
+        'structure_sets': [
+            'set_key',
+            *DefaultStructures.SET_STRUCTURE[1].keys()
+        ],
+        'structure_variables': [
+            'table_key',
+            *DefaultStructures.DATA_TABLE_STRUCTURE_UNCERTAINTY[1].keys(),
+            'value',
+            'blank_fill',
+            'nonneg',
+            * DefaultStructures.UNCERTAINTY_VARIABLE_TEMPLATE_COLUMNS,
+            'set_keys ...'
+        ],
+        'problem': [
+            'problem_key',
+            *DefaultStructures.PROBLEM_STRUCTURE[1].keys()
+        ],
+    }
+
     _SUBGROUPS = [
         LiteralTypes,
         ConfigFiles,
@@ -520,6 +681,7 @@ class Defaults:
         DefaultStructures,
         SymbolicDefinitions,
         NumericalSettings,
+        UncertaintySettings,
     ]
 
     @classmethod

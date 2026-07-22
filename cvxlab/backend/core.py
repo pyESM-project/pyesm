@@ -24,14 +24,15 @@ from cvxlab.defaults import Defaults
 from cvxlab.support import util
 from cvxlab.support.file_manager import FileManager
 from cvxlab.support.sql_manager import SQLManager, db_handler
+from cvxlab.backend.uncertainty import Uncertainty
 
 
 class Core:
     """Core class defines the interactions among main components of the package.
 
-    The Core class generates instances of Index (with all the information about 
-    sets, data tables and variables), SQLManager (with all the tools necessary 
-    to handle SQLite database), Database (handling all database operations), and 
+    The Core class generates instances of Index (with all the information about
+    sets, data tables and variables), SQLManager (with all the tools necessary
+    to handle SQLite database), Database (handling all database operations), and
     Problem (defining symbolic and numerical problems). It manages the interactions
     among these components, including data fetching and writing to the database,
     variable initialization, problem definition and solving.
@@ -78,6 +79,7 @@ class Core:
         self.sqltools = SQLManager(
             logger=self.logger,
             database_path=self.paths.sqlite_database,
+            settings=self.settings,
             database_name=Defaults.ConfigFiles.SQLITE_DATABASE_FILE,
         )
 
@@ -105,13 +107,33 @@ class Core:
             index=self.index
         )
 
-    def _initialize_problems_variables(self) -> None:
+        self.uncertainty = Uncertainty(
+            sqltools=self.sqltools,
+            index=self.index,
+            paths=self.paths,
+            logger=self.logger
+        )
+
+    @property
+    def is_uncertainty_analysis(self) -> bool:
+        """Return whether uncertainty-analysis functionality is enabled.
+
+        Returns:
+            bool: True if the model was initialized with uncertainty analysis
+            enabled, otherwise False.
+        """
+        return bool(self.settings.get(
+            Defaults.Labels.UNCERTAINTY_SETTING_KEY,
+            False,
+        ))
+
+    def initialize_problems_variables(self) -> None:
         """Initialize data structures for handling problem variables.
 
-        This method first iterates over each endogenous data table, generating 
-        the coordinate dataframe and the related cvxpy variable in the data table 
-        object (cvxpy variable in endogenous data tables include all data tables 
-        entries that will be then sliced to be used in the problem). 
+        This method first iterates over each endogenous data table, generating
+        the coordinate dataframe and the related cvxpy variable in the data table
+        object (cvxpy variable in endogenous data tables include all data tables
+        entries that will be then sliced to be used in the problem).
         It then iterates over all variables in the index, generating the variable's
         dataframe (including all variables information and the related cvxpy variable)
         in Problem object.
@@ -277,17 +299,20 @@ class Core:
             filter_negative_values: bool = False,
             warnings_on_negatives: bool = False,
             validate_types: bool = True,
+            is_hybrid: Optional[bool] = False,
+            samples_df: Optional[pd.DataFrame] = None,
+            run_id: Optional[int] = None
     ) -> None:
         """Fetch data from the database and assign it to cvxpy exogenous variables.
 
-        This method iterates over each exogenous variable in the Index, getting 
+        This method iterates over each exogenous variable in the Index, getting
         related data from the SQLite database and assigns it to the cvxpy variable.
         The method handles variables whose type is defined by the problem separately.
-        The method can fetch data for all scenarios or for a subset of scenarios 
-        (scenarios_idx): scenarios are linear combinations of inter-problem sets 
-        values defined in the index. 
-        The method can update all exogenous variables or a specified list of variables 
-        (var_list_to_update): this may be useful for continuous user model run, 
+        The method can fetch data for all scenarios or for a subset of scenarios
+        (scenarios_idx): scenarios are linear combinations of inter-problem sets
+        values defined in the index.
+        The method can update all exogenous variables or a specified list of variables
+        (var_list_to_update): this may be useful for continuous user model run,
         when only a subset of exogenous variables need to be updated.
         Optionally, the method can check if variable data comply with nonneg attribute
         defined for the variable, putting negative values to zero.
@@ -432,11 +457,19 @@ class Core:
                                     list(variable_data_filtered.index)
 
                         for combination in sets_parsing_hierarchy_idx:
-                            # get raw data from database
+
                             raw_data = self.database.sqltools.table_to_dataframe(
                                 table_name=variable.related_table,
-                                filters_dict=variable_data[filter_header][combination]
+                                filters_dict=variable_data[filter_header][combination],
                             )
+
+                            if is_hybrid:
+                                raw_data = self.uncertainty.inject_sampled_values_by_row(
+                                    table_df=raw_data,
+                                    run_id=run_id,
+                                    samples_df=samples_df,
+                                    table_name=variable.related_table,
+                                )
 
                             if validate_types:
                                 # check if variable data are int or float
@@ -530,6 +563,419 @@ class Core:
         Raises:
             exc.OperationalError: If 'numerical_problems' has not defined as Problem
                 property.
+        This method iterates over each endogenous data table in the Index, and it
+        exports the data from the related cvxpy variable into the corresponding
+        data table in the SQLite database.
+        The method can export data for all scenarios or for a subset of scenarios
+        (scenarios_idx): scenarios are linear combinations of inter-problem sets
+        values defined in the index.
+        The method can optionally suppress warnings during the export process (
+        force_overwrite, useful for testing purpose).
+        The method can optionally force the re-export of data even if the data
+        table already exists (suppress_warnings, useful for continuous user model
+        run, when only a subset of endogenous variables need to be exported).
+
+        Args:
+            scenarios_idx (Optional[List[int] | int], optional): List of indices
+                of scenarios for which to fetch data. If None, fetches data for
+                all scenarios. Defaults to None.
+            force_overwrite (bool, optional): If True, forces the re-export of
+                data even if the data table already exists. Defaults to False.
+            suppress_warnings (bool, optional): If True, suppresses warnings
+                during the data export process. Defaults to False.
+        """
+        self.logger.debug(
+            "Exporting data from cvxpy endogenous variable (in data table) "
+            f"to SQLite database '{Defaults.ConfigFiles.SQLITE_DATABASE_FILE}' ")
+
+        values_headers = Defaults.Labels.VALUES_FIELD['values'][0]
+        allowed_var_types = Defaults.SymbolicDefinitions.VARIABLE_TYPES
+
+        if scenarios_idx is None:
+            scenarios_list = list(self.index.scenarios_info.index)
+        else:
+            if isinstance(scenarios_idx, int):
+                scenarios_list = [scenarios_idx]
+            elif isinstance(scenarios_idx, list):
+                scenarios_list = scenarios_idx
+            else:
+                msg = "'scenarios_idx' parameter must be an int or a list of ints."
+                self.logger.error(msg)
+                raise TypeError(msg)
+
+        with db_handler(self.sqltools):
+            for data_table_key, data_table in self.index.data.items():
+                data_table: DataTable
+
+                if data_table.type in [
+                    allowed_var_types['EXOGENOUS'],
+                    allowed_var_types['CONSTANT']
+                ]:
+                    continue
+
+                if isinstance(data_table.coordinates_dataframe, pd.DataFrame):
+                    data_table_dataframe = data_table.coordinates_dataframe
+
+                elif isinstance(data_table.coordinates_dataframe, dict):
+                    dataframes_list = [
+                        dataframe for df_key, dataframe
+                        in data_table.coordinates_dataframe.items()
+                        if df_key in scenarios_list
+                    ]
+                    data_table_dataframe = pd.concat(
+                        objs=dataframes_list,
+                        ignore_index=True
+                    )
+
+                data_table_dataframe = util.add_column_to_dataframe(
+                    dataframe=data_table_dataframe,
+                    column_header=values_headers,
+                )
+
+                if values_headers not in data_table_dataframe.columns:
+                    if self.settings['log_level'] == 'debug' or \
+                            not suppress_warnings:
+                        self.logger.warning(
+                            f"Column '{values_headers}' already exists in data "
+                            f"table '{data_table_key}'")
+
+                if data_table.cvxpy_var is None:
+                    if self.settings['log_level'] == 'debug' or \
+                            not suppress_warnings:
+                        self.logger.warning(
+                            f"No data available in cvxpy variable '{data_table_key}'")
+                    continue
+
+                cvxpy_var_with_nones = False
+
+                if isinstance(data_table.cvxpy_var, dict):
+                    cvxpy_var_values_list = []
+
+                    for cvxpy_var_key, cvxpy_var in data_table.cvxpy_var.items():
+                        cvxpy_var: cp.Variable
+
+                        if cvxpy_var_key not in scenarios_list:
+                            continue
+
+                        if cvxpy_var.value is None:
+                            cvxpy_var_with_nones = True
+                            value_to_append = np.zeros((cvxpy_var.shape[0], 1))
+                        else:
+                            value_to_append = cvxpy_var.value
+
+                        cvxpy_var_values_list.append(value_to_append)
+                    cvxpy_var_data = np.vstack(cvxpy_var_values_list)
+
+                else:
+                    if data_table.cvxpy_var.value is None:
+                        cvxpy_var_with_nones = True
+                        value_to_append = np.zeros(
+                            (data_table.cvxpy_var.shape[0], 1))
+                    else:
+                        value_to_append = data_table.cvxpy_var.value
+
+                    cvxpy_var_data = value_to_append
+
+                if cvxpy_var_with_nones:
+                    self.logger.warning(
+                        f"Data table '{data_table_key}' | "
+                        "No data available in cvxpy variable (probably not "
+                        "used in model expressions). Exporting zeros to corresponding "
+                        "SQLite data table."
+                    )
+
+                if len(data_table_dataframe) != cvxpy_var_data.shape[0]:
+                    self.logger.error(
+                        f"Length mismatch exporting '{data_table_key}': "
+                        f"dataframe rows={len(data_table_dataframe)}, "
+                        f"cvxpy rows={cvxpy_var_data.shape[0]}"
+                    )
+                    raise exc.OperationalError(
+                        "Mismatch between coordinates and cvxpy values length.")
+
+                data_table_dataframe[values_headers] = cvxpy_var_data
+
+                data_table_dataframe = util.normalize_dataframe(
+                    df=data_table_dataframe,
+                    all_str_except_numeric=True,
+                )
+
+                self.sqltools.dataframe_to_table(
+                    table_name=data_table_key,
+                    dataframe=data_table_dataframe,
+                    action='update',
+                    force_overwrite=force_overwrite,
+                    suppress_warnings=suppress_warnings,
+                )
+
+    def cvxpy_uncertain_exogenous_data_to_database(
+            self,
+            force_overwrite: bool = False,
+            suppress_warnings: bool = False,
+    ) -> None:
+        """Write current sampled CVXPY parameter values into uncertain DB rows."""
+
+        filter_header = Defaults.Labels.FILTER_DICT_KEY
+        cvxpy_var_header = Defaults.Labels.CVXPY_VAR
+        values_header = Defaults.Labels.VALUES_FIELD["values"][0]
+
+        uncertainty_enabled_key = (
+            Defaults.UncertaintySettings.UNCERTAINTY_ENABLED_KEY
+        )
+
+        is_uncertain_header = (
+            Defaults.UncertaintySettings.IS_UNCERTAIN_FIELD[
+                Defaults.UncertaintySettings.IS_UNCERTAIN_KEY
+            ][0]
+        )
+
+        allowed_var_types = Defaults.SymbolicDefinitions.VARIABLE_TYPES
+
+        with db_handler(self.sqltools):
+
+            for variable in self.index.variables.values():
+
+                table_name = variable.related_table
+
+                data_table = self.index.data[table_name]
+
+                if not getattr(
+                    data_table,
+                    uncertainty_enabled_key,
+                    False,
+                ):
+                    continue
+
+                variable_data_items = [variable.data]
+
+                for variable_data in variable_data_items:
+
+                    for combination in variable_data.index:
+
+                        table_df = self.sqltools.table_to_dataframe(
+                            table_name=table_name,
+                            filters_dict=variable_data[
+                                filter_header
+                            ][combination],
+                        )
+
+                        uncertain_mask = (
+                            table_df[is_uncertain_header]
+                            .astype(str)
+                            .str.strip()
+                            .str.lower()
+                            .isin(["true", "1"])
+                        )
+
+                        if not uncertain_mask.any():
+                            continue
+
+                        cvxpy_obj = variable_data[
+                            cvxpy_var_header
+                        ][combination]
+
+                        cvxpy_values = np.asarray(
+                            cvxpy_obj.value
+                        ).reshape(-1)
+
+                        # Associate the current CVXPY values with the rows
+                        # selected for this variable.
+                        table_df[values_header] = cvxpy_values
+
+                        # Write back only the uncertain rows.
+                        table_df = table_df.loc[
+                            uncertain_mask
+                        ].copy()
+
+                        table_df = util.normalize_dataframe(
+                            df=table_df,
+                            all_str_except_numeric=True,
+                        )
+
+                        self.sqltools.dataframe_to_table(
+                            table_name=table_name,
+                            dataframe=table_df,
+                            action="update",
+                            force_overwrite=force_overwrite,
+                            suppress_warnings=suppress_warnings,
+                        )
+
+    def check_exogenous_data_coherence(
+            self,
+            is_uncertain: bool = False) -> None:
+        """Check coherence of exogenous data in the SQLite database.
+
+        If uncertain is False, the method checks that all exogenous data entries
+        have non-null values in the 'values' column.
+
+        If uncertain is True, rows marked as uncertain are excluded from the check,
+        because their values are expected to be provided through sampled data during
+        uncertainty-analysis runs.
+
+        Raises:
+            exc.MissingDataError: If NULL entries are found in required data rows.
+            The method parses all exogenous data tables in the Database, checking 
+            for NULL entries in the 'values' column. Since all exogenous data are 
+            expected to be filled by the user before running the model, in case NULL 
+            entries are found, the method logs the table name and the corresponding 
+            row IDs, and raises an error.
+
+        """
+        with self.logger.log_timing(
+            message=f"Checking exogenous data coherence...",
+            level='info',
+        ):
+            null_entries = {}
+            column_to_inspect = Defaults.Labels.VALUES_FIELD['values'][0]
+            column_with_info = Defaults.Labels.ID_FIELD['id'][0]
+            allowed_var_types = Defaults.SymbolicDefinitions.VARIABLE_TYPES
+
+            with db_handler(self.sqltools):
+                for table_name, data_table in self.index.data.items():
+                    data_table: DataTable
+
+                    if data_table.type in (
+                        allowed_var_types['ENDOGENOUS'],
+                        allowed_var_types['CONSTANT']
+                    ):
+                        continue
+
+                    if is_uncertain:
+                        table_df = self.sqltools.table_to_dataframe(
+                            table_name=table_name)
+                        deterministic_df = self.uncertainty.get_deterministic_values_df(
+                            table_df=table_df, table_name=table_name)
+
+                        null_rows = deterministic_df.loc[
+                            deterministic_df[column_to_inspect].isna(), column_with_info].tolist()
+
+                        if null_rows:
+                            null_entries[table_name] = null_rows
+
+                    else:
+                        null_list = self.sqltools.get_null_values(
+                            table_name=table_name,
+                            column_to_inspect=column_to_inspect,
+                            column_with_info=column_with_info,
+                        )
+                        if null_list:
+                            null_entries[table_name] = null_list
+
+            if null_entries:
+                for table, rows in null_entries.items():
+                    if len(rows) > 5:
+                        rows = rows[:5] + [f"(total items {len(rows)})"]
+                    self.logger.error(
+                        f"Data coherence check | Table '{table}' | "
+                        f"NULLs at id rows: {rows}."
+                    )
+                raise exc.MissingDataError(
+                    "Data coherence check | NULL entries found in "
+                    f"data tables: {list(null_entries.keys())}"
+                )
+
+    def load_and_validate_symbolic_problem(
+            self,
+            force_overwrite: bool = False,
+    ) -> None:
+        """Call methods to load and validate symbolic problem.
+
+        The method calls the 'load_symbolic_problem_from_file' and complete the 
+        problem expressions by adding implicit symbolic expressions using the 
+        'add_implicit_symbolic_expressions' (i.e. defining expressions for variables
+        with sign constraints defined in settings). Then, it calls the 
+        'validate_symbolic_expressions' methods of the Problem instance to load
+        and validate the symbolic problem definitions from a file.
+        The method also performs a coherence check between data tables and problem
+        definitions based on 'check_data_tables_and_problem_coherence' method.
+        """
+        with self.logger.log_timing(
+            message=f"Loading and validating symbolic problem...",
+            level='info',
+        ):
+            self.problem.load_symbolic_problem_from_file(force_overwrite)
+            self.problem.add_implicit_symbolic_expressions()
+            self.problem.validate_symbolic_expressions()
+            self.problem.check_data_tables_and_problem_coherence()
+
+    def generate_numerical_problem(
+            self,
+            force_overwrite: bool,
+            allow_none_values: bool,
+    ) -> None:
+        """Call methods to generate numerical problems.
+
+        The method initializes problem variables, fetch data from SQLite database
+        to exogenous variables, and generate numerical problems. 
+        The method can optionally overwrite existing problem definitions without
+        prompting the user (force_overwrite, useful for testing purpose).
+        The method can allow None values in the data for exogenous variables
+
+        Args:
+            force_overwrite (bool, optional): If True, forces the redefinition 
+                of problems without prompting the user. Defaults to False.
+            allow_none_values (bool, optional): If True, allows None values in
+                the data for exogenous variables.
+        """
+        self.initialize_problems_variables()
+        self.data_to_cvxpy_exogenous_vars(allow_none_values=allow_none_values)
+        self.problem.generate_numerical_problems(force_overwrite)
+
+    def solve_numerical_problems(
+            self,
+            force_overwrite: bool,
+            integrated_problems: bool,
+            convergence_monitoring: bool,
+            convergence_norm: Defaults.LiteralTypes.NormType = 'l2',
+            convergence_tables_to_check: Optional[List[str]] = None,
+            convergence_tables_to_skip: Optional[List[str]] = None,
+            relative_tolerance: Optional[float] = None,
+            maximum_iterations: Optional[int] = None,
+            keep_previous_iteration_db: bool = False,
+            **solver_settings: Any,
+    ) -> None:
+        """Solve independent or integrated numerical problems.
+
+        The method solves all defined numerical problems using the specified 
+        solver, verbosity and numerical settings.
+        The method checks if numerical problems have been defined and if they 
+        have already been solved. If the problems have not been solved or if 
+        'force_overwrite' is True, the method solves the problems using the 
+        specified solver. The method can solve the problems individually or as 
+        an integrated problem, depending on the 'integrated_problems' setting.
+        The method logs information about the problem solving process.
+        The method fetches the problem status after solving the problems.
+
+        Args:
+            force_overwrite (bool): If True, forces the re-solution of problems 
+                even if they have already been solved without prompting the user.
+            integrated_problems (bool): If True, solves the problems as an 
+                integrated problem. If False, solves the problems as independent.
+            convergence_monitoring (bool): If True, enables convergence monitoring
+                during the solving of integrated problems.
+            convergence_norm (Defaults.LiteralTypes.NormType, optional):
+                The norm type to use for convergence monitoring in integrated 
+                problems. Defaults to 'l2' (Euclidean norm). Overrides 
+                'Defaults.NumericalSettings.MODEL_COUPLING_SETTINGS'.
+            convergence_tables_to_check (Optional[List[str]], optional): List of data table
+                keys to check for convergence in integrated problems. If None,
+                all endogenous data tables are checked.
+            convergence_tables_to_skip (Optional[List[str]], optional): List of data table
+                keys to skip for convergence checking in integrated problems. If None,
+                no tables are skipped.
+            relative_tolerance (float, optional): Numerical tolerance for verifying
+                maximum relative change between iterations in integrated problems for 
+                each data table. Overrides 'Defaults.NumericalSettings.MODEL_COUPLING_SETTINGS'.
+            maximum_iterations (Optional[int], optional): The maximum number of 
+                iterations for the solver. Overrides 
+                'Defaults.NumericalSettings.MODEL_COUPLING_SETTINGS'.
+            keep_previous_iteration_db (bool, optional): If True, does not delete 
+                the database related to the last-1 iteration. For debugging purpose.
+                Default to False.
+            **solver_settings: Additional keyword arguments passed to the solver.
+
+        Raises:
+            OperationalError: If numerical problems have not been defined.
         """
         if self.problem.numerical_problems is None:
             msg = "Numerical problems must be defined first."
@@ -932,7 +1378,12 @@ class Core:
                                     for table_key in tables_to_check
                                 }
 
+                                if self.is_uncertainty_analysis:
+                                    self.cvxpy_uncertain_exogenous_data_to_database(
+                                        force_overwrite=True, suppress_warnings=True)
+
                                 iter_count += 1
+
                                 continue
 
                             # relative error must be computed for scenarios_idx only
@@ -988,6 +1439,24 @@ class Core:
                                 lines.append(msg)
                                 conv_log("\n".join(lines))
                                 self.logger.warning(msg)
+                                self.logger.warning(
+                                    "Maximum number of iterations hit before "
+                                    "reaching convergence")
+
+                                convergence_status = "convergence_not_reached"
+
+                                for problem_df in self.problem.numerical_problems.values():
+                                    problem_df.at[
+                                        scenario_idx,
+                                        problem_status_header,
+                                    ] = convergence_status
+
+                                self.logger.warning(
+                                    "Integrated problem convergence not reached | "
+                                    f"Scenario {scenario_coords} | "
+                                    f"Maximum iterations: {maximum_iterations}."
+                                )
+
                                 break
 
                             iter_count += 1
@@ -1578,3 +2047,99 @@ class Core:
         """Return a string representation of the Core instance."""
         class_name = type(self).__name__
         return f'{class_name}'
+
+    def get_current_problem_status_by_scenario(self) -> dict:
+        """Return current solution status by scenario.
+
+        Returns:
+            dict mapping scenario_key -> status. If there are no split scenarios,
+            the key is None.
+        """
+
+        try:
+            self.problem.fetch_problem_status()
+        except exc.OperationalError:
+            return {None: "not_solved"}
+
+        problem_status_col = Defaults.Labels.PROBLEM_STATUS
+
+        statuses_by_scenario = {}
+
+        numerical_problems = self.problem.numerical_problems
+
+        if numerical_problems is None:
+            return {None: "not_solved"}
+
+        # Case 1: numerical_problems is a single dataframe
+        if isinstance(numerical_problems, pd.DataFrame):
+
+            if problem_status_col not in numerical_problems.columns:
+                return {None: "unknown"}
+
+            statuses = numerical_problems[problem_status_col].dropna().unique()
+
+            if len(statuses) == 0:
+                return {None: "not_solved"}
+
+            if all(status == "optimal" for status in statuses):
+                return {None: "optimal"}
+
+            failed_statuses = [
+                str(status)
+                for status in statuses
+                if str(status) != "optimal"
+            ]
+
+            if failed_statuses:
+                return {None: " | ".join(failed_statuses)}
+
+            return {None: "unknown"}
+
+        # Case 2: numerical_problems is a dict of dataframes
+        if isinstance(numerical_problems, dict):
+
+            for _, problem_df in numerical_problems.items():
+
+                if problem_status_col not in problem_df.columns:
+                    continue
+
+                for scenario_key, row in problem_df.iterrows():
+
+                    status = row[problem_status_col]
+
+                    if pd.isna(status):
+                        status = "not_solved"
+
+                    statuses_by_scenario.setdefault(
+                        scenario_key,
+                        [],
+                    ).append(status)
+
+            if not statuses_by_scenario:
+                return {None: "unknown"}
+
+            final_statuses = {}
+
+            for scenario_key, statuses in statuses_by_scenario.items():
+
+                statuses = [str(status) for status in statuses]
+
+                if all(status == "optimal" for status in statuses):
+                    final_statuses[scenario_key] = "optimal"
+                    continue
+
+                failed_statuses = list(dict.fromkeys(
+                    status
+                    for status in statuses
+                    if status != "optimal"
+                ))
+
+                final_statuses[scenario_key] = (
+                    " | ".join(failed_statuses)
+                    if failed_statuses
+                    else "unknown"
+                )
+
+            return final_statuses
+
+        return {None: "unknown"}
