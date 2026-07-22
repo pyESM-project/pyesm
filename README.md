@@ -39,7 +39,7 @@ CVXlab allows you to define optimization problems using:
 - **General-purpose model generator**: Model problems as you would mathematically, without restrictive solver forms.
 - **Almost no-code required**: Build models using Excel or YAML—no coding required.
 - **Centralized data management**: Centralized data input/output via SQLite database.
-- **Multi-Model Support**: Generate and solve multiple integrated or decomposed optimization problems.
+- **Multi-Model Support**: Generate and solve multiple parallel, sequential, or integrated optimization problems.
 - **Powerful engine embedded**: Built on cvxpy package, leveraging its extensive solver support.
 
 **Typical workflow:**
@@ -74,8 +74,8 @@ activities summarized below:
 
 ## Guided Interface
 CVXlab provides an interactive guided interface that walks you through the full 
-modeling workflow — from directory setup to solving — via a terminal menu. 
-Launch it with `cvxlab.frontend.run()`:
+modeling workflow, from directory setup to model solution via a terminal menu. 
+Launch it with `cvxlab.run()` function:
 
 ```python
 import cvxlab
@@ -128,5 +128,5 @@ If you use CVXlab in academic work, please cite the software as follows.
 }
 ```
 
-For industry or non-academic use, we'd love to hear your feedback — reach out via
+For industry or non-academic use, we'd love to hear your feedback: reach out via
 email at matteovincenzo.rocco@polimi.it.
