@@ -8,12 +8,12 @@ functions that enhance the interoperability of data structures used throughout
 the application.
 """
 import itertools as it
-import numpy as np
-import pandas as pd
-
 from collections.abc import Iterable
 from copy import deepcopy
 from typing import Dict, List, Any, Optional, Tuple
+
+import numpy as np
+import pandas as pd
 
 from cvxlab.defaults import Defaults
 from cvxlab.support import util_text
@@ -623,7 +623,7 @@ def add_column_to_dataframe(
     if column_position is None:
         column_position = len(dataframe.columns)
 
-    if not (0 <= column_position <= len(dataframe.columns)):
+    if not 0 <= column_position <= len(dataframe.columns):
         raise ValueError(
             "Passed column_position is greater than the number of columns "
             "of the dataframe.")
@@ -1079,12 +1079,14 @@ def calculate_values_difference(
 
 def remove_empty_items_from_dict(
         dictionary: Dict,
-        empty_values: List = [None, 'nan', 'None', 'null', '', 'NaN', [], {}],
+        empty_values: Optional[List] = None,
 ) -> Dict:
     """Remove keys with empty values from a dictionary.
 
     Args:
         dictionary (Dict): The dictionary to clean.
+        empty_values (Optional[List]): A list of values to consider as empty. 
+            Defaults to None.
 
     Returns:
         Dict: A new dictionary with all keys that had empty values removed.
@@ -1100,6 +1102,9 @@ def remove_empty_items_from_dict(
         raise TypeError(
             "Passed argument must be a dictionary. "
             f"{type(dictionary).__name__} was passed instead")
+
+    if empty_values is None:
+        empty_values = empty_values_list
 
     if not [value for value in empty_values if value in empty_values_list]:
         raise ValueError(
@@ -1322,7 +1327,7 @@ def is_sparse(array: np.ndarray, threshold: float) -> bool:
             f"{type(array).__name__} was passed instead."
         )
 
-    if not (0 <= threshold <= 1):
+    if not 0 <= threshold <= 1:
         raise ValueError("Argument 'threshold' must be between 0 and 1.")
 
     total_elements = array.size
@@ -1380,8 +1385,8 @@ def normalize_dataframe(
             Defaults to np.nan.
         bool_to_str (bool): If True, convert boolean columns to string representation. 
             Defaults to False.
-        all_str_except_numeric (bool): If True, convert all non-numeric columns (except excluded ones) 
-            to string dtype. Defaults to False.
+        all_str_except_numeric (bool): If True, convert all non-numeric columns 
+            (except excluded ones) to string dtype. Defaults to False.
 
     Returns:
         pd.DataFrame: A new normalized DataFrame.

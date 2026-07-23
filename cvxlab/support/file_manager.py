@@ -15,7 +15,6 @@ import os
 import shutil
 import json
 import yaml
-import time
 
 import pandas as pd
 
@@ -98,7 +97,7 @@ class FileManager:
         Returns:
             bool: True if erased, False otherwise.
         """
-        dir_name = str(dir_path).rsplit('/', maxsplit=1)[-1]
+        dir_name = dir_path.name
 
         if os.path.exists(dir_path):
             if not force_erase:
@@ -868,8 +867,10 @@ class FileManager:
             # if no data are passed, all keys must be optional
             if not data:
                 if not all_optional_fields:
-                    errors[current_path] = f"Data structure is empty, but " \
-                        "there are mandatory key-value pairs."
+                    errors[current_path] = (
+                        "Data structure is empty, but there are mandatory "
+                        "key-value pairs."
+                    )
                 continue
 
             # check for keys and related values
@@ -887,7 +888,7 @@ class FileManager:
             # check if mandatory keys are missing
             elif k_exp not in data:
                 if not optional:
-                    errors[current_path] = f"Missing key-value pair."
+                    errors[current_path] = "Missing key-value pair."
                 continue
 
             # check values types and content for mandatory keys

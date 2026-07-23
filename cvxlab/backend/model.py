@@ -110,7 +110,7 @@ class Model:
         )
 
         with self.logger.log_timing(
-            message=f"Model instance generation...",
+            message="Model instance generation...",
             level='info',
         ):
             self.files = FileManager(logger=self.logger)
@@ -270,7 +270,7 @@ class Model:
                 is missing.
         """
         with self.logger.log_timing(
-            message=f"Loading sets and variables coordinates...",
+            message="Loading sets and variables coordinates...",
             level='info',
         ):
             try:
@@ -320,7 +320,7 @@ class Model:
             return
 
         with self.logger.log_timing(
-            message=f"Generation of blank data structures...",
+            message="Generation of blank data structures...",
             level='info',
         ):
             if sqlite_db_path.exists():
@@ -365,7 +365,7 @@ class Model:
     def _load_exogenous_data_to_sqlite_database(
             self,
             force_overwrite: bool = False,
-            table_key_list: list[str] = [],
+            table_key_list: Optional[list[str]] = None,
     ) -> None:
         """Load exogenous (input) data to the SQLite database.
 
@@ -384,12 +384,15 @@ class Model:
         Args:
             force_overwrite (bool, optional): Whether to force overwrite existing
                 data without asking for user permission. Defaults to False.
-            table_key_list (list[str], optional): A list of data table keys
+            table_key_list (Optional[list[str]], optional): A list of data table keys
                 for which to load exogenous data. If empty, all exogenous data
-                tables are loaded. Defaults to [].
+                tables are loaded. Defaults to None.
         """
+        if table_key_list is None:
+            table_key_list = []
+
         with self.logger.log_timing(
-            message=f"Loading input data to SQLite database...",
+            message="Loading input data to SQLite database...",
             level='info',
         ):
             self.core.database.load_data_input_files_to_database(
@@ -423,13 +426,15 @@ class Model:
                 the exogenous data. Defaults to True.
         """
         with self.logger.log_timing(
-            message=f"Numerical model generation...",
+            message="Numerical model generation...",
             level='info',
         ):
             self.core.load_and_validate_symbolic_problem(force_overwrite)
             self.core.check_exogenous_data_coherence()
             self.core.generate_numerical_problem(
-                allow_none_values, force_overwrite)
+                force_overwrite=force_overwrite,
+                allow_none_values=allow_none_values
+            )
 
     def initialize_model_environment(self) -> None:
         """Initialize the model environment for problem generation and solution.
@@ -458,8 +463,8 @@ class Model:
 
     def refresh_database_and_initialize_problem(
             self,
-            table_key_list: list[str] = [],
             force_overwrite: bool = False,
+            table_key_list: Optional[list[str]] = None,
     ) -> None:
         """Update SQLite database with exogenous data and initialize problems.
 
@@ -471,13 +476,15 @@ class Model:
         made, without the need of re-generating the Model instance.
 
         Args:
-            table_key_list (list[str], optional): A list of data table keys
-                for which to load exogenous data. If empty, all exogenous data
-                tables are loaded. Defaults to [].
             force_overwrite (bool, optional): Whether to overwrite/update
                 existing data without asking user permission. Defaults to False.
+            table_key_list (Optional[list[str]], optional): A list of data table keys
+                for which to load exogenous data. If empty, all exogenous data
+                tables are loaded. Defaults to None.
         """
         sqlite_db_file = Defaults.ConfigFiles.SQLITE_DATABASE_FILE
+        if table_key_list is None:
+            table_key_list = []
 
         self.logger.info(
             f"Loading exogenous data into SQLite database '{sqlite_db_file}' "
@@ -615,7 +622,7 @@ class Model:
         self.logger.info(msg)
 
         with self.logger.log_timing(
-            message=f"Solving numerical problems...",
+            message="Solving numerical problems...",
             level='info',
         ):
             self.core.solve_numerical_problems(
@@ -661,7 +668,7 @@ class Model:
                 during the data loading process. Defaults to False.
         """
         with self.logger.log_timing(
-            message=f"Exporting endogenous model results to SQLite database...",
+            message="Exporting endogenous model results to SQLite database...",
             level='info',
         ):
             if not self.is_problem_solved:
@@ -678,7 +685,7 @@ class Model:
 
     def generate_input_data_files(
             self,
-            table_key_list: List[str] = [],
+            table_key_list: Optional[List[str]] = None,
             values_cleanup: bool = True,
     ) -> None:
         """Generate blank Excel files for data input.
@@ -696,9 +703,9 @@ class Model:
         related to the specified data tables.
 
         Args:
-            table_key_list (List[str], optional): A list of data table keys
+            table_key_list (Optional[List[str]], optional): A list of data table keys
                 for which to generate input data files. If empty, all data
-                tables are generated. Defaults to [].
+                tables are generated. Defaults to None.
             values_cleanup (bool, optional): Whether to clean up values of
                 database tables before generating input data files. Defaults
                 to True.
@@ -709,10 +716,11 @@ class Model:
                 (i.e., not exogenous data tables).
         """
         input_files_dir_path = Path(self.paths.input_data_dir)
+        if table_key_list is None:
+            table_key_list = []
 
         if not input_files_dir_path.exists():
-            msg = "Input data directory missing. Initialize blank data "
-            "structure first."
+            msg = "Input data directory missing. Initialize blank data structure first."
             self.logger.error(msg)
             raise exc.SettingsError(msg)
 
@@ -720,8 +728,8 @@ class Model:
             table_key_list,
             self.core.index.list_exogenous_data_tables
         ):
-            msg = "Invalid table key/s provided. Only exogenous data tables "
-            "can be exported to input data files."
+            msg = "Invalid table key/s provided. Only exogenous data tables can " \
+                "be exported to input data files."
             self.logger.error(msg)
             raise exc.SettingsError(msg)
 
@@ -792,8 +800,10 @@ class Model:
                 'Defaults.NumericalSettings.TOLERANCE_TESTS_RESULTS_CHECK'.
         """
         if (other_db_dir_path is None) != (other_db_name is None):
-            msg = "Both 'other_db_dir_path' and 'other_db_name' parameters must "
-            "be defined together, or both must be None."
+            msg = (
+                "Both 'other_db_dir_path' and 'other_db_name' parameters must "
+                "be defined together, or both must be None."
+            )
             self.logger.error(msg)
             raise exc.SettingsError(msg)
 
@@ -807,7 +817,7 @@ class Model:
             numerical_tolerance = Defaults.NumericalSettings.TOLERANCE_TESTS_RESULTS_CHECK
 
         with self.logger.log_timing(
-            message=f"Check model results...",
+            message="Check model results...",
             level='info',
         ):
             self.core.database.compare_databases(
@@ -818,7 +828,7 @@ class Model:
 
     def update_sets_tables(
             self,
-            set_keys_list: List[str] = [],
+            set_keys_list: Optional[List[str]] = None,
             update_mode: Defaults.LiteralTypes.SetUpdateMode = 'all',
     ) -> None:
         """Update sets tables in the SQLite database.
@@ -829,13 +839,16 @@ class Model:
         'filters', or 'aggregations'.
 
         Args:
-            set_keys_list (List[str], optional): A list of set keys to update.
-                If empty, all sets are updated. Defaults to [].
+            set_keys_list (Optional[List[str]], optional): A list of set keys to update.
+                If empty, all sets are updated. Defaults to None.
             update_mode (Defaults.LiteralTypes.SetUpdateMode, optional):
                 The update mode. Can be 'all' (update all set data), 'filters'
                 (update only filters), or 'aggregations' (update only aggregations).
                 Defaults to 'all'.
         """
+        if set_keys_list is None:
+            set_keys_list = []
+
         self.core.database.update_sets_in_sqlite_database(
             set_keys_list=set_keys_list,
             update_mode=update_mode,

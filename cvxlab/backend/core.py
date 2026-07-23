@@ -122,7 +122,7 @@ class Core:
         allowed_var_types = Defaults.SymbolicDefinitions.VARIABLE_TYPES
 
         with self.logger.log_timing(
-            message=f"Generating data structures for endogenous data tables...",
+            message="Generating data structures for endogenous data tables...",
             level='info',
         ):
             # generate dataframes and cvxpy var for endogenous data tables
@@ -213,7 +213,7 @@ class Core:
         # generating variables dataframes with cvxpy var and filters dictionary
         # (endogenous vars will be sliced from existing cvxpy var in data table)
         with self.logger.log_timing(
-            message=f"Generating data structures for all variables and constants...",
+            message="Generating data structures for all variables and constants...",
             level='info',
         ):
             for var_key, variable in self.index.variables.items():
@@ -273,7 +273,7 @@ class Core:
             self,
             scenarios_idx: Optional[List[int] | int] = None,
             allow_none_values: bool = True,
-            var_list_to_update: List[str] = [],
+            var_list_to_update: Optional[List[str]] = None,
             filter_negative_values: bool = False,
             warnings_on_negatives: bool = False,
             validate_types: bool = True,
@@ -298,8 +298,8 @@ class Core:
                 all scenarios. Defaults to None.
             allow_none_values (bool, optional): If True, allows None values in
                 the data for the variable. Defaults to True.
-            var_list_to_update (List[str], optional): List of variable keys to
-                update. If empty, updates all exogenous variables. Defaults to [].
+            var_list_to_update (Optional[List[str]], optional): List of variable keys to
+                update. If empty, updates all exogenous variables. Defaults to None.
             filter_negative_values (bool, optional): If True, checks
                 if variable data comply with nonneg attribute defined for the
                 variable, putting negative values to zero. Defaults to False.
@@ -327,12 +327,15 @@ class Core:
             allowed_values_types = Defaults.NumericalSettings.ALLOWED_VALUES_TYPES
             allowed_var_types = Defaults.SymbolicDefinitions.VARIABLE_TYPES
 
+            if var_list_to_update is None:
+                var_list_to_update = []
+
             if not isinstance(var_list_to_update, list):
                 msg = "Passed method parameter must be a list."
                 self.logger.error(msg)
                 raise TypeError(msg)
 
-            if not var_list_to_update == [] and \
+            if var_list_to_update != [] and \
                     not util.items_in_list(var_list_to_update, self.index.variables.keys()):
                 msg = "One or more passed items are not in the index variables."
                 self.logger.error(msg)
@@ -370,7 +373,8 @@ class Core:
                             "Fetching data to variables | No related table "
                             f"defined for variable '{var_key}'.")
                     if err_msg:
-                        [self.logger.error(msg) for msg in err_msg]
+                        for msg in err_msg:
+                            self.logger.error(msg)
                         raise exc.MissingDataError(
                             "Fetching data to variables | Failed.")
 
@@ -579,7 +583,7 @@ class Core:
 
         sqlite_db_path = self.paths.model_dir
         scenarios_df = self.index.scenarios_info
-        problems_expressions = self.problem._collect_problems_expressions()
+        problems_expressions = self.problem.collect_problems_expressions()
 
         problems_status = pd.DataFrame(
             index=scenarios_df.index,
@@ -623,7 +627,7 @@ class Core:
                         var_key: variable
                         for expression in problem_expressions
                         for var_key, variable in
-                        self.problem._get_vars_in_expression(
+                        self.problem.get_vars_in_expression(
                             expression).items()
                     }
                     problem_vars_by_type = \
@@ -668,7 +672,7 @@ class Core:
                     msg = f"Problem '{problem_key}' "
                     if scenario_coords:
                         msg += f"| Scenario {scenario_coords} "
-                    msg += f"| Exporting endogenous data to database."
+                    msg += "| Exporting endogenous data to database."
                     self.logger.info(msg)
 
                     # only endogenous data tables that are actually used in the
@@ -853,7 +857,7 @@ class Core:
                             if iter_count >= 1:
 
                                 self.logger.info(
-                                    f"Creating copy of database from previous iteration.")
+                                    "Creating copy of database from previous iteration.")
 
                                 self.files.copy_file_to_destination(
                                     path_destination=sqlite_db_path,
@@ -1069,8 +1073,8 @@ class Core:
                 control_list=self.problem.endogenous_tables_all,
             ):
                 err_msg.append(
-                    f"One or more tables in 'tables_to_check' argument are not "
-                    f"endogenous tables.")
+                    "One or more tables in 'tables_to_check' argument are not "
+                    "endogenous tables.")
             resolved_tables = tables_to_check
 
         else:
@@ -1395,7 +1399,7 @@ class Core:
             exc.MissingDataError: If NULL entries are found in any data table.
         """
         with self.logger.log_timing(
-            message=f"Checking exogenous data coherence...",
+            message="Checking exogenous data coherence...",
             level='info',
         ):
             null_entries = {}
@@ -1455,7 +1459,7 @@ class Core:
                 reloaded even when already available. Defaults to False.
         """
         with self.logger.log_timing(
-            message=f"Loading and validating symbolic problem...",
+            message="Loading and validating symbolic problem...",
             level='info',
         ):
             self.problem.load_symbolic_problem_from_file(force_overwrite)

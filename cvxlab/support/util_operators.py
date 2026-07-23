@@ -11,6 +11,7 @@ used in defining symbolic problem expressions simply by writing its name followe
 by parentheses containing the required arguments (defined as problems variables).
 """
 from typing import Optional
+
 from scipy.sparse import issparse
 import numpy as np
 import cvxpy as cp
@@ -180,8 +181,8 @@ def power(
     ):
         raise ValueError("Base and exponent must be numeric.")
 
-    power = np.power(base_val, exponent_val)
-    return cp.Parameter(shape=power.shape, value=power)
+    power_value = np.power(base_val, exponent_val)
+    return cp.Parameter(shape=power_value.shape, value=power_value)
 
 
 @operator('minv')
@@ -410,7 +411,7 @@ def annuity(
         ir = ir.T
 
     # calculate annuity matrix
-    annuity = np.zeros((pl, pl))
+    annuity_values = np.zeros((pl, pl))
 
     for row in range(pl):
         for col in range(pl):
@@ -418,12 +419,13 @@ def annuity(
                 continue
             elif (row - col) < lt:
                 if ir[0, col] == 0:
-                    annuity[row, col] = 1/lt
+                    annuity_values[row, col] = 1/lt
                 else:
                     _ir = ir[0, col]
-                    annuity[row, col] = _ir*(1 + _ir)**lt / ((1 + _ir)**lt - 1)
+                    annuity_values[row, col] = _ir * \
+                        (1 + _ir)**lt / ((1 + _ir)**lt - 1)
 
-    return cp.Parameter(shape=(pl, pl), value=annuity)
+    return cp.Parameter(shape=(pl, pl), value=annuity_values)
 
 
 @operator('weib')

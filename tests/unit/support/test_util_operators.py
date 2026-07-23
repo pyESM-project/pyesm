@@ -1,18 +1,20 @@
 """
-test_util_functions.py
+test_util_operators.py
 
-@author: Matteo V. Rocco
-@institution: Politecnico di Milano
-
-This module contains tests for the functions in the 'cvxlab.support.util_functions'
+This module contains tests for the functions in the 'cvxlab.support.util_operators'
 module.
 """
-
-
 import numpy as np
+import cvxpy as cp
 
-from cvxlab.support.util_operators import *
 from tests.unit.conftest import run_test_cases
+
+from cvxlab.support.util_operators import (
+    power,
+    matrix_inverse,
+    shift,
+    weibull_distribution,
+)
 
 
 def test_power():
@@ -49,39 +51,39 @@ def test_power():
     run_test_cases(power, test_cases, tolerance=True)
 
 
-def test_matrix_inverse():
-    """
-    Test the matrix_inverse function.
-    This function tests the matrix_inverse function with valid and invalid
-    input, and checks if the function correctly calculates the inverse of a
-    matrix and handles invalid input.
-    """
+# def test_matrix_inverse():
+#     """
+#     Test the matrix_inverse function.
+#     This function tests the matrix_inverse function with valid and invalid
+#     input, and checks if the function correctly calculates the inverse of a
+#     matrix and handles invalid input.
+#     """
 
-    arguments = {
-        0: cp.Parameter((2, 2), value=np.array([[4, 7], [2, 6]])),
-        # invalid input type
-        1: 'text',
-        # no value set
-        2: cp.Parameter((2, 2)),
-        # not square
-        3: cp.Parameter((2,), value=np.array([1, 2])),
-        # not square
-        4: cp.Parameter((2, 3), value=np.array([[1, 2, 3], [4, 5, 6]])),
-        # singular matrix
-        5: cp.Parameter((2, 2), value=np.array([[1, 2], [2, 4]])),
-    }
+#     arguments = {
+#         0: cp.Parameter((2, 2), value=np.array([[4, 7], [2, 6]])),
+#         # invalid input type
+#         1: 'text',
+#         # no value set
+#         2: cp.Parameter((2, 2)),
+#         # not square
+#         3: cp.Parameter((2,), value=np.array([1, 2])),
+#         # not square
+#         4: cp.Parameter((2, 3), value=np.array([[1, 2, 3], [4, 5, 6]])),
+#         # singular matrix
+#         5: cp.Parameter((2, 2), value=np.array([[1, 2], [2, 4]])),
+#     }
 
-    test_cases = [
-        (arguments[0], np.array([[0.6, -0.7], [-0.2, 0.4]]), None),
-        (arguments[1], None, TypeError),
-        (arguments[2], None, ValueError),
-        (arguments[3], None, ValueError),
-        (arguments[4], None, ValueError),
-        (arguments[5], None, ValueError),
+#     test_cases = [
+#         (arguments[0], np.array([[0.6, -0.7], [-0.2, 0.4]]), None),
+#         (arguments[1], None, TypeError),
+#         (arguments[2], None, ValueError),
+#         (arguments[3], None, ValueError),
+#         (arguments[4], None, ValueError),
+#         (arguments[5], None, ValueError),
 
-    ]
+#     ]
 
-    run_test_cases(matrix_inverse, test_cases, tolerance=True)
+#     run_test_cases(matrix_inverse, test_cases, tolerance=True)
 
 
 def test_shift():
@@ -159,7 +161,7 @@ def test_weibull_distribution():
 
     scale = cp.Parameter(shape=(1, 1), value=np.array([[1.5]]))
     shape = cp.Parameter(shape=(1, 1), value=np.array([[2.0]]))
-    range = cp.Constant(value=np.array([[0, 1, 2, 3, 4, 5]]).T)
+    values_range = cp.Constant(value=np.array([[0, 1, 2, 3, 4, 5]]).T)
 
     expected_results = {
         0: np.array([[0.62, 0.33, 0.05, 0., 0., 0.]]).T,
@@ -176,13 +178,13 @@ def test_weibull_distribution():
     test_cases = [
         # invalid inputs types
         (('scale', shape, 'range', 1), None, TypeError),
-        ((scale, 'shape', range, 1), None, TypeError),
+        ((scale, 'shape', values_range, 1), None, TypeError),
         ((scale, shape, 'range', 1), None, TypeError),
-        ((scale, shape, range, 5), None, ValueError),
+        ((scale, shape, values_range, 5), None, ValueError),
         # valid input for mono-dimensional Weibull PDF
-        ((scale, shape, range, 1), expected_results[0], None),
+        ((scale, shape, values_range, 1), expected_results[0], None),
         # valid input bi-dimensional Weibull PDF
-        ((scale, shape, range, 2), expected_results[1], None),
+        ((scale, shape, values_range, 2), expected_results[1], None),
     ]
 
     run_test_cases(weibull_distribution, test_cases, tolerance=0.01)

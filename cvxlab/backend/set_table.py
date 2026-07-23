@@ -4,9 +4,10 @@ This module provides the SetTable class for handling and manipulating Set tables
 in a structured format. It allows for managing Set tables with detailed logging 
 and interaction with a SQLite database.
 """
+from typing import Any, Dict, Iterator, List, Optional, Tuple
+
 import pandas as pd
 
-from typing import Any, Dict, Iterator, List, Optional, Tuple
 from cvxlab.defaults import Defaults
 from cvxlab.log_exc.logger import Logger
 

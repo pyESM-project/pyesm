@@ -83,14 +83,14 @@ class Variable:
         self.var_info: Optional[Dict[str, Any]] = None
         self.nonneg: Optional[bool] = False
 
-        self.fetch_attributes(variable_info)
-        self.rearrange_var_info()
+        self._fetch_attributes(variable_info)
+        self._rearrange_var_info()
 
         self.coordinates_info: Dict[str, Any] = {}
         self.coordinates: Dict[str, Any] = {}
         self.data: Optional[pd.DataFrame | dict] = None
 
-    def fetch_attributes(self, variable_info: Dict[str, Any]) -> None:
+    def _fetch_attributes(self, variable_info: Dict[str, Any]) -> None:
         """Fetch and set attributes from the provided variable information.
 
         This method iterates over the provided dictionary of variable attributes
@@ -104,7 +104,7 @@ class Variable:
             if value is not None:
                 setattr(self, key, value)
 
-    def rearrange_var_info(self) -> None:
+    def _rearrange_var_info(self) -> None:
         """Rearrange the raw information provided by var_info.
 
         This method takes the raw variable attributes and rearrange the information
@@ -438,55 +438,6 @@ class Variable:
             )
 
         return all_coords_w_headers
-
-    def none_data_coordinates(self, row: int) -> Dict[str, Any] | None:
-        """Return coordinates of None data values in cvxpy variables.
-
-        This method checks if there are None data values in the cvxpy variables 
-        and returns the related coordinates (rows in Variable.data and related 
-        hierarchy coordinates).
-
-        Args:
-            row (int): Identifies the row of Variable.data item (i.e., one 
-                specific cvxpy variable).
-
-        Returns:
-            Optional[Dict[str, Any]]: Dictionary with keys being the rows where 
-                cvxpy variable values are None and values being the names of 
-                the sets that identify the variable. Returns None if all data 
-                is present.
-
-        Raises:
-            ValueError: If the data attribute is not initialized correctly or
-                the cxvpy variable header is missing.
-            KeyError: If the passed row number is out of bounds.
-        """
-        cvxpy_var_header = Defaults.Labels.CVXPY_VAR
-
-        if self.data is None \
-                or not isinstance(self.data, pd.DataFrame) \
-                or cvxpy_var_header not in self.data.columns:
-            msg = "Data is not initialized correctly or CVXPY variable header is missing."
-            self.logger.error(msg)
-            raise ValueError(msg)
-
-        if row < 0 or row > len(self.data):
-            msg = f"Passed row number out of bound for variable " \
-                f"table '{self.related_table}'. Valid rows between " \
-                f"0 and {len(self.data)}."
-            self.logger.error(msg)
-            raise KeyError(msg)
-
-        cvxpy_var: cp.Variable | cp.Parameter | cp.Constant = \
-            self.data.at[row, cvxpy_var_header]
-
-        if cvxpy_var.value is None:
-            return {
-                key: self.data.loc[row, value]
-                for key, value in self.sets_parsing_hierarchy.items()
-            }
-
-        return None
 
     @staticmethod
     def build_axis(

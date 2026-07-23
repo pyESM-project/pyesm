@@ -29,13 +29,17 @@ class SQLManager:
     library functionalities.
 
     Attributes:
+
     - logger (Logger): Logger object for logging information.
     - database_sql_path (Path): Path to the SQLite database file.
     - database_name (str): Descriptive name of the database used in logs.
     - xls_engine (Defaults.LiteralTypes.ExcelEngine): Engine for exporting data to Excel.
-    - connection (Optional[sqlite3.Connection]): Active database connection, None if not connected.
-    - cursor (Optional[sqlite3.Cursor]): Database cursor for executing SQL queries, None if not connected.
-    - foreign_keys_enabled (Optional[bool]): Status of SQLite foreign key enforcement in the session.
+    - connection (Optional[sqlite3.Connection]): Active database connection, None 
+        if not connected.
+    - cursor (Optional[sqlite3.Cursor]): Database cursor for executing SQL queries, 
+        None if not connected.
+    - foreign_keys_enabled (Optional[bool]): Status of SQLite foreign key enforcement 
+        in the session.
 
     """
 
@@ -592,7 +596,9 @@ class SQLManager:
             self.logger.warning(
                 f"SQLite table '{table_name}' already has {num_entries} rows.")
             if not util.get_user_confirmation(
-                f"Delete all {'entries' if column_name is None else f'entries in column {column_name}'} from {table_name}?"
+                "Delete all "
+                f"{'entries' if column_name is None else f'entries in column {column_name}'} "
+                f"from {table_name}?"
             ):
                 self.logger.debug(
                     f"SQLite table '{table_name}' - NOT overwritten.")
@@ -1352,16 +1358,20 @@ class SQLManager:
             exc.TableNotFoundError: If specified tables are not found in the database.
         """
         if self.connection is None or self.cursor is None:
-            msg = "Connection or cursor of the database to be checked are "
-            "not initialized."
+            msg = (
+                "Connection or cursor of the database to be checked are "
+                "not initialized."
+            )
             self.logger.error(msg)
             raise exc.OperationalError(msg)
 
         other_db_path = Path(other_db_dir_path) / other_db_name
 
         if not other_db_path.exists():
-            msg = "Database necessary for comparison not found or not "
-            "correctly named."
+            msg = (
+                "Database necessary for comparison not found or not "
+                "correctly named."
+            )
             self.logger.error(msg)
             raise exc.ModelFolderError(msg)
 

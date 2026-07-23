@@ -6,11 +6,10 @@ model instances. It leverages libraries such as `dill` for serialization and `pa
 for data manipulation.
 """
 from typing import Optional
+from pathlib import Path
 
 import dill
 import pandas as pd
-
-from pathlib import Path
 
 from cvxlab.backend.model import Model
 from cvxlab.defaults import Defaults
@@ -189,7 +188,10 @@ def _generate_yaml_template(
     yaml_content.extend(_convert_to_yaml(structure, indent))
 
     try:
-        with open(file_path, 'w') as file:
+        with open(
+            file_path, 'w',
+            encoding=Defaults.ConfigFiles.DEFAULT_ENCODING,
+        ) as file:
             file.write('\n'.join(yaml_content))
     except IOError as e:
         raise IOError(f"Error writing to file '{file_name}': {e}") from e
@@ -258,8 +260,6 @@ def transfer_setup_info_xlsx(
     Raises:
         FileNotFoundError: If the source file or destination files do not exist.
     """
-    files = FileManager(Logger())
-
     source_file_path = Path(source_dir_path, source_file_name)
     settings_file_name = Defaults.ConfigFiles.SETUP_XLSX_FILE
     sets_file_name = Defaults.ConfigFiles.SETS_FILE
@@ -322,6 +322,9 @@ def transfer_setup_info_xlsx(
                 tab for tab in xlsx_file.sheet_names
                 if tab.startswith(Defaults.Labels.SET_TABLE_NAME_PREFIX)
             ]
+        else:
+            raise ValueError(
+                f"Invalid category '{category}' for transferring setup info.")
 
         # confirmation
         if not util.get_user_confirmation(
@@ -431,7 +434,6 @@ def _save_model_instance(
     else:
         file_name = f"{file_name}.pkl"
 
-    files = FileManager(Logger())
     model_dir_path = instance.paths['model_dir']
     model_name = instance.settings['model_name']
 
@@ -500,7 +502,6 @@ def _load_model_instance(
     else:
         file_name = f"{file_name}.pkl"
 
-    files = FileManager(Logger())
     file_path = Path(source_dir_path) / file_name
 
     if not file_path.exists():

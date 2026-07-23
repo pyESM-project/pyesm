@@ -7,10 +7,10 @@ such as generating special matrices (positive semidefinite matrices).
 Functions are registered as constants in Defaults class, and actual constants data
 are generated when generating variables (see backend.Variable.define_constant() method).
 """
-from ast import List
+from typing import Iterable, List
+
 import numpy as np
 
-from typing import Iterable, List
 from cvxlab.log_exc import exceptions as exc
 
 _CONSTANTS_REGISTRY = {}
@@ -177,8 +177,8 @@ def arange_0(dimension: List[int]) -> np.ndarray:
 
 
 @constant('arange_1')
-def arange_0(dimension: List[int]) -> np.ndarray:
-    """Define a reshaped range array starting from zero."""
+def arange_1(dimension: List[int]) -> np.ndarray:
+    """Define a reshaped range array starting from one."""
     return arange(dimension=dimension, start_from=1)
 
 

@@ -27,11 +27,4 @@ except PackageNotFoundError:
     __version__ = "Package not found"
 
 __authors__ = "'Matteo V. Rocco'"
-__collaborators__ = """
-    'Lorenzo Rinaldi', 
-    'Debora Ghezzi', 
-    'Valeria Baiocco', 
-    'Camilla Citterio', 
-    'Emanuela Colombo',
-    """
 __license__ = "Apache License Version 2.0, (January 2004) <http://www.apache.org/licenses/>"

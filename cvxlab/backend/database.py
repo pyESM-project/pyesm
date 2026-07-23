@@ -9,7 +9,7 @@ loading data from Excel files, generating data input files, and managing the
 SQLite database interactions via the SQLManager.
 """
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import List, Optional
 
 import pandas as pd
 
@@ -293,7 +293,7 @@ class Database:
 
     def update_sets_in_sqlite_database(
             self,
-            set_keys_list: List[str] = [],
+            set_keys_list: Optional[List[str]] = None,
             update_mode: Defaults.LiteralTypes.SetUpdateMode = 'all',
     ) -> None:
         """Update sets data in the SQLite database.
@@ -305,8 +305,8 @@ class Database:
         the set's 'data' attribute.
 
         Args:
-            set_keys_list(List[str], optional): A list of set keys to update.
-                If empty, all sets in the Index are updated. Defaults to [].
+            set_keys_list(Optional[List[str]], optional): A list of set keys to update.
+                If empty, all sets in the Index are updated. Defaults to None.
             update_mode(Defaults.LiteralTypes.SetUpdateMode, optional):
                 Specifies the update mode. Defaults to 'all'.
 
@@ -318,6 +318,9 @@ class Database:
             f"Updating Sets in '{Defaults.ConfigFiles.SQLITE_DATABASE_FILE}'.")
 
         id_header = Defaults.Labels.ID_FIELD['id'][0]
+
+        if set_keys_list is None:
+            set_keys_list = []
 
         with db_handler(self.sqltools):
             for set_key, set_instance in self.index.sets.items():
@@ -342,6 +345,7 @@ class Database:
                         if col != id_header
                     ]
                 else:
+                    headers_dict = None
                     if update_mode == 'filters':
                         headers_dict = set_instance.set_filters_headers
                     elif update_mode == 'aggregations':
@@ -538,7 +542,7 @@ class Database:
     def generate_blank_data_input_files(
         self,
         file_extension: Optional[str] = None,
-        table_key_list: List[str] = [],
+        table_key_list: Optional[List[str]] = None,
         values_cleanup: bool = True,
     ) -> None:
         """Generate blank data input files for exogenous data tables.
@@ -554,9 +558,9 @@ class Database:
         Args:
             file_extension (Optional[str]): The format of the input data files. 
                 Defaults to None. If None, file type is taken from settings.
-            table_key_list (List[str], optional): A list of table keys to generate
+            table_key_list (Optional[List[str]], optional): A list of table keys to generate
                 input files for. If empty, all exogenous data tables in the Index
-                are processed. Defaults to an empty list.
+                are processed. Defaults to None.
             values_cleanup (bool, optional): Whether to clean up values in the
                 input data files. Defaults to True.
         """
@@ -564,12 +568,15 @@ class Database:
         allowed_var_types = Defaults.SymbolicDefinitions.VARIABLE_TYPES
         value_field = Defaults.Labels.VALUES_FIELD['values'][0]
 
+        if table_key_list is None:
+            table_key_list = []
+
         if file_extension is None:
             file_extension = self.settings.input_data_files_type
         else:
             util.validate_selection(
                 selection=file_extension,
-                valid_options=Defaults.ConfigFiles.AVAILABLE_DATA_FILES_EXTENSIONS,
+                valid_selections=Defaults.ConfigFiles.AVAILABLE_DATA_FILES_EXTENSIONS,
             )
 
         if not Path(self.paths.input_data_dir).exists():
@@ -622,7 +629,7 @@ class Database:
 
     def load_data_input_files_to_database(
         self,
-        table_key_list: list[str] = [],
+        table_key_list: Optional[list[str]] = None,
         force_overwrite: bool = False,
     ) -> None:
         """Load input files data into the SQLite database.
@@ -632,9 +639,9 @@ class Database:
         related SQLite data tables.
 
         Args:
-            table_key_list (list[str], optional): A list of table keys to load
+            table_key_list (Optional[list[str]], optional): A list of table keys to load
                 data for. If empty, all exogenous data tables in the Index are
-                processed. Defaults to an empty list.
+                processed. Defaults to None.
             force_overwrite (bool, optional): If True, forces the overwrite of
                 existing data. Defaults to False.
 
@@ -647,6 +654,9 @@ class Database:
 
         file_extension = self.settings.input_data_files_type
         multiple_data_file = self.settings.multiple_input_files
+
+        if table_key_list is None:
+            table_key_list = []
 
         if table_key_list == []:
             table_key_list = self.index.data.keys()
@@ -731,7 +741,7 @@ class Database:
     def fill_nan_values_in_database(
             self,
             force_overwrite: bool = False,
-            table_key_list: List[str] = [],
+            table_key_list: Optional[List[str]] = None,
     ) -> None:
         """Complete value fields in data tables in the database.
 
@@ -747,8 +757,8 @@ class Database:
         Args:
             force_overwrite (bool, optional): If True, forces the overwrite of
                 existing data. Defaults to False.
-            table_key_list (List[str], optional): List of table keys to process.
-                If empty, all tables in the index are processed. Defaults to [].
+            table_key_list (Optional[List[str]], optional): List of table keys to process.
+                If empty, all tables in the index are processed. Defaults to None.
 
         Raises:
             ValueError: If one or more passed table keys are not present in the Index.
@@ -758,6 +768,9 @@ class Database:
             "attribute of each variable.")
 
         value_header = Defaults.Labels.VALUES_FIELD['values'][0]
+
+        if table_key_list is None:
+            table_key_list = []
 
         if table_key_list == []:
             table_key_list = self.index.data.keys()

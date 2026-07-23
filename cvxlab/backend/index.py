@@ -8,9 +8,9 @@ objects from configured sources and provides properties to access metadata and
 operational characteristics related to these entities.
 """
 from pathlib import Path
-from scipy.sparse import issparse
 from typing import Dict, List, Optional
 
+from scipy.sparse import issparse
 import pandas as pd
 import cvxpy as cp
 
@@ -363,7 +363,7 @@ class Index:
         if invalid_entries:
             if self.settings.detailed_validation:
                 self.logger.error(
-                    f"Validation error report ===================================")
+                    "Validation error report ===================================")
                 for key, error_log in invalid_entries.items():
                     for coord, error in error_log.items():
                         self.logger.error(
@@ -590,7 +590,7 @@ class Index:
                 type in allowed_var_types.values()
                 for type in table_type
             ):
-                problems[table_key] = f"Table type not allowed."
+                problems[table_key] = "Table type not allowed."
 
             # exogenous/constant data tables cannot have a variable_domain set
             if data_table.type in [
@@ -889,7 +889,7 @@ class Index:
             exc.SettingsError: Raised with the list of all exceptions collected
                 during the coherence checks, identifying mistakes in model settings.      
         """
-        self.logger.debug(f"Validating variables coherence with coordinates.")
+        self.logger.debug("Validating variables coherence with coordinates.")
 
         problems = {}
 
@@ -914,7 +914,7 @@ class Index:
         if problems:
             if self.settings.detailed_validation:
                 self.logger.error(
-                    f"Validation error report ===================================")
+                    "Validation error report ===================================")
                 for key, error_log in problems.items():
                     self.logger.error(
                         f"Variables coherence check | {key} | {error_log}")
@@ -1381,7 +1381,7 @@ class Index:
                     )
                     return
 
-                if not (0 <= int(intra_problem_key) < len(variable_data)):
+                if not 0 <= int(intra_problem_key) < len(variable_data):
                     self.logger.warning(
                         f"'intra_problem_key' out of bounds for variable '{var_key}'. "
                         f"Valid range: 0 to {len(variable_data) - 1}."

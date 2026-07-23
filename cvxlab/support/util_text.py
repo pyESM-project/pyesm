@@ -8,8 +8,6 @@ import ast
 import re
 from typing import Any, Iterable, List, Optional
 
-from cvxlab.defaults import Defaults
-
 
 def is_iterable(value: str) -> bool:
     """Check if a string represents an iterable (list, tuple, or dict).
@@ -246,7 +244,7 @@ def balanced_parentheses(parentheses_list: List[str]) -> bool:
 def extract_tokens_from_expression(
     expression: str,
     pattern: str | List[str],
-    tokens_to_skip: Optional[List[str]] = [],
+    tokens_to_skip: Optional[List[str]] = None,
     avoid_duplicates: Optional[bool] = False,
 ) -> List[str]:
     """Extract tokens from a symbolic expression.
@@ -264,7 +262,7 @@ def extract_tokens_from_expression(
             matching tokens' names. This can be a single pattern or a list of
             patterns.
         tokens_to_skip (Optional[List[str]]): A list of tokens to skip when
-            extracting variable names. Default is an empty list.
+            extracting variable names. Default is None.
         avoid_duplicates (Optional[bool]): if True, it eliminates duplicates from
             the resulting list by preserving items order.
 
@@ -274,16 +272,23 @@ def extract_tokens_from_expression(
     Raises:
         TypeError: If the input types are incorrect.
     """
+    if tokens_to_skip is None:
+        tokens_to_skip = []
+    else:
+        if not isinstance(tokens_to_skip, list):
+            raise TypeError(
+                f'tokens_to_skip {tokens_to_skip} must be a list.')
+        for token in tokens_to_skip:
+            if not isinstance(token, str):
+                raise TypeError(
+                    f'Each token in tokens_to_skip {tokens_to_skip} must be a string.')
+
     if not isinstance(expression, str):
         raise TypeError(f'Passed expression {expression} must be a string.')
 
     if not isinstance(pattern, (str, list)):
         raise TypeError(
             f'pattern {pattern} must be a string or a list of strings.')
-
-    if not isinstance(tokens_to_skip, list):
-        raise TypeError(
-            f'tokens_to_skip {tokens_to_skip} must be a list.')
 
     if not isinstance(avoid_duplicates, bool):
         raise TypeError(

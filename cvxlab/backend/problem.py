@@ -10,11 +10,10 @@ The Problem class interacts with various components of the system such as data t
 variables, and settings, leveraging the Index class for accessing and managing structured
 data related to the optimization models.
 """
-from typing import Any, Dict, List, Optional, Tuple
-from scipy.sparse import csr_matrix
-
 import warnings
+from typing import Any, Dict, List, Optional, Tuple
 
+from scipy.sparse import csr_matrix
 import pandas as pd
 import numpy as np
 import cvxpy as cp
@@ -183,7 +182,7 @@ class Problem:
                 Table order follows ``self.index.data.keys()`` and variables
                 order follows each table ``variables_list``.
         """
-        problems_expressions = self._collect_problems_expressions()
+        problems_expressions = self.collect_problems_expressions()
         if not problems_expressions:
             return {}
 
@@ -193,7 +192,7 @@ class Problem:
             variables_found = {
                 var_key
                 for expression in expressions_list
-                for var_key in self._get_vars_in_expression(expression).keys()
+                for var_key in self.get_vars_in_expression(expression).keys()
             }
 
             tables_variables: dict[str, list[str]] = {}
@@ -354,7 +353,8 @@ class Problem:
             )
 
         if err_msg:
-            [self.logger.error(msg) for msg in err_msg]
+            for msg in err_msg:
+                self.logger.error(msg)
             raise exc.MissingDataError("Slicing variables | Failed.")
 
         # use sub_problem_key to identify the endogenous variable for sub-problem
@@ -423,6 +423,7 @@ class Problem:
             raise exc.OperationalError(msg)
 
         err_msg = []
+        data_values: Optional[np.ndarray] = None
 
         if isinstance(data, pd.DataFrame):
             if data.empty:
@@ -443,10 +444,16 @@ class Problem:
             )
 
         if err_msg:
-            [self.logger.error(msg) for msg in err_msg]
+            for msg in err_msg:
+                self.logger.error(msg)
             raise exc.MissingDataError(
                 f"Variable '{var_key}' | Data assigment failed."
             )
+
+        if data_values is None:
+            msg = f"Variable '{var_key}' | Data assigment failed."
+            self.logger.error(msg)
+            raise exc.MissingDataError(msg)
 
         # conversion to sparse matrix if data is sparse
         if util.is_sparse(
@@ -765,7 +772,7 @@ class Problem:
             for key, problem in data.items():
                 self.symbolic_problem[key] = DotDict(problem)
 
-    def _collect_problems_expressions(self) -> Dict[Optional[int | str], List[str]]:
+    def collect_problems_expressions(self) -> Dict[Optional[int | str], List[str]]:
         """Collect symbolic expressions grouped by problem key.
 
         Normalizes the symbolic_problem structure into a dict keyed by problem_key
@@ -803,7 +810,7 @@ class Problem:
             for problem_key, problem in symbolic_problem.items()
         }
 
-    def _get_vars_in_expression(
+    def get_vars_in_expression(
         self,
         expression: str,
         tokens: Optional[Dict[str, List[str]]] = None,
@@ -995,7 +1002,7 @@ class Problem:
             exc.ConceptualModelError: If any of the validation checks fail.
         """
         self.logger.debug(
-            f"Validating symbolic problem expressions coherence.")
+            "Validating symbolic problem expressions coherence.")
 
         source_format = self.settings.model_settings_from
         token_patterns = Defaults.SymbolicDefinitions.TOKEN_PATTERNS
@@ -1004,7 +1011,7 @@ class Problem:
 
         errors = []
 
-        problems_expressions = self._collect_problems_expressions()
+        problems_expressions = self.collect_problems_expressions()
 
         for problem_key, expr_list in problems_expressions.items():
 
@@ -1020,7 +1027,7 @@ class Problem:
                         expression=expression,
                         pattern=token_patterns[key],
                     )
-                    for key in token_patterns.keys()
+                    for key, _ in token_patterns.items()
                 }
 
                 # identify unrecognized tokens in the expression
@@ -1066,7 +1073,7 @@ class Problem:
 
                 # intra-problem sets in a variable must not be a dimension in
                 # other variables
-                vars_in_expression = self._get_vars_in_expression(
+                vars_in_expression = self.get_vars_in_expression(
                     expression, tokens)
 
                 intra_problem_sets = {
@@ -1166,7 +1173,7 @@ class Problem:
                     an error is raised (constraint must be explicitly defined in
                     symbolic problem).
         """
-        self.logger.debug(f"Adding implicit symbolic expressions.")
+        self.logger.debug("Adding implicit symbolic expressions.")
 
         expressions_key = Defaults.Labels.EXPRESSIONS
         var_types = Defaults.SymbolicDefinitions.VARIABLE_TYPES
@@ -1174,7 +1181,7 @@ class Problem:
         if not self.symbolic_problem:
             return
 
-        problems_expressions = self._collect_problems_expressions()
+        problems_expressions = self.collect_problems_expressions()
 
         # Collect variables in all expressions for all problems
         problems_vars: Dict[Optional[int | str], List[str]] = {}
@@ -1182,7 +1189,7 @@ class Problem:
             var_keys: set[str] = set()
             for expression in expr_list:
                 var_keys.update(
-                    self._get_vars_in_expression(expression).keys())
+                    self.get_vars_in_expression(expression).keys())
             problems_vars[problem_key] = list(var_keys)
 
         implicit_expr_by_problem: Dict[Optional[int | str], List[str]] = {
@@ -1277,11 +1284,11 @@ class Problem:
             exc.ConceptualModelError: If any coherence checks fail.
         """
         self.logger.debug(
-            f"Checking coherence between symbolic problems and data tables.")
+            "Checking coherence between symbolic problems and data tables.")
 
         source_format = self.settings.model_settings_from
         data_table_types = Defaults.SymbolicDefinitions.VARIABLE_TYPES
-        problems_expressions = self._collect_problems_expressions()
+        problems_expressions = self.collect_problems_expressions()
 
         errors = []
 
@@ -1296,7 +1303,7 @@ class Problem:
                     if any(
                         var_key == variable
                         for expression in expr_list
-                        for var_key in self._get_vars_in_expression(expression).keys()
+                        for var_key in self.get_vars_in_expression(expression).keys()
                     )
                 ]
 
@@ -1444,7 +1451,7 @@ class Problem:
             exc.SettingsError: If the symbolic problem structure is invalid.
         """
         with self.logger.log_timing(
-            message=f"Generating cvxpy numerical problem/s...",
+            message="Generating cvxpy numerical problem/s...",
             level='info',
         ):
             if self.symbolic_problem is None:
@@ -1909,7 +1916,7 @@ class Problem:
             if cvxpy_expression is None:
                 expressions_not_generated.append(expression)
 
-        if expressions_not_generated != []:
+        if expressions_not_generated:
             self.logger.error(
                 f"'{len(expressions_not_generated)}' CVXPY expressions not "
                 "generated. Expressions: "
@@ -1998,7 +2005,7 @@ class Problem:
             cvxpy_problem.solve(**solver_settings)
 
             if solver_settings.get('verbose'):
-                self.logger.solver_banner(f" END SOLVER OUTPUT")
+                self.logger.solver_banner(" END SOLVER OUTPUT")
 
             self.logger.info(f"Problem status: '{cvxpy_problem.status}'")
 

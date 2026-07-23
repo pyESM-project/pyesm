@@ -94,6 +94,7 @@ class Defaults:
         INSTANCES_DIR = 'instances'
         CUSTOM_OPERATORS_FILE_NAME = 'user_defined_operators.py'
         CUSTOM_CONSTANTS_FILE_NAME = 'user_defined_constants.py'
+        DEFAULT_ENCODING = 'utf-8'
 
     class Labels:
         """Default labels and field names for dictionary keys and dataframes.
@@ -401,7 +402,7 @@ class Defaults:
             'numbers': r"\b(?:\d+\.\d*|\.\d+|\d+)(?:[eE][+-]?\d+)?\b",
             'operators': [
                 r"==", r">=", r"<=",
-                r"\+", r"-", r"\*", r"/", r"@", f",",
+                r"\+", r"-", r"\*", r"/", r"@", r",",
                 r"&",
             ],
             'parentheses': [r"\(", r"\)"],

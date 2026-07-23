@@ -46,8 +46,9 @@ class DataTable:
         Default is an empty dictionary.
     - foreign_keys (Dict[str, Any]): Dictionary defining foreign key relationships.
         Default is an empty dictionary.
-    - cvxpy_var (Optional[pd.DataFrame[Any, cp.Variable] | cp.Variable]): CVXPY
-        variable associated with endogenous data tables. Default is None.
+    - cvxpy_var (Optional[Dict[Any, cp.Variable] | cp.Variable]): CVXPY
+        variable associated with endogenous data tables. It can be a single
+        variable or a dictionary keyed by sub-problem/scenario. Default is None.
     - variables_list (List[str]): List of variables derived from variables_info. 
         By default, it corresponds to the keys of variables_info.
 
@@ -90,7 +91,7 @@ class DataTable:
         self.table_headers: Dict[str, Any] = {}
         self.foreign_keys: Dict[str, Any] = {}
         self.cvxpy_var: Optional[
-            pd.DataFrame[Any, cp.Variable] | cp.Variable] = None
+            Dict[Any, cp.Variable] | cp.Variable] = None
 
         self.variables_list: List[str] = list(self.variables_info.keys())
 
