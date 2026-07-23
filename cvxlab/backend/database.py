@@ -87,16 +87,8 @@ class Database:
 
     @property
     def is_uncertainty_analysis(self) -> bool:
-        """Return whether uncertainty-analysis functionality is enabled.
-
-        Returns:
-            bool: True if the model was initialized with uncertainty analysis
-            enabled, otherwise False.
-        """
-        return bool(self.settings.get(
-            Defaults.Labels.UNCERTAINTY_SETTING_KEY,
-            False,
-        ))
+        """Return whether uncertainty-analysis functionality is enabled."""
+        return self.settings.uncertainty
 
     def _create_blank_sets_xlsx_file(self) -> None:
         """Create a blank Excel file for getting sets information.

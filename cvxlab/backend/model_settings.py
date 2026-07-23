@@ -28,12 +28,14 @@ class ModelSettings:
     _MODEL_INIT_PARAM_NAMES: tuple[str, ...] = (
         'model_dir_name',
         'main_dir_path',
+        'uncertainty',
         'model_settings_from',
         'detailed_validation',
         'multiple_input_files',
         'input_data_files_type',
         'log_level',
         'log_format',
+
     )
 
     @classmethod
@@ -47,6 +49,7 @@ class ModelSettings:
         logger: Logger,
         log_level: Defaults.LiteralTypes.LogLevel,
         model_name: str,
+        uncertainty: bool,
         model_settings_from: Defaults.LiteralTypes.SettingsSource,
         use_existing_data: bool,
         multiple_input_files: bool,
@@ -59,6 +62,8 @@ class ModelSettings:
             logger: Logger instance (used only during construction).
             log_level: Logging verbosity level.
             model_name: Name of the model directory.
+            uncertainty:
+            Whether uncertainty-analysis functionality is enabled for the model.
             model_settings_from: Format of the model settings source file
                 ('yml' or 'xlsx').
             use_existing_data: Whether to rely on a pre-existing database and
@@ -91,6 +96,7 @@ class ModelSettings:
 
         self.log_level = log_level
         self.model_name = model_name
+        self.uncertainty = uncertainty
         self.model_settings_from = model_settings_from
         self.use_existing_data = use_existing_data
         self.multiple_input_files = multiple_input_files
@@ -101,6 +107,7 @@ class ModelSettings:
         return (
             f"{type(self).__name__}("
             f"model_name='{self.model_name}', "
+            f"uncertainty={self.uncertainty}, "
             f"model_settings_from='{self.model_settings_from}', "
             f"use_existing_data={self.use_existing_data})"
         )

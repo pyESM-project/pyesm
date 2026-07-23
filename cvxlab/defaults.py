@@ -268,6 +268,20 @@ class Defaults:
                     (Optional) dictionary with keys as the filters key of the set
                     and values as the list of values to filter.
 
+            DATA_TABLE_STRUCTURE_UNCERTAINTY: Extended data-table structure used when
+            uncertainty analysis is enabled. It includes all properties defined in
+            DATA_TABLE_STRUCTURE and additional uncertainty-specific properties.
+
+            Additional properties of an UNCERTAINTY DATA TABLE:
+
+            - uncertainty_enabled:
+                (Optional) whether uncertainty handling is enabled for the data
+                table.
+            - uncertainty_measure:
+                (Optional) whether a variable is selected as an output measure for
+                uncertainty analysis and global sensitivity analysis.
+
+
 
         PROBLEM_STRUCTURE: Structure for defining problems with objectives and 
         expressions.
@@ -293,6 +307,10 @@ class Defaults:
 
         XLSX_PIVOT_KEYS and XLSX_TEMPLATE_COLUMNS: Keys and columns used to pivot 
         data for generating Excel template files for sets, variables, and problems.
+
+        XLSX_TEMPLATE_COLUMNS_UNCERTAINTY: Keys and columns used to generate Excel
+        templates when uncertainty analysis is enabled. It extends the standard
+        variable template with uncertainty-specific configuration fields.
 
         ALLOWED_BOOL: Dictionary mapping common boolean representations to Python 
         boolean values. This is used to validate boolean values in the data files.
@@ -334,6 +352,32 @@ class Defaults:
             }
         )
 
+        DATA_TABLE_STRUCTURE_UNCERTAINTY = (
+            "table_key:",
+            {
+                METADATA: (OPTIONAL, str),
+                "type": (str, dict),
+                "variable_domain": (OPTIONAL, str),
+                "coordinates": (str, list),
+                "uncertainty_eneabled": (OPTIONAL, bool),
+                "variables_info": {
+                    ANY: {
+                        "value": (OPTIONAL, str),
+                        "blank_fill": (OPTIONAL, Union[int, float]),
+                        "nonneg": (OPTIONAL, bool),
+                        "uncertainty_measure": (OPTIONAL, str, bool,),
+                        ANY: (
+                            OPTIONAL,
+                            {
+                                "dim": (OPTIONAL, str),
+                                "filters": (OPTIONAL, dict),
+                            },
+                        ),
+                    },
+                },
+            },
+        )
+
         PROBLEM_STRUCTURE = (
             'problem_key: # optional',
             {
@@ -368,6 +412,25 @@ class Defaults:
             ],
         }
 
+        XLSX_TEMPLATE_COLUMNS_UNCERTAINTY = {
+            'structure_sets': [
+                'set_key',
+                *SET_STRUCTURE[1].keys(),
+            ],
+            'structure_variables': [
+                'table_key',
+                *DATA_TABLE_STRUCTURE_UNCERTAINTY[1].keys(),
+                'value',
+                'blank_fill',
+                'nonneg',
+                'uncertainty_measure',
+                'set_keys ...',
+            ],
+            'problem': [
+                'problem_key',
+                *PROBLEM_STRUCTURE[1].keys(),
+            ],
+        }
         ALLOWED_BOOL = {
             'true': True, 'True': True, 'TRUE': True,
             'false': False, 'False': False, 'FALSE': False,
@@ -519,7 +582,105 @@ class Defaults:
             return cp.installed_solvers()
 
     class UncertaintySettings:
-        """Defaults and metadata for uncertainty sampling and GSA analysis."""
+        """Defaults and metadata for uncertainty sampling and GSA analysis.
+
+                Uncertainty data-table keys:
+
+                - UNCERTAINTY_ENABLED_KEY:
+                    Key used to enable uncertainty handling for a data table.
+                - IS_UNCERTAIN_KEY:
+                    Column identifying whether an input-data row is uncertain.
+                - UNCERTAINTY_MEASURE_KEY:
+                    Key identifying variables selected as outputs of the uncertainty
+                    analysis.
+                - LOWER_BOUND_KEY:
+                    Column containing the lower bound of an uncertain parameter.
+                - UPPER_BOUND_KEY:
+                    Column containing the upper bound of an uncertain parameter.
+                - UNCERTAINTY_GROUP_NAME_KEY:
+                    Column containing the uncertainty group assigned to a parameter.
+
+                SQLite field definitions:
+
+                - IS_UNCERTAIN_FIELD:
+                    SQLite field definition for the uncertainty activation flag.
+                - LOWER_BOUND_FIELD:
+                    SQLite field definition for parameter lower bounds.
+                - UPPER_BOUND_FIELD:
+                    SQLite field definition for parameter upper bounds.
+                - UNCERTAINTY_GROUP_NAME_FIELD:
+                    SQLite field definition for uncertainty group names.
+
+                Sampling and analysis methods:
+
+                - SOBOL:
+                    Identifier for Sobol sampling and analysis.
+                - MORRIS:
+                    Identifier for Morris sampling and analysis.
+                - LATIN:
+                    Identifier for Latin hypercube sampling.
+                - DELTA:
+                    Identifier for Delta moment-independent analysis.
+                - RBD_FAST:
+                    Identifier for Random Balance Designs FAST analysis.
+                - SALTELLI:
+                    Identifier for the Saltelli sampling scheme.
+                - ANALYZER_REQUIRED_INPUTS:
+                    Mapping between each analyzer and the input arrays required by
+                    SALib.
+                - ANALYSIS_COMPATIBILITY:
+                    Mapping between analyzers and compatible sampling methods.
+                - ANALYSIS_DEFAULTS:
+                    Default keyword arguments used for each GSA analyzer.
+
+                Samples, measures, and analysis-result labels:
+
+                - RUN_ID:
+                    Column identifying a model run.
+                - PARAMETER_NAME:
+                    Column identifying an uncertain parameter.
+                - SAMPLED_VALUE:
+                    Column containing the sampled parameter value.
+                - OUTPUT_NAME:
+                    Column identifying the analyzed model output.
+                - INDEX_NAME:
+                    Column identifying the sensitivity metric.
+                - INDEX_VALUE:
+                    Column containing the sensitivity metric value.
+                - METHOD:
+                    Column identifying the sampling or analysis method.
+                - SCENARIO:
+                    Column identifying the model scenario.
+                - STATUS:
+                    Column containing the solve status of a model run.
+
+                Export settings:
+
+                - XLSX:
+                    Identifier for Excel output.
+                - CSV:
+                    Identifier for CSV output.
+                - PARQUET:
+                    Identifier for Parquet output.
+                - AVAILABLE_EXPORT_FORMATS:
+                    Supported formats for uncertainty samples, measures, and GSA
+                    results.
+
+                Output files and directories:
+
+                - UNCERTAINTY_SAMPLES_FILE_NAME:
+                    Default file name for generated uncertainty samples.
+                - UNCERTAINTY_MEASURES_FILE_NAME:
+                    Default file name for collected model-output measures.
+                - UNCERTAINTY_MEASURES_TEMP_FILE_NAME:
+                    Default file name for temporary uncertainty measures.
+                - GSA_FILE_NAME:
+                    Default file name for GSA results.
+                - RESULTS_DIR:
+                    Default directory used to store uncertainty-analysis results.
+        """
+
+        # Uncertainty data-table keys
         UNCERTAINTY_ENABLED_KEY = "uncertainty_enabled"
         IS_UNCERTAIN_KEY = "is_uncertain"
         UNCERTAINTY_MEASURE_KEY = "uncertainty_measure"
@@ -527,22 +688,24 @@ class Defaults:
         UPPER_BOUND_KEY = "upper_bound"
         UNCERTAINTY_GROUP_NAME_KEY = "uncertain_group_Name"
 
-        IS_UNCERTAIN_FIELD = {"is_uncertain": ["is_uncertain", "TEXT"]}
-        LOWER_BOUND_FIELD = {"lower_bound": ["lower_bound", "REAL"]}
-        UPPER_BOUND_FIELD = {"upper_bound": ["upper_bound", "REAL"]}
-        UNCERTAINTY_GROUP_NAME_FIELD = {"uncertain_group_Name": [
-            "uncertain_group_Name", "TEXT"]}
+        # Database fields
+        IS_UNCERTAIN_FIELD = {
+            IS_UNCERTAIN_KEY: [IS_UNCERTAIN_KEY, "TEXT"],
+        }
+        LOWER_BOUND_FIELD = {
+            LOWER_BOUND_KEY: [LOWER_BOUND_KEY, "REAL"],
+        }
+        UPPER_BOUND_FIELD = {
+            UPPER_BOUND_KEY: [UPPER_BOUND_KEY, "REAL"],
+        }
+        UNCERTAINTY_GROUP_NAME_FIELD = {
+            UNCERTAINTY_GROUP_NAME_KEY: [
+                UNCERTAINTY_GROUP_NAME_KEY,
+                "TEXT",
+            ],
+        }
 
-        RUN_ID = "run_id"
-        PARAMETER_NAME = "parameter_name"
-        SAMPLED_VALUE = "sampled_value"
-        OUTPUT_NAME = "output_name"
-        INDEX_NAME = "index"
-        INDEX_VALUE = "value"
-        PARAMETER_NAME_2 = "parameter_name_2"
-        METHOD = "method"
-        SCENARIO = "scenario"
-
+        # Sampling and analysis methods
         SOBOL = "sobol"
         MORRIS = "morris"
         LATIN = "latin"
@@ -581,6 +744,18 @@ class Defaults:
             },
         }
 
+        # Samples, measures and GSA-result columns
+        RUN_ID = "run_id"
+        PARAMETER_NAME = "parameter_name"
+        SAMPLED_VALUE = "sampled_value"
+        OUTPUT_NAME = "output_name"
+        INDEX_NAME = "index"
+        INDEX_VALUE = "value"
+        METHOD = "method"
+        SCENARIO = "scenario"
+        STATUS = "status"
+
+        # Export formats
         XLSX = "xlsx"
         CSV = "csv"
         PARQUET = "parquet"
@@ -591,88 +766,12 @@ class Defaults:
             PARQUET,
         ]
 
+        # Output files and directories
         UNCERTAINTY_SAMPLES_FILE_NAME = "uncertainty_samples"
         UNCERTAINTY_MEASURES_FILE_NAME = "uncertainty_measures"
         UNCERTAINTY_MEASURES_TEMP_FILE_NAME = "uncertainty_measures_temp"
-
         GSA_FILE_NAME = "GSA_analysis"
-
-        STATUS = "status"
-        INDEX_VALUE = "value"
-
         RESULTS_DIR = "results"
-
-    DefaultStructures.DATA_TABLE_STRUCTURE_UNCERTAINTY = (
-        'table_key:',
-        {
-            DefaultStructures.METADATA: (DefaultStructures.OPTIONAL, str,),
-            'type': (str, dict),
-            'integer': (DefaultStructures.OPTIONAL, bool,),
-            'coordinates': (str, list),
-            UncertaintySettings.UNCERTAINTY_ENABLED_KEY: (DefaultStructures.OPTIONAL, bool,),
-            'variables_info': {
-                DefaultStructures.ANY: {
-                    'value': (
-                        DefaultStructures.OPTIONAL,
-                        str,
-                    ),
-                    'blank_fill': (
-                        DefaultStructures.OPTIONAL,
-                        Union[int, float],
-                    ),
-                    'nonneg': (
-                        DefaultStructures.OPTIONAL,
-                        bool,
-                    ),
-                    UncertaintySettings.UNCERTAINTY_MEASURE_KEY: (
-                        DefaultStructures.OPTIONAL,
-                        str,
-                        bool,
-                    ),
-                    DefaultStructures.ANY: (
-                        DefaultStructures.OPTIONAL,
-                        {
-                            'dim': (
-                                DefaultStructures.OPTIONAL,
-                                str,
-                            ),
-                            'filters': (
-                                DefaultStructures.OPTIONAL,
-                                dict,
-                            ),
-                        },
-                    ),
-                }
-            },
-        },
-    )
-
-    DefaultStructures.UNCERTAINTY_TABLE_TEMPLATE_COLUMNS = [
-        UncertaintySettings.UNCERTAINTY_ENABLED_KEY,
-    ]
-
-    DefaultStructures.UNCERTAINTY_VARIABLE_TEMPLATE_COLUMNS = [
-        UncertaintySettings.UNCERTAINTY_MEASURE_KEY,
-    ]
-    DefaultStructures.XLSX_TEMPLATE_COLUMNS_UNCERTAINTY = {
-        'structure_sets': [
-            'set_key',
-            *DefaultStructures.SET_STRUCTURE[1].keys()
-        ],
-        'structure_variables': [
-            'table_key',
-            *DefaultStructures.DATA_TABLE_STRUCTURE_UNCERTAINTY[1].keys(),
-            'value',
-            'blank_fill',
-            'nonneg',
-            * DefaultStructures.UNCERTAINTY_VARIABLE_TEMPLATE_COLUMNS,
-            'set_keys ...'
-        ],
-        'problem': [
-            'problem_key',
-            *DefaultStructures.PROBLEM_STRUCTURE[1].keys()
-        ],
-    }
 
     _SUBGROUPS = [
         LiteralTypes,

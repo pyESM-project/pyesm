@@ -160,12 +160,12 @@ class Model():
             level='info',
         ):
             self.files = FileManager(logger=self.logger)
-            uncertainty_setting_key = Defaults.Labels.UNCERTAINTY_SETTING_KEY
 
             self.settings = ModelSettings(
                 logger=self.logger,
                 log_level=log_level,
                 model_name=model_dir_name,
+                uncertainty=uncertainty,
                 model_settings_from=model_settings_from,
                 use_existing_data=use_existing_data,
                 multiple_input_files=multiple_input_files,
@@ -261,16 +261,8 @@ class Model():
 
     @property
     def is_uncertainty_analysis(self) -> bool:
-        """Return whether uncertainty-analysis functionality is enabled.
-
-        Returns:
-            bool: True if the model was initialized with uncertainty analysis
-            enabled, otherwise False.
-        """
-        return bool(self.settings.get(
-            Defaults.Labels.UNCERTAINTY_SETTING_KEY,
-            False,
-        ))
+        """Return whether uncertainty-analysis functionality is enabled."""
+        return self.settings.uncertainty
 
     def _check_model_dir(self) -> None:
         """Validate the existence of the model directory and required files.

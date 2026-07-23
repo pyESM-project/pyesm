@@ -15,12 +15,7 @@ from cvxlab.backward_compat import BackwardCompat
 # function signature; a mismatch causes an immediate RuntimeError.
 
 _MODEL_PARAM_NAMES = set(ModelSettings.model_init_param_names())
-_MODEL_PARAM_NAMES = {
-    'model_dir_name', 'main_dir_path',
-    Defaults.Labels.UNCERTAINTY_SETTING_KEY, 'model_settings_from',
-    'detailed_validation', 'multiple_input_files', 'input_data_files_type',
-    'log_level', 'log_format',
-}
+
 
 _SOLVER_PARAM_NAMES = set(RunSettings.run_model_param_names())
 

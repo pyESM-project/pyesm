@@ -84,10 +84,8 @@ class SQLManager:
 
     @property
     def is_uncertainty_enabled(self) -> bool:
-        return bool(self.settings.get(
-            Defaults.Labels.UNCERTAINTY_SETTING_KEY,
-            False,
-        ))
+        """Return whether uncertainty-analysis functionality is enabled."""
+        return self.settings.uncertainty
 
     def open_connection(self) -> None:
         """Open a connection to the SQLite database.

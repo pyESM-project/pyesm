@@ -38,6 +38,10 @@ class SessionConfig:
         return self.model_kwargs.get('model_dir_name', 'model')
 
     @property
+    def uncertainty(self) -> bool:
+        return bool(self.model_kwargs.get("uncertainty", False))
+
+    @property
     def main_dir_path(self) -> str:
         return self.model_kwargs.get('main_dir_path', os.getcwd())
 

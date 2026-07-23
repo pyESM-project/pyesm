@@ -82,16 +82,8 @@ class Index:
 
     @property
     def is_uncertainty_analysis(self) -> bool:
-        """Return whether uncertainty-analysis functionality is enabled.
-
-        Returns:
-            bool: True if the model was initialized with uncertainty analysis
-            enabled, otherwise False.
-        """
-        return bool(self.settings.get(
-            Defaults.Labels.UNCERTAINTY_SETTING_KEY,
-            False,
-        ))
+        """Return whether uncertainty-analysis functionality is enabled."""
+        return self.settings.uncertainty
 
     @property
     def sets_split_problem_dict(self) -> Dict[str, str]:
