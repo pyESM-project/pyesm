@@ -359,7 +359,7 @@ class Defaults:
                 "type": (str, dict),
                 "variable_domain": (OPTIONAL, str),
                 "coordinates": (str, list),
-                "uncertainty_eneabled": (OPTIONAL, bool),
+                "uncertainty_enabled": (OPTIONAL, bool),
                 "variables_info": {
                     ANY: {
                         "value": (OPTIONAL, str),
@@ -705,6 +705,12 @@ class Defaults:
             ],
         }
 
+        UNCERTAINTY_TABLE_FIELDS = (
+            IS_UNCERTAIN_FIELD,
+            LOWER_BOUND_FIELD,
+            UPPER_BOUND_FIELD,
+            UNCERTAINTY_GROUP_NAME_FIELD,
+        )
         # Sampling and analysis methods
         SOBOL = "sobol"
         MORRIS = "morris"

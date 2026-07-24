@@ -13,6 +13,8 @@ and solution through cvxpy package.
 """
 from pathlib import Path
 from typing import Any, List, Optional
+from dataclasses import dataclass, field
+import shutil
 
 import pandas as pd
 
@@ -25,12 +27,10 @@ from cvxlab.log_exc.logger import Logger
 from cvxlab.support.file_manager import FileManager
 from cvxlab.support import util
 from cvxlab.backward_compat import BackwardCompat
-from dataclasses import dataclass, field
-import shutil
 
 
 @dataclass
-class sampling_settings_config:
+class SamplingSettingsConfig:
     """Container for user-defined uncertainty analysis configuration.
 
     This dataclass stores the sampling configuration specified by the user
@@ -55,7 +55,7 @@ class sampling_settings_config:
 
 
 @dataclass
-class GSA_settings_config:
+class GSASettingsConfig:
     """
     Container for user-defined GSA analysis configuration.
     """
@@ -156,7 +156,7 @@ class Model():
         )
 
         with self.logger.log_timing(
-            message=f"Model instance generation...",
+            message="Model instance generation...",
             level='info',
         ):
             self.files = FileManager(logger=self.logger)
@@ -188,8 +188,8 @@ class Model():
                 paths=self.paths,
             )
 
-            self._sampling_settings: sampling_settings_config | None = None
-            self._GSA_settings: GSA_settings_config | None = None
+            self._sampling_settings: SamplingSettingsConfig | None = None
+            self._GSA_settings: GSASettingsConfig | None = None
 
             self.sampling_problem: dict[str, Any] | None = None
             self.uncertainty_samples: pd.DataFrame | None = None
@@ -264,107 +264,6 @@ class Model():
         """Return whether uncertainty-analysis functionality is enabled."""
         return self.settings.uncertainty
 
-    def _check_model_dir(self) -> None:
-        """Validate the existence of the model directory and required files.
-
-        This method checks if the model directory and all the required files exist.
-        This method is called during the initialization of the Model instance, and
-        it is not meant to be called directly by the user.
-
-        Depending on the 'use_existing_data' flag, the method checks for the existence
-        of different files: if the flag is set to False, it checks for the existence
-        of the basic model settings files (.yml or .xlsx). If the flag is set to
-        True, it also includes in the check the existence of the SQLite database file,
-        the sets Excel file, and the input data directory.
-
-        Raises:
-            exc.SettingsError: If the 'model_settings_from' parameter is not recognized.
-            exc.SettingsError: If the model directory or any of the required
-                setup files are missing.
-        """
-        files_type = self.settings['model_settings_from']
-        model_dir_path = self.paths['model_dir']
-        files_to_check = []
-        subdir_to_check = []
-
-        util.validate_selection(
-            valid_selections=Defaults.ConfigFiles.AVAILABLE_SETUP_SOURCES,
-            selection=files_type,
-        )
-
-        if files_type == 'yml':
-            files_to_check += [
-                file + '.yml'
-                for file in Defaults.ConfigFiles.SETUP_INFO.values()
-            ]
-        elif files_type == 'xlsx':
-            files_to_check += [Defaults.ConfigFiles.SETUP_XLSX_FILE]
-
-        if self.settings['use_existing_data']:
-            files_to_check += [
-                Defaults.ConfigFiles.SETS_FILE,
-                Defaults.ConfigFiles.SQLITE_DATABASE_FILE,
-            ]
-            subdir_to_check += [Defaults.ConfigFiles.INPUT_DATA_DIR]
-
-        err_msg = []
-
-        if not Path(model_dir_path).exists():
-            self.logger.error(
-                "Model directory validation | Model directory is missing."
-            )
-            raise exc.SettingsError("Model directory validation | Failed.")
-
-        for subdir in subdir_to_check:
-            if not Path(model_dir_path / subdir).exists():
-                err_msg.append(
-                    f"Model directory validation | '{subdir}' directory is missing."
-                )
-
-        for file in files_to_check:
-            if not Path(model_dir_path / file).exists():
-                err_msg.append(
-                    f"Model directory validation | '{file}' file is missing."
-                )
-
-        if err_msg == []:
-            self.logger.debug(
-                f"Model directory validation | Success.")
-        else:
-            [self.logger.error(msg) for msg in err_msg]
-            raise exc.SettingsError("Model directory validation | Failed.")
-
-    def _check_settings_consistency(self) -> None:
-        """Check consistency of model settings.
-
-        This method checks the consistency of the model settings, ensuring that
-        the configurations provided by the user are coherent.
-        This method is called during the initialization of the Model instance, and
-        it is not meant to be called directly by the user.
-
-        Raises:
-            exc.SettingsError: If any inconsistency or invalid configuration
-                is found in the model settings.
-        """
-        err_msg = []
-
-        # Check that input data csv files are only used for multiple input files
-        if self.settings['input_data_files_type'] == 'csv' and not \
-                self.settings['multiple_input_files']:
-            err_msg.append(
-                "Input data files of type 'csv' can only be used when "
-                "'multiple_input_files' setting is True."
-            )
-
-        # Add further checks below...
-
-        if err_msg == []:
-            self.logger.debug(
-                f"Model settings validation | Success.")
-        else:
-            [self.logger.error(msg) for msg in err_msg]
-            raise exc.SettingsError("Model settings validation | Failed.")
-
     def _import_custom_scripts(self) -> None:
         """Import user-defined custom operators and constants.
 
@@ -432,7 +331,7 @@ class Model():
                 is missing.
         """
         with self.logger.log_timing(
-            message=f"Loading sets and variables coordinates...",
+            message="Loading sets and variables coordinates...",
             level='info',
         ):
             try:
@@ -452,6 +351,9 @@ class Model():
             self.core.index.filter_coordinates_in_variables_index()
             self.core.index.check_variables_coherence()
             self.core.index.fetch_foreign_keys_to_data_tables()
+
+            if self.settings.uncertainty:
+                self.core.uncertainty.check_uncertainty_measure_variables_are_scalar()
 
     def _initialize_blank_data_structure(self) -> None:
         """Initialize blank data structure for the model.
@@ -482,7 +384,7 @@ class Model():
             return
 
         with self.logger.log_timing(
-            message=f"Generation of blank data structures...",
+            message="Generation of blank data structures...",
             level='info',
         ):
             if sqlite_db_path.exists():
@@ -527,7 +429,7 @@ class Model():
     def _load_exogenous_data_to_sqlite_database(
             self,
             force_overwrite: bool = False,
-            table_key_list: list[str] = [],
+            table_key_list: Optional[list[str]] = None,
     ) -> None:
         """Load exogenous (input) data to the SQLite database.
 
@@ -550,8 +452,11 @@ class Model():
                 for which to load exogenous data. If empty, all exogenous data
                 tables are loaded. Defaults to [].
         """
+        if table_key_list is None:
+            table_key_list = []
+
         with self.logger.log_timing(
-            message=f"Loading input data to SQLite database...",
+            message="Loading input data to SQLite database...",
             level='info',
         ):
             self.core.database.load_data_input_files_to_database(
@@ -567,7 +472,7 @@ class Model():
     def load_data(
             self,
             force_overwrite: bool = False,
-            table_key_list: list[str] = [],
+            table_key_list: Optional[list[str]] = None,
     ) -> None:
         """Load exogenous input data into the SQLite database.
 
@@ -582,6 +487,9 @@ class Model():
                 to load. If empty, all exogenous input data tables are loaded.
                 Defaults to [].
         """
+        if table_key_list is None:
+            table_key_list = []
+
         self._load_exogenous_data_to_sqlite_database(
             force_overwrite=force_overwrite,
             table_key_list=table_key_list,
@@ -611,7 +519,7 @@ class Model():
                 the exogenous data. Defaults to True.
         """
         with self.logger.log_timing(
-            message=f"Numerical model generation...",
+            message="Numerical model generation...",
             level='info',
         ):
             self.core.load_and_validate_symbolic_problem(force_overwrite)
@@ -642,10 +550,6 @@ class Model():
             return
 
         self._load_model_coordinates()
-
-        if self.settings.uncertainty:
-            self.core.uncertainty.check_uncertainty_measure_variables_are_scalar()
-
         self._initialize_blank_data_structure()
 
     def refresh_database_and_initialize_problem(
@@ -807,7 +711,7 @@ class Model():
         self.logger.info(msg)
 
         with self.logger.log_timing(
-            message=f"Solving numerical problems...",
+            message="Solving numerical problems...",
             level='info',
         ):
             self.core.solve_numerical_problems(
@@ -853,7 +757,7 @@ class Model():
                 during the data loading process. Defaults to False.
         """
         with self.logger.log_timing(
-            message=f"Exporting endogenous model results to SQLite database...",
+            message="Exporting endogenous model results to SQLite database...",
             level='info',
         ):
             if not self.is_problem_solved:
@@ -999,7 +903,7 @@ class Model():
             numerical_tolerance = Defaults.NumericalSettings.TOLERANCE_TESTS_RESULTS_CHECK
 
         with self.logger.log_timing(
-            message=f"Check model results...",
+            message="Check model results...",
             level='info',
         ):
             self.core.database.compare_databases(
@@ -1158,7 +1062,7 @@ class Model():
         temp_save: bool = True,
         file_format: str = "xlsx",
         **method_kwargs: Any,
-    ) -> sampling_settings_config:
+    ) -> SamplingSettingsConfig:
         """Configure uncertainty sampling and result collection.
 
         This method validates the selected SALib sampling method and stores the
@@ -1182,7 +1086,7 @@ class Model():
                 ``optimal_trajectories``.
 
         Returns:
-            sampling_settings_config: Stored sampling configuration.
+            SamplingSettingsConfig: Stored sampling configuration.
 
         Raises:
             ValueError: If uncertainty analysis is disabled or the sampling method
@@ -1223,7 +1127,7 @@ class Model():
             groups=groups,
             kwargs=method_kwargs)
 
-        self._sampling_settings = sampling_settings_config(
+        self._sampling_settings = SamplingSettingsConfig(
             method=method,
             groups=groups,
             method_kwargs=method_kwargs,
@@ -1241,7 +1145,7 @@ class Model():
         scenarios: list[str] | str | None = None,
         file_format: str = "xlsx",
         **method_kwargs: Any,
-    ) -> GSA_settings_config:
+    ) -> GSASettingsConfig:
         """Configure the global sensitivity analysis.
 
         The method validates the selected SALib analyzer, checks its compatibility
@@ -1263,7 +1167,7 @@ class Model():
                 ``print_to_console``.
 
         Returns:
-            GSA_settings_config: Stored GSA configuration.
+            GSASettingsConfig: Stored GSA configuration.
 
         Raises:
             ValueError: If uncertainty analysis is disabled, the method is
@@ -1312,7 +1216,7 @@ class Model():
             analysis_method=method
         )
 
-        self._GSA_settings = GSA_settings_config(
+        self._GSA_settings = GSASettingsConfig(
             method=method,
             method_kwargs=method_kwargs,
             measures=measures,
@@ -1351,7 +1255,7 @@ class Model():
 
     def _generate_uncertainty_samples(
             self,
-            uncertainty_cfg: sampling_settings_config,
+            uncertainty_cfg: SamplingSettingsConfig,
     ) -> pd.DataFrame:
         """Generate uncertainty samples."""
 

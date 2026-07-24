@@ -534,152 +534,6 @@ class Core:
                         self.logger.warning(
                             f"Negative values found for variable '{var_key}'")
 
-    #     pezzo di vecchio cvxpy_endogenous_data_to_database
-    #     This method iterates over each endogenous data table in the Index, and it
-    #     exports the data from the related cvxpy variable into the corresponding
-    #     data table in the SQLite database.
-    #     The method can export data for all scenarios or for a subset of scenarios
-    #     (scenarios_idx): scenarios are linear combinations of inter-problem sets
-    #     values defined in the index.
-    #     The method can optionally suppress warnings during the export process (
-    #     force_overwrite, useful for testing purpose).
-    #     The method can optionally force the re-export of data even if the data
-    #     table already exists (suppress_warnings, useful for continuous user model
-    #     run, when only a subset of endogenous variables need to be exported).
-
-    #     Args:
-    #         scenarios_idx (Optional[List[int] | int], optional): List of indices
-    #             of scenarios for which to fetch data. If None, fetches data for
-    #             all scenarios. Defaults to None.
-    #         force_overwrite (bool, optional): If True, forces the re-export of
-    #             data even if the data table already exists. Defaults to False.
-    #         suppress_warnings (bool, optional): If True, suppresses warnings
-    #             during the data export process. Defaults to False.
-    #     """
-    #     self.logger.debug(
-    #         "Exporting data from cvxpy endogenous variable (in data table) "
-    #         f"to SQLite database '{Defaults.ConfigFiles.SQLITE_DATABASE_FILE}' ")
-
-    #     values_headers = Defaults.Labels.VALUES_FIELD['values'][0]
-    #     allowed_var_types = Defaults.SymbolicDefinitions.VARIABLE_TYPES
-
-    #     if scenarios_idx is None:
-    #         scenarios_list = list(self.index.scenarios_info.index)
-    #     else:
-    #         if isinstance(scenarios_idx, int):
-    #             scenarios_list = [scenarios_idx]
-    #         elif isinstance(scenarios_idx, list):
-    #             scenarios_list = scenarios_idx
-    #         else:
-    #             msg = "'scenarios_idx' parameter must be an int or a list of ints."
-    #             self.logger.error(msg)
-    #             raise TypeError(msg)
-
-    #     with db_handler(self.sqltools):
-    #         for data_table_key, data_table in self.index.data.items():
-    #             data_table: DataTable
-
-    #             if data_table.type in [
-    #                 allowed_var_types['EXOGENOUS'],
-    #                 allowed_var_types['CONSTANT']
-    #             ]:
-    #                 continue
-
-    #             if isinstance(data_table.coordinates_dataframe, pd.DataFrame):
-    #                 data_table_dataframe = data_table.coordinates_dataframe
-
-    #             elif isinstance(data_table.coordinates_dataframe, dict):
-    #                 dataframes_list = [
-    #                     dataframe for df_key, dataframe
-    #                     in data_table.coordinates_dataframe.items()
-    #                     if df_key in scenarios_list
-    #                 ]
-    #                 data_table_dataframe = pd.concat(
-    #                     objs=dataframes_list,
-    #                     ignore_index=True
-    #                 )
-
-    #             data_table_dataframe = util.add_column_to_dataframe(
-    #                 dataframe=data_table_dataframe,
-    #                 column_header=values_headers,
-    #             )
-
-    #             if values_headers not in data_table_dataframe.columns:
-    #                 if self.settings['log_level'] == 'debug' or \
-    #                         not suppress_warnings:
-    #                     self.logger.warning(
-    #                         f"Column '{values_headers}' already exists in data "
-    #                         f"table '{data_table_key}'")
-
-    #             if data_table.cvxpy_var is None:
-    #                 if self.settings['log_level'] == 'debug' or \
-    #                         not suppress_warnings:
-    #                     self.logger.warning(
-    #                         f"No data available in cvxpy variable '{data_table_key}'")
-    #                 continue
-
-    #             cvxpy_var_with_nones = False
-
-    #             if isinstance(data_table.cvxpy_var, dict):
-    #                 cvxpy_var_values_list = []
-
-    #                 for cvxpy_var_key, cvxpy_var in data_table.cvxpy_var.items():
-    #                     cvxpy_var: cp.Variable
-
-    #                     if cvxpy_var_key not in scenarios_list:
-    #                         continue
-
-    #                     if cvxpy_var.value is None:
-    #                         cvxpy_var_with_nones = True
-    #                         value_to_append = np.zeros((cvxpy_var.shape[0], 1))
-    #                     else:
-    #                         value_to_append = cvxpy_var.value
-
-    #                     cvxpy_var_values_list.append(value_to_append)
-    #                 cvxpy_var_data = np.vstack(cvxpy_var_values_list)
-
-    #             else:
-    #                 if data_table.cvxpy_var.value is None:
-    #                     cvxpy_var_with_nones = True
-    #                     value_to_append = np.zeros(
-    #                         (data_table.cvxpy_var.shape[0], 1))
-    #                 else:
-    #                     value_to_append = data_table.cvxpy_var.value
-
-    #                 cvxpy_var_data = value_to_append
-
-    #             if cvxpy_var_with_nones:
-    #                 self.logger.warning(
-    #                     f"Data table '{data_table_key}' | "
-    #                     "No data available in cvxpy variable (probably not "
-    #                     "used in model expressions). Exporting zeros to corresponding "
-    #                     "SQLite data table."
-    #                 )
-
-    #             if len(data_table_dataframe) != cvxpy_var_data.shape[0]:
-    #                 self.logger.error(
-    #                     f"Length mismatch exporting '{data_table_key}': "
-    #                     f"dataframe rows={len(data_table_dataframe)}, "
-    #                     f"cvxpy rows={cvxpy_var_data.shape[0]}"
-    #                 )
-    #                 raise exc.OperationalError(
-    #                     "Mismatch between coordinates and cvxpy values length.")
-
-    #             data_table_dataframe[values_headers] = cvxpy_var_data
-
-    #             data_table_dataframe = util.normalize_dataframe(
-    #                 df=data_table_dataframe,
-    #                 all_str_except_numeric=True,
-    #             )
-
-                # self.sqltools.dataframe_to_table(
-                #     table_name=data_table_key,
-                #     dataframe=data_table_dataframe,
-                #     action='update',
-                #     force_overwrite=force_overwrite,
-                #     suppress_warnings=suppress_warnings,
-                # )
-
     def cvxpy_uncertain_exogenous_data_to_database(
             self,
             force_overwrite: bool = False,
@@ -1377,9 +1231,6 @@ class Core:
                                 lines.append(msg)
                                 conv_log("\n".join(lines))
                                 self.logger.warning(msg)
-                                self.logger.warning(
-                                    "Maximum number of iterations hit before "
-                                    "reaching convergence")
 
                                 convergence_status = "convergence_not_reached"
 
@@ -1388,12 +1239,6 @@ class Core:
                                         scenario_idx,
                                         problem_status_header,
                                     ] = convergence_status
-
-                                self.logger.warning(
-                                    "Integrated problem convergence not reached | "
-                                    f"Scenario {scenario_coords} | "
-                                    f"Maximum iterations: {maximum_iterations}."
-                                )
 
                                 break
 

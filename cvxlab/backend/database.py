@@ -9,7 +9,7 @@ loading data from Excel files, generating data input files, and managing the
 SQLite database interactions via the SQLManager.
 """
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import List, Optional
 
 import pandas as pd
 
@@ -298,7 +298,7 @@ class Database:
 
     def update_sets_in_sqlite_database(
             self,
-            set_keys_list: List[str] = [],
+            set_keys_list: Optional[List[str]] = None,
             update_mode: Defaults.LiteralTypes.SetUpdateMode = 'all',
     ) -> None:
         """Update sets data in the SQLite database.
@@ -310,7 +310,7 @@ class Database:
         the set's 'data' attribute.
 
         Args:
-            set_keys_list(List[str], optional): A list of set keys to update.
+            set_keys_list(Optional[List[str]], optional): A list of set keys to update.
                 If empty, all sets in the Index are updated. Defaults to [].
             update_mode(Defaults.LiteralTypes.SetUpdateMode, optional):
                 Specifies the update mode. Defaults to 'all'.
@@ -323,6 +323,9 @@ class Database:
             f"Updating Sets in '{Defaults.ConfigFiles.SQLITE_DATABASE_FILE}'.")
 
         id_header = Defaults.Labels.ID_FIELD['id'][0]
+
+        if set_keys_list is None:
+            set_keys_list = []
 
         with db_handler(self.sqltools):
             for set_key, set_instance in self.index.sets.items():
@@ -347,6 +350,7 @@ class Database:
                         if col != id_header
                     ]
                 else:
+                    headers_dict = None
                     if update_mode == 'filters':
                         headers_dict = set_instance.set_filters_headers
                     elif update_mode == 'aggregations':
@@ -473,48 +477,46 @@ class Database:
 
         allowed_var_types = Defaults.SymbolicDefinitions.VARIABLE_TYPES
 
-        is_uncertainty_analysis = self.is_uncertainty_analysis
-
         with db_handler(self.sqltools):
             for table_key, table in self.index.data.items():
                 table: DataTable
 
-                # Constants do not require SQLite data tables
                 if table.type == allowed_var_types["CONSTANT"]:
                     continue
 
-                table_headers_list = list(
-                    table.coordinates_headers.values()
-                )
+                table_headers_list = [
+                    value for value in table.coordinates_headers.values()
+                ]
 
                 unpivoted_coords_df = util.unpivot_dict_to_dataframe(
                     data_dict=table.coordinates_values,
                     key_order=table_headers_list,
                 )
 
-                # Keep only coordinate combinations associated with variables
-                # defined in the current data table.
-                variable_coordinates = []
+                # data table coordinates dataframe are filtered to keep only
+                # coordinates defined by the variables whithin the data table
+
+                dicts_list = []
 
                 for variable in self.index.variables.values():
                     variable: Variable
 
                     if variable.related_table == table_key:
-                        variable_coordinates.append(
+                        dicts_list.append(
                             variable.all_coordinates_w_headers
                         )
 
                 coords_to_keep_df = pd.DataFrame()
 
-                for coordinates_dict in variable_coordinates:
+                for item in dicts_list:
                     coords_df = util.unpivot_dict_to_dataframe(
-                        data_dict=coordinates_dict,
-                        key_order=table_headers_list,
+                        data_dict=item,
+                        key_order=table_headers_list
                     )
 
                     coords_to_keep_df = pd.concat(
                         [coords_to_keep_df, coords_df],
-                        ignore_index=True,
+                        ignore_index=True
                     )
 
                 coords_to_keep_df = coords_to_keep_df.drop_duplicates()
@@ -522,25 +524,19 @@ class Database:
                 unpivoted_coords_df = unpivoted_coords_df.merge(
                     coords_to_keep_df,
                     on=table_headers_list,
-                    how="inner",
+                    how='inner'
                 )
 
                 if not util.check_dataframes_equality(
-                    df_list=[
-                        coords_to_keep_df,
-                        unpivoted_coords_df,
-                    ]
+                    df_list=[coords_to_keep_df, unpivoted_coords_df]
                 ):
-                    msg = (
-                        "Dataframes are not equal after merge operation."
-                    )
+                    msg = "Dataframes are not equal after merge operation."
                     self.logger.error(msg)
                     raise exc.OperationalError(msg)
 
-                # Add the primary-key column before loading coordinate rows.
                 unpivoted_coords_df = util.add_column_to_dataframe(
                     dataframe=unpivoted_coords_df,
-                    column_header=table.table_headers["id"][0],
+                    column_header=table.table_headers['id'][0],
                     column_values=None,
                     column_position=0,
                 )
@@ -551,21 +547,19 @@ class Database:
                     bool_to_str=True,
                 )
 
-                # Load id and coordinate values into SQLite.
                 self.sqltools.dataframe_to_table(
                     table_name=table_key,
                     dataframe=unpivoted_coords_df,
                 )
 
-                # Every non-constant table requires a numerical values column.
                 self.sqltools.add_table_column(
                     table_name=table_key,
-                    column_name=Defaults.Labels.VALUES_FIELD["values"][0],
-                    column_type=Defaults.Labels.VALUES_FIELD["values"][1],
+                    column_name=Defaults.Labels.VALUES_FIELD['values'][0],
+                    column_type=Defaults.Labels.VALUES_FIELD['values'][1],
                 )
 
                 table_uncertainty_enabled = (
-                    is_uncertainty_analysis
+                    self.is_uncertainty_analysis
                     and getattr(
                         table,
                         Defaults.UncertaintySettings.UNCERTAINTY_ENABLED_KEY,
@@ -573,104 +567,24 @@ class Database:
                     )
                 )
 
-                # Add empty row-level uncertainty columns only to tables
-                # explicitly enabled for uncertainty.
                 if table_uncertainty_enabled:
-                    self.sqltools.add_table_column(
-                        table_name=table_key,
-                        column_name=(
-                            Defaults.UncertaintySettings.IS_UNCERTAIN_FIELD[
-                                Defaults.UncertaintySettings.IS_UNCERTAIN_KEY
-                            ][0]
-                        ),
-                        column_type=(
-                            Defaults.UncertaintySettings.IS_UNCERTAIN_FIELD[
-                                Defaults.UncertaintySettings.IS_UNCERTAIN_KEY
-                            ][1]
-                        ),
-                    )
+                    for uncertainty_field in (
+                        Defaults.UncertaintySettings.UNCERTAINTY_TABLE_FIELDS
+                    ):
+                        column_name, column_type = next(
+                            iter(uncertainty_field.values())
+                        )
 
-                    self.sqltools.add_table_column(
-                        table_name=table_key,
-                        column_name=(
-                            Defaults.UncertaintySettings.LOWER_BOUND_FIELD[
-                                Defaults.UncertaintySettings.LOWER_BOUND_KEY
-                            ][0]
-                        ),
-                        column_type=(
-                            Defaults.UncertaintySettings.LOWER_BOUND_FIELD[
-                                Defaults.UncertaintySettings.LOWER_BOUND_KEY
-                            ][1]
-                        ),
-                    )
-
-                    self.sqltools.add_table_column(
-                        table_name=table_key,
-                        column_name=(
-                            Defaults.UncertaintySettings.UPPER_BOUND_FIELD[
-                                Defaults.UncertaintySettings.UPPER_BOUND_KEY
-                            ][0]
-                        ),
-                        column_type=(
-                            Defaults.UncertaintySettings.UPPER_BOUND_FIELD[
-                                Defaults.UncertaintySettings.UPPER_BOUND_KEY
-                            ][1]
-                        ),
-                    )
-
-                    self.sqltools.add_table_column(
-                        table_name=table_key,
-                        column_name=(
-                            Defaults.UncertaintySettings.UNCERTAINTY_GROUP_NAME_FIELD[
-                                Defaults.UncertaintySettings.UNCERTAINTY_GROUP_NAME_KEY
-                            ][0]
-                        ),
-                        column_type=(
-                            Defaults.UncertaintySettings.UNCERTAINTY_GROUP_NAME_FIELD[
-                                Defaults.UncertaintySettings.UNCERTAINTY_GROUP_NAME_KEY
-                            ][1]
-                        ),
-                    )
-
-    def clear_database_tables(
-        self,
-        table_names: Optional[List[str] | str] = None,
-    ) -> None:
-        """Clear specified tables or all tables from the SQLite database.
-
-        This method parse all or a list 'table_names' of the data tables in the
-        Index and delete the tables from the SQLite database.
-
-        Args:
-            table_names (Optional[List[str] | str]): A list of table names or a
-                single table name to clear. If None, all tables in the database
-                will be cleared.
-        """
-        with db_handler(self.sqltools):
-            existing_tables = self.sqltools.get_existing_tables_names
-
-            if not table_names:
-                tables_to_clear = existing_tables
-                self.logger.info(
-                    "Clearing all tables from SQLite database "
-                    f"{Defaults.ConfigFiles.SQLITE_DATABASE_FILE}"
-                )
-
-            else:
-                tables_to_clear = list(table_names)
-                self.logger.info(
-                    f"Clearing tables '{tables_to_clear}' from SQLite database "
-                    f"{Defaults.ConfigFiles.SQLITE_DATABASE_FILE}"
-                )
-
-            for table_name in tables_to_clear:
-                if table_name in self.index.data.keys():
-                    self.sqltools.drop_table(table_name)
+                        self.sqltools.add_table_column(
+                            table_name=table_key,
+                            column_name=column_name,
+                            column_type=column_type,
+                        )
 
     def generate_blank_data_input_files(
         self,
         file_extension: Optional[str] = None,
-        table_key_list: List[str] = [],
+        table_key_list: Optional[List[str]] = None,
         values_cleanup: bool = True,
     ) -> None:
         """Generate blank data input files for exogenous data tables.
@@ -696,12 +610,15 @@ class Database:
         allowed_var_types = Defaults.SymbolicDefinitions.VARIABLE_TYPES
         value_field = Defaults.Labels.VALUES_FIELD['values'][0]
 
+        if table_key_list is None:
+            table_key_list = []
+
         if file_extension is None:
             file_extension = self.settings.input_data_files_type
         else:
             util.validate_selection(
                 selection=file_extension,
-                valid_options=Defaults.ConfigFiles.AVAILABLE_DATA_FILES_EXTENSIONS,
+                valid_selections=Defaults.ConfigFiles.AVAILABLE_DATA_FILES_EXTENSIONS,
             )
 
         if not Path(self.paths.input_data_dir).exists():
@@ -754,7 +671,7 @@ class Database:
 
     def load_data_input_files_to_database(
         self,
-        table_key_list: list[str] = [],
+        table_key_list: Optional[list[str]] = None,
         force_overwrite: bool = False,
     ) -> None:
         """Load input files data into the SQLite database.
@@ -764,9 +681,9 @@ class Database:
         related SQLite data tables.
 
         Args:
-            table_key_list (list[str], optional): A list of table keys to load
+            table_key_list (Optional[list[str]], optional): A list of table keys to load
                 data for. If empty, all exogenous data tables in the Index are
-                processed. Defaults to an empty list.
+                processed. Defaults to None.
             force_overwrite (bool, optional): If True, forces the overwrite of
                 existing data. Defaults to False.
 
@@ -780,25 +697,8 @@ class Database:
         file_extension = self.settings.input_data_files_type
         multiple_data_file = self.settings.multiple_input_files
 
-        other_coordinate_cols = None
-
-        if self.is_uncertainty_analysis:
-            lb_field = Defaults.UncertaintySettings.LOWER_BOUND_FIELD[
-                Defaults.UncertaintySettings.LOWER_BOUND_KEY
-            ][0]
-            ub_field = Defaults.UncertaintySettings.UPPER_BOUND_FIELD[
-                Defaults.UncertaintySettings.UPPER_BOUND_KEY
-            ][0]
-            is_uncertain_field = Defaults.UncertaintySettings.IS_UNCERTAIN_FIELD[
-                Defaults.UncertaintySettings.IS_UNCERTAIN_KEY
-            ][0]
-            group_name_field = (
-                Defaults.UncertaintySettings.UNCERTAINTY_GROUP_NAME_FIELD[
-                    Defaults.UncertaintySettings.UNCERTAINTY_GROUP_NAME_KEY
-                ][0]
-            )
-            other_coordinate_cols = [lb_field, ub_field,
-                                     is_uncertain_field, group_name_field]
+        if table_key_list is None:
+            table_key_list = []
 
         if table_key_list == []:
             table_key_list = self.index.data.keys()
@@ -828,8 +728,11 @@ class Database:
 
             with db_handler(self.sqltools):
                 for table_key, dataframe in data_dict.items():
+
                     if table_key not in table_key_list:
                         continue
+
+                    table: DataTable = self.index.data[table_key]
 
                     dataframe = util.normalize_dataframe(
                         df=dataframe,
@@ -837,12 +740,20 @@ class Database:
                         replace_nans=True,
                     )
 
+                    if self.is_uncertainty_analysis:
+                        uncertainty_columns = (
+                            self._get_uncertainty_columns(table)
+                        )
+
+                    else:
+                        uncertainty_columns = []
+
                     self.sqltools.dataframe_to_table(
                         table_name=table_key,
                         dataframe=dataframe,
                         force_overwrite=force_overwrite,
                         action='update',
-                        other_coordinate_cols=other_coordinate_cols,
+                        other_coordinate_cols=uncertainty_columns,
                     )
 
         # case 2: load from multiple files
@@ -873,19 +784,50 @@ class Database:
                             all_str_except_numeric=True,
                             replace_nans=True,
                         )
+                        if self.is_uncertainty_analysis:
+                            uncertainty_columns = (
+                                self._get_uncertainty_columns(table)
+                            )
+
+                        else:
+                            uncertainty_columns = []
 
                         self.sqltools.dataframe_to_table(
                             table_name=table_key,
                             dataframe=dataframe,
                             force_overwrite=force_overwrite,
                             action='update',
-                            other_coordinate_cols=other_coordinate_cols,
+                            other_coordinate_cols=uncertainty_columns,
                         )
+
+    def _get_uncertainty_columns(
+        self,
+        table: DataTable,
+    ) -> Optional[list[str]]:
+        """Return uncertainty metadata columns for the selected data table."""
+        table_uncertainty_enabled = (
+            self.is_uncertainty_analysis
+            and getattr(
+                table,
+                Defaults.UncertaintySettings.UNCERTAINTY_ENABLED_KEY,
+                False,
+            )
+        )
+
+        if not table_uncertainty_enabled:
+            return None
+
+        return [
+            next(iter(field.values()))[0]
+            for field in (
+                Defaults.UncertaintySettings.UNCERTAINTY_TABLE_FIELDS
+            )
+        ]
 
     def fill_nan_values_in_database(
             self,
             force_overwrite: bool = False,
-            table_key_list: List[str] = [],
+            table_key_list: Optional[List[str]] = None,
     ) -> None:
         """Complete value fields in data tables in the database.
 
@@ -901,7 +843,7 @@ class Database:
         Args:
             force_overwrite (bool, optional): If True, forces the overwrite of
                 existing data. Defaults to False.
-            table_key_list (List[str], optional): List of table keys to process.
+            table_key_list (Optional[List[str]], optional): List of table keys to process.
                 If empty, all tables in the index are processed. Defaults to [].
 
         Raises:
@@ -912,6 +854,9 @@ class Database:
             "attribute of each variable.")
 
         value_header = Defaults.Labels.VALUES_FIELD['values'][0]
+
+        if table_key_list is None:
+            table_key_list = []
 
         if table_key_list == []:
             table_key_list = self.index.data.keys()
