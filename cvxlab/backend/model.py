@@ -643,7 +643,7 @@ class Model():
 
         self._load_model_coordinates()
 
-        if self.settings[Defaults.Labels.UNCERTAINTY_SETTING_KEY]:
+        if self.settings.uncertainty:
             self.core.uncertainty.check_uncertainty_measure_variables_are_scalar()
 
         self._initialize_blank_data_structure()
