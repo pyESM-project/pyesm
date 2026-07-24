@@ -173,7 +173,8 @@ a time, and the method iterates over all scenarios.
 This method is useful in case some data provided to a problem needs to be 
 pre-processed by another problem, or when the solution of a problem is used 
 as input for another problem.
-Refer to this :ref:`tutorial <tutorial-products-footprints>` for a practical example.
+Refer to this :ref:`tutorial <tutorial-production-planning-sequential>` for a 
+practical example.
 
 .. rubric:: ``solution_mode="integrated"``
 

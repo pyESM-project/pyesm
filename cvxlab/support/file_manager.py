@@ -836,6 +836,25 @@ class FileManager:
 
         return data
 
+    @staticmethod
+    def _normalize_booleans(
+            value: Any,
+            expected_value: Any,
+    ) -> Any:
+        """Normalize supported representations for boolean fields.
+
+        Values are normalized only when the validation schema expects a
+        boolean. Other fields containing values such as ``0`` or ``1`` are
+        left unchanged.
+        """
+        expected_types = expected_value if \
+            isinstance(expected_value, tuple) else (expected_value,)
+
+        if bool not in expected_types or type(value) not in (str, int):
+            return value
+
+        return Defaults.DefaultStructures.ALLOWED_BOOL.get(value, value)
+
     def validate_data_structure(
             self,
             data: Dict,
@@ -892,8 +911,11 @@ class FileManager:
                 continue
 
             # check values types and content for mandatory keys
+            # normalize boolean values if expected type is bool
             else:
                 value = data[k_exp]
+                value = self._normalize_booleans(value, expected_value)
+                data[k_exp] = value
 
                 if isinstance(expected_value, type):
                     if not isinstance(value, expected_value | NoneType):

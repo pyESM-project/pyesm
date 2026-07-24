@@ -770,18 +770,14 @@ class Database:
         value_header = Defaults.Labels.VALUES_FIELD['values'][0]
 
         if table_key_list is None:
-            table_key_list = []
-
-        if table_key_list == []:
-            table_key_list = self.index.data.keys()
-        else:
-            if not util.items_in_list(
-                table_key_list,
-                self.index.data.keys()
-            ):
-                msg = "One or more passed tables keys not present in the Index."
-                self.logger.error(msg)
-                raise ValueError(msg)
+            table_key_list = list(self.index.data)
+        elif not util.items_in_list(
+            items=table_key_list,
+            control_list=self.index.data,
+        ):
+            msg = "One or more passed table keys are not present in the Index."
+            self.logger.error(msg)
+            raise ValueError(msg)
 
         with db_handler(self.sqltools):
 

@@ -328,15 +328,19 @@ class Core:
             allowed_var_types = Defaults.SymbolicDefinitions.VARIABLE_TYPES
 
             if var_list_to_update is None:
-                var_list_to_update = []
-
-            if not isinstance(var_list_to_update, list):
+                selected_var_keys = self.index.list_variables
+            elif not isinstance(var_list_to_update, list):
                 msg = "Passed method parameter must be a list."
                 self.logger.error(msg)
                 raise TypeError(msg)
-
-            if var_list_to_update != [] and \
-                    not util.items_in_list(var_list_to_update, self.index.variables.keys()):
+            elif not var_list_to_update:
+                msg = "'var_list_to_update' must contain at least one variable key."
+                self.logger.error(msg)
+                raise exc.SettingsError(msg)
+            elif not util.items_in_list(
+                    var_list_to_update,
+                    self.index.variables.keys()
+            ):
                 msg = "One or more passed items are not in the index variables."
                 self.logger.error(msg)
                 raise exc.SettingsError(msg)

@@ -13,6 +13,7 @@ clean and makes it easy to add further translations.
 """
 from typing import Any, Dict, Optional
 
+from cvxlab.defaults import Defaults
 from cvxlab.log_exc.logger import Logger
 
 
@@ -82,3 +83,31 @@ class BackwardCompat:
         )
         new_kwargs['solution_mode'] = solution_mode
         return new_kwargs
+
+    @staticmethod
+    def integer_to_variable_domain(
+        data_tables: Dict[str, Any],
+        logger: Logger,
+    ) -> None:
+        """Translate the deprecated ``integer`` data-table attribute.
+
+        The loaded data-table definitions are updated in-place before they are
+        validated. A true ``integer`` value becomes an integer
+        ``variable_domain`` unless that field is already explicitly defined.
+        """
+        integer_domain = \
+            Defaults.SymbolicDefinitions.VARIABLE_DOMAINS['INTEGER']
+
+        for table_key, table_value in data_tables.items():
+            if not isinstance(table_value, dict) or \
+                    'integer' not in table_value:
+                continue
+
+            integer_value = table_value.pop('integer')
+            if integer_value is True:
+                logger.warning(
+                    f"Data table '{table_key}' | Field 'integer' is deprecated. "
+                    f"Substituted by field 'variable_domain' with value: "
+                    f"{integer_domain}."
+                )
+                table_value.setdefault('variable_domain', integer_domain)

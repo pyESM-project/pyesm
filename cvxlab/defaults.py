@@ -356,6 +356,7 @@ class Defaults:
                 *DATA_TABLE_STRUCTURE[1].keys(),
                 'value',
                 'blank_fill',
+                'nonneg',
                 'set_keys ...'
             ],
             'problem': [
@@ -365,8 +366,8 @@ class Defaults:
         }
 
         ALLOWED_BOOL = {
-            'true': True, 'True': True, 'TRUE': True,
-            'false': False, 'False': False, 'FALSE': False,
+            'true': True, 'True': True, 'TRUE': True, 1: True, '1': True,
+            'false': False, 'False': False, 'FALSE': False, 0: False, '0': False,
         }
 
     class SymbolicDefinitions:
@@ -461,6 +462,9 @@ class Defaults:
             in the matrix). If the percentage of zeros in the matrix is higher 
             than this threshold, the matrix is considered as sparse and stored 
             in a sparse format to save memory.
+        - SPARSE_MATRIX_SIZE_THRESHOLD:
+            Threshold for considering a matrix as sparse based on its size (number 
+            of elements).
         - SQL_BATCH_SIZE: 
             Batch size for SQL operations. It is used to limit the number of rows 
             processed in a single SQL operation to avoid memory issues and speed 
@@ -491,6 +495,7 @@ class Defaults:
         TOLERANCE_TESTS_RESULTS_CHECK = 0.02
         ROUNDING_DIGITS_RELATIVE_DIFFERENCE_DB = 5
         SPARSE_MATRIX_ZEROS_THRESHOLD = 0.7
+        SPARSE_MATRIX_SIZE_THRESHOLD = 1000
         SQL_BATCH_SIZE = 1000
         SQL_MAX_BATCH_MEMORY_MB = 10
         SQL_BATCH_SIZE_MIN = 100

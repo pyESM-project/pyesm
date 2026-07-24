@@ -14,6 +14,7 @@ from scipy.sparse import issparse
 import pandas as pd
 import cvxpy as cp
 
+from cvxlab.backward_compat import BackwardCompat
 from cvxlab.backend.data_table import DataTable
 from cvxlab.backend.model_settings import ModelSettings, ModelPaths
 from cvxlab.backend.set_table import SetTable
@@ -334,21 +335,9 @@ class Index:
             dir_path=self.paths.model_dir,
         )
 
-        # Backward-compatibility: convert deprecated 'integer: true/false' to 'variable_domain'
-        # Must run before validate_data_structure so 'integer' is not flagged as unexpected.
+        # Normalize deprecated fields before validating the loaded structure.
         if data_structure_key == config.SETUP_INFO[1]:
-            allowed_domains = Defaults.SymbolicDefinitions.VARIABLE_DOMAINS
-            for table_key, table_value in data.items():
-                if isinstance(table_value, dict) and 'integer' in table_value:
-                    integer_val = table_value.pop('integer')
-                    if integer_val is True:
-                        self.logger.warning(
-                            f"Data table '{table_key}' | Field 'integer' is deprecated. "
-                            f"Substituted by field 'variable_domain' with value: "
-                            f"{allowed_domains['INTEGER']}."
-                        )
-                        table_value.setdefault(
-                            'variable_domain', allowed_domains['INTEGER'])
+            BackwardCompat.integer_to_variable_domain(data, self.logger)
 
         invalid_entries = {
             key: problems
@@ -674,9 +663,21 @@ class Index:
                         # check if filters are allowed
                         if filters_key in property_value:
                             var_filters = dict(property_value[filters_key])
+
+                            # verify if the filters are defined in the related set table
+                            set_structure = \
+                                self.sets[property_key].table_structure
+
+                            if filters_key not in set_structure:
+                                problems[f"{path}.{property_key}.{filters_key}"] = \
+                                    f"Filters not defined for related '{property_key}' set."
+                                continue
+
+                            # if filters are defined, check if they are coherent with the
+                            # related set table
                             set_filters = {
                                 key: list(value['values']) for key, value
-                                in self.sets[property_key].table_structure[filters_key].items()
+                                in set_structure[filters_key].items()
                             }
 
                             for filter_key, filter_value in var_filters.items():

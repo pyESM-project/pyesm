@@ -455,16 +455,19 @@ class Problem:
             self.logger.error(msg)
             raise exc.MissingDataError(msg)
 
-        # conversion to sparse matrix if data is sparse
-        if util.is_sparse(
-            data_values,
-            Defaults.NumericalSettings.SPARSE_MATRIX_ZEROS_THRESHOLD
-        ):
-            data_values_converted = csr_matrix(data_values)
-        else:
-            data_values_converted = data_values
+        use_sparse_format = (
+            data_values.size >= Defaults.NumericalSettings.SPARSE_MATRIX_SIZE_THRESHOLD
+            and util.is_sparse(
+                array=data_values,
+                threshold=Defaults.NumericalSettings.SPARSE_MATRIX_ZEROS_THRESHOLD,
+            )
+        )
 
-        cvxpy_var.value = data_values_converted
+        cvxpy_var.value = (
+            csr_matrix(data_values)
+            if use_sparse_format
+            else data_values
+        )
 
     def generate_constant_data(
             self,
