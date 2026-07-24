@@ -619,17 +619,6 @@ class Index:
                 path = f"{table_key}.{coordinates_key}"
                 problems[path] = f"Invalid coordinates: {invalid_coordinates}"
 
-            # all inter-problem sets must be embedded in endogenous data tables coordinates
-            if data_table.type == allowed_var_types['ENDOGENOUS'] or \
-                    isinstance(data_table.type, dict):
-                missing_sets = set(self.sets_split_problem_dict) - \
-                    set(data_table.coordinates)
-
-                if missing_sets:
-                    path = f"{table_key}.{coordinates_key}"
-                    problems[path] = f"Missing inter-problem sets in coordinates: " \
-                        f"{list(missing_sets)}"
-
             # if uncertainty is enabled uncertainty can only be enabled for exogenous or hybrid data tables
             table_uncertainty_enabled = getattr(
                 data_table,
