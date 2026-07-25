@@ -29,7 +29,7 @@ class DataTable:
     - description (Optional[str]): Metadata for the data table. Default is None.
     - type (Optional[str | dict]): Type of allowed data defined in Defaults class. 
         Default is None.
-    - variable_domain (Optional[str]): Domain of the endogenous variable:
+    - domain (Optional[str]): Domain of the endogenous variable:
         'integer' for integer variables, 'boolean' for binary {0,1} variables.
         None means continuous (default).
     - coordinates (Optional[list]): List of coordinates that define the data structure. 
@@ -79,7 +79,7 @@ class DataTable:
         self.name: str = key_name
         self.description: Optional[str] = None
         self.type: Optional[str | dict] = None
-        self.variable_domain: Optional[str] = None
+        self.domain: Optional[str] = None
         self.coordinates: Optional[list] = None
         self.variables_info: Optional[Dict[str, Any]] = None
 

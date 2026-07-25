@@ -581,12 +581,12 @@ class Index:
             ):
                 problems[table_key] = "Table type not allowed."
 
-            # exogenous/constant data tables cannot have a variable_domain set
+            # exogenous/constant data tables cannot have a domain set
             if data_table.type in [
                 allowed_var_types['EXOGENOUS'], allowed_var_types['CONSTANT']
-            ] and data_table.variable_domain is not None:
+            ] and data_table.domain is not None:
                 problems[table_key] = (
-                    "Exogenous or constant table data cannot have 'variable_domain' set. ")
+                    "Exogenous or constant table data cannot have 'domain' set. ")
 
             # coordinates in data table must be coherent with sets
             invalid_coordinates = [

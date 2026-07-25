@@ -85,7 +85,7 @@ class BackwardCompat:
         return new_kwargs
 
     @staticmethod
-    def integer_to_variable_domain(
+    def integer_to_domain(
         data_tables: Dict[str, Any],
         logger: Logger,
     ) -> None:
@@ -93,7 +93,7 @@ class BackwardCompat:
 
         The loaded data-table definitions are updated in-place before they are
         validated. A true ``integer`` value becomes an integer
-        ``variable_domain`` unless that field is already explicitly defined.
+        ``domain`` unless that field is already explicitly defined.
         """
         integer_domain = \
             Defaults.SymbolicDefinitions.VARIABLE_DOMAINS['INTEGER']
@@ -107,7 +107,7 @@ class BackwardCompat:
             if integer_value is True:
                 logger.warning(
                     f"Data table '{table_key}' | Field 'integer' is deprecated. "
-                    f"Substituted by field 'variable_domain' with value: "
+                    f"Substituted by field 'domain' with value: "
                     f"{integer_domain}."
                 )
-                table_value.setdefault('variable_domain', integer_domain)
+                table_value.setdefault('domain', integer_domain)

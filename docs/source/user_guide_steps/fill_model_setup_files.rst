@@ -169,7 +169,7 @@ unchanged.
             type: <str | dict[str, str]>
                 <problem_key_#>: <str>, ...    # optional, for hybrid Data Tables only
 
-            variable_domain: <str>             # optional
+            domain: <str>             # optional
             coordinates: <str | list[str]>
             variables_info:
 
@@ -197,7 +197,7 @@ unchanged.
         * - table_key
           - description
           - type
-          - variable_domain
+          - domain
           - coordinates
           - variables_info
           - value
@@ -240,7 +240,7 @@ key is *case-insensitive* too.
 - ``type``: (required) type of the data table. It can be *endogenous*, *exogenous*,
   *constant*, or a dictionary mapping problem keys to types for integrated
   problems (in this case, variables are defined as *hybrid* type).
-- ``variable_domain``: (optional) domain of the endogenous variable. Accepted values:
+- ``domain``: (optional) domain of the endogenous variable. Accepted values:
   ``integer`` (integer-valued variables, :math:`\mathbb{Z}`) or ``boolean``
   (binary variables, :math:`\{0,1\}`). If omitted, variables are continuous.
 - ``coordinates``: (required) list of Set keys defining the dimensions of the 

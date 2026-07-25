@@ -12,7 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   Accepted values: `integer` (integer variables, $\mathbb{Z}$) or `boolean` (binary
   variables, $\{0,1\}$). Omitting the field keeps the default continuous domain.
   The deprecated `integer: true` syntax is still accepted with a warning and
-  automatically migrated to `variable_domain: integer`.
+  automatically migrated to `domain: integer`.
 - Installation docs: new *Install from Dev Branch* section with `git+https` install
   instructions for users who want the latest unreleased features.
 - Possibility to **run only a selection of scenarios** from Model.run_model() method, 
@@ -62,7 +62,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 - **Backward-compatibility migration for `integer` field**: the migration block that
-  converts `integer: true` → `variable_domain: integer`.
+  converts `integer: true` → `domain: integer`.
   - Added backward-compatibility mapping for `integrated_problems` → `solution_mode`.
 - README images now use absolute raw GitHub URLs so they render correctly on PyPI.
 - Corrected GitHub organization URL (`cvxgrp` → `cvxlab`) throughout installation docs.

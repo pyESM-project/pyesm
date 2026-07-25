@@ -217,7 +217,12 @@ class Defaults:
         - type: 
             type of the data table, can be one of VARIABLE_TYPES or a dictionary 
             with keys as problem name and corresponding values as allowed types.
-        - variable_domain: 
+        - warm_start:
+            (Optional) boolean indicating whether the data table is used for
+            warm starting the optimization problem. Valid only for pure endogenous 
+            Data Tables. If True, the Data Table is exported as input data XLSX/CSV 
+            file alongside exogenous and hybrid Data Tables (default: None).
+        - domain: 
             (Optional) domain of the endogenous variable: 'integer' for integer
             variables, 'boolean' for binary {0,1} variables. If not specified,
             the variable is continuous (default: None).
@@ -315,7 +320,7 @@ class Defaults:
             {
                 METADATA: (OPTIONAL, str),
                 'type': (str, dict),
-                'variable_domain': (OPTIONAL, str),
+                'domain': (OPTIONAL, str),
                 'coordinates': (str, list),
                 'variables_info': {
                     ANY: {

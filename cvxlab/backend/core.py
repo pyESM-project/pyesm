@@ -190,7 +190,7 @@ class Core:
                 if isinstance(data_table.coordinates_dataframe, pd.DataFrame):
                     cvxpy_var = self.problem.create_cvxpy_variable(
                         var_type=allowed_var_types['ENDOGENOUS'],
-                        variable_domain=data_table.variable_domain,
+                        domain=data_table.domain,
                         shape=(data_table.table_length, 1),
                         name=data_table_key,
                     )
@@ -203,7 +203,7 @@ class Core:
                     for problem_key, coord_df in data_table.coordinates_dataframe.items():
                         cvxpy_var[problem_key] = self.problem.create_cvxpy_variable(
                             var_type=allowed_var_types['ENDOGENOUS'],
-                            variable_domain=data_table.variable_domain,
+                            domain=data_table.domain,
                             shape=(len(coord_df), 1),
                             name=f"{data_table_key}_{problem_key}",
                         )
@@ -299,7 +299,8 @@ class Core:
             allow_none_values (bool, optional): If True, allows None values in
                 the data for the variable. Defaults to True.
             var_list_to_update (Optional[List[str]], optional): List of variable keys to
-                update. If empty, updates all exogenous variables. Defaults to None.
+                update. If None, updates all exogenous variables. An empty list
+                is not allowed. Defaults to None.
             filter_negative_values (bool, optional): If True, checks
                 if variable data comply with nonneg attribute defined for the
                 variable, putting negative values to zero. Defaults to False.
@@ -344,17 +345,14 @@ class Core:
                 msg = "One or more passed items are not in the index variables."
                 self.logger.error(msg)
                 raise exc.SettingsError(msg)
-
-            if var_list_to_update == []:
-                selected_var_keys = self.index.list_variables
             else:
                 selected_var_keys = var_list_to_update
 
             with db_handler(self.sqltools):
                 for var_key in selected_var_keys:
-                    variable: Variable = self.index.variables[var_key]
+                    variable = self.index.variables[var_key]
 
-                    var_sing_data_update = False
+                    var_sign_data_update = False
                     var_has_negatives = False
 
                     if variable.type in [
@@ -487,7 +485,7 @@ class Core:
                                         df_list=[original_df, raw_data],
                                         homogeneous_num_types=True,
                                     ):
-                                        var_sing_data_update = True
+                                        var_sign_data_update = True
                                 else:
                                     pass
 
@@ -509,7 +507,7 @@ class Core:
                                 data=pivoted_data
                             )
 
-                    if var_sing_data_update:
+                    if var_sign_data_update:
                         self.logger.warning(
                             f"Negative values set to zero for variable '{var_key}'")
 

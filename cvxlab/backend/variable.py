@@ -34,6 +34,14 @@ class Variable:
     - blank_fill (Optional[float]): Value to fill in case of missing data. Only 
         defined for exogenous variables, reducing effort in inserting numerical 
         data by the user.
+    - nonneg (Optional[bool]): boolean indicating whether the variable is non-negative. 
+        Default is False.
+    - warm_start (Optional[bool]): boolean indicating whether the pure endogenous 
+        variable values are initialized (warm start) before the optimization problem 
+        is executed. If True, input data XLSX/CSV are generated for the related 
+        variable data table, these values are exported to the SQLite database and 
+        are used to initialize the variables (the original cvxpy variables stored 
+        in the related Data Table (default: None).
     - related_table (Optional[str]): The database table that collect the subset
         numerical data associated to the variable.
     - var_info (Optional[Dict[str, Any]]): Raw information about the variable
