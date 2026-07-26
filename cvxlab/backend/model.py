@@ -388,9 +388,6 @@ class Model:
                 for which to load exogenous data. If empty, all exogenous data
                 tables are loaded. Defaults to None.
         """
-        if table_key_list is None:
-            table_key_list = []
-
         with self.logger.log_timing(
             message="Loading input data to SQLite database...",
             level='info',
@@ -483,8 +480,6 @@ class Model:
                 tables are loaded. Defaults to None.
         """
         sqlite_db_file = Defaults.ConfigFiles.SQLITE_DATABASE_FILE
-        if table_key_list is None:
-            table_key_list = []
 
         self.logger.info(
             f"Loading exogenous data into SQLite database '{sqlite_db_file}' "

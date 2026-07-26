@@ -8,7 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
-- **`variable_domain` field for data tables**: replaces the old boolean `integer` field.
+- **`domain` field for data tables**: replaces the old boolean `integer` field.
   Accepted values: `integer` (integer variables, $\mathbb{Z}$) or `boolean` (binary
   variables, $\{0,1\}$). Omitting the field keeps the default continuous domain.
   The deprecated `integer: true` syntax is still accepted with a warning and

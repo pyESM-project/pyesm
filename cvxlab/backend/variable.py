@@ -87,9 +87,10 @@ class Variable:
         self.cols: Dict[str, Any] = {}
         self.value: Optional[str] = None
         self.blank_fill: Optional[float] = None
+        self.nonneg: Optional[bool] = False
+
         self.related_table: Optional[str] = None
         self.var_info: Optional[Dict[str, Any]] = None
-        self.nonneg: Optional[bool] = False
 
         self._fetch_attributes(variable_info)
         self._rearrange_var_info()
@@ -481,6 +482,7 @@ class Variable:
             self,
             data: pd.DataFrame,
             var_key: str | None = None,
+            allow_nan: bool = False
     ) -> pd.DataFrame:
         """Reshape normalized table data to match cvxpy variable shape.
 
@@ -492,10 +494,27 @@ class Variable:
             data (pd.DataFrame): data filtered from the SQLite variable table,
                 related to a unique cvxpy variable.
             var_key (Optional[str]): The variable key for logging purposes.
+            allow_nan (bool): If True, allows NaN values in the reshaped data.
+                Default is False, which raises an error if NaN values are present 
+                after reshaping.
 
         Returns:
             pd.DataFrame: data reshaped and pivoted to be used as cvxpy values.
+
+        Raises:
+            exc.OperationalError: If the reshaping fails due to empty data or NaN values
+                after pivoting and reindexing, unless allow_nan is set to True.
         """
+        if isinstance(data, pd.DataFrame) and data.empty:
+            msg = (
+                "Reshaping variable data failed | "
+                f"Variable '{var_key}' | Data is empty."
+                if var_key else
+                "Reshaping variable data failed | Data is empty."
+            )
+            self.logger.error(msg)
+            raise exc.OperationalError(msg)
+
         values_header = Defaults.Labels.VALUES_FIELD['values'][0]
 
         index_label, columns_label = self.dims_labels
@@ -506,11 +525,13 @@ class Variable:
             index_label = ''
 
         # Pivot the data to reshape it according to variable dimensions
+        # It is not dropping NaN values
         pivoted_data = data.pivot_table(
             index=index_label,
             columns=columns_label,
             values=values_header,
-            aggfunc='first'
+            aggfunc='first',
+            dropna=False,
         )
 
         # Build target index and columns
@@ -523,7 +544,7 @@ class Variable:
             columns=target_columns,
         )
 
-        if pivoted_data.isna().any().any():
+        if not allow_nan and pivoted_data.isna().any().any():
             msg = (
                 "Reshaping variable data failed | "
                 f"Variable '{var_key}' | NaN values after pivot/reindex."

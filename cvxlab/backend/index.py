@@ -70,15 +70,18 @@ class Index:
         self.paths = paths
 
         structures = Defaults.ConfigFiles.SETUP_INFO
-        self.sets = self.load_and_validate_structure(structures[0])
-        self.data = self.load_and_validate_structure(structures[1])
+
+        self.sets: dict[str, SetTable] = \
+            self.load_and_validate_structure(structures[0])
+        self.data: dict[str, DataTable] = \
+            self.load_and_validate_structure(structures[1])
 
         self.check_data_tables_variables_naming_coherence()
         self.check_sets_coherence()
         self.check_data_coherence()
         self.data_tables_completion()
 
-        self.variables: DotDict[str, Variable] = self.generate_variables()
+        self.variables: dict[str, Variable] = self.generate_variables()
         self.fetch_vars_coordinates_info()
 
     @property
@@ -337,7 +340,7 @@ class Index:
 
         # Normalize deprecated fields before validating the loaded structure.
         if data_structure_key == config.SETUP_INFO[1]:
-            BackwardCompat.integer_to_variable_domain(data, self.logger)
+            BackwardCompat.integer_to_domain(data, self.logger)
 
         invalid_entries = {
             key: problems
@@ -530,7 +533,7 @@ class Index:
         The following checks are performed looping over data tables:
 
         - Data tables must be of the allowed type (defined in Defaults class).
-        - Exogenous/constant data tables cannot have 'variable_domain' set.
+        - Exogenous/constant data tables cannot have 'domain' set.
         - Coordinates defining data tables must be valid (defined among sets).
         - All inter-problem sets must be embedded in endogenous data tables coordinates.
 
