@@ -15,7 +15,6 @@ import os
 import shutil
 import json
 import yaml
-import time
 
 import pandas as pd
 
@@ -953,6 +952,61 @@ class FileManager:
             errors, empty_values=[{}])
 
         return errors
+
+    def save_dataframe(
+        self,
+        dataframe: pd.DataFrame,
+        output_path: Path | str,
+        file_format: str,
+        index: bool = False,
+    ) -> Path:
+        """Save a dataframe to the specified file path.
+
+        Args:
+            dataframe: DataFrame to save.
+            output_path: Destination path, including the file name.
+            file_format: Output format, such as ``xlsx``, ``csv``, or
+                ``parquet``.
+            index: Whether to save the dataframe index. Defaults to False.
+
+        Returns:
+            Path: Path of the saved file.
+
+        Raises:
+            ValueError: If the selected file format is unsupported.
+        """
+        output_path = Path(output_path)
+
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+
+        file_format = file_format.lower().strip()
+
+        supported_formats = (
+            Defaults.UncertaintySettings.AVAILABLE_EXPORT_FORMATS
+        )
+
+        if file_format not in supported_formats:
+            raise ValueError(
+                f"Unsupported dataframe format '{file_format}'. "
+                f"Available formats: {supported_formats}."
+            )
+
+        if file_format == "xlsx":
+            dataframe.to_excel(
+                output_path,
+                index=index,
+                engine=self.xls_engine,
+            )
+        elif file_format == "csv":
+            dataframe.to_csv(
+                output_path,
+                index=index,
+            )
+        elif file_format == "parquet":
+            dataframe.to_parquet(
+                output_path,
+                index=index,
+            )
 
     def __repr__(self):
         """Return string representation of FileManager instance."""

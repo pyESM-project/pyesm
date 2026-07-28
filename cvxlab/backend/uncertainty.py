@@ -1,12 +1,11 @@
 """Tools for collecting uncertain parameters from exogenous data tables."""
 
-from tokenize import group
-from typing import Any, Dict, List, Tuple
+from typing import Any, Dict, List, Callable
+from pathlib import Path
+import inspect
 
 import pandas as pd
 import numpy as np
-from typing import Any, Callable
-import inspect
 from SALib.sample import sobol, latin, morris
 from SALib.analyze import (
     sobol as sobol_analyze,
@@ -14,11 +13,13 @@ from SALib.analyze import (
     delta,
     rbd_fast,
 )
+
 from cvxlab.defaults import Defaults
 from cvxlab.backend.index import Index
 from cvxlab.support.sql_manager import SQLManager, db_handler
 from cvxlab.log_exc import exceptions as exc
 from cvxlab.log_exc.logger import Logger
+from cvxlab.support.file_manager import FileManager
 
 
 class Uncertainty:
@@ -65,12 +66,14 @@ class Uncertainty:
 
     ANALYZER_REQUIRED_INPUTS = Defaults.UncertaintySettings.ANALYZER_REQUIRED_INPUTS
 
-    def __init__(self,
-                 sqltools: SQLManager,
-                 index: Index,
-                 paths: Dict,
-                 logger: Logger
-                 ):
+    def __init__(
+        self,
+        sqltools: SQLManager,
+        index: Index,
+        paths: Dict,
+        files: FileManager,
+        logger: Logger
+    ):
         """Initialize the uncertainty-analysis manager.
 
         Args:
@@ -78,6 +81,7 @@ class Uncertainty:
             index: Model index containing uncertainty-enabled tables, variables,
                 sets and scenario information.
             paths: Dictionary-like object containing model and result paths.
+            files: File manager used to export uncertainty-analysis results.
             logger: Parent logger from which the uncertainty-specific child logger
                 is created.
         """
@@ -86,6 +90,7 @@ class Uncertainty:
         self.index = index
         self.paths = paths
         self.logger = logger.get_child(__name__)
+        self.files = files
 
     def collect_uncertain_parameters(self) -> pd.DataFrame:
         """Collect uncertain parameters from uncertainty-enabled exogenous tables.
@@ -618,55 +623,6 @@ class Uncertainty:
             sampler=sampler,
             kwargs=kwargs,
         )
-
-    def save_dataframe(
-        self,
-        dataframe: pd.DataFrame,
-        file_name: str,
-        file_format: str,
-        folder_name: str | None = None,
-
-    ) -> None:
-        """Export a dataframe to the model directory.
-
-        Args:
-            dataframe (pd.DataFrame): Dataframe to export.
-            file_name (str): Output file name without extension.
-            file_format (str): Output format.
-
-        Raises:
-            ValueError: If the requested file format is not supported.
-        """
-
-        file_format = file_format.lower()
-
-        allowed_formats = Defaults.UncertaintySettings.AVAILABLE_EXPORT_FORMATS
-
-        if file_format not in allowed_formats:
-            raise ValueError(
-                f"Save format '{file_format}' not supported. "
-                f"Available formats: {allowed_formats}."
-            )
-
-        output_dir = self.paths["model_dir"]
-
-        if folder_name:
-            output_dir = output_dir / folder_name
-            output_dir.mkdir(parents=True, exist_ok=True)
-            file_path = output_dir / f"{file_name}.{file_format}"
-
-        else:
-
-            file_path = self.paths["model_dir"] / f"{file_name}.{file_format}"
-
-        if file_format == Defaults.UncertaintySettings.XLSX:
-            dataframe.to_excel(file_path, index=False)
-
-        elif file_format == Defaults.UncertaintySettings.CSV:
-            dataframe.to_csv(file_path, index=False)
-
-        elif file_format == Defaults.UncertaintySettings.PARQUET:
-            dataframe.to_parquet(file_path, index=False)
 
     def get_uncertainty_measure_vars_list(self) -> list[str]:
         """Return variables selected as uncertainty-analysis output measures.
@@ -1838,3 +1794,56 @@ class Uncertainty:
         )
 
         return normalized_method
+
+    def save_uncertainty_result(
+        self,
+        dataframe: pd.DataFrame,
+        result_type: str,
+        file_format: str,
+    ) -> Path:
+        """Save an uncertainty-analysis dataframe in the results directory.
+
+        The output file name is selected from the standard uncertainty-result
+        names defined in ``Defaults.UncertaintySettings.RESULT_FILE_NAMES``.
+
+        Args:
+            dataframe: Uncertainty-analysis dataframe to export.
+            result_type: Type of uncertainty result to save, such as ``samples``,
+                ``measures``, ``temp_measures``, or ``gsa_results``.
+            file_format: Output file format.
+
+        Returns:
+            Path: Path of the exported file.
+
+        Raises:
+            TypeError: If ``dataframe`` is not a pandas DataFrame.
+            ValueError: If ``result_type`` is unsupported.
+        """
+        if not isinstance(dataframe, pd.DataFrame):
+            raise TypeError(
+                "'dataframe' must be a pandas DataFrame. "
+                f"Received type: '{type(dataframe).__name__}'."
+            )
+
+        uncertainty_defaults = Defaults.UncertaintySettings
+
+        try:
+            file_name = uncertainty_defaults.RESULT_FILE_NAMES[result_type]
+        except KeyError as error:
+            raise ValueError(
+                f"Unsupported uncertainty result type '{result_type}'. "
+                "Available result types: "
+                f"{sorted(uncertainty_defaults.RESULT_FILE_NAMES)}."
+            ) from error
+
+        output_path = (
+            self.paths.model_dir
+            / uncertainty_defaults.RESULTS_DIR
+            / f"{file_name}.{file_format}"
+        )
+
+        return self.files.save_dataframe(
+            dataframe=dataframe,
+            output_path=output_path,
+            file_format=file_format,
+        )

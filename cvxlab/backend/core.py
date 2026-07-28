@@ -111,6 +111,7 @@ class Core:
             sqltools=self.sqltools,
             index=self.index,
             paths=self.paths,
+            files=self.files,
             logger=self.logger
         )
 

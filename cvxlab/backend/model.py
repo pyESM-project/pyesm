@@ -1146,6 +1146,7 @@ class Model():
             file_format=file_format,
         )
 
+    # spostare
     def _sort_variables(
         self,
     ) -> list[str]:
@@ -1200,11 +1201,11 @@ class Model():
             force_overwrite=force_overwrite,
         )
 
-        self.core.check_exogenous_data_coherence(
-            is_uncertain=True,
-        )
+        # self.core.check_exogenous_data_coherence(
+        #     is_uncertain=True,
+        # )
 
-        self.core.initialize_problems_variables()
+        # self.core._initialize_problems_variables()
 
     def run_uncertainty(
             self,
@@ -1287,17 +1288,18 @@ class Model():
         self.uncertainty_samples = samples_df
         self.sampling_problem = sampling_problem
 
-        # if uncertainty_cfg.save_samples:
-        #     self.core.uncertainty.save_dataframe(
-        #         dataframe=samples_df,
-        #         file_name=Defaults.UncertaintySettings.UNCERTAINTY_SAMPLES_FILE_NAME,
-        #         folder_name=Defaults.UncertaintySettings.RESULTS_DIR,
-        #         file_format=uncertainty_cfg.file_format,
-        #     )
+        if uncertainty_cfg.save_samples:
+            self.core.uncertainty.save_uncertainty_result(
+                dataframe=samples_df,
+                result_type=Defaults.UncertaintySettings.SAMPLES,
+                file_format=uncertainty_cfg.file_format,
+            )
 
         # # 2. Initialize problem structure
-
-        # self._initialize_problem_structure(force_overwrite=True)
+        #########################################
+        #   fino qui ricorda metodo commentato  #
+        #########################################
+        self._initialize_problem_structure(force_overwrite=True)
 
         # deterministic_tables_vars, uncertainty_tables_vars = (
         #     self._sort_variables(
@@ -1411,6 +1413,7 @@ class Model():
         # if failed_runs_report:
         #     self._warn_failed_model_runs(failed_runs_report)
 
+    # spostare
     def _warn_failed_model_runs(
         self,
         failed_runs_report: dict[int, dict],

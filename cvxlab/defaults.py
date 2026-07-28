@@ -773,11 +773,24 @@ class Defaults:
         ]
 
         # Output files and directories
-        UNCERTAINTY_SAMPLES_FILE_NAME = "uncertainty_samples"
-        UNCERTAINTY_MEASURES_FILE_NAME = "uncertainty_measures"
-        UNCERTAINTY_MEASURES_TEMP_FILE_NAME = "uncertainty_measures_temp"
+        SAMPLES_FILE_NAME = "uncertainty_samples"
+        MEASURES_FILE_NAME = "uncertainty_measures"
+        MEASURES_TEMP_FILE_NAME = "uncertainty_measures_temp"
         GSA_FILE_NAME = "GSA_analysis"
         RESULTS_DIR = "results"
+
+        # Types of uncertainty files output.
+        SAMPLES = "samples"
+        MEASURES = "measures"
+        TEMP_MEASURES = "temp_measures"
+        GSA_RESULTS = "gsa_results"
+
+        RESULT_FILE_NAMES = {
+            SAMPLES: SAMPLES_FILE_NAME,
+            MEASURES: MEASURES_FILE_NAME,
+            TEMP_MEASURES: MEASURES_TEMP_FILE_NAME,
+            GSA_RESULTS: GSA_FILE_NAME,
+        }
 
     _SUBGROUPS = [
         LiteralTypes,
