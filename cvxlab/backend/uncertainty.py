@@ -155,9 +155,6 @@ class Uncertainty:
             group_name_col,
         }
 
-        if not self.index.is_uncertainty_analysis:
-            return pd.DataFrame()
-
         uncertainty_tables = {
             table_key: table
             for table_key, table in self.index.data.items()
@@ -171,39 +168,11 @@ class Uncertainty:
             )
             return pd.DataFrame()
 
-        required_columns = {
-            id_col,
-            is_uncertain_col,
-            lower_col,
-            upper_col,
-            group_name_col,
-        }
-
         with db_handler(self.sqltools):
 
             for table_name, table in uncertainty_tables.items():
 
                 df = self.sqltools.table_to_dataframe(table_name=table_name)
-
-                missing_columns = required_columns.difference(df.columns)
-                if missing_columns:
-                    raise exc.SettingsError(
-                        "Uncertainty parameter collection failed | "
-                        f"Table '{table_name}' is uncertainty-enabled but is "
-                        f"missing required columns: {sorted(missing_columns)}."
-                    )
-
-                if df[id_col].duplicated().any():
-                    duplicated_ids = (
-                        df.loc[df[id_col].duplicated(), id_col]
-                        .dropna()
-                        .tolist()
-                    )
-                    raise exc.SettingsError(
-                        "Uncertainty parameter collection failed | "
-                        f"Table '{table_name}' contains duplicated ids: "
-                        f"{duplicated_ids}."
-                    )
 
                 is_uncertain_mask = (
                     df[is_uncertain_col]
@@ -214,9 +183,6 @@ class Uncertainty:
                 )
 
                 uncertain_df = df.loc[is_uncertain_mask].copy()
-
-                if uncertain_df.empty:
-                    continue
 
                 coordinate_columns = [
                     column
@@ -231,23 +197,6 @@ class Uncertainty:
                     lower_val = pd.to_numeric(row[lower_col], errors="coerce")
                     upper_val = pd.to_numeric(row[upper_col], errors="coerce")
 
-                    if pd.isna(lower_val) or pd.isna(upper_val):
-                        raise exc.SettingsError(
-                            "Uncertainty parameter collection failed | "
-                            f"Table '{table_name}', id '{row_id}' is marked as "
-                            "uncertain but has missing or non-numeric bounds. "
-                            f"lower_bound='{row[lower_col]}', "
-                            f"upper_bound='{row[upper_col]}'."
-                        )
-
-                    if lower_val > upper_val:
-                        raise exc.SettingsError(
-                            "Uncertainty parameter collection failed | "
-                            f"Table '{table_name}', id '{row_id}' has invalid "
-                            f"bounds: lower_bound={lower_val} > "
-                            f"upper_bound={upper_val}."
-                        )
-
                     coordinate_values = {
                         column: row[column]
                         for column in coordinate_columns
@@ -257,10 +206,7 @@ class Uncertainty:
 
                     records.append(
                         {
-                            parameter_name_col: self._build_parameter_name(
-                                table_name=table_name,
-                                row_id=row_id,
-                            ),
+                            parameter_name_col: f"table: {table_name}; id: {row_id}",
                             table_name_col: table_name,
                             id_col: row_id,
                             lower_bound_key: lower_val,
@@ -352,7 +298,7 @@ class Uncertainty:
 
             problem["groups"] = normalized_group_names.tolist()
 
-        return mapping_df, problem
+        return problem
 
     def validate_uncertainty_data(self) -> None:
         """Validate row-level uncertainty information.
@@ -723,7 +669,20 @@ class Uncertainty:
             dataframe.to_parquet(file_path, index=False)
 
     def get_uncertainty_measure_vars_list(self) -> list[str]:
-        """Return variables marked as uncertainty-analysis output measures."""
+        """Return variables selected as uncertainty-analysis output measures.
+
+        The method scans the variables defined in the model index and returns
+        the keys of those marked with
+        ``uncertainty_measure=True``.
+
+        Returns:
+            list[str]: Variable keys selected as uncertainty-analysis output
+            measures.
+
+        Raises:
+            exc.SettingsError: If no variable is marked as an uncertainty-analysis
+                measure.
+        """
         uncertainty_measures = [
             var_key
             for var_key, variable in self.index.variables.items()
@@ -733,6 +692,15 @@ class Uncertainty:
                 False,
             ) is True
         ]
+
+        if not uncertainty_measures:
+            raise exc.SettingsError(
+                "Uncertainty analysis configuration invalid | "
+                "No uncertainty measures are defined. "
+                "At least one endogenous scalar variable must be marked with "
+                f"'{Defaults.UncertaintySettings.UNCERTAINTY_MEASURE_KEY}=True'."
+            )
+
         return uncertainty_measures
 
     def check_uncertainty_measure_variables_are_scalar(self) -> None:
@@ -888,7 +856,7 @@ class Uncertainty:
             return " | ".join(str(item) for item in scenario_coordinates)
 
         return scenario_coordinates
-    
+
     def collect_uncertainty_measures_for_run(
         self,
         run_id: int,
@@ -985,6 +953,7 @@ class Uncertainty:
             )
 
         return pd.DataFrame(records.values())
+
     def _normalize_variable_data_by_problem(
             self,
             variable_data,
@@ -1038,15 +1007,6 @@ class Uncertainty:
         ]
 
         return uncertain_tables
-
-    def _build_parameter_name(
-            self,
-            table_name: str,
-            row_id: Any,
-    ) -> str:
-        """Build the unique SALib name of an uncertain parameter."""
-
-        return f"table: {table_name}; id: {row_id}"
 
     def get_deterministic_tables(self) -> list[str]:
         """Return exogenous data tables containing no uncertain variables."""
@@ -1757,3 +1717,124 @@ class Uncertainty:
             records.append(record)
 
         return pd.DataFrame(records)
+
+    def create_sampling_problem_and_sample_data(
+        self,
+        method: str,
+        groups: bool,
+        **kwargs: Any,
+    ) -> pd.DataFrame:
+        """Build the SALib problem and generate uncertainty samples.
+
+        The method collects the uncertain parameters defined in the model data,
+        creates the corresponding SALib problem specification, and generates the
+        sample matrix using the selected sampling method.
+
+        Args:
+            method: Name of the selected SALib sampling method.
+            groups: Whether uncertainty groups must be included in the sampling
+                problem.
+            **kwargs: Method-specific keyword arguments passed to the selected
+                SALib sampler.
+
+        Returns:
+            tuple[dict[str, Any], pd.DataFrame]: A tuple containing:
+
+            - the SALib problem specification;
+            - the generated uncertainty sample dataframe.
+
+        Raises:
+            exc.SettingsError: If the uncertain-parameter configuration or group
+                definition is invalid.
+            ValueError: If the selected sampling method is unsupported or sample
+                generation fails.
+            TypeError: If the sampler arguments are missing or invalid.
+        """
+        sampling_problem = (
+            self.create_sampling_problem(
+                groups=groups
+            )
+        )
+
+        samples_df = (
+            self.sample_data(
+                method=method,
+                problem=sampling_problem,
+                **kwargs
+            )
+        )
+
+        return sampling_problem, samples_df
+
+    def validate_sampling_settings(
+        self,
+        method: str,
+        groups: bool,
+        save_samples: bool,
+        save_measures: bool,
+        temp_save: bool,
+        file_format: str | None,
+        method_kwargs: dict[str, Any],
+    ) -> str:
+        """Validate uncertainty sampling settings.
+
+        This method validates the general uncertainty-analysis configuration,
+        the consistency of the output-saving options, and the arguments passed
+        to the selected SALib sampling method.
+
+        Args:
+            method: Name of the SALib sampling method.
+            groups: Whether uncertain parameters must be sampled by group.
+            save_samples: Whether generated samples must be exported.
+            save_measures: Whether uncertainty measures must be exported.
+            temp_save: Whether uncertainty measures must be saved incrementally
+                during model execution.
+            file_format: File format used to export samples and measures.
+            method_kwargs: Keyword arguments passed to the selected SALib
+                sampling function.
+
+        Returns:
+            str: Normalized sampling method name.
+
+        Raises:
+            ValueError: If uncertainty analysis is disabled or the saving
+                options are inconsistent.
+            TypeError: If required sampler arguments are missing or unexpected
+                arguments are provided.
+            exc.SettingsError: If the sampling method or grouped sampling
+                configuration is invalid.
+        """
+        if not self.index.is_uncertainty_analysis:
+            raise ValueError(
+                "Uncertainty analysis is not enabled. "
+                f"Create the model with "
+                f"{Defaults.Labels.UNCERTAINTY_SETTING_KEY}=True."
+            )
+
+        if not save_samples and file_format is not None:
+            self.logger.warning(
+                "Uncertainty analysis | 'file_format' specified but "
+                "'save_samples=False'. Samples will not be saved."
+            )
+
+        if not save_measures and file_format is not None:
+            self.logger.warning(
+                "Uncertainty analysis | 'file_format' specified but "
+                "'save_measures=False'. Measures will not be saved."
+            )
+
+        if temp_save and not save_measures:
+            raise ValueError(
+                "Uncertainty analysis | 'temp_save=True' requires "
+                "'save_measures=True' in sampling_settings(...)."
+            )
+
+        normalized_method = method.lower()
+
+        self.validate_sampling_config(
+            method=normalized_method,
+            groups=groups,
+            kwargs=method_kwargs,
+        )
+
+        return normalized_method

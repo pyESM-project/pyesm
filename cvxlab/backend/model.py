@@ -12,6 +12,7 @@ data indexing, functionalities for SQLite database management, problem formulati
 and solution through cvxpy package.
 """
 from pathlib import Path
+from re import S
 from typing import Any, List, Optional
 from dataclasses import dataclass, field
 import shutil
@@ -194,7 +195,6 @@ class Model():
             self.sampling_problem: dict[str, Any] | None = None
             self.uncertainty_samples: pd.DataFrame | None = None
             self.uncertainty_measures: pd.DataFrame | None = None
-            self.par_mapping: pd.DataFrame | None = None
             self.gsa_results: pd.DataFrame | None = None
 
             if self.settings.use_existing_data:
@@ -996,63 +996,6 @@ class Model():
         class_name = type(self).__name__
         return f'{class_name}'
 
-    def _sample_data(
-        self,
-        method: str,
-        groups: bool,
-        **kwargs: Any,
-    ) -> pd.DataFrame:
-        """Build the sampling problem and generate uncertainty samples.
-
-            The method collects row-level uncertain parameters from the model database,
-            creates the SALib problem specification, generates the sampling problem according
-            the selected sampler, and stores the resulting objects on the Model
-            instance.
-
-            The following attributes are updated:
-
-            - ``self.sampling_problem``: SALib format problem dictionary;
-            - ``self.uncertainty_samples``: generated sample dataframe;
-            - ``self.par_mapping``: mapping between SALib parameter names and
-            CVXLab database rows.
-
-            Args:
-                method(str): selected sampling method
-                groups(Optional[bool]): if True allows to perform sampling by data groups, useful
-                in case of many uncertain parameters to decrease computational cost. Defaults to
-                False
-                **kwargs: Method-specific keyword arguments according to the selected
-                    SALib sampler.
-
-            Returns:
-                pd.DataFrame: Generated samples
-
-            Raises:
-                exc.SettingsError: If the uncertain-parameter configuration or group
-                    definition is invalid.
-                ValueError: If the selected sampling method is unsupported.
-                TypeError: If the sampler arguments are invalid.
-    """
-        mapping_df, sample_problem = (
-            self.core.uncertainty.create_sampling_problem(
-                groups=groups
-            )
-        )
-
-        samples_df = (
-            self.core.uncertainty.sample_data(
-                method=method,
-                problem=sample_problem,
-                **kwargs
-            )
-        )
-
-        self.sampling_problem = sample_problem
-        self.uncertainty_samples = samples_df
-        self.par_mapping = mapping_df
-
-        return samples_df
-
     def sampling_settings(
         self,
         method: str,
@@ -1086,15 +1029,7 @@ class Model():
                 ``optimal_trajectories``.
 
         Returns:
-            SamplingSettingsConfig: Stored sampling configuration.
-
-        Raises:
-            ValueError: If uncertainty analysis is disabled or the sampling method
-                is unsupported.
-            TypeError: If required sampler arguments are missing or unexpected
-                arguments are provided.
-            exc.SettingsError: If grouped sampling is requested with an invalid
-                uncertainty-group configuration.
+            SamplingSettingsConfig: Stored sampling configuration..
         """
         if not self.is_uncertainty_analysis:
             raise ValueError(
@@ -1103,29 +1038,15 @@ class Model():
                 f"{Defaults.Labels.UNCERTAINTY_SETTING_KEY}=True."
             )
 
-        if not save_samples and file_format is not None:
-            self.logger.warning(
-                "Uncertainty analysis | 'file_format' specified but "
-                "'save_samples=False'. Samples will not be saved."
-            )
-        if not save_measures and file_format is not None:
-            self.logger.warning(
-                "Uncertainty analysis | 'file_format' specified but "
-                "'save_measures=False'. Measures will not be saved."
-            )
-
-        if temp_save and not save_samples:
-            raise ValueError(
-                "Uncertainty analysis | 'temp_save=True' requires "
-                "'save_measures=True' in sampling_settings(...)."
-            )
-
-        method = method.lower()
-
-        self.core.uncertainty.validate_sampling_config(
+        method = self.core.uncertainty.validate_sampling_settings(
             method=method,
             groups=groups,
-            kwargs=method_kwargs)
+            save_samples=save_samples,
+            save_measures=save_measures,
+            temp_save=temp_save,
+            file_format=file_format,
+            method_kwargs=method_kwargs,
+        )
 
         self._sampling_settings = SamplingSettingsConfig(
             method=method,
@@ -1224,56 +1145,6 @@ class Model():
             save_analysis=save_analysis,
             file_format=file_format,
         )
-
-    def _validate_uncertainty_run_configuration(self) -> None:
-        """Validate that uncertainty analysis can be executed."""
-
-        if not self.is_uncertainty_analysis:
-            raise ValueError(
-                "Uncertainty analysis is not enabled. "
-                f"Create the model with "
-                f"{Defaults.Labels.UNCERTAINTY_SETTING_KEY}=True."
-            )
-
-        if self._sampling_settings is None:
-            raise ValueError(
-                "No uncertainty analysis configured. "
-                "Call model.sampling_settings(...) before model.run_uncertainty()."
-            )
-
-        uncertainty_measures = (
-            self.core.uncertainty.get_uncertainty_measure_vars_list()
-        )
-
-        if not uncertainty_measures:
-            raise exc.SettingsError(
-                "Uncertainty analysis configuration invalid | "
-                "No uncertainty measures are defined. "
-                "At least one endogenous scalar variable must be marked with "
-                f"'{Defaults.UncertaintySettings.UNCERTAINTY_MEASURE_KEY}=True'."
-            )
-
-    def _generate_uncertainty_samples(
-            self,
-            uncertainty_cfg: SamplingSettingsConfig,
-    ) -> pd.DataFrame:
-        """Generate uncertainty samples."""
-
-        self._sample_data(
-            method=uncertainty_cfg.method,
-            groups=uncertainty_cfg.groups,
-            **uncertainty_cfg.method_kwargs,
-        )
-
-        samples_df = self.uncertainty_samples
-
-        if samples_df is None or samples_df.empty:
-            raise ValueError(
-                "Uncertainty analysis failed | "
-                "No uncertainty samples were generated."
-            )
-
-        return samples_df
 
     def _sort_variables(
         self,
@@ -1396,141 +1267,149 @@ class Model():
             Deterministic exogenous values are loaded once before the run loop.
             Values from uncertainty-enabled tables are updated for every run.
 """
+        uncertainty_cfg = self._sampling_settings
 
         run_id_col = Defaults.UncertaintySettings.RUN_ID
 
-        self._validate_uncertainty_run_configuration()
+        if uncertainty_cfg is None:
+            raise ValueError(
+                "No uncertainty analysis configured. "
+                "Call model.sampling_settings(...) before model.run_uncertainty()."
+            )
 
         # 1. Generate uncertainty samples.
-        uncertainty_cfg = self._sampling_settings
-
-        samples_df = self._generate_uncertainty_samples(
-            uncertainty_cfg=uncertainty_cfg,
+        sampling_problem, samples_df = self.core.uncertainty.create_sampling_problem_and_sample_data(
+            method=uncertainty_cfg.method,
+            groups=uncertainty_cfg.groups,
+            **uncertainty_cfg.method_kwargs,
         )
 
-        if uncertainty_cfg.save_samples:
-            self.core.uncertainty.save_dataframe(
-                dataframe=samples_df,
-                file_name=Defaults.UncertaintySettings.UNCERTAINTY_SAMPLES_FILE_NAME,
-                folder_name=Defaults.UncertaintySettings.RESULTS_DIR,
-                file_format=uncertainty_cfg.file_format,
-            )
+        self.uncertainty_samples = samples_df
+        self.sampling_problem = sampling_problem
 
-        # 2. Initialize problem structure
+        # if uncertainty_cfg.save_samples:
+        #     self.core.uncertainty.save_dataframe(
+        #         dataframe=samples_df,
+        #         file_name=Defaults.UncertaintySettings.UNCERTAINTY_SAMPLES_FILE_NAME,
+        #         folder_name=Defaults.UncertaintySettings.RESULTS_DIR,
+        #         file_format=uncertainty_cfg.file_format,
+        #     )
 
-        self._initialize_problem_structure(force_overwrite=True)
+        # # 2. Initialize problem structure
 
-        deterministic_tables_vars, uncertainty_tables_vars = (
-            self._sort_variables(
-            )
-        )
+        # self._initialize_problem_structure(force_overwrite=True)
 
-        # 3. Load deterministic exogenous values only once.
-        self.core.data_to_cvxpy_exogenous_vars(
-            allow_none_values=False,
-            var_list_to_update=deterministic_tables_vars,
-        )
-        # 5. Run one model instance for each sampled run_id.
+        # deterministic_tables_vars, uncertainty_tables_vars = (
+        #     self._sort_variables(
+        #     )
+        # )
 
-        uncertainty_measure_records = []
-        failed_runs_report: dict[int, dict] = {}
+        # # 3. Load deterministic exogenous values only once.
+        # self.core.data_to_cvxpy_exogenous_vars(
+        #     allow_none_values=False,
+        #     var_list_to_update=deterministic_tables_vars,
+        # )
+        # # 5. Run one model instance for each sampled run_id.
 
-        for run_id in samples_df[run_id_col]:
+        # uncertainty_measure_records = []
+        # failed_runs_report: dict[int, dict] = {}
 
-            self.core.data_to_cvxpy_exogenous_vars(
-                allow_none_values=False,
-                var_list_to_update=uncertainty_tables_vars,
-                is_hybrid=True,
-                samples_df=samples_df,
-                run_id=run_id,
-            )
+        # for run_id in samples_df[run_id_col]:
 
-            self.core.logger.info(
-                f"Running uncertainty-analysis run {run_id}."
-            )
+        #     self.core.data_to_cvxpy_exogenous_vars(
+        #         allow_none_values=False,
+        #         var_list_to_update=uncertainty_tables_vars,
+        #         is_hybrid=True,
+        #         samples_df=samples_df,
+        #         run_id=run_id,
+        #     )
 
-            self.core.problem.generate_numerical_problems(force_overwrite=True)
+        #     self.core.logger.info(
+        #         f"Running uncertainty-analysis run {run_id}."
+        #     )
 
-            self.run_model(
-                force_overwrite=force_overwrite,
-                integrated_problems=integrated_problems,
-                convergence_monitoring=convergence_monitoring,
-                solver=solver,
-                solver_verbose=solver_verbose,
-                solver_settings=solver_settings,
-                convergence_norm=convergence_norm,
-                convergence_tables_to_check=convergence_tables_to_check,
-                convergence_tables_to_skip=convergence_tables_to_skip,
-                relative_tolerance=relative_tolerance,
-                maximum_iterations=maximum_iterations,
-                keep_previous_iteration_db=keep_previous_iteration_db,
-            )
+        #     self.core.problem.generate_numerical_problems(force_overwrite=True)
 
-            statuses_by_scenario = self.core.get_current_problem_status_by_scenario()
+        #     self.run_model(
+        #         force_overwrite=force_overwrite,
+        #         integrated_problems=integrated_problems,
+        #         convergence_monitoring=convergence_monitoring,
+        #         solver=solver,
+        #         solver_verbose=solver_verbose,
+        #         solver_settings=solver_settings,
+        #         convergence_norm=convergence_norm,
+        #         convergence_tables_to_check=convergence_tables_to_check,
+        #         convergence_tables_to_skip=convergence_tables_to_skip,
+        #         relative_tolerance=relative_tolerance,
+        #         maximum_iterations=maximum_iterations,
+        #         keep_previous_iteration_db=keep_previous_iteration_db,
+        #     )
 
-            solved_scenarios = [
-                scenario_key
-                for scenario_key, status in statuses_by_scenario.items()
-                if status == "optimal"
-            ]
+        #     statuses_by_scenario = self.core.get_current_problem_status_by_scenario()
 
-            failed_scenarios = {
-                scenario_key: status
-                for scenario_key, status in statuses_by_scenario.items()
-                if status != "optimal"
-            }
+        #     solved_scenarios = [
+        #         scenario_key
+        #         for scenario_key, status in statuses_by_scenario.items()
+        #         if status == "optimal"
+        #     ]
 
-            if solved_scenarios:
-                solved_records = self.core.uncertainty.collect_uncertainty_measures_for_run(
-                    run_id=run_id,
-                    scenarios_to_collect=solved_scenarios,
-                )
-                uncertainty_measure_records.append(solved_records)
+        #     failed_scenarios = {
+        #         scenario_key: status
+        #         for scenario_key, status in statuses_by_scenario.items()
+        #         if status != "optimal"
+        #     }
 
-            if failed_scenarios:
+        #     if solved_scenarios:
+        #         solved_records = self.core.uncertainty.collect_uncertainty_measures_for_run(
+        #             run_id=run_id,
+        #             scenarios_to_collect=solved_scenarios,
+        #         )
+        #         uncertainty_measure_records.append(solved_records)
 
-                failed_records = self.core.uncertainty.create_failed_measure_records_for_run(
-                    run_id=run_id,
-                    failed_scenarios=failed_scenarios,
-                )
+        #     if failed_scenarios:
 
-                uncertainty_measure_records.append(failed_records)
+        #         failed_records = self.core.uncertainty.create_failed_measure_records_for_run(
+        #             run_id=run_id,
+        #             failed_scenarios=failed_scenarios,
+        #         )
 
-                failed_runs_report[run_id] = failed_scenarios
+        #         uncertainty_measure_records.append(failed_records)
 
-            if uncertainty_cfg.temp_save and uncertainty_measure_records:
-                uncertainty_measures_temp_df = pd.concat(
-                    uncertainty_measure_records,
-                    ignore_index=True,
-                )
+        #         failed_runs_report[run_id] = failed_scenarios
 
-                self.uncertainty_measures = uncertainty_measures_temp_df
+        #     if uncertainty_cfg.temp_save and uncertainty_measure_records:
+        #         uncertainty_measures_temp_df = pd.concat(
+        #             uncertainty_measure_records,
+        #             ignore_index=True,
+        #         )
 
-                self.core.uncertainty.save_dataframe(
-                    dataframe=uncertainty_measures_temp_df,
-                    file_name=Defaults.UncertaintySettings.UNCERTAINTY_MEASURES_TEMP_FILE_NAME,
-                    folder_name=Defaults.UncertaintySettings.RESULTS_DIR,
-                    file_format=uncertainty_cfg.file_format,
-                )
+        #         self.uncertainty_measures = uncertainty_measures_temp_df
 
-        uncertainty_measures_df = pd.concat(
-            uncertainty_measure_records,
-            ignore_index=True,
-        )
+        #         self.core.uncertainty.save_dataframe(
+        #             dataframe=uncertainty_measures_temp_df,
+        #             file_name=Defaults.UncertaintySettings.UNCERTAINTY_MEASURES_TEMP_FILE_NAME,
+        #             folder_name=Defaults.UncertaintySettings.RESULTS_DIR,
+        #             file_format=uncertainty_cfg.file_format,
+        #         )
 
-        self.uncertainty_measures = uncertainty_measures_df
+        # uncertainty_measures_df = pd.concat(
+        #     uncertainty_measure_records,
+        #     ignore_index=True,
+        # )
 
-        if uncertainty_cfg.save_measures:
-            self.core.uncertainty.save_dataframe(
-                dataframe=uncertainty_measures_df,
-                file_name=Defaults.UncertaintySettings.UNCERTAINTY_MEASURES_FILE_NAME,
-                folder_name=Defaults.UncertaintySettings.RESULTS_DIR,
-                file_format=uncertainty_cfg.file_format,
-            )
+        # self.uncertainty_measures = uncertainty_measures_df
 
-        # 7. Final warning on failed scenario-runs.
-        if failed_runs_report:
-            self._warn_failed_model_runs(failed_runs_report)
+        # if uncertainty_cfg.save_measures:
+        #     self.core.uncertainty.save_dataframe(
+        #         dataframe=uncertainty_measures_df,
+        #         file_name=Defaults.UncertaintySettings.UNCERTAINTY_MEASURES_FILE_NAME,
+        #         folder_name=Defaults.UncertaintySettings.RESULTS_DIR,
+        #         file_format=uncertainty_cfg.file_format,
+        #     )
+
+        # # 7. Final warning on failed scenario-runs.
+        # if failed_runs_report:
+        #     self._warn_failed_model_runs(failed_runs_report)
 
     def _warn_failed_model_runs(
         self,
