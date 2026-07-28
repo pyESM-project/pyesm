@@ -61,7 +61,58 @@ as follows:
      - Contains the numerical values of the Data Table. **This is the only column
        that should be filled by the user**.
 
-  
+
+Regenerating input data files
+-----------------------------
+
+Input data files can be regenerated for all exogenous Data Tables or for a
+selected subset.
+
+API: :py:meth:`~cvxlab.Model.generate_input_data_files`
+
+
+Typical usage is shown below:
+
+.. code-block:: python
+
+    model.generate_input_data_files(
+        force_overwrite=False,
+        table_key_list=["data_table_1", "data_table_2"],
+        values_cleanup=True,
+    )
+
+
+Parameters are described in the following table:
+
+.. list-table::
+   :header-rows: 1
+   :widths: 25 55 20
+
+   * - Parameter
+     - Description
+     - Default
+   * - ``force_overwrite``
+     - If ``True``, replaces existing target Excel sheets or CSV files without
+       asking for confirmation. If ``False``, confirmation is requested before
+       replacing an existing target. Adding a new sheet to an existing Excel
+       workbook does not require confirmation.
+     - ``False``
+   * - ``table_key_list``
+     - List of exogenous Data Table keys for which input files or sheets are
+       generated. If ``None`` or an empty list is passed, all exogenous Data
+       Tables are selected. Invalid or non-string keys raise an error.
+     - ``None`` (all exogenous Data Tables)
+   * - ``values_cleanup``
+     - If ``True``, clears the ``values`` column when exporting the selected
+       tables. If ``False``, preserves values currently stored in the SQLite
+       database.
+     - ``True``
+
+With a single Excel input file, only the selected sheets are generated or
+replaced; other sheets remain unchanged. With multiple input files, only the
+files corresponding to the selected Data Tables are generated or replaced.
+
+
 Notes
 -----
 

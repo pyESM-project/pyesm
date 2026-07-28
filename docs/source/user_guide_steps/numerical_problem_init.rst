@@ -38,7 +38,7 @@ Typical Usage
     
     # [CURRENT STEP] Initialization of numerical problem(s)
     model.refresh_database_and_initialize_problem(
-        table_key_list=[...],
+        table_key_list=None,
         force_overwrite=False,
     )
 
@@ -54,10 +54,10 @@ Parameters description
      - Description
      - Default
    * - ``table_key_list``
-     - List of data table keys to refresh from the input files. Leave empty when
-       initializing a model for the first time; provide specific table keys when
-       only selected data have changed.
-     - ``[]`` (all tables)
+     - List of exogenous Data Table keys to refresh from the input files. If
+       ``None`` or an empty list is passed, all exogenous Data Tables are
+       refreshed. Invalid or non-string keys raise an error.
+     - ``None`` (all exogenous Data Tables)
    * - ``force_overwrite``
      - If ``True``, overwrites existing SQLite data and numerical problem
        definitions without confirmation.
@@ -71,9 +71,13 @@ When :py:meth:`~cvxlab.Model.refresh_database_and_initialize_problem` is called
 on a Model instance:
 
 - Loads exogenous data from the *input data Excel file(s)*, assigning values to 
-  exogenous data tables in the *SQLite database*. In case ``table_key_list`` is 
-  specified, only the listed tables are refreshed; otherwise, all exogenous data 
-  tables are refreshed. 
+  exogenous data tables in the *SQLite database*. If ``table_key_list`` contains
+  specific keys, only those tables are refreshed; if it is ``None`` or empty,
+  all exogenous Data Tables are refreshed.
+- Before updating the database, verifies that every selected key has a
+  corresponding input file or Excel sheet. Unknown file or sheet keys and
+  missing selected keys are collected and reported together. Valid model tables
+  that are present but not selected are left untouched.
 - Parses exogenous Data Tables, and fills the *NULL* entries in the related data 
   tables with value provided by the ``blank_fill`` variable attribute. This 
   facilitates the user in filling repetitive data entries in data tables. 

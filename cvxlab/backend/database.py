@@ -541,35 +541,34 @@ class Database:
 
     def generate_blank_data_input_files(
         self,
+        table_key_list: List[str],
         file_extension: Optional[str] = None,
-        table_key_list: Optional[List[str]] = None,
         values_cleanup: bool = True,
+        force_overwrite: bool = False,
     ) -> None:
         """Generate blank data input files for exogenous data tables.
 
         This method generates blank excel data input file/s for exogenous data 
         tables, to be filled by the user.
-        This method iterates over each data table in the Index, or in a list provided
-        by the 'table_key_list' argument. If the table's type is 'exogenous', it exports
-        the table's data from the SQLite database to an Excel file. 
+        This method iterates over the validated exogenous data tables in
+        'table_key_list' and exports their data from the SQLite database to an
+        input file.
         If 'multiple_input_files' setting is True, a separate file is created for each
         table. Otherwise, all tables are exported to a single file as separate tabs.
 
         Args:
+            table_key_list (List[str]): Validated list of exogenous data table
+                keys for which input files will be generated.
             file_extension (Optional[str]): The format of the input data files. 
                 Defaults to None. If None, file type is taken from settings.
-            table_key_list (Optional[List[str]], optional): A list of table keys to generate
-                input files for. If empty, all exogenous data tables in the Index
-                are processed. Defaults to None.
             values_cleanup (bool, optional): Whether to clean up values in the
                 input data files. Defaults to True.
+            force_overwrite (bool, optional): Whether to overwrite existing
+                input data files or sheets without asking for confirmation.
+                Defaults to False.
         """
         default_file_name = Defaults.ConfigFiles.INPUT_DATA_FILE_NAME
-        allowed_var_types = Defaults.SymbolicDefinitions.VARIABLE_TYPES
         value_field = Defaults.Labels.VALUES_FIELD['values'][0]
-
-        if table_key_list is None:
-            table_key_list = []
 
         if file_extension is None:
             file_extension = self.settings.input_data_files_type
@@ -583,24 +582,12 @@ class Database:
             self.files.create_dir(self.paths.input_data_dir)
 
         with db_handler(self.sqltools):
-            for table_key, table in self.index.data.items():
-                table: DataTable
-
-                if table_key_list != [] and table_key not in table_key_list:
-                    continue
-
-                if table.type in [
-                    allowed_var_types['ENDOGENOUS'],
-                    allowed_var_types['CONSTANT']
-                ]:
-                    continue
+            for table_key in table_key_list:
 
                 if self.settings.multiple_input_files:
                     output_file_name = f"{table_key}.{file_extension}"
-                    force_overwrite = False
                 else:
                     output_file_name = f"{default_file_name}.{file_extension}"
-                    force_overwrite = True
 
                 dataframe = self.sqltools.table_to_dataframe(table_key)
 
@@ -621,6 +608,7 @@ class Database:
                         dataframe=dataframe,
                         csv_filename=output_file_name,
                         csv_dir_path=self.paths.input_data_dir,
+                        force_overwrite=force_overwrite,
                     )
                 else:
                     msg = f"File extension '{file_extension}' not supported."
@@ -629,24 +617,20 @@ class Database:
 
     def load_data_input_files_to_database(
         self,
-        table_key_list: Optional[list[str]] = None,
+        table_key_list: List[str],
         force_overwrite: bool = False,
     ) -> None:
         """Load input files data into the SQLite database.
 
-        This method parses all or a list 'table_key_list' of the exogenous data 
-        tables in the Index. It collects data from Excel file/s and updates the 
+        This method parses the validated exogenous data tables in
+        'table_key_list'. It collects data from the input file/s and updates the
         related SQLite data tables.
 
         Args:
-            table_key_list (Optional[list[str]], optional): A list of table keys to load
-                data for. If empty, all exogenous data tables in the Index are
-                processed. Defaults to None.
+            table_key_list (List[str]): Validated list of exogenous data table
+                keys for which input data will be loaded.
             force_overwrite (bool, optional): If True, forces the overwrite of
                 existing data. Defaults to False.
-
-        Raises:
-            ValueError: If one or more passed table keys are not present in the Index.
         """
         self.logger.debug(
             "Loading data from input file/s filled by the user "
@@ -655,93 +639,131 @@ class Database:
         file_extension = self.settings.input_data_files_type
         multiple_data_file = self.settings.multiple_input_files
 
-        if table_key_list is None:
-            table_key_list = []
-
-        if table_key_list == []:
-            table_key_list = self.index.data.keys()
-        else:
-            if not util.items_in_list(
-                items=table_key_list,
-                control_list=self.index.data.keys()
-            ):
-                msg = "One or more passed tables keys not present in the index."
-                self.logger.error(msg)
-                raise ValueError(msg)
-
         if not multiple_data_file and file_extension != 'xlsx':
             msg = "Single data file is only allowed in 'xlsx' format."
             self.logger.error(msg)
             raise exc.SettingsError(msg)
 
-        # case 1: load from a single excel file with multiple tabs
-        # data are all loaded into a dataframe, then commited to the database
-        if not self.settings.multiple_input_files:
-            file_name = Defaults.ConfigFiles.INPUT_DATA_FILE_NAME
+        valid_table_keys = self.index.list_data_tables
 
-            data_dict = self.files.excel_to_dataframes_dict(
+        # case 1: load from a single excel file with multiple tabs
+        if not multiple_data_file:
+            input_file_name = (
+                f"{Defaults.ConfigFiles.INPUT_DATA_FILE_NAME}.{file_extension}"
+            )
+            available_keys = self.files.get_excel_sheet_names(
+                excel_file_name=input_file_name,
                 excel_file_dir_path=self.paths.input_data_dir,
-                excel_file_name=f"{file_name}.{file_extension}",
             )
 
-            with db_handler(self.sqltools):
-                for table_key, dataframe in data_dict.items():
-                    if table_key not in table_key_list:
-                        continue
-
-                    dataframe = util.normalize_dataframe(
-                        df=dataframe,
-                        all_str_except_numeric=True,
-                        replace_nans=True,
-                    )
-
-                    self.sqltools.dataframe_to_table(
-                        table_name=table_key,
-                        dataframe=dataframe,
-                        force_overwrite=force_overwrite,
-                        action='update',
-                    )
+            self._validate_data_input_keys(
+                table_key_list=table_key_list,
+                available_keys=available_keys,
+                valid_table_keys=valid_table_keys,
+            )
+            data_dict = self.files.excel_to_dataframes_dict(
+                excel_file_dir_path=self.paths.input_data_dir,
+                excel_file_name=input_file_name,
+                sheet_names=table_key_list,
+            )
 
         # case 2: load from multiple files
-        # each data table is loaded from a separate file and committed to the database
         else:
-            data_dict = {}
+            input_data_dir = Path(self.paths.input_data_dir)
+            input_files = sorted(
+                file_path
+                for file_path in input_data_dir.iterdir()
+                if file_path.is_file()
+                and file_path.suffix.lower() == f".{file_extension.lower()}"
+            )
+            input_files_by_key = {
+                file_path.stem: file_path
+                for file_path in input_files
+            }
+            available_keys = list(input_files_by_key)
 
-            with db_handler(self.sqltools):
-                for table_key, table in self.index.data.items():
-                    table: DataTable
+            self._validate_data_input_keys(
+                table_key_list=table_key_list,
+                available_keys=available_keys,
+                valid_table_keys=valid_table_keys,
+            )
 
-                    if table_key not in table_key_list:
-                        continue
+            data_dict = {
+                table_key: self.files.file_to_dataframe(
+                    file_name=input_files_by_key[table_key].name,
+                    file_dir_path=input_data_dir,
+                )
+                for table_key in table_key_list
+            }
 
-                    if table.type not in [
-                        Defaults.SymbolicDefinitions.VARIABLE_TYPES['ENDOGENOUS'],
-                        Defaults.SymbolicDefinitions.VARIABLE_TYPES['CONSTANT']
-                    ]:
-                        file_name = f"{table_key}.{file_extension}"
+        normalized_data = {
+            table_key: util.normalize_dataframe(
+                df=data_dict[table_key],
+                all_str_except_numeric=True,
+                replace_nans=True,
+            )
+            for table_key in table_key_list
+        }
 
-                        data_dict[table_key] = self.files.file_to_dataframe(
-                            file_name=file_name,
-                            file_dir_path=self.paths.input_data_dir,
-                        )
+        with db_handler(self.sqltools):
+            for table_key in table_key_list:
+                self.sqltools.dataframe_to_table(
+                    table_name=table_key,
+                    dataframe=normalized_data[table_key],
+                    force_overwrite=force_overwrite,
+                    action='update',
+                )
 
-                        dataframe = util.normalize_dataframe(
-                            df=data_dict[table_key],
-                            all_str_except_numeric=True,
-                            replace_nans=True,
-                        )
+    def _validate_data_input_keys(
+            self,
+            table_key_list: List[str],
+            available_keys: List[str],
+            valid_table_keys: List[str],
+    ) -> None:
+        """Validate requested table keys against available input sources.
 
-                        self.sqltools.dataframe_to_table(
-                            table_name=table_key,
-                            dataframe=dataframe,
-                            force_overwrite=force_overwrite,
-                            action='update',
-                        )
+        Valid but unselected input keys are allowed so that a subset of tables
+        can be refreshed from a complete input data collection.
+
+        Args:
+            table_key_list (List[str]): Validated table keys requested for
+                loading.
+            available_keys (List[str]): Table keys found in the input files or
+                workbook sheets.
+            valid_table_keys (List[str]): All valid model data table keys.
+
+        Raises:
+            exc.SettingsError: If requested inputs are missing or input sources
+                contain invalid table keys.
+        """
+        missing_keys = [
+            key for key in table_key_list
+            if key not in available_keys
+        ]
+        invalid_source_keys = [
+            key for key in available_keys
+            if key not in valid_table_keys
+        ]
+
+        err_msg = []
+        if missing_keys:
+            err_msg.append(
+                f"Missing input data key(s): {missing_keys!r}."
+            )
+        if invalid_source_keys:
+            err_msg.append(
+                f"Invalid input data key(s): {invalid_source_keys!r}."
+            )
+
+        if err_msg:
+            for msg in err_msg:
+                self.logger.error(msg)
+            raise exc.SettingsError("Data table keys validation | Failed.")
 
     def fill_nan_values_in_database(
             self,
+            table_key_list: List[str],
             force_overwrite: bool = False,
-            table_key_list: Optional[List[str]] = None,
     ) -> None:
         """Complete value fields in data tables in the database.
 
@@ -755,13 +777,10 @@ class Database:
         automatically filled based on rules defined in the Index.
 
         Args:
+            table_key_list (List[str]): Validated list of data table keys to
+                process.
             force_overwrite (bool, optional): If True, forces the overwrite of
                 existing data. Defaults to False.
-            table_key_list (Optional[List[str]], optional): List of table keys to process.
-                If empty, all tables in the index are processed. Defaults to None.
-
-        Raises:
-            ValueError: If one or more passed table keys are not present in the Index.
         """
         self.logger.debug(
             "Filling blank data in SQLite data tables based on the 'blank_fill' "
@@ -769,18 +788,7 @@ class Database:
 
         value_header = Defaults.Labels.VALUES_FIELD['values'][0]
 
-        if table_key_list is None:
-            table_key_list = list(self.index.data)
-        elif not util.items_in_list(
-            items=table_key_list,
-            control_list=self.index.data,
-        ):
-            msg = "One or more passed table keys are not present in the Index."
-            self.logger.error(msg)
-            raise ValueError(msg)
-
         with db_handler(self.sqltools):
-
             for var_key, variable in self.index.variables.items():
                 variable: Variable
 

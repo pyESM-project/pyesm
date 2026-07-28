@@ -23,7 +23,6 @@ from cvxlab.backend.run_settings import RunSettings
 from cvxlab.log_exc import exceptions as exc
 from cvxlab.log_exc.logger import Logger
 from cvxlab.support.file_manager import FileManager
-from cvxlab.support import util
 from cvxlab.backward_compat import BackwardCompat
 
 
@@ -203,6 +202,58 @@ class Model:
         else:
             return True
 
+    def _setting_table_keys(
+            self,
+            table_key_list: Optional[List[str]],
+            valid_table_keys: List[str],
+    ) -> List[str]:
+        """Resolve and validate table keys received by the public API.
+
+        Args:
+            table_key_list (Optional[List[str]]): Table keys requested by the
+                user. If None or empty, all valid table keys are selected.
+            valid_table_keys (List[str]): Table keys allowed by the calling
+                method.
+
+        Returns:
+            List[str]: A copy of the resolved and validated table keys.
+
+        Raises:
+            TypeError: If table_key_list is not a list or contains non-string
+                items.
+            exc.SettingsError: If table_key_list contains invalid table keys.
+        """
+        if table_key_list is None or table_key_list == []:
+            return list(valid_table_keys)
+
+        if not isinstance(table_key_list, list):
+            msg = "'table_key_list' must be a list of strings or None."
+            self.logger.error(msg)
+            raise TypeError(msg)
+
+        invalid_type_items = [
+            item for item in table_key_list
+            if not isinstance(item, str)
+        ]
+        if invalid_type_items:
+            msg = (
+                "'table_key_list' must contain only strings. "
+                f"Invalid item(s): {invalid_type_items!r}."
+            )
+            self.logger.error(msg)
+            raise TypeError(msg)
+
+        invalid_keys = [
+            key for key in table_key_list
+            if key not in valid_table_keys
+        ]
+        if invalid_keys:
+            msg = f"Invalid table key(s): {invalid_keys!r}."
+            self.logger.error(msg)
+            raise exc.SettingsError(msg)
+
+        return list(table_key_list)
+
     def _import_custom_scripts(self) -> None:
         """Import user-defined custom operators and constants.
 
@@ -358,35 +409,30 @@ class Model:
             if erased_input_dir or not input_files_dir_path.exists():
                 self.logger.info(
                     "Generating new blank input data directory and related file/s.")
-                self.core.database.generate_blank_data_input_files()
+                self.core.database.generate_blank_data_input_files(
+                    table_key_list=self.core.index.list_exogenous_data_tables,
+                )
             else:
                 self.logger.info("Relying on existing input data directory.")
 
     def _load_exogenous_data_to_sqlite_database(
             self,
+            table_key_list: List[str],
             force_overwrite: bool = False,
-            table_key_list: Optional[list[str]] = None,
     ) -> None:
         """Load exogenous (input) data to the SQLite database.
 
         This method loads exogenous (input) data from Excel file/s to the
         SQLite database. It also fills NaN values in the database with Null
         values, to ensure proper handling of missing data in SQLite.
-        This method is called directly by the user after having filled the
-        input data Excel file/s with exogenous data.
-        However, the method is also called within the 'update_database_and_problem'
-        method, which can be used in case some changes in exogenous data have been
-        made, so that the SQLite database and the problems can be updated without
-        re-generating the Model instance.
-        The user can choose to load data for all exogenous data tables, or for
-        specific data tables (with the 'table_key_list' attribute).
+        It is an internal workflow called by public Model methods after the
+        user's table selection has been resolved and validated.
 
         Args:
+            table_key_list (List[str]): Validated list of exogenous data table
+                keys for which input data will be loaded.
             force_overwrite (bool, optional): Whether to force overwrite existing
                 data without asking for user permission. Defaults to False.
-            table_key_list (Optional[list[str]], optional): A list of data table keys
-                for which to load exogenous data. If empty, all exogenous data
-                tables are loaded. Defaults to None.
         """
         with self.logger.log_timing(
             message="Loading input data to SQLite database...",
@@ -476,8 +522,8 @@ class Model:
             force_overwrite (bool, optional): Whether to overwrite/update
                 existing data without asking user permission. Defaults to False.
             table_key_list (Optional[list[str]], optional): A list of data table keys
-                for which to load exogenous data. If empty, all exogenous data
-                tables are loaded. Defaults to None.
+                for which to load exogenous data. If None or empty, all
+                exogenous data tables are loaded. Defaults to None.
         """
         sqlite_db_file = Defaults.ConfigFiles.SQLITE_DATABASE_FILE
 
@@ -485,8 +531,15 @@ class Model:
             f"Loading exogenous data into SQLite database '{sqlite_db_file}' "
             "and initializing problems.")
 
+        table_key_list = self._setting_table_keys(
+            table_key_list=table_key_list,
+            valid_table_keys=self.core.index.list_exogenous_data_tables,
+        )
+
         self._load_exogenous_data_to_sqlite_database(
-            force_overwrite, table_key_list)
+            table_key_list=table_key_list,
+            force_overwrite=force_overwrite,
+        )
 
         self._initialize_problems(force_overwrite)
 
@@ -682,6 +735,7 @@ class Model:
             self,
             table_key_list: Optional[List[str]] = None,
             values_cleanup: bool = True,
+            force_overwrite: bool = False,
     ) -> None:
         """Generate blank Excel files for data input.
 
@@ -699,11 +753,14 @@ class Model:
 
         Args:
             table_key_list (Optional[List[str]], optional): A list of data table keys
-                for which to generate input data files. If empty, all data
-                tables are generated. Defaults to None.
+                for which to generate input data files. If None or empty, all
+                exogenous data tables are generated. Defaults to None.
             values_cleanup (bool, optional): Whether to clean up values of
                 database tables before generating input data files. Defaults
                 to True.
+            force_overwrite (bool, optional): Whether to overwrite existing
+                input data files or sheets without asking for confirmation.
+                Defaults to False.
 
         Raises:
             exc.SettingsError: If the input data directory is missing.
@@ -711,27 +768,22 @@ class Model:
                 (i.e., not exogenous data tables).
         """
         input_files_dir_path = Path(self.paths.input_data_dir)
-        if table_key_list is None:
-            table_key_list = []
 
         if not input_files_dir_path.exists():
             msg = "Input data directory missing. Initialize blank data structure first."
             self.logger.error(msg)
             raise exc.SettingsError(msg)
 
-        if table_key_list != [] and not util.items_in_list(
-            table_key_list,
-            self.core.index.list_exogenous_data_tables
-        ):
-            msg = "Invalid table key/s provided. Only exogenous data tables can " \
-                "be exported to input data files."
-            self.logger.error(msg)
-            raise exc.SettingsError(msg)
+        select_all_tables = table_key_list is None or table_key_list == []
+        table_key_list = self._setting_table_keys(
+            table_key_list=table_key_list,
+            valid_table_keys=self.core.index.list_exogenous_data_tables,
+        )
 
-        if table_key_list != []:
-            msg = f"Generating input data files for tables: '{table_key_list}'..."
-        else:
+        if select_all_tables:
             msg = "Generating all input data files..."
+        else:
+            msg = f"Generating input data files for tables: '{table_key_list}'..."
 
         with self.logger.log_timing(
             message=msg,
@@ -740,6 +792,7 @@ class Model:
             self.core.database.generate_blank_data_input_files(
                 table_key_list=table_key_list,
                 values_cleanup=values_cleanup,
+                force_overwrite=force_overwrite,
             )
 
     def reinitialize_sqlite_database(
@@ -762,7 +815,10 @@ class Model:
             "endogenous tables.")
 
         self.core.database.reinit_sqlite_endogenous_tables(force_overwrite)
-        self._load_exogenous_data_to_sqlite_database(force_overwrite)
+        self._load_exogenous_data_to_sqlite_database(
+            table_key_list=self.core.index.list_exogenous_data_tables,
+            force_overwrite=force_overwrite,
+        )
 
     def check_model_results(
             self,

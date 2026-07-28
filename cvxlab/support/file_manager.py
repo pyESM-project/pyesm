@@ -485,7 +485,7 @@ class FileManager:
     ) -> None:
         """Export a DataFrame to an Excel file.
 
-        Optionally allows overwriting an existing file.
+        Optionally allows replacing an existing sheet without confirmation.
 
         Args:
             dataframe (pd.DataFrame): DataFrame to export.
@@ -494,35 +494,45 @@ class FileManager:
             sheet_name (Optional[str]): Name of the sheet.
             writer_engine (Optional[Literal['openpyxl', 'xlsxwriter']]): Excel 
                 writing engine.
-            force_overwrite (bool): If True, overwrite existing file.
+            force_overwrite (bool): If True, replace an existing sheet without
+                asking for confirmation.
 
         Raises:
-            Warning: If file exists and not overwritten.
+            Warning: If the target sheet exists and is not overwritten.
         """
         if writer_engine is None:
             writer_engine = self.xls_engine
 
         excel_file_path = Path(excel_dir_path, excel_filename)
 
-        if not force_overwrite:
-            if excel_file_path.exists():
-                self.logger.warning(
-                    f"Excel file '{excel_filename}' already exists.")
-                if not util.get_user_confirmation(
-                    f"Do you want to overwrite '{excel_filename}'?"
-                ):
-                    self.logger.warning(
-                        f"File '{excel_filename}' not overwritten.")
-                    return
+        if sheet_name is None:
+            sheet_name = str(dataframe)
 
-        mode = 'a' if excel_file_path.exists() else 'w'
+        file_exists = excel_file_path.exists()
+        sheet_exists = False
+        if file_exists:
+            sheet_exists = sheet_name in self.get_excel_sheet_names(
+                excel_file_name=excel_filename,
+                excel_file_dir_path=excel_dir_path,
+            )
+
+        if sheet_exists and not force_overwrite:
+            self.logger.warning(
+                f"Excel sheet '{sheet_name}' already exists in "
+                f"'{excel_filename}'.")
+            if not util.get_user_confirmation(
+                f"Do you want to overwrite sheet '{sheet_name}' "
+                f"in '{excel_filename}'?"
+            ):
+                self.logger.warning(
+                    f"Sheet '{sheet_name}' in '{excel_filename}' not overwritten.")
+                return
+
+        mode = 'a' if file_exists else 'w'
         if_sheet_exists = 'replace' if mode == 'a' else None
 
         self.logger.debug(
             f"Exporting dataframe '{sheet_name}' to '{excel_filename}'.")
-
-        if sheet_name is None:
-            sheet_name = str(dataframe)
 
         try:
             with pd.ExcelWriter(
@@ -642,6 +652,27 @@ class FileManager:
             raise exc.OperationalError(msg)
 
         return df
+
+    def get_excel_sheet_names(
+            self,
+            excel_file_name: str,
+            excel_file_dir_path: Path | str,
+    ) -> List[str]:
+        """Return the sheet names available in an Excel file.
+
+        Args:
+            excel_file_name (str): Name of the Excel file.
+            excel_file_dir_path (Path | str): Directory containing the Excel
+                file.
+
+        Returns:
+            List[str]: Sheet names in workbook order.
+        """
+        with self._open_excel_file(
+            excel_file_name=excel_file_name,
+            excel_file_dir_path=excel_file_dir_path,
+        ) as xlsx:
+            return list(xlsx.sheet_names)
 
     def _parse_csv_to_dataframe(self, file_path: Path | str,) -> pd.DataFrame:
         """Parse a CSV file and return as a DataFrame.
