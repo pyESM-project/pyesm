@@ -1001,7 +1001,7 @@ class Core:
                             if iter_count >= 1:
 
                                 self.logger.info(
-                                    f"Creating copy of database from previous iteration.")
+                                    "Creating copy of database from previous iteration.")
 
                                 self.files.copy_file_to_destination(
                                     path_destination=sqlite_db_path,

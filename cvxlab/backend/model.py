@@ -22,37 +22,13 @@ import pandas as pd
 from cvxlab.defaults import Defaults
 from cvxlab.backend.core import Core
 from cvxlab.backend.model_settings import ModelSettings, ModelPaths
+from cvxlab.backend.uncertainty_settings import SamplingSettings
 from cvxlab.backend.run_settings import RunSettings
 from cvxlab.log_exc import exceptions as exc
 from cvxlab.log_exc.logger import Logger
 from cvxlab.support.file_manager import FileManager
 from cvxlab.support import util
 from cvxlab.backward_compat import BackwardCompat
-
-
-@dataclass
-class SamplingSettingsConfig:
-    """Container for user-defined uncertainty analysis configuration.
-
-    This dataclass stores the sampling configuration specified by the user
-    through the `Model.sampling_settings()` method.b The stored configuration is
-    used by `Model.run_uncertainty_analysis()` to generate samples and execute iterative model runs.
-
-    Attributes:
-        method (str): Sampling method name (e.g. 'lhs', 'sobol', 'morris').
-        method_kwargs (dict[str, Any]): Keyword arguments required by the
-            selected sampling method (e.g. N, seed, num_levels).
-        save_samples (bool): Whether generated samples should be saved to file.
-        file_format (str): Output file format for saving samples
-            (e.g. 'xlsx', 'csv', 'parquet').
-    """
-    method: str
-    method_kwargs: dict[str, Any] = field(default_factory=dict)
-    groups: bool = False
-    save_samples: bool = True
-    save_measures: bool = True
-    temp_save: bool = True
-    file_format: str = "xlsx"
 
 
 @dataclass
@@ -189,8 +165,8 @@ class Model():
                 paths=self.paths,
             )
 
-            self._sampling_settings: SamplingSettingsConfig | None = None
-            self._GSA_settings: GSASettingsConfig | None = None
+            self._sampling_settings: SamplingSettings | None = None
+            # self._GSA_settings: GSASetting | None = None
 
             if self.settings.use_existing_data:
                 self._load_model_coordinates()
@@ -999,50 +975,12 @@ class Model():
         temp_save: bool = True,
         file_format: str = "xlsx",
         **method_kwargs: Any,
-    ) -> SamplingSettingsConfig:
-        """Configure uncertainty sampling and result collection.
+    ) -> SamplingSettings:
+        """Common validation utilities for uncertainty settings."""
 
-        This method validates the selected SALib sampling method and stores the
-        configuration slected by the user
-
-        Args:
-            method(str): Sampling method name selected by user
-            groups(Optional[bool]): If True allows to perform sampling by data groups, useful
-                in case of many uncertain parameters to decrease computational cost. Defaults to
-                False
-            save_samples(Optional[bool]): Whether the generated sample dataframe must be exported.
-            save_measures(Optional[bool]): Whether uncertainty-measure outputs must be exported
-                during and after the model runs.
-            temp_save (Optional[bool]): If True, save the cumulative uncertainty-measures dataframe
-                contains run 0; after run_id 1 it contains runs 0 and 1.
-            file_format: File format used for exported samples and measures.
-                Supported formats are defined in
-                ``Defaults.UncertaintySettings.AVAILABLE_EXPORT_FORMATS``.
-            **method_kwargs: Keyword arguments passed to the selected SALib
-                sampling function, such as ``N``, ``seed``, ``num_levels`` or
-                ``optimal_trajectories``.
-
-        Returns:
-            SamplingSettingsConfig: Stored sampling configuration..
-        """
-        if not self.is_uncertainty_analysis:
-            raise ValueError(
-                "Uncertainty analysis is not enabled. "
-                f"Create the model with "
-                f"{Defaults.Labels.UNCERTAINTY_SETTING_KEY}=True."
-            )
-
-        method = self.core.uncertainty.validate_sampling_settings(
-            method=method,
-            groups=groups,
-            save_samples=save_samples,
-            save_measures=save_measures,
-            temp_save=temp_save,
-            file_format=file_format,
-            method_kwargs=method_kwargs,
-        )
-
-        self._sampling_settings = SamplingSettingsConfig(
+        self._sampling_settings = SamplingSettings(
+            is_uncertainty_analysis=self.is_uncertainty_analysis,
+            logger=self.logger,
             method=method,
             groups=groups,
             method_kwargs=method_kwargs,
@@ -1155,22 +1093,30 @@ class Model():
         self.core._initialize_problems_variables()
 
     def run_uncertainty(
-            self,
-            force_overwrite: bool = False,
-            integrated_problems: bool = False,
-            convergence_monitoring: bool = True,
-            solver: Optional[str] = None,
-            solver_verbose: bool = False,
-            solver_settings: Optional[dict[str, Any]] = None,
-            convergence_norm: Defaults.LiteralTypes.NormType = 'l2',
-            convergence_tables_to_check: (
-                Defaults.LiteralTypes.ConvergenceTables | List[str]
-            ) = 'all_endogenous',
-            convergence_tables_to_skip: Optional[List[str]] = None,
-            relative_tolerance: Optional[float] = None,
-            maximum_iterations: Optional[int] = None,
-            keep_previous_iteration_db: bool = False,
-            **kwargs: Any,
+        self,
+        force_overwrite: bool = False,
+        solution_mode: Defaults.LiteralTypes.SolutionMode = 'parallel',
+        scenarios_idx: Optional[List[int] | int] = None,
+        # arguments for solver settings
+        solver: Optional[str | dict[str, str]] = None,
+        solver_verbose: bool | dict[str, bool] = False,
+        solver_settings: Optional[
+            dict[str, Any] |
+            dict[str, dict[str, Any]]
+        ] = None,
+        # arguments for sequential solution mode
+        sequential_solution_chain: Optional[List[str | int]] = None,
+        # arguments for integrated solution mode
+        convergence_monitoring: bool = True,
+        convergence_norm: Defaults.LiteralTypes.NormType = 'l2',
+        convergence_tables_to_check:
+            Defaults.LiteralTypes.ConvergenceTables |
+            List[str] = 'all_endogenous',
+        convergence_tables_to_skip: Optional[List[str]] = None,
+        relative_tolerance: Optional[float] = None,
+        maximum_iterations: Optional[int] = None,
+        keep_previous_iteration_db: bool = False,
+        **kwargs: Any,
     ) -> None:
         """Execute the model for all generated uncertainty samples.
 
@@ -1265,15 +1211,15 @@ class Model():
                 run_id=run_id,
             )
 
-        #     self.core.logger.info(
-        #         f"Running uncertainty-analysis run {run_id}."
-        #     )
+            self.core.logger.info(
+                f"Running uncertainty-analysis run {run_id}."
+            )
 
-        #     self.core.problem.generate_numerical_problems(force_overwrite=True)
+            self.core.problem.generate_numerical_problems(force_overwrite=True)
 
         #     self.run_model(
         #         force_overwrite=force_overwrite,
-        #         integrated_problems=integrated_problems,
+        #         solution_mode=solution_mode,
         #         convergence_monitoring=convergence_monitoring,
         #         solver=solver,
         #         solver_verbose=solver_verbose,
@@ -1324,12 +1270,9 @@ class Model():
         #             ignore_index=True,
         #         )
 
-        #         self.uncertainty_measures = uncertainty_measures_temp_df
-
-        #         self.core.uncertainty.save_dataframe(
+        #         self.core.uncertainty.save_uncertainty_result(
         #             dataframe=uncertainty_measures_temp_df,
-        #             file_name=Defaults.UncertaintySettings.UNCERTAINTY_MEASURES_TEMP_FILE_NAME,
-        #             folder_name=Defaults.UncertaintySettings.RESULTS_DIR,
+        #             result_type=Defaults.UncertaintySettings.TEMP_MEASURES,
         #             file_format=uncertainty_cfg.file_format,
         #         )
 
@@ -1338,13 +1281,10 @@ class Model():
         #     ignore_index=True,
         # )
 
-        # self.uncertainty_measures = uncertainty_measures_df
-
         # if uncertainty_cfg.save_measures:
-        #     self.core.uncertainty.save_dataframe(
+        #     self.core.uncertainty.save_uncertainty_result(
         #         dataframe=uncertainty_measures_df,
-        #         file_name=Defaults.UncertaintySettings.UNCERTAINTY_MEASURES_FILE_NAME,
-        #         folder_name=Defaults.UncertaintySettings.RESULTS_DIR,
+        #         result_type=Defaults.UncertaintySettings.MEASURES,
         #         file_format=uncertainty_cfg.file_format,
         #     )
 

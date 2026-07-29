@@ -591,7 +591,7 @@ class Uncertainty:
                 f"Required arguments: {required_args}."
             )
 
-    def validate_sampling_config(
+    def _validate_sampling_config(
             self,
             method: str,
             groups: bool,
@@ -1698,6 +1698,13 @@ class Uncertainty:
                 generation fails.
             TypeError: If the sampler arguments are missing or invalid.
         """
+
+        self._validate_sampling_config(
+            method=method.lower(),
+            groups=groups,
+            kwargs=kwargs
+        )
+
         sampling_problem = (
             self.create_sampling_problem(
                 groups=groups
@@ -1716,79 +1723,6 @@ class Uncertainty:
         self.sampling_problem = sampling_problem
 
         return samples_df
-
-    def validate_sampling_settings(
-        self,
-        method: str,
-        groups: bool,
-        save_samples: bool,
-        save_measures: bool,
-        temp_save: bool,
-        file_format: str | None,
-        method_kwargs: dict[str, Any],
-    ) -> str:
-        """Validate uncertainty sampling settings.
-
-        This method validates the general uncertainty-analysis configuration,
-        the consistency of the output-saving options, and the arguments passed
-        to the selected SALib sampling method.
-
-        Args:
-            method: Name of the SALib sampling method.
-            groups: Whether uncertain parameters must be sampled by group.
-            save_samples: Whether generated samples must be exported.
-            save_measures: Whether uncertainty measures must be exported.
-            temp_save: Whether uncertainty measures must be saved incrementally
-                during model execution.
-            file_format: File format used to export samples and measures.
-            method_kwargs: Keyword arguments passed to the selected SALib
-                sampling function.
-
-        Returns:
-            str: Normalized sampling method name.
-
-        Raises:
-            ValueError: If uncertainty analysis is disabled or the saving
-                options are inconsistent.
-            TypeError: If required sampler arguments are missing or unexpected
-                arguments are provided.
-            exc.SettingsError: If the sampling method or grouped sampling
-                configuration is invalid.
-        """
-        if not self.index.is_uncertainty_analysis:
-            raise ValueError(
-                "Uncertainty analysis is not enabled. "
-                f"Create the model with "
-                f"{Defaults.Labels.UNCERTAINTY_SETTING_KEY}=True."
-            )
-
-        if not save_samples and file_format is not None:
-            self.logger.warning(
-                "Uncertainty analysis | 'file_format' specified but "
-                "'save_samples=False'. Samples will not be saved."
-            )
-
-        if not save_measures and file_format is not None:
-            self.logger.warning(
-                "Uncertainty analysis | 'file_format' specified but "
-                "'save_measures=False'. Measures will not be saved."
-            )
-
-        if temp_save and not save_measures:
-            raise ValueError(
-                "Uncertainty analysis | 'temp_save=True' requires "
-                "'save_measures=True' in sampling_settings(...)."
-            )
-
-        normalized_method = method.lower()
-
-        self.validate_sampling_config(
-            method=normalized_method,
-            groups=groups,
-            kwargs=method_kwargs,
-        )
-
-        return normalized_method
 
     def save_uncertainty_result(
         self,

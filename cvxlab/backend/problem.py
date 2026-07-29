@@ -10,10 +10,11 @@ The Problem class interacts with various components of the system such as data t
 variables, and settings, leveraging the Index class for accessing and managing structured
 data related to the optimization models.
 """
-from typing import Any, Dict, List, Optional, Tuple
-from scipy.sparse import csr_matrix
 
 import warnings
+
+from typing import Any, Dict, List, Optional, Tuple
+from scipy.sparse import csr_matrix
 
 import pandas as pd
 import numpy as np
@@ -354,7 +355,8 @@ class Problem:
             )
 
         if err_msg:
-            [self.logger.error(msg) for msg in err_msg]
+            for msg in err_msg:
+                self.logger.error(msg)
             raise exc.MissingDataError("Slicing variables | Failed.")
 
         # use sub_problem_key to identify the endogenous variable for sub-problem
@@ -423,6 +425,7 @@ class Problem:
             raise exc.OperationalError(msg)
 
         err_msg = []
+        data_values: Optional[np.ndarray] = None
 
         if isinstance(data, pd.DataFrame):
             if data.empty:
@@ -443,10 +446,16 @@ class Problem:
             )
 
         if err_msg:
-            [self.logger.error(msg) for msg in err_msg]
+            for msg in err_msg:
+                self.logger.error(msg)
             raise exc.MissingDataError(
                 f"Variable '{var_key}' | Data assigment failed."
             )
+
+        if data_values is None:
+            msg = f"Variable '{var_key}' | Data assigment failed."
+            self.logger.error(msg)
+            raise exc.MissingDataError(msg)
 
         # conversion to sparse matrix if data is sparse
         if util.is_sparse(
@@ -995,7 +1004,7 @@ class Problem:
             exc.ConceptualModelError: If any of the validation checks fail.
         """
         self.logger.debug(
-            f"Validating symbolic problem expressions coherence.")
+            "Validating symbolic problem expressions coherence.")
 
         source_format = self.settings.model_settings_from
         token_patterns = Defaults.SymbolicDefinitions.TOKEN_PATTERNS
@@ -1020,7 +1029,7 @@ class Problem:
                         expression=expression,
                         pattern=token_patterns[key],
                     )
-                    for key in token_patterns.keys()
+                    for key, _ in token_patterns.items()
                 }
 
                 # identify unrecognized tokens in the expression
@@ -1166,7 +1175,7 @@ class Problem:
                     an error is raised (constraint must be explicitly defined in
                     symbolic problem).
         """
-        self.logger.debug(f"Adding implicit symbolic expressions.")
+        self.logger.debug("Adding implicit symbolic expressions.")
 
         expressions_key = Defaults.Labels.EXPRESSIONS
         var_types = Defaults.SymbolicDefinitions.VARIABLE_TYPES
@@ -1277,7 +1286,8 @@ class Problem:
             exc.ConceptualModelError: If any coherence checks fail.
         """
         self.logger.debug(
-            f"Checking coherence between symbolic problems and data tables.")
+
+            "Checking coherence between symbolic problems and data tables.")
 
         source_format = self.settings.model_settings_from
         data_table_types = Defaults.SymbolicDefinitions.VARIABLE_TYPES
@@ -1444,7 +1454,7 @@ class Problem:
             exc.SettingsError: If the symbolic problem structure is invalid.
         """
         with self.logger.log_timing(
-            message=f"Generating cvxpy numerical problem/s...",
+            message="Generating cvxpy numerical problem/s...",
             level='info',
         ):
             if self.symbolic_problem is None:
@@ -1909,7 +1919,7 @@ class Problem:
             if cvxpy_expression is None:
                 expressions_not_generated.append(expression)
 
-        if expressions_not_generated != []:
+        if expressions_not_generated:
             self.logger.error(
                 f"'{len(expressions_not_generated)}' CVXPY expressions not "
                 "generated. Expressions: "
