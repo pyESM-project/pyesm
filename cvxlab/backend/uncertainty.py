@@ -92,6 +92,11 @@ class Uncertainty:
         self.logger = logger.get_child(__name__)
         self.files = files
 
+        self.sampling_problem: dict[str, Any] | None = None
+        self.uncertainty_samples: pd.DataFrame | None = None
+        self.uncertainty_measures: pd.DataFrame | None = None
+        self.gsa_results: pd.DataFrame | None = None
+
     def collect_uncertain_parameters(self) -> pd.DataFrame:
         """Collect uncertain parameters from uncertainty-enabled exogenous tables.
 
@@ -209,9 +214,13 @@ class Uncertainty:
 
                     group_name = row[group_name_col]
 
+                    parameter_name = Defaults.UncertaintySettings.UNCERTAIN_PARAMETER_NAME_TEMPLATE.format(
+                        table_name=table_name,
+                        row_id=row_id,
+                    )
                     records.append(
                         {
-                            parameter_name_col: f"table: {table_name}; id: {row_id}",
+                            parameter_name_col: parameter_name,
                             table_name_col: table_name,
                             id_col: row_id,
                             lower_bound_key: lower_val,
@@ -248,7 +257,7 @@ class Uncertainty:
         )
 
         group_name_key = (
-            Defaults.UncertaintySettings.UNCERTAINTY_GROUP_NAME_KEY
+            Defaults.UncertaintySettings.UNCERTAIN_PARAMETER_NAME_TEMPLATE
         )
 
         problem = {
@@ -700,47 +709,40 @@ class Uncertainty:
     def get_deterministic_values_df(
             self,
             table_df: pd.DataFrame,
-            table_name: str,
-    ) -> List[Any]:
+    ) -> pd.DataFrame:
         """Return row ids with NULL deterministic values.
 
-        Rows marked as uncertain are excluded because their values are expected
-        to be provided through sampled data during uncertainty runs.
+            Rows marked as uncertain are excluded because their values are expected
+            to be replaced by sampled values during uncertainty runs. If the
+            ``is_uncertain`` column is not present, all rows are considered
+            deterministic.
+
+            Args:
+                table_df: DataFrame containing the data table.
+                table_name: Name of the data table, used in error messages.
+
+            Returns:
+                A copy of the rows that are not marked as uncertain.
         """
-        values_header = Defaults.Labels.VALUES_FIELD["values"][0]
-        id_header = Defaults.Labels.ID_FIELD["id"][0]
-        is_uncertain_header = Defaults.UncertaintySettings.IS_UNCERTAIN_FIELD[
-            Defaults.UncertaintySettings.IS_UNCERTAIN_KEY
-        ][0]
-
-        if values_header not in table_df.columns:
-            msg = (
-                f"Data coherence check | Table '{table_name}' | "
-                f"Column '{values_header}' not found."
-            )
-            self.logger.error(msg)
-            raise exc.MissingDataError(msg)
-
-        if id_header not in table_df.columns:
-            msg = (
-                f"Data coherence check | Table '{table_name}' | "
-                f"Column '{id_header}' not found."
-            )
-            self.logger.error(msg)
-            raise exc.MissingDataError(msg)
+        is_uncertain_header = (
+            Defaults.UncertaintySettings.IS_UNCERTAIN_FIELD[
+                Defaults.UncertaintySettings.IS_UNCERTAIN_KEY
+            ][0]
+        )
 
         if is_uncertain_header not in table_df.columns:
-            deterministic_df = table_df
-        else:
-            is_uncertain = (
-                table_df[is_uncertain_header]
-                .astype(str)
-                .str.strip()
-                .str.lower()
-                .isin(["true", "1"])
-            )
+            return table_df.copy()
 
-            deterministic_df = table_df.loc[~is_uncertain].copy()
+        is_uncertain = (
+            table_df[is_uncertain_header]
+            .fillna(False)
+            .astype(str)
+            .str.strip()
+            .str.lower()
+            .isin({"true", "1"})
+        )
+
+        deterministic_df = table_df.loc[~is_uncertain].copy()
 
         return deterministic_df
 
@@ -908,7 +910,11 @@ class Uncertainty:
                 "Check variable.data, sub_problem_key filtering, and cvxpy values."
             )
 
-        return pd.DataFrame(records.values())
+        records_df = pd.DataFrame(records.values())
+
+        self.uncertainty_measures = records_df
+
+        return records_df
 
     def _normalize_variable_data_by_problem(
             self,
@@ -1006,7 +1012,6 @@ class Uncertainty:
         self,
         table_df: pd.DataFrame,
         run_id: int,
-        samples_df: pd.DataFrame,
         table_name: str,
     ) -> pd.DataFrame:
         """Inject sampled values only in rows marked as uncertain.
@@ -1014,6 +1019,8 @@ class Uncertainty:
         Rows with the uncertainty flag set to TRUE receive sampled values.
         All other rows keep their original DB values.
         """
+
+        samples_df = self.uncertainty_samples
 
         values_col = Defaults.Labels.VALUES_FIELD["values"][0]
         id_col = Defaults.Labels.ID_FIELD["id"][0]
@@ -1040,34 +1047,16 @@ class Uncertainty:
 
         samples_run = samples_df.loc[samples_df[run_id_col].eq(run_id)]
 
-        if samples_run.empty:
-            raise exc.MissingDataError(
-                f"No sampled values found for "
-                f"{Defaults.UncertaintySettings.RUN_ID}={run_id}."
-            )
-
-        if len(samples_run) > 1:
-            raise exc.OperationalError(
-                f"Multiple sampled rows found for "
-                f"{Defaults.UncertaintySettings.RUN_ID}={run_id}."
-            )
-
         sample_values = samples_run.drop(
             columns=[run_id_col]).iloc[0].to_dict()
 
         for idx in resolved_df.loc[uncertain_mask].index:
             row_id = resolved_df.at[idx, id_col]
-            parameter_name = self._build_parameter_name(
+
+            parameter_name = Defaults.UncertaintySettings.UNCERTAIN_PARAMETER_NAME_TEMPLATE.format(
                 table_name=table_name,
                 row_id=row_id,
             )
-
-            if parameter_name not in sample_values:
-                raise exc.MissingDataError(
-                    f"Missing sampled value for uncertain parameter "
-                    f"'{parameter_name}' in "
-                    f"{Defaults.UncertaintySettings.RUN_ID}={run_id}."
-                )
 
             resolved_df.at[idx, values_col] = sample_values[parameter_name]
 
@@ -1245,7 +1234,10 @@ class Uncertainty:
         if not records:
             return pd.DataFrame()
 
-        return pd.concat(records, ignore_index=True)
+        records_df = pd.concat(records, ignore_index=True)
+        self.gsa_results = records_df
+
+        return records_df
 
     def _prepare_GSA_input_matrix(
         self,
@@ -1720,7 +1712,10 @@ class Uncertainty:
             )
         )
 
-        return sampling_problem, samples_df
+        self.uncertainty_samples = samples_df
+        self.sampling_problem = sampling_problem
+
+        return samples_df
 
     def validate_sampling_settings(
         self,
@@ -1847,3 +1842,47 @@ class Uncertainty:
             output_path=output_path,
             file_format=file_format,
         )
+
+    def sort_tables_variables(
+        self,
+    ) -> list[str]:
+        """Classify variables according to their uncertainty-enabled tables.
+
+        Variables belonging to fully deterministic tables are separated from
+        variables belonging to uncertainty-enabled tables. The two groups are
+        loaded differently during repeated uncertainty runs: deterministic values
+        are assigned once, whereas values from uncertainty-enabled tables are
+        updated for each sampled run.
+
+        Returns:
+            tuple[list[str], list[str]]: A tuple containing:
+
+            - variable keys belonging to fully deterministic tables;
+            - variable keys belonging to uncertainty-enabled tables.
+
+        Notes:
+            The classification is performed at table level. A table returned by
+            ``get_uncertain_tables()`` may contain both uncertain and deterministic
+            rows; row-level sampled-value injection is handled separately.
+        """
+        fully_deterministic_tables = (
+            self.get_deterministic_tables()
+        )
+
+        uncertainty_hybrid_tables = (
+            self.get_uncertain_tables()
+        )
+
+        fully_deterministic_vars = (
+            self.get_vars_in_tables_list(
+                fully_deterministic_tables
+            )
+        )
+
+        uncertainty_hybrid_vars = (
+            self.get_vars_in_tables_list(
+                uncertainty_hybrid_tables
+            )
+        )
+
+        return fully_deterministic_vars, uncertainty_hybrid_vars

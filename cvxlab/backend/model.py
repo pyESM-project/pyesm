@@ -192,11 +192,6 @@ class Model():
             self._sampling_settings: SamplingSettingsConfig | None = None
             self._GSA_settings: GSASettingsConfig | None = None
 
-            self.sampling_problem: dict[str, Any] | None = None
-            self.uncertainty_samples: pd.DataFrame | None = None
-            self.uncertainty_measures: pd.DataFrame | None = None
-            self.gsa_results: pd.DataFrame | None = None
-
             if self.settings.use_existing_data:
                 self._load_model_coordinates()
                 self._initialize_problems()
@@ -888,8 +883,7 @@ class Model():
                 'Defaults.NumericalSettings.TOLERANCE_TESTS_RESULTS_CHECK'.
         """
         if (other_db_dir_path is None) != (other_db_name is None):
-            msg = "Both 'other_db_dir_path' and 'other_db_name' parameters must "
-            "be defined together, or both must be None."
+            msg = "Both 'other_db_dir_path' and 'other_db_name' parameters must be defined together, or both must be None."
             self.logger.error(msg)
             raise exc.SettingsError(msg)
 
@@ -1146,51 +1140,6 @@ class Model():
             file_format=file_format,
         )
 
-    # spostare
-    def _sort_variables(
-        self,
-    ) -> list[str]:
-        """Classify variables according to their uncertainty-enabled tables.
-
-        Variables belonging to fully deterministic tables are separated from
-        variables belonging to uncertainty-enabled tables. The two groups are
-        loaded differently during repeated uncertainty runs: deterministic values
-        are assigned once, whereas values from uncertainty-enabled tables are
-        updated for each sampled run.
-
-        Returns:
-            tuple[list[str], list[str]]: A tuple containing:
-
-            - variable keys belonging to fully deterministic tables;
-            - variable keys belonging to uncertainty-enabled tables.
-
-        Notes:
-            The classification is performed at table level. A table returned by
-            ``get_uncertain_tables()`` may contain both uncertain and deterministic
-            rows; row-level sampled-value injection is handled separately.
-        """
-        fully_deterministic_tables = (
-            self.core.uncertainty.get_deterministic_tables()
-        )
-
-        uncertainty_hybrid_tables = (
-            self.core.uncertainty.get_uncertain_tables()
-        )
-
-        fully_deterministic_vars = (
-            self.core.uncertainty.get_vars_in_tables_list(
-                fully_deterministic_tables
-            )
-        )
-
-        uncertainty_hybrid_vars = (
-            self.core.uncertainty.get_vars_in_tables_list(
-                uncertainty_hybrid_tables
-            )
-        )
-
-        return fully_deterministic_vars, uncertainty_hybrid_vars
-
     def _initialize_problem_structure(
             self,
             force_overwrite: bool = False,
@@ -1201,11 +1150,9 @@ class Model():
             force_overwrite=force_overwrite,
         )
 
-        # self.core.check_exogenous_data_coherence(
-        #     is_uncertain=True,
-        # )
+        self.core.check_exogenous_data_coherence()
 
-        # self.core._initialize_problems_variables()
+        self.core._initialize_problems_variables()
 
     def run_uncertainty(
             self,
@@ -1279,14 +1226,11 @@ class Model():
             )
 
         # 1. Generate uncertainty samples.
-        sampling_problem, samples_df = self.core.uncertainty.create_sampling_problem_and_sample_data(
+        samples_df = self.core.uncertainty.create_sampling_problem_and_sample_data(
             method=uncertainty_cfg.method,
             groups=uncertainty_cfg.groups,
             **uncertainty_cfg.method_kwargs,
         )
-
-        self.uncertainty_samples = samples_df
-        self.sampling_problem = sampling_problem
 
         if uncertainty_cfg.save_samples:
             self.core.uncertainty.save_uncertainty_result(
@@ -1296,35 +1240,30 @@ class Model():
             )
 
         # # 2. Initialize problem structure
-        #########################################
-        #   fino qui ricorda metodo commentato  #
-        #########################################
         self._initialize_problem_structure(force_overwrite=True)
 
-        # deterministic_tables_vars, uncertainty_tables_vars = (
-        #     self._sort_variables(
-        #     )
-        # )
+        deterministic_tables_vars, uncertainty_tables_vars = (
+            self.core.uncertainty.sort_tables_variables(
+            )
+        )
 
-        # # 3. Load deterministic exogenous values only once.
-        # self.core.data_to_cvxpy_exogenous_vars(
-        #     allow_none_values=False,
-        #     var_list_to_update=deterministic_tables_vars,
-        # )
-        # # 5. Run one model instance for each sampled run_id.
+        # 3. Load deterministic exogenous values only once.
+        self.core.data_to_cvxpy(
+            allow_none_values=False,
+            var_list_to_update=deterministic_tables_vars,
+        )
+        # 5. Run one model instance for each sampled run_id.
+        uncertainty_measure_records = []
+        failed_runs_report: dict[int, dict] = {}
 
-        # uncertainty_measure_records = []
-        # failed_runs_report: dict[int, dict] = {}
+        for run_id in samples_df[run_id_col]:
 
-        # for run_id in samples_df[run_id_col]:
-
-        #     self.core.data_to_cvxpy_exogenous_vars(
-        #         allow_none_values=False,
-        #         var_list_to_update=uncertainty_tables_vars,
-        #         is_hybrid=True,
-        #         samples_df=samples_df,
-        #         run_id=run_id,
-        #     )
+            self.core.data_to_cvxpy(
+                allow_none_values=False,
+                var_list_to_update=uncertainty_tables_vars,
+                uncertain_var=True,
+                run_id=run_id,
+            )
 
         #     self.core.logger.info(
         #         f"Running uncertainty-analysis run {run_id}."
@@ -1548,8 +1487,6 @@ class Model():
                 folder_name=Defaults.UncertaintySettings.RESULTS_DIR,
                 file_format=gsa_cfg.file_format,
             )
-
-        self.gsa_results = analysis_df
 
     def single_run(
         self,

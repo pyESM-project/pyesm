@@ -711,6 +711,9 @@ class Defaults:
             UPPER_BOUND_FIELD,
             UNCERTAINTY_GROUP_NAME_FIELD,
         )
+
+        UNCERTAIN_PARAMETER_NAME_TEMPLATE = "table: {table_name}; id: {row_id}"
+
         # Sampling and analysis methods
         SOBOL = "sobol"
         MORRIS = "morris"

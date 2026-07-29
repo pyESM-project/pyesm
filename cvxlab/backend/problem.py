@@ -183,7 +183,7 @@ class Problem:
                 Table order follows ``self.index.data.keys()`` and variables
                 order follows each table ``variables_list``.
         """
-        problems_expressions = self._collect_problems_expressions()
+        problems_expressions = self.collect_problems_expressions()
         if not problems_expressions:
             return {}
 
@@ -193,7 +193,7 @@ class Problem:
             variables_found = {
                 var_key
                 for expression in expressions_list
-                for var_key in self._get_vars_in_expression(expression).keys()
+                for var_key in self.get_vars_in_expression(expression).keys()
             }
 
             tables_variables: dict[str, list[str]] = {}
@@ -765,7 +765,7 @@ class Problem:
             for key, problem in data.items():
                 self.symbolic_problem[key] = DotDict(problem)
 
-    def _collect_problems_expressions(self) -> Dict[Optional[int | str], List[str]]:
+    def collect_problems_expressions(self) -> Dict[Optional[int | str], List[str]]:
         """Collect symbolic expressions grouped by problem key.
 
         Normalizes the symbolic_problem structure into a dict keyed by problem_key
@@ -803,7 +803,7 @@ class Problem:
             for problem_key, problem in symbolic_problem.items()
         }
 
-    def _get_vars_in_expression(
+    def get_vars_in_expression(
         self,
         expression: str,
         tokens: Optional[Dict[str, List[str]]] = None,
@@ -1004,7 +1004,7 @@ class Problem:
 
         errors = []
 
-        problems_expressions = self._collect_problems_expressions()
+        problems_expressions = self.collect_problems_expressions()
 
         for problem_key, expr_list in problems_expressions.items():
 
@@ -1066,7 +1066,7 @@ class Problem:
 
                 # intra-problem sets in a variable must not be a dimension in
                 # other variables
-                vars_in_expression = self._get_vars_in_expression(
+                vars_in_expression = self.get_vars_in_expression(
                     expression, tokens)
 
                 intra_problem_sets = {
@@ -1174,7 +1174,7 @@ class Problem:
         if not self.symbolic_problem:
             return
 
-        problems_expressions = self._collect_problems_expressions()
+        problems_expressions = self.collect_problems_expressions()
 
         # Collect variables in all expressions for all problems
         problems_vars: Dict[Optional[int | str], List[str]] = {}
@@ -1182,7 +1182,7 @@ class Problem:
             var_keys: set[str] = set()
             for expression in expr_list:
                 var_keys.update(
-                    self._get_vars_in_expression(expression).keys())
+                    self.get_vars_in_expression(expression).keys())
             problems_vars[problem_key] = list(var_keys)
 
         implicit_expr_by_problem: Dict[Optional[int | str], List[str]] = {
@@ -1281,7 +1281,7 @@ class Problem:
 
         source_format = self.settings.model_settings_from
         data_table_types = Defaults.SymbolicDefinitions.VARIABLE_TYPES
-        problems_expressions = self._collect_problems_expressions()
+        problems_expressions = self.collect_problems_expressions()
 
         errors = []
 
@@ -1296,7 +1296,7 @@ class Problem:
                     if any(
                         var_key == variable
                         for expression in expr_list
-                        for var_key in self._get_vars_in_expression(expression).keys()
+                        for var_key in self.get_vars_in_expression(expression).keys()
                     )
                 ]
 

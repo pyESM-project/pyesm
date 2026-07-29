@@ -137,7 +137,7 @@ class Core:
         allowed_var_types = Defaults.SymbolicDefinitions.VARIABLE_TYPES
 
         with self.logger.log_timing(
-            message=f"Generating data structures for endogenous data tables...",
+            message="Generating data structures for endogenous data tables...",
             level='info',
         ):
             # generate dataframes and cvxpy var for endogenous data tables
@@ -228,7 +228,7 @@ class Core:
         # generating variables dataframes with cvxpy var and filters dictionary
         # (endogenous vars will be sliced from existing cvxpy var in data table)
         with self.logger.log_timing(
-            message=f"Generating data structures for all variables and constants...",
+            message="Generating data structures for all variables and constants...",
             level='info',
         ):
             for var_key, variable in self.index.variables.items():
@@ -284,16 +284,39 @@ class Core:
                     self.logger.error(msg)
                     raise exc.SettingsError(msg)
 
+    def data_to_cvxpy(
+            self,
+            scenarios_idx: Optional[List[int] | int] = None,
+            allow_none_values: bool = True,
+            var_list_to_update: Optional[List[str]] = None,
+            filter_negative_values: bool = False,
+            warnings_on_negatives: bool = False,
+            validate_types: bool = True,
+            uncertain_var: bool = False,
+            run_id: Optional[int] = None,
+    ) -> None:
+        """Public interface for loading data into cvxpy exogenous variables."""
+
+        self._data_to_cvxpy_exogenous_vars(
+            scenarios_idx=scenarios_idx,
+            allow_none_values=allow_none_values,
+            var_list_to_update=var_list_to_update,
+            filter_negative_values=filter_negative_values,
+            warnings_on_negatives=warnings_on_negatives,
+            validate_types=validate_types,
+            uncertain_var=uncertain_var,
+            run_id=run_id,
+        )
+
     def _data_to_cvxpy_exogenous_vars(
             self,
             scenarios_idx: Optional[List[int] | int] = None,
             allow_none_values: bool = True,
-            var_list_to_update: List[str] = [],
+            var_list_to_update:  Optional[List[str]] = None,
             filter_negative_values: bool = False,
             warnings_on_negatives: bool = False,
             validate_types: bool = True,
-            is_hybrid: Optional[bool] = False,
-            samples_df: Optional[pd.DataFrame] = None,
+            uncertain_var: Optional[bool] = False,
             run_id: Optional[int] = None
     ) -> None:
         """Fetch data from the database and assign it to cvxpy exogenous variables.
@@ -345,12 +368,15 @@ class Core:
             allowed_values_types = Defaults.NumericalSettings.ALLOWED_VALUES_TYPES
             allowed_var_types = Defaults.SymbolicDefinitions.VARIABLE_TYPES
 
+            if var_list_to_update is None:
+                var_list_to_update = []
+
             if not isinstance(var_list_to_update, list):
                 msg = "Passed method parameter must be a list."
                 self.logger.error(msg)
                 raise TypeError(msg)
 
-            if not var_list_to_update == [] and \
+            if var_list_to_update != [] and \
                     not util.items_in_list(var_list_to_update, self.index.variables.keys()):
                 msg = "One or more passed items are not in the index variables."
                 self.logger.error(msg)
@@ -388,7 +414,8 @@ class Core:
                             "Fetching data to variables | No related table "
                             f"defined for variable '{var_key}'.")
                     if err_msg:
-                        [self.logger.error(msg) for msg in err_msg]
+                        for msg in err_msg:
+                            self.logger.error(msg)
                         raise exc.MissingDataError(
                             "Fetching data to variables | Failed.")
 
@@ -451,16 +478,21 @@ class Core:
 
                         for combination in sets_parsing_hierarchy_idx:
 
-                            raw_data = self.database.sqltools.table_to_dataframe(
-                                table_name=variable.related_table,
-                                filters_dict=variable_data[filter_header][combination],
-                            )
+                            if not uncertain_var:
+                                raw_data = self.database.sqltools.table_to_dataframe(
+                                    table_name=variable.related_table,
+                                    filters_dict=variable_data[filter_header][combination],
+                                )
 
-                            if is_hybrid:
+                            if uncertain_var:
+
+                                base_data = self.database.sqltools.table_to_dataframe(
+                                    table_name=variable.related_table,
+                                    filters_dict=variable_data[filter_header][combination],
+                                )
                                 raw_data = self.uncertainty.inject_sampled_values_by_row(
-                                    table_df=raw_data,
+                                    table_df=base_data,
                                     run_id=run_id,
-                                    samples_df=samples_df,
                                     table_name=variable.related_table,
                                 )
 
@@ -556,8 +588,6 @@ class Core:
             ][0]
         )
 
-        allowed_var_types = Defaults.SymbolicDefinitions.VARIABLE_TYPES
-
         with db_handler(self.sqltools):
 
             for variable in self.index.variables.values():
@@ -626,127 +656,6 @@ class Core:
                             force_overwrite=force_overwrite,
                             suppress_warnings=suppress_warnings,
                         )
-
-    def check_exogenous_data_coherence_old(
-            self,
-            is_uncertain: bool = False) -> None:
-        """Check coherence of exogenous data in the SQLite database.
-
-        If uncertain is False, the method checks that all exogenous data entries
-        have non-null values in the 'values' column.
-
-        If uncertain is True, rows marked as uncertain are excluded from the check,
-        because their values are expected to be provided through sampled data during
-        uncertainty-analysis runs.
-
-        Raises:
-            exc.MissingDataError: If NULL entries are found in required data rows.
-            The method parses all exogenous data tables in the Database, checking
-            for NULL entries in the 'values' column. Since all exogenous data are
-            expected to be filled by the user before running the model, in case NULL
-            entries are found, the method logs the table name and the corresponding
-            row IDs, and raises an error.
-
-        """
-        with self.logger.log_timing(
-            message=f"Checking exogenous data coherence...",
-            level='info',
-        ):
-            null_entries = {}
-            column_to_inspect = Defaults.Labels.VALUES_FIELD['values'][0]
-            column_with_info = Defaults.Labels.ID_FIELD['id'][0]
-            allowed_var_types = Defaults.SymbolicDefinitions.VARIABLE_TYPES
-
-            with db_handler(self.sqltools):
-                for table_name, data_table in self.index.data.items():
-                    data_table: DataTable
-
-                    if data_table.type in (
-                        allowed_var_types['ENDOGENOUS'],
-                        allowed_var_types['CONSTANT']
-                    ):
-                        continue
-
-                    if is_uncertain:
-                        table_df = self.sqltools.table_to_dataframe(
-                            table_name=table_name)
-                        deterministic_df = self.uncertainty.get_deterministic_values_df(
-                            table_df=table_df, table_name=table_name)
-
-                        null_rows = deterministic_df.loc[
-                            deterministic_df[column_to_inspect].isna(), column_with_info].tolist()
-
-                        if null_rows:
-                            null_entries[table_name] = null_rows
-
-                    else:
-                        null_list = self.sqltools.get_null_values(
-                            table_name=table_name,
-                            column_to_inspect=column_to_inspect,
-                            column_with_info=column_with_info,
-                        )
-                        if null_list:
-                            null_entries[table_name] = null_list
-
-            if null_entries:
-                for table, rows in null_entries.items():
-                    if len(rows) > 5:
-                        rows = rows[:5] + [f"(total items {len(rows)})"]
-                    self.logger.error(
-                        f"Data coherence check | Table '{table}' | "
-                        f"NULLs at id rows: {rows}."
-                    )
-                raise exc.MissingDataError(
-                    "Data coherence check | NULL entries found in "
-                    f"data tables: {list(null_entries.keys())}"
-                )
-
-    def load_and_validate_symbolic_problem_old(
-            self,
-            force_overwrite: bool = False,
-    ) -> None:
-        """Call methods to load and validate symbolic problem.
-
-        The method calls the 'load_symbolic_problem_from_file' and complete the
-        problem expressions by adding implicit symbolic expressions using the
-        'add_implicit_symbolic_expressions' (i.e. defining expressions for variables
-        with sign constraints defined in settings). Then, it calls the
-        'validate_symbolic_expressions' methods of the Problem instance to load
-        and validate the symbolic problem definitions from a file.
-        The method also performs a coherence check between data tables and problem
-        definitions based on 'check_data_tables_and_problem_coherence' method.
-        """
-        with self.logger.log_timing(
-            message=f"Loading and validating symbolic problem...",
-            level='info',
-        ):
-            self.problem.load_symbolic_problem_from_file(force_overwrite)
-            self.problem.add_implicit_symbolic_expressions()
-            self.problem.validate_symbolic_expressions()
-            self.problem.check_data_tables_and_problem_coherence()
-
-    def generate_numerical_problem_old(
-            self,
-            force_overwrite: bool,
-            allow_none_values: bool,
-    ) -> None:
-        """Call methods to generate numerical problems.
-
-        The method initializes problem variables, fetch data from SQLite database
-        to exogenous variables, and generate numerical problems.
-        The method can optionally overwrite existing problem definitions without
-        prompting the user (force_overwrite, useful for testing purpose).
-        The method can allow None values in the data for exogenous variables
-
-        Args:
-            force_overwrite (bool, optional): If True, forces the redefinition
-                of problems without prompting the user. Defaults to False.
-            allow_none_values (bool, optional): If True, allows None values in
-                the data for exogenous variables.
-        """
-        self._initialize_problems_variables()
-        self.data_to_cvxpy_exogenous_vars(allow_none_values=allow_none_values)
-        self.problem.generate_numerical_problems(force_overwrite)
 
     def _solve_parallel(
         self,
@@ -818,7 +727,7 @@ class Core:
 
         sqlite_db_path = self.paths.model_dir
         scenarios_df = self.index.scenarios_info
-        problems_expressions = self.problem._collect_problems_expressions()
+        problems_expressions = self.problem.collect_problems_expressions()
 
         problems_status = pd.DataFrame(
             index=scenarios_df.index,
@@ -862,7 +771,7 @@ class Core:
                         var_key: variable
                         for expression in problem_expressions
                         for var_key, variable in
-                        self.problem._get_vars_in_expression(
+                        self.problem.get_vars_in_expression(
                             expression).items()
                     }
                     problem_vars_by_type = \
@@ -1648,7 +1557,7 @@ class Core:
             exc.MissingDataError: If NULL entries are found in any data table.
         """
         with self.logger.log_timing(
-            message=f"Checking exogenous data coherence...",
+            message="Checking exogenous data coherence...",
             level='info',
         ):
             null_entries = {}
@@ -1666,14 +1575,28 @@ class Core:
                     ):
                         continue
 
-                    null_list = self.sqltools.get_null_values(
-                        table_name=table_name,
-                        column_to_inspect=column_to_inspect,
-                        column_with_info=column_with_info,
-                    )
+                    if self.is_uncertainty_analysis:
 
-                    if null_list:
-                        null_entries[table_name] = null_list
+                        table_df = self.sqltools.table_to_dataframe(
+                            table_name=table_name)
+                        deterministic_df = self.uncertainty.get_deterministic_values_df(
+                            table_df=table_df)
+                        null_rows = deterministic_df.loc[
+                            deterministic_df[column_to_inspect].isna(), column_with_info].tolist()
+
+                        if null_rows:
+                            null_entries[table_name] = null_rows
+
+                    else:
+
+                        null_list = self.sqltools.get_null_values(
+                            table_name=table_name,
+                            column_to_inspect=column_to_inspect,
+                            column_with_info=column_with_info,
+                        )
+
+                        if null_list:
+                            null_entries[table_name] = null_list
 
             if null_entries:
                 for table, rows in null_entries.items():
@@ -1708,7 +1631,7 @@ class Core:
                 reloaded even when already available. Defaults to False.
         """
         with self.logger.log_timing(
-            message=f"Loading and validating symbolic problem...",
+            message="Loading and validating symbolic problem...",
             level='info',
         ):
             self.problem.load_symbolic_problem_from_file(force_overwrite)
