@@ -94,8 +94,8 @@ class Uncertainty:
 
         self.sampling_problem: dict[str, Any] | None = None
         self.uncertainty_samples: pd.DataFrame | None = None
-        self.uncertainty_measures: pd.DataFrame | None = None
         self.gsa_results: pd.DataFrame | None = None
+        self.par_mapping: pd.DataFrame | None = None
 
     def collect_uncertain_parameters(self) -> pd.DataFrame:
         """Collect uncertain parameters from uncertainty-enabled exogenous tables.
@@ -311,6 +311,8 @@ class Uncertainty:
                 )
 
             problem["groups"] = normalized_group_names.tolist()
+
+            self.par_mapping = mapping_df
 
         return problem
 
@@ -912,8 +914,6 @@ class Uncertainty:
 
         records_df = pd.DataFrame(records.values())
 
-        self.uncertainty_measures = records_df
-
         return records_df
 
     def _normalize_variable_data_by_problem(
@@ -1169,10 +1169,7 @@ class Uncertainty:
     def analyze_results(
         self,
         method: str,
-        problem: dict[str, Any],
-        samples_df: pd.DataFrame,
         uncertainty_measures_df: pd.DataFrame,
-        mapping_df: pd.DataFrame,
         measures: list[str] | None = None,
         scenarios: list[str] | None = None,
         **kwargs: Any,
@@ -1183,6 +1180,9 @@ class Uncertainty:
         model has multiple uncertainty measures and/or multiple scenarios, this
         method repeats the analysis for each selected combination.
         """
+        mapping_df = self.par_mapping
+        samples_df = self.uncertainty_samples
+        problem = self.sampling_problem
 
         method = method.lower()
 
@@ -1820,3 +1820,127 @@ class Uncertainty:
         )
 
         return fully_deterministic_vars, uncertainty_hybrid_vars
+
+    def collect_measure_records_for_run(
+        self,
+        run_id: int,
+        statuses_by_scenario: dict[int | None, str],
+    ) -> tuple[pd.DataFrame, dict[int | None, str]]:
+        """Collect uncertainty-measure records for one model run.
+
+        Successful scenarios produce records containing the solved uncertainty
+        measures. Failed scenarios produce records with NaN measure values and
+        retain their solver status.
+
+        Args:
+            run_id: Identifier of the uncertainty run.
+            statuses_by_scenario: Solver status associated with each scenario.
+
+        Returns:
+            A tuple containing the measure records generated for the run and
+            the failed scenarios with their corresponding solver status.
+        """
+        solved_scenarios = [
+            scenario_key
+            for scenario_key, status in statuses_by_scenario.items()
+            if status == "optimal"
+        ]
+
+        failed_scenarios = {
+            scenario_key: status
+            for scenario_key, status in statuses_by_scenario.items()
+            if status != "optimal"
+        }
+
+        records: list[pd.DataFrame] = []
+
+        if solved_scenarios:
+            solved_records = self.collect_uncertainty_measures_for_run(
+                run_id=run_id,
+                scenarios_to_collect=solved_scenarios,
+            )
+
+            if not solved_records.empty:
+                records.append(solved_records)
+
+        if failed_scenarios:
+            failed_records = self.create_failed_measure_records_for_run(
+                run_id=run_id,
+                failed_scenarios=failed_scenarios,
+            )
+
+            if not failed_records.empty:
+                records.append(failed_records)
+
+        if not records:
+            return pd.DataFrame(), failed_scenarios
+
+        run_records = pd.concat(
+            records,
+            ignore_index=True,
+        )
+
+        return run_records, failed_scenarios
+
+    def warn_failed_model_runs(
+        self,
+        failed_runs_report: dict[int, dict],
+    ) -> None:
+        """Log a summary warning for infeasible uncertainty-analysis runs."""
+
+        if not failed_runs_report:
+            return
+
+        has_scenarios = bool(self.core.index.sets_split_problem_dict)
+
+        if not has_scenarios:
+            failed_run_ids = list(failed_runs_report.keys())
+
+            self.logger.warning(
+                "Uncertainty analysis | Failed runs detected. "
+                f"Failed run_id values: {failed_run_ids}."
+            )
+
+            return
+
+        warning_lines = [
+            "Uncertainty analysis | Failed scenario-runs detected."
+        ]
+
+        for run_id, failed_scenarios in failed_runs_report.items():
+            scenario_info = []
+
+            for scenario_key, status in failed_scenarios.items():
+                scenario_name = self.get_scenario_name(
+                    scenario_key
+                )
+
+                if scenario_name in [None, ""]:
+                    scenario_name = scenario_key
+
+                scenario_info.append(f"{scenario_name}: {status}")
+
+            warning_lines.append(
+                f"run_id={run_id} | failed scenarios: "
+                + "; ".join(scenario_info)
+            )
+
+        self.logger.warning("\n".join(warning_lines))
+
+    def validate_gsa_configuration(
+        self,
+        *,
+        sampling_method: str,
+        analysis_method: str,
+        method_kwargs: dict[str, Any],
+    ) -> None:
+        """Validate the GSA analysis configuration."""
+        self.validate_analysis_config(
+            method=analysis_method,
+            kwargs=method_kwargs,
+        )
+
+        self.validate_sampling_analysis_compatibility(
+            sampling_method=sampling_method,
+            analysis_method=analysis_method,
+        )

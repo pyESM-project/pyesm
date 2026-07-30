@@ -572,6 +572,7 @@ class Core:
             force_overwrite: bool = False,
             suppress_warnings: bool = False,
     ) -> None:
+        
         """Write current sampled CVXPY parameter values into uncertain DB rows."""
 
         filter_header = Defaults.Labels.FILTER_DICT_KEY
@@ -761,6 +762,10 @@ class Core:
                     scenario_label = None
 
                 self.logger.info(msg)
+
+                if self.is_uncertainty_analysis:
+                    self.cvxpy_uncertain_exogenous_data_to_database(
+                        force_overwrite=True, suppress_warnings=True)
 
                 for problem_key in sequential_solution_chain:
 

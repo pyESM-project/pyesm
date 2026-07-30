@@ -121,3 +121,126 @@ class SamplingSettings:
             f"temp_save={self.temp_save}, "
             f"file_format='{self.file_format}')"
         )
+
+
+class GSASettings:
+    """Validated container for global sensitivity analysis settings.
+
+    Normalizes user selections, validates the selected SALib analyzer and its
+    keyword arguments, and checks compatibility with the configured sampling
+    method.
+
+    Raises:
+        ValueError: If uncertainty analysis is disabled, the selected analyzer
+            is unsupported, or the sampling and analysis methods are
+            incompatible.
+        TypeError: If measures, scenarios, or analyzer keyword arguments have
+            invalid types.
+    """
+
+    def __init__(
+        self,
+        *,
+        logger: Logger,
+        uncertainty_enabled: bool,
+        method: str,
+        method_kwargs: dict[str, Any] | None = None,
+        measures: str | list[str] | None = None,
+        scenarios: str | list[str] | None = None,
+        save_analysis: bool = True,
+        file_format: Defaults.LiteralTypes.DataFileType | None = "xlsx",
+    ) -> None:
+        """Validate and store GSA settings.
+
+        Args:
+            logger: Logger instance used during validation.
+            uncertainty_enabled: Whether uncertainty analysis is enabled for
+                the model.
+            sampling_method: Sampling method previously configured through
+                ``Model.sampling_settings()``.
+            method: SALib analysis method.
+            analyzers: Mapping between supported method names and SALib
+                analyzer functions.
+            analyzer_required_inputs: Analyzer arguments supplied internally
+                by CVXLab and therefore unavailable as user-defined keyword
+                arguments.
+            method_kwargs: Additional keyword arguments passed to the selected
+                SALib analyzer.
+            measures: Uncertainty measures to analyze. A single measure can be
+                passed as a string.
+            scenarios: Scenarios to analyze. A single scenario can be passed
+                as a string.
+            save_analysis: Whether analysis results should be saved.
+            file_format: Output format used when saving analysis results.
+        """
+        if not uncertainty_enabled:
+            raise ValueError(
+                "Uncertainty analysis is not enabled. "
+                "Create the model with "
+                f"{Defaults.Labels.UNCERTAINTY_SETTING_KEY}=True."
+            )
+
+        if not isinstance(method, str):
+            raise TypeError(
+                "'method' must be a string."
+            )
+
+        method_kwargs = (
+            {}
+            if method_kwargs is None
+            else method_kwargs.copy()
+        )
+
+        if not isinstance(method_kwargs, dict):
+            raise TypeError(
+                "'method_kwargs' must be a dictionary or None."
+            )
+
+        if measures is not None and not isinstance(measures, list):
+            raise TypeError(
+                "'measures' must be a string, a list of strings, or None."
+            )
+
+        if scenarios is not None and not isinstance(scenarios, list):
+            raise TypeError(
+                "'scenarios' must be a string, a list of strings, or None."
+            )
+
+        if not isinstance(save_analysis, bool):
+            raise TypeError(
+                "'save_analysis' must be a boolean."
+            )
+
+        if not save_analysis and file_format is not None:
+            logger.warning(
+                "GSA settings | 'file_format' was specified while "
+                "'save_analysis=False'. Analysis results will not be saved."
+            )
+
+        if file_format is not None:
+            valid_file_formats = (
+                Defaults.UncertaintySettings.AVAILABLE_EXPORT_FORMATS
+            )
+
+            if file_format not in valid_file_formats:
+                raise ValueError(
+                    f"Unsupported GSA results file format '{file_format}'. "
+                    f"Available formats: {sorted(valid_file_formats)}."
+                )
+
+        self.method = method
+        self.method_kwargs = method_kwargs
+        self.measures = measures
+        self.scenarios = scenarios
+        self.save_analysis = save_analysis
+        self.file_format = file_format
+
+    def __repr__(self) -> str:
+        return (
+            f"{type(self).__name__}("
+            f"method='{self.method}', "
+            f"measures={self.measures}, "
+            f"scenarios={self.scenarios}, "
+            f"save_analysis={self.save_analysis}, "
+            f"file_format={self.file_format!r})"
+        )
