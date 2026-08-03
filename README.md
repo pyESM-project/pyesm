@@ -75,22 +75,29 @@ activities summarized below:
 ## Guided Interface
 CVXlab provides an interactive guided interface that walks you through the full 
 modeling workflow, from directory setup to model solution via a terminal menu. 
-Launch it with `cvxlab.run()` function:
+Launch it with the `cvxlab.gui()` function:
 
 ```python
 import cvxlab
 
-cvxlab.run(
-    model_dir_name='my_model',
-    main_dir_path='/path/to/models',
-)
+frontend_config = {
+    'model_dir_name': 'my_model',
+    'main_dir_path': '/path/to/models',
+    'action_settings': {
+        'run_model': {
+            'solution_mode': 'parallel',
+            'solver': 'CLARABEL',
+        },
+    },
+}
+
+cvxlab.gui(**frontend_config)
 ```
 
-The `run()` signature mirrors the parameters of `Model.__init__()` and 
-`Model.run_model()`, with additional frontend-only options such as 
-`model_structure_file` and `template_file_type`.
-All parameters are optional; when omitted, the backend applies its own defaults 
-or the interactive prompt asks for specific instructions.
+The dictionary follows `cvxlab.FrontendConfig`. Model settings are supplied at
+the top level, while API-specific values belong under `action_settings`. All
+values are optional: after an action is selected, the interface asks only for
+the settings that were not preconfigured.
 
 ## Documentation
 Full documentation is available at [cvxlab.readthedocs.io](https://cvxlab.readthedocs.io/en/latest/).

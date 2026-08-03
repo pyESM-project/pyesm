@@ -13,7 +13,7 @@ CVXlab provides a guided interactive interface that walks through the entire
 modeling workflow via a menu-driven session. This is the simplest way to get 
 started with CVXlab, requiring no prior knowledge of the package APIs.
 
-.. autofunction:: cvxlab.run
+.. autofunction:: cvxlab.gui
 
 
 Model directory and instance management

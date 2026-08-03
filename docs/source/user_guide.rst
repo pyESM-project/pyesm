@@ -23,33 +23,13 @@ production planning problem <tutorial-production-planning>`
 tutorial.
 
 
-.. _guided_interface:
+Guided interface
+----------------
 
-Guided interface (quick start)
-------------------------------
-
-For users who prefer a plug-and-play experience, CVXlab provides an interactive 
-guided interface that walks through the entire modeling workflow via a menu-driven 
-session. This is the simplest way to get started with CVXlab:
-
-.. code-block:: python
-
-   import cvxlab
-   
-   cvxlab.run(...)
-
-The :py:func:`cvxlab.run` function accepts arguments defining model and run settings 
-(e.g. model directory, solution mode, solver settings). Once called, it prompts an 
-interactive session that guides the user through model directory generation, data 
-loading, problem solving, and results export. 
-
-The interface is ideal to avoid direct interaction with the underlying APIs; however,
-model formulation, settings, and data input must still be provided through the 
-expected setup files and data structures, as described in the following sections.
-
-For full control over each modeling step, **refer to the programmatic workflows below**.
-
-API: :py:func:`cvxlab.run`
+Users who prefer a menu-driven workflow can configure and run a model through
+the :ref:`guided_interface`. That page explains interactive prompts,
+preconfiguration with :py:class:`cvxlab.FrontendConfig`, the available actions,
+and how each action maps to the modeling steps and public APIs documented below.
 
 
 .. _model_generation_from_scratch:
@@ -412,8 +392,6 @@ and on the SQLite database, summarized in the table below.
   user_guide_steps/numerical_problem_init
   user_guide_steps/numerical_problem_run
   user_guide_steps/export_model_results
-
-
 
 
 

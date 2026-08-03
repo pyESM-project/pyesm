@@ -57,6 +57,8 @@ Start here
     - What you will find
   * - :doc:`installation`
     - How to install CVXlab and verify that the environment is ready.
+  * - :doc:`guided_interface`
+    - How to use the menu-driven interface to configure and run a model.
   * - :doc:`user_guide`
     - The full modeling workflow, from conceptual model definition to results export.
   * - :doc:`resources`
@@ -69,12 +71,13 @@ Start here
   :maxdepth: 1
   :hidden:
 
-  installation
-  user_guide
-  resources
-  api_reference
-  changelog
-  contributing
+  Installation <installation>
+  Interface <guided_interface>
+  User Guide <user_guide>
+  Resources <resources>
+  API Reference <api_reference>
+  Changelog <changelog>
+  Contributing <contributing>
 
 
 .. note::
