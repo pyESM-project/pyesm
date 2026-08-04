@@ -397,14 +397,21 @@ def annuity(
     else:
         ir: np.ndarray = np.zeros([1, pl])
 
-    if not 1 in ir.shape:
-        raise ValueError(
-            f"Interest rate must be a vector. Passed dimension: '{len(ir)}'.")
+    if ir.size == 1:
+        ir = np.full((1, pl), ir.item())
 
-    if ir.size != pl:
-        raise ValueError(
-            "Interest rate vector must have size equal to period length."
-            f"Passed interest rate size: '{ir.size}'; period length: '{pl}'.")
+    else:
+        if not 1 in ir.shape:
+            raise ValueError(
+                "Interest rate must be either a scalar or a vector. "
+                f"Passed shape: '{ir.shape}'.")
+
+        if ir.size != pl:
+            raise ValueError(
+                "Interest rate must be either a scalar or a vector with size "
+                "equal to period length. "
+                f"Passed interest rate size: '{ir.size}'; "
+                f"period length: '{pl}'.")
 
     if ir.shape[0] != 1:
         ir = ir.T

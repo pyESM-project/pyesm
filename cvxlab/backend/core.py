@@ -12,6 +12,8 @@ import numpy as np
 import pandas as pd
 import cvxpy as cp
 
+from scipy.sparse import issparse
+
 from cvxlab.backend.data_table import DataTable
 from cvxlab.backend.database import Database
 from cvxlab.backend.index import Index, Variable
@@ -572,7 +574,6 @@ class Core:
             force_overwrite: bool = False,
             suppress_warnings: bool = False,
     ) -> None:
-        
         """Write current sampled CVXPY parameter values into uncertain DB rows."""
 
         filter_header = Defaults.Labels.FILTER_DICT_KEY
@@ -632,9 +633,15 @@ class Core:
                             cvxpy_var_header
                         ][combination]
 
-                        cvxpy_values = np.asarray(
-                            cvxpy_obj.value
-                        ).reshape(-1)
+                        # cvxpy_values = np.asarray(
+                        #     cvxpy_obj.value
+                        # ).reshape(-1)
+
+                        if issparse(cvxpy_obj.value):
+                            cvxpy_values = cvxpy_obj.value.toarray().reshape(-1)
+                        else:
+                            cvxpy_values = np.asarray(
+                                cvxpy_obj.value).reshape(-1)
 
                         # Associate the current CVXPY values with the rows
                         # selected for this variable.
@@ -797,7 +804,6 @@ class Core:
                         warnings_on_negatives=True,
                         validate_types=False,
                     )
-
                     self.problem.solve_problem_dataframe(
                         problem_name=problem_key,
                         problem_dataframe=problem_df,

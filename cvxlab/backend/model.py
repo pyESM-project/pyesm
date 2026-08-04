@@ -646,6 +646,7 @@ class Model():
             **kwargs: Additional keyword arguments for backward compatibility.
         """
         # Normalize deprecated arguments (keeps Model.run_model body clean)
+
         solution_mode = BackwardCompat.run_model_params(
             solution_mode=solution_mode, kwargs=kwargs, logger=self.logger
         )
@@ -1189,8 +1190,10 @@ class Model():
             self.run_model(
                 force_overwrite=force_overwrite,
                 solution_mode=solution_mode,
+                scenarios_idx=scenarios_idx,
                 convergence_monitoring=convergence_monitoring,
                 solver=solver,
+                sequential_solution_chain=sequential_solution_chain,
                 solver_verbose=solver_verbose,
                 solver_settings=solver_settings,
                 convergence_norm=convergence_norm,

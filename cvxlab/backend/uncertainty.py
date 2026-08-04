@@ -257,7 +257,7 @@ class Uncertainty:
         )
 
         group_name_key = (
-            Defaults.UncertaintySettings.UNCERTAIN_PARAMETER_NAME_TEMPLATE
+            Defaults.UncertaintySettings.UNCERTAINTY_GROUP_NAME_KEY
         )
 
         problem = {
