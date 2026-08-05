@@ -638,6 +638,7 @@ class Database:
 
         file_extension = self.settings.input_data_files_type
         multiple_data_file = self.settings.multiple_input_files
+        value_header = Defaults.Labels.VALUES_FIELD['values'][0]
 
         if not multiple_data_file and file_extension != 'xlsx':
             msg = "Single data file is only allowed in 'xlsx' format."
@@ -696,6 +697,21 @@ class Database:
                 for table_key in table_key_list
             }
 
+        # check if there are empty values in dataframes and log warning if any
+        # (this may not necessarily be an error, but it is strange that no exogenous
+        # data are defined
+        empty_values = []
+
+        for table_key in table_key_list:
+            values_col = data_dict[table_key].loc[:, value_header]
+            if values_col.isnull().any():
+                empty_values.append(table_key)
+
+        if empty_values:
+            self.logger.warning(
+                f"Data input tables {empty_values} have no numeric values. ")
+
+        # normalize dataframes and load them into the database
         normalized_data = {
             table_key: util.normalize_dataframe(
                 df=data_dict[table_key],
