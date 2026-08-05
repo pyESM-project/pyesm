@@ -94,10 +94,12 @@ frontend_config = {
 cvxlab.gui(**frontend_config)
 ```
 
-The dictionary follows `cvxlab.FrontendConfig`. Model settings are supplied at
-the top level, while API-specific values belong under `action_settings`. All
-values are optional: after an action is selected, the interface asks only for
-the settings that were not preconfigured.
+Model settings are supplied at the top level, while API-specific values belong
+under `action_settings`. All values are optional: after an action is selected,
+the interface asks only for the settings that were not preconfigured. The
+`use_existing_data` model option is selected through **Model session**: choose
+**Create new Model instance** for `False` or **Open existing Model environment**
+for `True`.
 
 ## Documentation
 Full documentation is available at [cvxlab.readthedocs.io](https://cvxlab.readthedocs.io/en/latest/).

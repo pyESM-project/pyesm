@@ -45,6 +45,65 @@ closing the interface.
 API: :py:func:`cvxlab.gui`
 
 
+Menu overview
+-------------
+
+The complete menu structure is summarized below. Each leaf pairs the visible
+action with the API it calls. The *Back* and *Quit CVXlab* navigation entries
+are omitted because they do not call an API.
+
+.. container:: gui-menu-tree
+
+  - **Guided interface** → :py:func:`cvxlab.gui`
+
+    - **Model session**
+
+      - **Create new Model instance** → :py:class:`cvxlab.Model`
+        ``(..., use_existing_data=False)``
+      - **Open existing Model environment** → :py:class:`cvxlab.Model`
+        ``(..., use_existing_data=True)``
+      - **Save active Model instance** →
+        :py:func:`cvxlab.handle_model_instance` ``(..., action="save")``
+      - **Load saved Model instance** →
+        :py:func:`cvxlab.handle_model_instance` ``(..., action="load")``
+
+    - **Model operations**
+
+      - **Initialize model environment** →
+        :py:meth:`~cvxlab.Model.initialize_model_environment`
+      - **Generate input data files** →
+        :py:meth:`~cvxlab.Model.generate_input_data_files`
+      - **Refresh database and initialize problem** →
+        :py:meth:`~cvxlab.Model.refresh_database_and_initialize_problem`
+      - **Run model** → :py:meth:`~cvxlab.Model.run_model`
+      - **Load results to database** →
+        :py:meth:`~cvxlab.Model.load_results_to_database`
+
+    - **Model maintenance**
+
+      - **Reinitialize SQLite database** →
+        :py:meth:`~cvxlab.Model.reinitialize_sqlite_database`
+      - **Update set tables** →
+        :py:meth:`~cvxlab.Model.update_sets_tables`
+      - **Check model results** →
+        :py:meth:`~cvxlab.Model.check_model_results`
+
+    - **Inspect model**
+
+      - **Inspect set data** → :py:meth:`~cvxlab.Model.set`
+      - **Inspect variable data** → :py:meth:`~cvxlab.Model.variable`
+      - **Show active Model summary** → :py:meth:`~cvxlab.Model.show_model_summary`
+
+    - **Utilities**
+
+      - **Create model directory** → :py:func:`cvxlab.create_model_dir`
+      - **Transfer setup information from Excel** →
+        :py:func:`cvxlab.transfer_setup_info_xlsx`
+      - **Copy user-defined templates** →
+        :py:func:`cvxlab.copy_user_defined_templates`
+      - **Show installed solvers** → :py:func:`cvxlab.installed_solvers`
+
+
 Preconfiguring the session
 --------------------------
 
@@ -59,13 +118,12 @@ Basic settings can be passed directly to :py:func:`cvxlab.gui`:
       log_level="info",
   )
 
-For a reusable configuration, the same arguments can be collected in a dictionary 
-following :py:class:`cvxlab.FrontendConfig` and expanded when calling 
-:py:func:`cvxlab.gui`. Settings used to construct a :py:class:`cvxlab.Model` are 
-placed at the top level. Arguments belonging to a specific action are placed under 
-``action_settings``, using the public API method name as the key. This also applies 
-to utility-specific settings, such as the source file used by 
-:py:func:`cvxlab.transfer_setup_info_xlsx`.
+For a reusable configuration, the same arguments can be collected in a dictionary
+and expanded when calling :py:func:`cvxlab.gui`. Settings used to construct a
+:py:class:`cvxlab.Model` are placed at the top level. Arguments belonging to a
+specific action are placed under ``action_settings``, using the public API method
+name as the key. This also applies to utility-specific settings, such as the
+source file used by :py:func:`cvxlab.transfer_setup_info_xlsx`.
 
 .. code-block:: python
 
@@ -106,7 +164,13 @@ errors are reported immediately.
 The interface does not accept an existing :py:class:`cvxlab.Model` instance.
 Models are created, opened, or loaded explicitly from the *Model session* menu.
 
-API: :py:class:`cvxlab.FrontendConfig`, :py:func:`cvxlab.gui`
+``use_existing_data`` is therefore intentionally not accepted as a top-level
+:py:func:`cvxlab.gui` setting. Choose *Create new Model instance* to pass
+``use_existing_data=False`` to :py:class:`cvxlab.Model`, or *Open existing Model
+environment* to pass ``use_existing_data=True``. Keeping this choice in the menu
+prevents a configured boolean from contradicting the selected session action.
+
+API: :py:func:`cvxlab.gui`
 
 
 Guided modeling workflow
@@ -175,78 +239,13 @@ programmatic workflow.
   model implicitly.
 
 
-Model actions and related APIs
-------------------------------
+Behavioral notes and further information
+----------------------------------------
 
-The main operations mirror the public :py:class:`cvxlab.Model` API:
+Each action invokes only the API shown in the menu tree. Prerequisite operations
+are not run automatically, and an action that fails returns control to the menu.
+Settings entered interactively are retained for the rest of the GUI session.
 
-.. list-table::
-  :header-rows: 1
-  :widths: 38 30 32
-
-  * - Interface action
-    - API called
-    - Purpose
-  * - Generate input data files
-    - :py:meth:`~cvxlab.Model.generate_input_data_files`
-    - Generate blank input files for selected exogenous data tables.
-  * - Refresh database and initialize problem
-    - :py:meth:`~cvxlab.Model.refresh_database_and_initialize_problem`
-    - Import selected input data and rebuild the numerical problem.
-  * - Run model
-    - :py:meth:`~cvxlab.Model.run_model`
-    - Solve the initialized numerical problem or problems.
-  * - Load results to database
-    - :py:meth:`~cvxlab.Model.load_results_to_database`
-    - Export solved endogenous data to SQLite.
-  * - Reinitialize SQLite database
-    - :py:meth:`~cvxlab.Model.reinitialize_sqlite_database`
-    - Restore a blank database from the current model structure.
-  * - Update set tables
-    - :py:meth:`~cvxlab.Model.update_sets_tables`
-    - Update database set tables from the current coordinates.
-  * - Check model results
-    - :py:meth:`~cvxlab.Model.check_model_results`
-    - Compare results against a reference database.
-  * - Inspect set data
-    - :py:meth:`~cvxlab.Model.set`
-    - Display a selected set and its coordinates.
-  * - Inspect variable data
-    - :py:meth:`~cvxlab.Model.variable`
-    - Display data and metadata for a selected variable.
-
-The *Show active Model summary* action reads the model's
-:py:attr:`~cvxlab.Model.sets`, :py:attr:`~cvxlab.Model.data_tables`,
-:py:attr:`~cvxlab.Model.variables`, :py:attr:`~cvxlab.Model.scenarios`, and
-:py:attr:`~cvxlab.Model.is_problem_solved` properties.
-
-
-Utilities
----------
-
-The interface also exposes utilities that support, but do not replace, the
-modeling workflow:
-
-.. list-table::
-  :header-rows: 1
-  :widths: 38 30 32
-
-  * - Interface action
-    - API called
-    - Purpose
-  * - Create model directory
-    - :py:func:`cvxlab.create_model_dir`
-    - Create a standard model directory and blank setup templates.
-  * - Transfer setup information from Excel
-    - :py:func:`cvxlab.transfer_setup_info_xlsx`
-    - Transfer setup information from a model-structure workbook.
-  * - Copy user-defined templates
-    - :py:func:`cvxlab.copy_user_defined_templates`
-    - Copy templates into the selected model directory.
-  * - Save or load a Model instance
-    - :py:func:`cvxlab.handle_model_instance`
-    - Persist the active model or restore a saved instance.
-
-For complete argument descriptions, follow the API links above or see the
-:doc:`api_reference`. For a conceptual and programmatic explanation of every
-step, continue with the :ref:`user_guide`.
+See the :doc:`api_reference` for complete argument descriptions. For conceptual
+and programmatic explanations of the modeling steps, continue with the
+:ref:`user_guide`.

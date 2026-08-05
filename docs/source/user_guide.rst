@@ -28,8 +28,8 @@ Guided interface
 
 Users who prefer a menu-driven workflow can configure and run a model through
 the :ref:`guided_interface`. That page explains interactive prompts,
-preconfiguration with :py:class:`cvxlab.FrontendConfig`, the available actions,
-and how each action maps to the modeling steps and public APIs documented below.
+preconfiguration settings, the available actions, and how each action maps to the 
+modeling steps and public APIs documented below.
 
 
 .. _model_generation_from_scratch:
@@ -392,8 +392,6 @@ and on the SQLite database, summarized in the table below.
   user_guide_steps/numerical_problem_init
   user_guide_steps/numerical_problem_run
   user_guide_steps/export_model_results
-
-
 
 
 

@@ -68,7 +68,7 @@ class BackwardCompat:
         solver_kwargs: Dict[str, Any],
         logger: Optional[Logger] = None,
     ) -> Dict[str, Any]:
-        """Normalize deprecated kwargs for ``interface.run``.
+        """Normalize deprecated kwargs for ``gui.gui``.
 
         If the old ``integrated_problems`` flag is present, translate it
         into the new ``solution_mode`` key and remove the deprecated key.
