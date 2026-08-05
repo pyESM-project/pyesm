@@ -56,7 +56,6 @@ dependencies:
       - colorama==0.4.6
       - comm==0.2.3
       - coverage==7.15.2
-      - cvxlab==1.0.1
       - cvxpy==1.9.2
       - debugpy==1.8.21
       - decorator==5.3.1

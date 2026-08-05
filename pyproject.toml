@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "cvxlab"
-version = "1.0.1"
+version = "1.1.0"
 description = "CVXlab - Open-source Python laboratory for convex algebraic modeling"
 authors = [
     {name = "Matteo V. Rocco", email = "matteovincenzo.rocco@polimi.it"}
@@ -50,6 +50,10 @@ solvers = [
     # On Linux/macOS install via apt/brew; on Windows use conda-forge instead:
     #   conda install -c conda-forge cyipopt
     "cyipopt>=1.1.0",
+]
+release = [
+    "build",
+    "twine",
 ]
 
 [project.urls]

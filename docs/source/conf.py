@@ -9,7 +9,7 @@
 from importlib.metadata import version as pkg_version
 
 project = 'CVXlab'
-copyright = '2025, Matteo V. Rocco'
+copyright = '2025-2026, Matteo V. Rocco'
 author = 'Matteo V. Rocco'
 github_url = "https://github.com/cvxlab/cvxlab"
 pypi_url = "https://pypi.org/project/cvxlab/"

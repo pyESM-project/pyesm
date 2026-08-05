@@ -7,8 +7,8 @@ abstract: >-
   optimization problems. It extends CVXPY with user-friendly interfaces,
   integrated SQLite-backed data management, and support for multiple,
   interconnected optimization models defined via Excel or YAML configuration files.
-version: 1.0.1
-date-released: "2026-06-11"
+version: 1.1.0
+date-released: "2026-08-05"
 license: Apache-2.0
 repository-code: "https://github.com/cvxlab/cvxlab"
 url: "https://cvxlab.readthedocs.io"

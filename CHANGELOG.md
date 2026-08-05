@@ -7,86 +7,50 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.1.0] - 5 August 2026
+
 ### Added
-- **`domain` field for data tables**: replaces the old boolean `integer` field.
-  Accepted values: `integer` (integer variables, $\mathbb{Z}$) or `boolean` (binary
-  variables, $\{0,1\}$). Omitting the field keeps the default continuous domain.
-  The deprecated `integer: true` syntax is still accepted with a warning and
-  automatically migrated to `domain: integer`.
-- Installation docs: new *Install from Dev Branch* section with `git+https` install
-  instructions for users who want the latest unreleased features.
-- Possibility to **run only a selection of scenarios** from Model.run_model() method, 
-  by specifying the `scenario_idx` attribute as integer or list of integers 
-  corresponding to the index of scenarios in the `Model.scenarios` property.
-- Per-problem solver and solver-settings routing for multi-problem runs (backend: 
-  `core.py`, `problem.py`, `database.py`).
-- Centralized backward-compatibility helpers: added `cvxlab.backward_compat.BackwardCompat`
-  to host short-lived translation helpers for deprecated public API (e.g., mapping
-  `integrated_problems` → `solution_mode`). This keeps core modules clean and makes
-  deprecation removal straightforward in future releases.
-- **Sequential solution mode** (`solution_mode='sequential'` in `Model.run_model()`):
-  multiple numerical sub-problems can now be solved in a user-defined order via the
-  `sequential_solution_chain` argument. After each sub-problem is solved, endogenous
-  results are exported to the SQLite database and hybrid variables are automatically
-  passed downstream to subsequent problems in the chain.
-- **`RunSettings` class** (`backend/run_settings.py`): centralizes collection and
-  validation of all `run_model()` arguments (solution mode, solver, solver settings,
-  scenario selection, sequential chain, integrated-solver tolerances). Removes scattered
-  argument validation from `Core` and `Model`.
-- **`ModelSettings` and `ModelPaths` classes** (`backend/model_settings.py`): replace
-  `DotDict`-based settings and path containers with dedicated typed objects that
-  validate eagerly on construction and expose attributes instead of dict keys.
-  All backend modules (`core.py`, `database.py`, `index.py`, `problem.py`) updated
-  to use attribute access.
-- Added `cyipopt>=1.1.0` to the `solvers` optional extra in `pyproject.toml` for
-  IPOPT support via pip (note: source-only on PyPI; Windows users should use
-  `conda install -c conda-forge cyipopt`).
+- Introduced a redesigned guided terminal interface, available through
+  `cvxlab.gui()`, for configuring and managing the complete modeling workflow.
+- Refactoring Model.run_model() method, adding three different solution modes: 
+  'parallel' (default), 'sequential' (for linked sub-problems: results from one
+  problem can be passed automatically to the next following a user-defined chain) 
+  and 'integrated' (working as the previous version).
+- Added selective scenario execution, easier inspection of available scenarios,
+  and a model summary.
+- Added continuous, integer, and boolean variable domains through the new
+  `domain` setting. The former `integer` setting is still migrated automatically.
+- Added per-problem solver selection and solver settings for multi-problem models,
+  together with optional IPOPT support for non-linear problems.
 
 ### Changed
-- Reorganized backend solve flow; moved database comparison/cleanup into dedicated 
-  helpers (`backend/database.py`, `backend/core.py`).
-- Split nonlinear tutorial assets into separate `model_nonlinear` and `model_decomposition` 
-  sets under `docs/source/tutorials/production_planning_nonlinear`.
-- Bumped minimum `cvxpy` version to `>=1.9.1` (see `pyproject.toml`).
-- Adjusted numerical default: `Defaults.NumericalSettings.SPARSE_MATRIX_ZEROS_THRESHOLD` 
-  changed from `0.3` to `0.7` (`defaults.py`).
-- Integration tests now run directly against tutorial model directories instead of
-  isolated fixtures; the `sequential_problems` test key renamed to
-  `production_planning_sequential` with an updated `sequential_solution_chain`
-  (`data_calibration` → `planning_model`).
-- Tutorial gallery: replaced `products_footprints_sequential` with a new
-  `production_planning_sequential` tutorial (sequential calibration + planning
-  workflow); renamed gallery entries "Production planning (non-linear)" →
-  "Handling non-linearities" and "Production planning (decomposition)" →
-  "Problem decomposition".
+- Unified multi-problem execution around parallel, sequential, and integrated
+  solution modes.
+- Replaced the early `cvxlab.run()` interface with the redesigned `cvxlab.gui()`
+  interface. Existing calls to `cvxlab.run()` must be updated.
+- Improved validation of model settings, run configuration, variable filters,
+  input files, and workbook contents, providing earlier and clearer feedback.
+- Improved selective data-table updates and overwrite handling for generated and
+  imported data files.
+- Increased the minimum supported CVXPY version to 1.9.1 to allow explicit solution 
+  for nonlinear problems.
 
 ### Fixed
-- **Backward-compatibility migration for `integer` field**: the migration block that
-  converts `integer: true` → `domain: integer`.
-  - Added backward-compatibility mapping for `integrated_problems` → `solution_mode`.
-- README images now use absolute raw GitHub URLs so they render correctly on PyPI.
-- Corrected GitHub organization URL (`cvxgrp` → `cvxlab`) throughout installation docs.
-- Replaced unsupported `tab-set`/`tab-item` directives (sphinx-design) with plain RST
-  in the citation section of the resources page.
-- Integration tests and CI: integration tests now run across tutorial models and were 
-  updated to cover solver routing and tutorial assets (`tests/integration/test_integration.py`).
-- **Windows: hardened SQLite cleanup and DB restore** in sequential and integrated
-  solver flows (`backend/core.py`, `support/sql_manager.py`, `support/file_manager.py`):
-  explicitly close cursor and connection before file operations; use atomic
-  `os.replace` in `FileManager.rename_file` (`force_overwrite` flag); emit a warning
-  instead of crashing when a temp iteration DB is locked and cannot be deleted.
+- Improved sparse-variable handling: now sparse matrices are defined only for a given 
+  minimum matrix size.
+- Improved normalization of boolean values imported from Excel.
+- Made database cleanup and restoration more reliable, particularly on Windows.
+- Added clearer warnings for input data files that contain no values.
+- Preserved compatibility with the former `integrated_problems` argument through
+  automatic migration to the new solution-mode configuration.
 
 ### Documentation
-- Added package structure diagram (`_static/package_structure.png`) to
-  `api_reference.rst` with a description of the class hierarchy
-  (`Model` → `Core` → `Index` / `Database` / `Problem`, settings, support utilities).
-- Added PyPI icon link to the Sphinx navbar (`conf.py`).
-- Updated `index.rst` homepage: expanded description to mention parallel, sequential,
-  and integrated solution modes; added "Linked-model orchestration" feature bullet;
-  added GitHub Discussions link.
-- Added `.. _installation:` cross-reference anchor to `installation.rst`.
-- Updated user guide steps: conceptual model definition, data structures
-  initialization, and numerical problem run pages revised; solution mode figure added.
+- Added a complete guide for the redesigned interface and expanded the user guide
+  for parallel, sequential, and integrated solution modes.
+- Added tutorials covering sequential workflows, nonlinear models, and
+  decomposition into coupled convex sub-problems.
+- Added package-architecture and solution-mode diagrams, refreshed installation
+  instructions, and added software citation metadata.
 
 
 ## [1.0.1] - 11 June 2026
