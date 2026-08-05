@@ -35,7 +35,7 @@ class SamplingSettings:
         save_samples: bool = True,
         save_measures: bool = True,
         temp_save: bool = True,
-        file_format: str = "xlsx",
+        file_format: str | None,
     ) -> None:
         """Validate, normalize and store sampling settings."""
 
@@ -98,6 +98,11 @@ class SamplingSettings:
                 "'save_samples=False'. Samples will not be saved."
             )
 
+        if save_samples and file_format is None:
+            file_format = "xlsx"
+            logger.warning(
+                "file format not specified, set to default xlsx."
+            )
         if not save_measures and file_format is not None:
             logger.warning(
                 "Uncertainty analysis | 'file_format' specified but "
@@ -145,8 +150,8 @@ class GSASettings:
         uncertainty_enabled: bool,
         method: str,
         method_kwargs: dict[str, Any] | None = None,
-        measures: str | list[str] | None = None,
-        scenarios: str | list[str] | None = None,
+        measures: list[str] | None = None,
+        scenarios: list[str] | None = None,
         save_analysis: bool = True,
         file_format: Defaults.LiteralTypes.DataFileType | None = "xlsx",
     ) -> None:

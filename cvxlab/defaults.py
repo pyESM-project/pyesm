@@ -714,6 +714,10 @@ class Defaults:
 
         UNCERTAIN_PARAMETER_NAME_TEMPLATE = "table: {table_name}; id: {row_id}"
 
+        # default names in salin
+        SALIB_RESULTS_NAME_COL = "names"
+        SALIB_GROUPS_NAME = "groups"
+
         # Sampling and analysis methods
         SOBOL = "sobol"
         MORRIS = "morris"
@@ -751,6 +755,11 @@ class Defaults:
             RBD_FAST: {
                 "print_to_console": True,
             },
+        }
+
+        NOT_NAN_COMPATIBLE_METHODS = {
+            SOBOL,
+            MORRIS,
         }
 
         # Samples, measures and GSA-result columns

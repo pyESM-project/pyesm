@@ -1,8 +1,8 @@
 """Tools for collecting uncertain parameters from exogenous data tables."""
 
-from typing import Any, Dict, List, Callable
 from pathlib import Path
 import inspect
+from typing import Any, Dict, Callable
 
 import pandas as pd
 import numpy as np
@@ -14,6 +14,7 @@ from SALib.analyze import (
     rbd_fast,
 )
 
+
 from cvxlab.defaults import Defaults
 from cvxlab.backend.index import Index
 from cvxlab.support.sql_manager import SQLManager, db_handler
@@ -24,13 +25,13 @@ from cvxlab.support.file_manager import FileManager
 
 class Uncertainty:
 
-    """Manage data sampling and global sensitivity analysis workflows for 
+    """Manage data sampling and global sensitivity analysis workflows for
     uncertain model parameters.
 
     The class implements the uncertainty-analysis layer of CVXLab. It maps
     row-level uncertain parameters data stored in SQLite tables to SALib format,
-    validates parameters' uncertain bounds and uncertainty metadata, constructs 
-    a Salib format sampling problems, generates sample matrices, injects sampled 
+    validates parameters' uncertain bounds and uncertainty metadata, constructs
+    a Salib format sampling problems, generates sample matrices, injects sampled
     values into CVXPY parameters,collects scalar model outputs, and executes
     results' global sensitivity analyses..
 
@@ -96,6 +97,9 @@ class Uncertainty:
         self.uncertainty_samples: pd.DataFrame | None = None
         self.gsa_results: pd.DataFrame | None = None
         self.par_mapping: pd.DataFrame | None = None
+        self.uncertainty_measures: pd.DataFrame | None = None
+
+        self.uncertainty_defaults = Defaults.UncertaintySettings
 
     def collect_uncertain_parameters(self) -> pd.DataFrame:
         """Collect uncertain parameters from uncertainty-enabled exogenous tables.
@@ -124,36 +128,36 @@ class Uncertainty:
         values_col = Defaults.Labels.VALUES_FIELD["values"][0]
 
         is_uncertain_col = (
-            Defaults.UncertaintySettings.IS_UNCERTAIN_FIELD[
-                Defaults.UncertaintySettings.IS_UNCERTAIN_KEY
+            self.uncertainty_defaults.IS_UNCERTAIN_FIELD[
+                self.uncertainty_defaults.IS_UNCERTAIN_KEY
             ][0]
         )
 
         lower_col = (
-            Defaults.UncertaintySettings.LOWER_BOUND_FIELD[
-                Defaults.UncertaintySettings.LOWER_BOUND_KEY
+            self.uncertainty_defaults.LOWER_BOUND_FIELD[
+                self.uncertainty_defaults.LOWER_BOUND_KEY
             ][0]
         )
 
         upper_col = (
-            Defaults.UncertaintySettings.UPPER_BOUND_FIELD[
-                Defaults.UncertaintySettings.UPPER_BOUND_KEY
+            self.uncertainty_defaults.UPPER_BOUND_FIELD[
+                self.uncertainty_defaults.UPPER_BOUND_KEY
             ][0]
         )
 
         group_name_col = (
-            Defaults.UncertaintySettings.UNCERTAINTY_GROUP_NAME_FIELD[
-                Defaults.UncertaintySettings.UNCERTAINTY_GROUP_NAME_KEY
+            self.uncertainty_defaults.UNCERTAINTY_GROUP_NAME_FIELD[
+                self.uncertainty_defaults.UNCERTAINTY_GROUP_NAME_KEY
             ][0]
         )
 
-        parameter_name_col = Defaults.UncertaintySettings.PARAMETER_NAME
+        parameter_name_col = self.uncertainty_defaults.PARAMETER_NAME
         table_name_col = Defaults.Labels.TABLE_NAME
 
-        lower_bound_key = Defaults.UncertaintySettings.LOWER_BOUND_KEY
-        upper_bound_key = Defaults.UncertaintySettings.UPPER_BOUND_KEY
+        lower_bound_key = self.uncertainty_defaults.LOWER_BOUND_KEY
+        upper_bound_key = self.uncertainty_defaults.UPPER_BOUND_KEY
         group_name_key = (
-            Defaults.UncertaintySettings.UNCERTAINTY_GROUP_NAME_KEY
+            self.uncertainty_defaults.UNCERTAINTY_GROUP_NAME_KEY
         )
 
         technical_columns = {
@@ -214,7 +218,7 @@ class Uncertainty:
 
                     group_name = row[group_name_col]
 
-                    parameter_name = Defaults.UncertaintySettings.UNCERTAIN_PARAMETER_NAME_TEMPLATE.format(
+                    parameter_name = self.uncertainty_defaults.UNCERTAIN_PARAMETER_NAME_TEMPLATE.format(
                         table_name=table_name,
                         row_id=row_id,
                     )
@@ -232,18 +236,17 @@ class Uncertainty:
 
         return pd.DataFrame(records)
 
-    def create_sampling_problem(
+    def _create_sampling_problem(
         self,
         groups: bool = False,
-    ) -> tuple[pd.DataFrame, Dict[str, Any]]:
+    ) -> Dict[str, Any]:
         """Create the SALib problem dictionary from uncertain parameters.
 
         Args:
             groups: If True, include uncertainty groups in the SALib problem.
 
         Returns:
-            A tuple containing the parameter mapping dataframe and the
-            SALib-compatible problem dictionary.
+            SALib-compatible  sampling problem dictionary.
         Raises:
             exc.SettingsError: If grouped sampling is enabled and one or more
             parameters have no group name, or fewer than two distinct groups are
@@ -253,11 +256,11 @@ class Uncertainty:
         mapping_df = self.collect_uncertain_parameters()
 
         parameter_name_col = (
-            Defaults.UncertaintySettings.PARAMETER_NAME
+            self.uncertainty_defaults.PARAMETER_NAME
         )
 
         group_name_key = (
-            Defaults.UncertaintySettings.UNCERTAINTY_GROUP_NAME_KEY
+            self.uncertainty_defaults.UNCERTAINTY_GROUP_NAME_KEY
         )
 
         problem = {
@@ -266,8 +269,8 @@ class Uncertainty:
                 parameter_name_col
             ].tolist(),
             "bounds": mapping_df[[
-                Defaults.UncertaintySettings.LOWER_BOUND_KEY,
-                Defaults.UncertaintySettings.UPPER_BOUND_KEY,
+                self.uncertainty_defaults.LOWER_BOUND_KEY,
+                self.uncertainty_defaults.UPPER_BOUND_KEY,
             ]].values.tolist(),
         }
 
@@ -312,7 +315,7 @@ class Uncertainty:
 
             problem["groups"] = normalized_group_names.tolist()
 
-            self.par_mapping = mapping_df
+        self.par_mapping = mapping_df
 
         return problem
 
@@ -333,20 +336,20 @@ class Uncertainty:
             exc.SettingsError: If uncertainty information is inconsistent.
         """
         is_uncertain_col = (
-            Defaults.UncertaintySettings.IS_UNCERTAIN_FIELD[
-                Defaults.UncertaintySettings.IS_UNCERTAIN_KEY
+            self.uncertainty_defaults.IS_UNCERTAIN_FIELD[
+                self.uncertainty_defaults.IS_UNCERTAIN_KEY
             ][0]
         )
 
         lower_bound_col = (
-            Defaults.UncertaintySettings.LOWER_BOUND_FIELD[
-                Defaults.UncertaintySettings.LOWER_BOUND_KEY
+            self.uncertainty_defaults.LOWER_BOUND_FIELD[
+                self.uncertainty_defaults.LOWER_BOUND_KEY
             ][0]
         )
 
         upper_bound_col = (
-            Defaults.UncertaintySettings.UPPER_BOUND_FIELD[
-                Defaults.UncertaintySettings.UPPER_BOUND_KEY
+            self.uncertainty_defaults.UPPER_BOUND_FIELD[
+                self.uncertainty_defaults.UPPER_BOUND_KEY
             ][0]
         )
 
@@ -510,19 +513,19 @@ class Uncertainty:
         if pd.isna(lower_val) or pd.isna(upper_val):
             raise ValueError(
                 f"Missing bounds in table '{table_name}', id '{row_id}'. "
-                f"{Defaults.UncertaintySettings.LOWER_BOUND_KEY}={lower}, "
-                f"{Defaults.UncertaintySettings.UPPER_BOUND_KEY}={upper}"
+                f"{self.uncertainty_defaults.LOWER_BOUND_KEY}={lower}, "
+                f"{self.uncertainty_defaults.UPPER_BOUND_KEY}={upper}"
             )
 
         if lower_val >= upper_val:
             raise ValueError(
                 f"Invalid bounds in table '{table_name}', id '{row_id}'. "
-                f"{Defaults.UncertaintySettings.LOWER_BOUND_KEY} >= "
-                f"{Defaults.UncertaintySettings.UPPER_BOUND_KEY} "
+                f"{self.uncertainty_defaults.LOWER_BOUND_KEY} >= "
+                f"{self.uncertainty_defaults.UPPER_BOUND_KEY} "
                 f"({lower_val} >= {upper_val})"
             )
 
-    def sample_data(
+    def _sample_data(
         self,
         method: str,
         problem: dict,
@@ -545,7 +548,7 @@ class Uncertainty:
         samples = sampler(problem, **kwargs)
 
         samples_df = pd.DataFrame(samples, columns=problem["names"])
-        samples_df.index.name = Defaults.UncertaintySettings.RUN_ID
+        samples_df.index.name = self.uncertainty_defaults.RUN_ID
         samples_df.reset_index(inplace=True)
 
         return samples_df
@@ -618,8 +621,8 @@ class Uncertainty:
             )
 
         group_supported_methods = {
-            Defaults.UncertaintySettings.MORRIS,
-            Defaults.UncertaintySettings.SOBOL,
+            self.uncertainty_defaults.MORRIS,
+            self.uncertainty_defaults.SOBOL,
         }
 
         if groups and method not in group_supported_methods:
@@ -650,25 +653,25 @@ class Uncertainty:
             exc.SettingsError: If no variable is marked as an uncertainty-analysis
                 measure.
         """
-        uncertainty_measures = [
+        uncertainty_measures_list = [
             var_key
             for var_key, variable in self.index.variables.items()
             if getattr(
                 variable,
-                Defaults.UncertaintySettings.UNCERTAINTY_MEASURE_KEY,
+                self.uncertainty_defaults.UNCERTAINTY_MEASURE_KEY,
                 False,
             ) is True
         ]
 
-        if not uncertainty_measures:
+        if not uncertainty_measures_list:
             raise exc.SettingsError(
                 "Uncertainty analysis configuration invalid | "
                 "No uncertainty measures are defined. "
                 "At least one endogenous scalar variable must be marked with "
-                f"'{Defaults.UncertaintySettings.UNCERTAINTY_MEASURE_KEY}=True'."
+                f"'{self.uncertainty_defaults.UNCERTAINTY_MEASURE_KEY}=True'."
             )
 
-        return uncertainty_measures
+        return uncertainty_measures_list
 
     def check_uncertainty_measure_variables_are_scalar(self) -> None:
         """Check that variables marked as uncertainty measures are scalar."""
@@ -698,14 +701,14 @@ class Uncertainty:
                 self.logger.error(
                     "Uncertainty measure validation | "
                     f"Variable '{var_key}' is marked as "
-                    f"{Defaults.UncertaintySettings.UNCERTAINTY_MEASURE_KEY}=True "
+                    f"{self.uncertainty_defaults.UNCERTAINTY_MEASURE_KEY}=True "
                     f"but is not scalar ({info})."
                 )
 
             raise exc.SettingsError(
                 "Uncertainty measure validation failed | "
                 f"Only scalar variables can be marked as "
-                f"{Defaults.UncertaintySettings.UNCERTAINTY_MEASURE_KEY}=True."
+                f"{self.uncertainty_defaults.UNCERTAINTY_MEASURE_KEY}=True."
             )
 
     def get_deterministic_values_df(
@@ -727,8 +730,8 @@ class Uncertainty:
                 A copy of the rows that are not marked as uncertain.
         """
         is_uncertain_header = (
-            Defaults.UncertaintySettings.IS_UNCERTAIN_FIELD[
-                Defaults.UncertaintySettings.IS_UNCERTAIN_KEY
+            self.uncertainty_defaults.IS_UNCERTAIN_FIELD[
+                self.uncertainty_defaults.IS_UNCERTAIN_KEY
             ][0]
         )
 
@@ -763,7 +766,7 @@ class Uncertainty:
 
             if getattr(
                 variable,
-                Defaults.UncertaintySettings.IS_UNCERTAIN_KEY,
+                self.uncertainty_defaults.IS_UNCERTAIN_KEY,
                 False,
             ):
                 uncertain_vars.append(var_key)
@@ -784,7 +787,7 @@ class Uncertainty:
 
             if not getattr(
                 variable,
-                Defaults.UncertaintySettings.IS_UNCERTAIN_KEY,
+                self.uncertainty_defaults.IS_UNCERTAIN_KEY,
                 False,
             ):
                 deterministic_vars.append(var_key)
@@ -833,11 +836,11 @@ class Uncertainty:
         cvxpy_var_header = Defaults.Labels.CVXPY_VAR
         sub_problem_key_header = Defaults.Labels.SUB_PROBLEM_KEY
 
-        run_id_col = Defaults.UncertaintySettings.RUN_ID
-        scenario_col = Defaults.UncertaintySettings.SCENARIO
+        run_id_col = self.uncertainty_defaults.RUN_ID
+        scenario_col = self.uncertainty_defaults.SCENARIO
 
         status_col = getattr(
-            Defaults.UncertaintySettings,
+            self.uncertainty_defaults,
             "STATUS",
             Defaults.Labels.PROBLEM_STATUS,
         )
@@ -1024,8 +1027,8 @@ class Uncertainty:
 
         values_col = Defaults.Labels.VALUES_FIELD["values"][0]
         id_col = Defaults.Labels.ID_FIELD["id"][0]
-        is_uncertain_col = Defaults.UncertaintySettings.IS_UNCERTAIN_FIELD[
-            Defaults.UncertaintySettings.IS_UNCERTAIN_KEY
+        is_uncertain_col = self.uncertainty_defaults.IS_UNCERTAIN_FIELD[
+            self.uncertainty_defaults.IS_UNCERTAIN_KEY
         ][0]
 
         resolved_df = table_df.copy()
@@ -1043,7 +1046,7 @@ class Uncertainty:
         if not uncertain_mask.any():
             return resolved_df
 
-        run_id_col = Defaults.UncertaintySettings.RUN_ID
+        run_id_col = self.uncertainty_defaults.RUN_ID
 
         samples_run = samples_df.loc[samples_df[run_id_col].eq(run_id)]
 
@@ -1053,7 +1056,7 @@ class Uncertainty:
         for idx in resolved_df.loc[uncertain_mask].index:
             row_id = resolved_df.at[idx, id_col]
 
-            parameter_name = Defaults.UncertaintySettings.UNCERTAIN_PARAMETER_NAME_TEMPLATE.format(
+            parameter_name = self.uncertainty_defaults.UNCERTAIN_PARAMETER_NAME_TEMPLATE.format(
                 table_name=table_name,
                 row_id=row_id,
             )
@@ -1128,7 +1131,7 @@ class Uncertainty:
         sampling_method = sampling_method.lower()
         analysis_method = analysis_method.lower()
 
-        compatibility_map = Defaults.UncertaintySettings.ANALYSIS_COMPATIBILITY
+        compatibility_map = self.uncertainty_defaults.ANALYSIS_COMPATIBILITY
 
         compatible_sampling_methods = compatibility_map.get(analysis_method)
 
@@ -1149,7 +1152,6 @@ class Uncertainty:
         """Validate the selected GSA analysis method and its keyword arguments."""
 
         method = method.lower()
-        uncertainty_settings = Defaults.UncertaintySettings
 
         if method not in self.ANALYZERS:
             raise ValueError(
@@ -1157,7 +1159,7 @@ class Uncertainty:
                 f"Available methods: {list(self.ANALYZERS.keys())}."
             )
 
-        excluded_args = uncertainty_settings.ANALYZER_REQUIRED_INPUTS[method]
+        excluded_args = self.uncertainty_defaults.ANALYZER_REQUIRED_INPUTS[method]
 
         self._validate_analysis_kwargs(
             function=self.ANALYZERS[method],
@@ -1169,7 +1171,7 @@ class Uncertainty:
     def analyze_results(
         self,
         method: str,
-        uncertainty_measures_df: pd.DataFrame,
+        groups: bool,
         measures: list[str] | None = None,
         scenarios: list[str] | None = None,
         **kwargs: Any,
@@ -1180,15 +1182,19 @@ class Uncertainty:
         model has multiple uncertainty measures and/or multiple scenarios, this
         method repeats the analysis for each selected combination.
         """
-        mapping_df = self.par_mapping
-        samples_df = self.uncertainty_samples
-        problem = self.sampling_problem
+
+        uncertainty_measures_df = self.uncertainty_measures
+
+        if uncertainty_measures_df is None:
+            raise ValueError(
+                "No uncertainty-measure outputs found. "
+                "Call model.run_uncertainty_analysis() before analyze_uncertainty()."
+            )
 
         method = method.lower()
 
         targets = self._prepare_GSA_analysis_targets(
-            samples_df=samples_df,
-            uncertainty_measures_df=uncertainty_measures_df,
+            method=method,
             measures=measures,
             scenarios=scenarios,
         )
@@ -1197,20 +1203,18 @@ class Uncertainty:
         records = []
         for target in targets:
             selected_samples_df = (
-                samples_df
-                .set_index(Defaults.UncertaintySettings.RUN_ID)
+                self.uncertainty_samples
+                .set_index(self.uncertainty_defaults.RUN_ID)
                 .loc[target["run_ids"]]
                 .reset_index()
             )
 
             X = self._prepare_GSA_input_matrix(
-                problem=problem,
                 samples_df=selected_samples_df,
             )
 
             analysis_inputs = self._build_GSA_analysis_inputs(
                 method=method,
-                problem=problem,
                 X=X,
                 Y=target["Y"],
             )
@@ -1222,11 +1226,10 @@ class Uncertainty:
 
             result_df = self._GSA_result_to_dataframe(
                 result=result,
-                problem=problem,
                 method=method,
+                groups=groups,
                 measure=target["measure"],
                 scenario=target["scenario"],
-                mapping_df=mapping_df
             )
 
             records.append(result_df)
@@ -1241,7 +1244,6 @@ class Uncertainty:
 
     def _prepare_GSA_input_matrix(
         self,
-        problem: dict[str, Any],
         samples_df: pd.DataFrame,
     ) -> np.ndarray:
         """Convert samples_df into the SALib input matrix X.
@@ -1249,8 +1251,8 @@ class Uncertainty:
         The column order must exactly match problem["names"].
         """
 
-        run_id_col = Defaults.UncertaintySettings.RUN_ID
-        parameter_names = problem["names"]
+        run_id_col = self.uncertainty_defaults.RUN_ID
+        parameter_names = self.sampling_problem["names"]
 
         samples_ordered = samples_df.sort_values(run_id_col)
 
@@ -1260,8 +1262,7 @@ class Uncertainty:
 
     def _prepare_GSA_analysis_targets(
         self,
-        samples_df: pd.DataFrame,
-        uncertainty_measures_df: pd.DataFrame,
+        method: str,
         measures: list[str] | None = None,
         scenarios: list[str] | None = None,
     ) -> list[dict[str, Any]]:
@@ -1286,12 +1287,15 @@ class Uncertainty:
             ValueError: If requested measures or scenarios are unavailable, or if no
                 valid output remains for a target.
 """
-        run_id_col = Defaults.UncertaintySettings.RUN_ID
-        scenario_col = Defaults.UncertaintySettings.SCENARIO
+        run_id_col = self.uncertainty_defaults.RUN_ID
+        scenario_col = self.uncertainty_defaults.SCENARIO
+        uncertainty_measures_df = self.uncertainty_measures
+
+        samples_df = self.uncertainty_samples
 
         technical_cols = {run_id_col,
                           scenario_col,
-                          Defaults.UncertaintySettings.STATUS}
+                          self.uncertainty_defaults.STATUS}
 
         samples_run_ids = samples_df[[run_id_col]].drop_duplicates()
 
@@ -1368,6 +1372,18 @@ class Uncertainty:
                 ].tolist()
 
                 if missing_run_ids:
+
+                    if method in self.uncertainty_defaults.NOT_NAN_COMPATIBLE_METHODS:
+                        self.logger.warning(
+                            "SALib target preparation failed | "
+                            f"Analysis method '{method}' requires a complete "
+                            "sampling design, unfeasible outputs "
+                            f"were found for scenario '{scenario}', run_id(s): "
+                            f"{missing_run_ids}."
+                        )
+
+                        break
+
                     self.logger.warning(
                         "SALib target preparation | "
                         f"Dropping missing/unfeasible output for measure '{measure}', "
@@ -1400,7 +1416,6 @@ class Uncertainty:
     def _build_GSA_analysis_inputs(
         self,
         method: str,
-        problem: dict[str, Any],
         X: np.ndarray,
         Y: np.ndarray,
     ) -> dict[str, Any]:
@@ -1411,7 +1426,7 @@ class Uncertainty:
         inputs = {}
 
         if "problem" in required_inputs:
-            inputs["problem"] = problem
+            inputs["problem"] = self.sampling_problem
 
         if "X" in required_inputs:
             inputs["X"] = X
@@ -1442,67 +1457,74 @@ class Uncertainty:
 
         return split_problem_coordinate_cols
 
-    def _GSA_result_to_dataframe(
+    def _GSA_result_to_dataframe_rotto(
             self,
             result: Any,
-            problem: dict[str, Any],
             method: str,
             measure: str,
             scenario: str | None,
-            mapping_df: pd.DataFrame | None = None,
+            method_kwargs: Any,
     ) -> pd.DataFrame:
         """Convert a SALib analysis result into a long-format dataframe."""
 
         parameter_name_col = (
-            Defaults.UncertaintySettings.PARAMETER_NAME
+            self.uncertainty_defaults.PARAMETER_NAME
         )
 
         group_name_col = (
-            Defaults.UncertaintySettings.UNCERTAINTY_GROUP_NAME_KEY
+            self.uncertainty_defaults.UNCERTAINTY_GROUP_NAME_KEY
         )
 
+        is_grouped = self.uncertainty_defaults.SALIB_GROUPS_NAME in self.sampling_problem
+
+        result_name_col = (
+            group_name_col if is_grouped else parameter_name_col)
         result_dict = dict(result)
 
         # SALib returns the names corresponding exactly to the sensitivity
         # arrays. For grouped analyses these are the group names.
-        result_names = result_dict.get("names")
+        result_names = list(result_dict.get(
+            self.uncertainty_defaults.SALIB_RESULTS_NAME_COL))
 
-        if result_names is None:
-            raise exc.OperationalError(
-                "SALib result conversion failed | "
-                "The analysis result does not contain the 'names' field."
-            )
-
-        result_names = list(result_names)
-
-        is_grouped = "groups" in problem
-
-        result_name_col = (
-            group_name_col
-            if is_grouped
-            else parameter_name_col
-        )
-
-        metadata_keys = {"names"}
+        # metadata_keys = {"names"}
         records = []
 
+        is_second_order_sobol = (
+            method == self.uncertainty_defaults.SOBOL
+            and method_kwargs.get("calc_second_order", True)
+        )
+
         for metric, values in result_dict.items():
+            values_array = np.asarray(values)
 
-            if metric in metadata_keys:
-                continue
+            if is_second_order_sobol:
 
-            if np.ma.isMaskedArray(values):
-                values_array = np.ma.filled(
-                    values,
-                    np.nan,
-                )
-            else:
-                values_array = np.asarray(values)
+                for first_idx, first_name in enumerate(result_names):
+                    for second_idx in range(
+                        first_idx + 1,
+                        len(result_names),
+                    ):
+                        second_name = result_names[second_idx]
+                        value = values_array[first_idx, second_idx]
 
-            values_array = np.asarray(values_array)
+                        records.append(
+                            {
+                                self.uncertainty_defaults.METHOD: method,
+                                parameter_name_col: first_name,
+                                f"second_{self.uncertainty_defaults.PARAMETER_NAME}": (
+                                    second_name
+                                ),
+                                self.uncertainty_defaults.INDEX_NAME: metric,
+                                self.uncertainty_defaults.INDEX_VALUE: (
+                                    float(value)
+                                    if pd.notna(value)
+                                    else np.nan
+                                ),
+                                self.uncertainty_defaults.OUTPUT_NAME: measure,
+                                self.uncertainty_defaults.SCENARIO: scenario,
+                            }
+                        )
 
-            # Skip scalar metadata and multidimensional results.
-            if values_array.ndim != 1:
                 continue
 
             if len(values_array) != len(result_names):
@@ -1512,12 +1534,6 @@ class Uncertainty:
                     f"but SALib returned {len(result_names)} names: "
                     f"{result_names}."
                 )
-
-            if not np.issubdtype(
-                values_array.dtype,
-                np.number,
-            ):
-                continue
 
             for result_name, value in zip(
                 result_names,
@@ -1543,51 +1559,23 @@ class Uncertainty:
 
         result_df = pd.DataFrame(records)
 
-        if result_df.empty:
-            raise exc.OperationalError(
-                "SALib result conversion failed | "
-                "No one-dimensional numerical sensitivity metric "
-                "could be extracted from the analysis result. "
-                f"Available result keys: {list(result_dict.keys())}."
-            )
-
-        last_cols = [
-            "measure",
-            "metric",
-            "value",
-        ]
+        last_cols = ["measure", "metric", "value"]
 
         # Group-level results cannot be merged with the parameter mapping:
         # one group generally corresponds to multiple uncertain parameters.
         if is_grouped:
+
             first_cols = [
-                col
-                for col in result_df.columns
-                if col not in last_cols
-            ]
+                col for col in result_df.columns if col not in last_cols]
 
-            return result_df[
-                first_cols + last_cols
-            ]
-
-        # Parameter-level analysis without mapping metadata.
-        if mapping_df is None:
-            first_cols = [
-                col
-                for col in result_df.columns
-                if col not in last_cols
-            ]
-
-            return result_df[
-                first_cols + last_cols
-            ]
+            return result_df[first_cols + last_cols]
 
         excluded_metadata_cols = {
             Defaults.Labels.ID_FIELD["id"][0],
             parameter_name_col,
-            Defaults.UncertaintySettings.LOWER_BOUND_KEY,
-            Defaults.UncertaintySettings.UPPER_BOUND_KEY,
-            Defaults.UncertaintySettings.METHOD,
+            self.uncertainty_defaults.LOWER_BOUND_KEY,
+            self.uncertainty_defaults.UPPER_BOUND_KEY,
+            self.uncertainty_defaults.METHOD,
             group_name_col,
         }
 
@@ -1597,13 +1585,13 @@ class Uncertainty:
 
         metadata_cols = [
             col
-            for col in mapping_df.columns
+            for col in self.par_mapping.columns
             if col not in excluded_metadata_cols
             and col not in split_problem_coordinate_cols
         ]
 
         result_df = result_df.merge(
-            mapping_df[
+            self.par_mapping[
                 [
                     parameter_name_col,
                     *metadata_cols,
@@ -1629,6 +1617,135 @@ class Uncertainty:
             first_cols + last_cols
         ]
 
+    def _GSA_result_to_dataframe(
+            self,
+            result: Any,
+            method: str,
+            groups: bool,
+            measure: str,
+            scenario: str | None,
+    ) -> pd.DataFrame:
+        """Convert a SALib analysis result into a long-format dataframe."""
+
+        mapping_df = self.par_mapping
+
+        parameter_name_col = self.uncertainty_defaults.PARAMETER_NAME
+        group_name_col = self.uncertainty_defaults.UNCERTAINTY_GROUP_NAME_KEY
+
+        result_dict = dict(result)
+        result_names = result_dict.get(
+            self.uncertainty_defaults.SALIB_RESULTS_NAME_COL)
+
+        result_names = list(result_names)
+
+        result_name_col = (
+            group_name_col
+            if groups
+            else parameter_name_col
+        )
+
+        records: list[dict[str, Any]] = []
+
+        for metric, values in result_dict.items():
+            if metric == self.uncertainty_defaults.SALIB_RESULTS_NAME_COL:
+                continue
+
+            if np.ma.isMaskedArray(values):
+                values_array = np.ma.filled(values, np.nan)
+            else:
+                values_array = np.asarray(values)
+
+            if not np.issubdtype(values_array.dtype, np.number):
+                continue
+
+            if values_array.ndim != 1:
+                continue
+
+            if len(values_array) != len(result_names):
+                raise exc.OperationalError(
+                    "SALib result conversion failed | "
+                    f"Metric '{metric}' contains "
+                    f"{len(values_array)} values, but SALib returned "
+                    f"{len(result_names)} names: {result_names}."
+                )
+
+            for result_name, value in zip(
+                result_names,
+                values_array,
+            ):
+                record = {
+                    self.uncertainty_defaults.METHOD: method,
+                    result_name_col: result_name,
+                    self.uncertainty_defaults.INDEX_NAME: metric,
+                    self.uncertainty_defaults.INDEX_VALUE: float(value),
+                    self.uncertainty_defaults.OUTPUT_NAME: measure,
+                }
+
+                if scenario is not None:
+                    record[
+                        self.uncertainty_defaults.SCENARIO
+                    ] = scenario
+
+                records.append(record)
+
+        result_df = pd.DataFrame(records)
+
+        last_cols = [
+            self.uncertainty_defaults.OUTPUT_NAME,
+            self.uncertainty_defaults.INDEX_NAME,
+            self.uncertainty_defaults.INDEX_VALUE,
+        ]
+
+        if not groups:
+            excluded_metadata_cols = {
+                Defaults.Labels.ID_FIELD["id"][0],
+                parameter_name_col,
+                self.uncertainty_defaults.LOWER_BOUND_KEY,
+                self.uncertainty_defaults.UPPER_BOUND_KEY,
+                self.uncertainty_defaults.METHOD,
+                group_name_col,
+            }
+
+            split_problem_coordinate_cols = (
+                self._get_split_problem_coordinate_columns()
+            )
+
+            metadata_cols = [
+                column
+                for column in mapping_df.columns
+                if column not in excluded_metadata_cols
+                and column not in split_problem_coordinate_cols
+            ]
+
+            parameter_mapping = (
+                mapping_df[
+                    [
+                        parameter_name_col,
+                        *metadata_cols,
+                    ]
+                ]
+                .drop_duplicates()
+            )
+
+            result_df = result_df.merge(
+                parameter_mapping,
+                on=parameter_name_col,
+                how="left",
+                validate="many_to_one",
+            )
+
+            result_df = result_df.drop(
+                columns=parameter_name_col,
+            )
+
+        first_cols = [
+            column
+            for column in result_df.columns
+            if column not in last_cols
+        ]
+
+        return result_df[first_cols + last_cols]
+
     def create_failed_measure_records_for_run(
         self,
         run_id: int,
@@ -1642,9 +1759,9 @@ class Uncertainty:
 
         records = []
 
-        run_id_col = Defaults.UncertaintySettings.RUN_ID
-        scenario_col = Defaults.UncertaintySettings.SCENARIO
-        status_col = Defaults.UncertaintySettings.STATUS
+        run_id_col = self.uncertainty_defaults.RUN_ID
+        scenario_col = self.uncertainty_defaults.SCENARIO
+        status_col = self.uncertainty_defaults.STATUS
 
         uncertainty_measure_vars = self.get_uncertainty_measure_vars_list()
 
@@ -1706,13 +1823,13 @@ class Uncertainty:
         )
 
         sampling_problem = (
-            self.create_sampling_problem(
+            self._create_sampling_problem(
                 groups=groups
             )
         )
 
         samples_df = (
-            self.sample_data(
+            self._sample_data(
                 method=method,
                 problem=sampling_problem,
                 **kwargs
@@ -1733,7 +1850,7 @@ class Uncertainty:
         """Save an uncertainty-analysis dataframe in the results directory.
 
         The output file name is selected from the standard uncertainty-result
-        names defined in ``Defaults.UncertaintySettings.RESULT_FILE_NAMES``.
+        names defined in ``self.uncertainty_defaults.RESULT_FILE_NAMES``.
 
         Args:
             dataframe: Uncertainty-analysis dataframe to export.
@@ -1754,20 +1871,20 @@ class Uncertainty:
                 f"Received type: '{type(dataframe).__name__}'."
             )
 
-        uncertainty_defaults = Defaults.UncertaintySettings
+        self.uncertainty_defaults = self.uncertainty_defaults
 
         try:
-            file_name = uncertainty_defaults.RESULT_FILE_NAMES[result_type]
+            file_name = self.uncertainty_defaults.RESULT_FILE_NAMES[result_type]
         except KeyError as error:
             raise ValueError(
                 f"Unsupported uncertainty result type '{result_type}'. "
                 "Available result types: "
-                f"{sorted(uncertainty_defaults.RESULT_FILE_NAMES)}."
+                f"{sorted(self.uncertainty_defaults.RESULT_FILE_NAMES)}."
             ) from error
 
         output_path = (
             self.paths.model_dir
-            / uncertainty_defaults.RESULTS_DIR
+            / self.uncertainty_defaults.RESULTS_DIR
             / f"{file_name}.{file_format}"
         )
 
@@ -1884,6 +2001,7 @@ class Uncertainty:
 
     def warn_failed_model_runs(
         self,
+        scenarios,
         failed_runs_report: dict[int, dict],
     ) -> None:
         """Log a summary warning for infeasible uncertainty-analysis runs."""
@@ -1891,9 +2009,7 @@ class Uncertainty:
         if not failed_runs_report:
             return
 
-        has_scenarios = bool(self.core.index.sets_split_problem_dict)
-
-        if not has_scenarios:
+        if not scenarios:
             failed_run_ids = list(failed_runs_report.keys())
 
             self.logger.warning(
@@ -1911,7 +2027,7 @@ class Uncertainty:
             scenario_info = []
 
             for scenario_key, status in failed_scenarios.items():
-                scenario_name = self.get_scenario_name(
+                scenario_name = self._get_scenario_name(
                     scenario_key
                 )
 
@@ -1944,3 +2060,15 @@ class Uncertainty:
             sampling_method=sampling_method,
             analysis_method=analysis_method,
         )
+
+    def store_uncertainty_measures(
+            self,
+            uncertainty_measures: pd.DataFrame,
+    ) -> None:
+        """Store the uncertainty measures collected from model runs.
+
+        Args:
+            uncertainty_measures: Dataframe containing the uncertainty measures
+                associated with the sampled model runs.
+        """
+        self.uncertainty_measures = uncertainty_measures

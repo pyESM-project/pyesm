@@ -154,8 +154,6 @@ class Model():
             self._sampling_settings: SamplingSettings | None = None
             self._gsa_settings: GSASettings | None = None
 
-            self.uncertainty_measures: pd.DataFrame | None = None
-
             if self.settings.use_existing_data:
                 self._load_model_coordinates()
                 self._initialize_problems()
@@ -224,17 +222,22 @@ class Model():
         return self.settings.uncertainty
 
     @property
-    def uncertainty_samples(self) -> bool:
+    def uncertainty_samples(self) -> pd.DataFrame | None:
         """Return whether uncertainty-analysis functionality is enabled."""
         return self.core.uncertainty.uncertainty_samples
 
     @property
-    def sampling_problem(self) -> bool:
+    def sampling_problem(self) -> dict[str, Any] | None:
         """Return whether uncertainty-analysis functionality is enabled."""
         return self.core.uncertainty.sampling_problem
 
     @property
-    def gsa_results(self) -> bool:
+    def uncertainty_measures(self) -> pd.DataFrame | None:
+        """Return whether uncertainty-analysis functionality is enabled."""
+        return self.core.uncertainty.uncertainty_measures
+
+    @property
+    def gsa_results(self) -> pd.DataFrame | None:
         """Return whether uncertainty-analysis functionality is enabled."""
         return self.core.uncertainty.gsa_results
 
@@ -979,7 +982,7 @@ class Model():
         temp_save: bool = True,
         file_format: str = "xlsx",
         **method_kwargs: Any,
-    ) -> SamplingSettings:
+    ):
         """Common validation utilities for uncertainty settings."""
 
         self._sampling_settings = SamplingSettings(
@@ -992,6 +995,7 @@ class Model():
             save_measures=save_measures,
             temp_save=temp_save,
             file_format=file_format,
+
         )
 
     def gsa_settings(
@@ -1002,7 +1006,7 @@ class Model():
         scenarios: list[str] | str | None = None,
         file_format: str = "xlsx",
         **method_kwargs: Any,
-    ) -> GSASettings:
+    ):
         """Configure the global sensitivity analysis.
 
         The method validates the selected SALib analyzer, checks its compatibility
@@ -1173,7 +1177,6 @@ class Model():
         failed_runs_report: dict[int, dict] = {}
 
         for run_id in samples_df[run_id_col]:
-
             self.core.data_to_cvxpy(
                 allow_none_values=False,
                 var_list_to_update=uncertainty_tables_vars,
@@ -1236,7 +1239,8 @@ class Model():
             ignore_index=True,
         )
 
-        self.uncertainty_measures = uncertainty_measures_df
+        self.core.uncertainty.store_uncertainty_measures(
+            uncertainty_measures_df)
 
         if uncertainty_cfg.save_measures:
             self.core.uncertainty.save_uncertainty_result(
@@ -1247,12 +1251,14 @@ class Model():
 
         # 7. Final warning on failed scenario-runs.
         if failed_runs_report:
-            self.core.uncertainty.warn_failed_model_runs(failed_runs_report)
+            self.core.uncertainty.warn_failed_model_runs(
+                scenarios=self.core.index.sets_split_problem_dict,
+                failed_runs_report=failed_runs_report)
 
     def analyze(
         self,
         **analysis_kwargs: Any,
-    ) -> pd.DataFrame:
+    ):
         """Compute global sensitivity indices from the latest uncertainty run.
 
         The method analyzes the samples stored in ``self.uncertainty_samples`` and
@@ -1296,12 +1302,6 @@ class Model():
                 "Call model.run_uncertainty_analysis() before analyze_uncertainty()."
             )
 
-        if self.uncertainty_measures is None:
-            raise ValueError(
-                "No uncertainty-measure outputs found. "
-                "Call model.run_uncertainty_analysis() before analyze_uncertainty()."
-            )
-
         kwargs = {
             **gsa_cfg.method_kwargs,
             **analysis_kwargs,
@@ -1309,10 +1309,10 @@ class Model():
 
         analysis_df = self.core.uncertainty.analyze_results(
             method=gsa_cfg.method,
-            uncertainty_measures_df=self.uncertainty_measures,
             measures=gsa_cfg.measures,
             scenarios=gsa_cfg.scenarios,
-            **kwargs,
+            groups=self._sampling_settings.groups,
+            ** kwargs,
         )
 
         if gsa_cfg.save_analysis:
