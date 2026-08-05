@@ -23,3 +23,4 @@ Model directory and instance management
 .. autofunction:: cvxlab.copy_user_defined_templates
 .. autofunction:: cvxlab.transfer_setup_info_xlsx
 .. autofunction:: cvxlab.handle_model_instance
+.. autofunction:: cvxlab.installed_solvers

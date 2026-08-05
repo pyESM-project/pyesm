@@ -68,6 +68,7 @@ class Index:
         self.files = files
         self.settings = settings
         self.paths = paths
+        self._coordinates_loaded = False
 
         structures = Defaults.ConfigFiles.SETUP_INFO
 
@@ -209,6 +210,15 @@ class Index:
 
         for set_key, set_header in self.sets_split_problem_dict.items():
             set_table: SetTable = self.sets[set_key]
+
+            if set_table.data is None:
+                msg = (
+                    "Cannot generate scenarios information: "
+                    f"Set table '{set_key}' has no data loaded. "
+                )
+                self.logger.error(msg)
+                raise exc.MissingDataError(msg)
+
             set_values = set_table.data[set_header]
             scenarios_coordinates[set_header] = list(set_values)
 

@@ -45,3 +45,4 @@ Helper methods
 .. automethod:: cvxlab.Model.set
 .. automethod:: cvxlab.Model.variable
 .. automethod:: cvxlab.Model.check_model_results
+.. automethod:: cvxlab.Model.show_model_summary

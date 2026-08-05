@@ -131,12 +131,12 @@ class RunSettings:
         self.logger.debug(
             "Define and validate model run settings and solution strategy.")
 
-        err_msg: list[str] = []
-
         if number_of_sub_problems == 0:
-            err_msg.append(
-                "Numerical problem/s not found. Initialize problem/s first."
-            )
+            error = "Numerical problem/s not found. Initialize problem/s first."
+            self.logger.error(error)
+            raise exc.SettingsError(error)
+
+        err_msg: list[str] = []
 
         self._validate_solution_mode(
             solution_mode, number_of_sub_problems, err_msg)

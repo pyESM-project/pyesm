@@ -320,6 +320,8 @@ class Model:
             exc.SettingsError: If the sets Excel file specified in the settings
                 is missing.
         """
+        self.core.index._coordinates_loaded = False
+
         with self.logger.log_timing(
             message="Loading sets and variables coordinates...",
             level='info',
@@ -341,6 +343,8 @@ class Model:
             self.core.index.filter_coordinates_in_variables_index()
             self.core.index.check_variables_coherence()
             self.core.index.fetch_foreign_keys_to_data_tables()
+
+        self.core.index._coordinates_loaded = True
 
     def _initialize_blank_data_structure(self) -> None:
         """Initialize blank data structure for the model.
@@ -531,6 +535,13 @@ class Model:
             f"Loading exogenous data into SQLite database '{sqlite_db_file}' "
             "and initializing problems.")
 
+        if not self.core.index._coordinates_loaded:
+            msg = "Model coordinates have not been loaded. Call " \
+                "'initialize_model_environment()' before " \
+                "'refresh_database_and_initialize_problem()'."
+            self.logger.error(msg)
+            raise exc.MissingDataError(msg)
+
         table_key_list = self._setting_table_keys(
             table_key_list=table_key_list,
             valid_table_keys=self.core.index.list_exogenous_data_tables,
@@ -630,6 +641,12 @@ class Model:
                 Default to False.
             **kwargs: Additional keyword arguments for backward compatibility.
         """
+        if not self.core.index._coordinates_loaded:
+            msg = "Model coordinates have not been loaded. Call " \
+                "'initialize_model_environment()' before 'run_model()'."
+            self.logger.error(msg)
+            raise exc.MissingDataError(msg)
+
         # Normalize deprecated arguments (keeps Model.run_model body clean)
         solution_mode = BackwardCompat.run_model_params(
             solution_mode=solution_mode, kwargs=kwargs, logger=self.logger
@@ -958,6 +975,14 @@ class Model:
             Optional[pd.DataFrame]: The data for the specified set.
         """
         return self.core.index.fetch_set_data(set_key=name)
+
+    def show_model_summary(self) -> None:
+        """Print a summary of the model structure and solution state."""
+        print(f"Sets: {self.sets}")
+        print(f"Data tables: {self.data_tables}")
+        print(f"Variables: {self.variables}")
+        print(f"Scenarios:\n{self.scenarios}")
+        print(f"Problem solved: {self.is_problem_solved}")
 
     def __repr__(self):
         """Return a string representation of the Model instance."""
