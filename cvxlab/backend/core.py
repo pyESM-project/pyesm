@@ -286,30 +286,6 @@ class Core:
                     self.logger.error(msg)
                     raise exc.SettingsError(msg)
 
-    def data_to_cvxpy(
-            self,
-            scenarios_idx: Optional[List[int] | int] = None,
-            allow_none_values: bool = True,
-            var_list_to_update: Optional[List[str]] = None,
-            filter_negative_values: bool = False,
-            warnings_on_negatives: bool = False,
-            validate_types: bool = True,
-            uncertain_var: bool = False,
-            run_id: Optional[int] = None,
-    ) -> None:
-        """Public interface for loading data into cvxpy exogenous variables."""
-
-        self._data_to_cvxpy_exogenous_vars(
-            scenarios_idx=scenarios_idx,
-            allow_none_values=allow_none_values,
-            var_list_to_update=var_list_to_update,
-            filter_negative_values=filter_negative_values,
-            warnings_on_negatives=warnings_on_negatives,
-            validate_types=validate_types,
-            uncertain_var=uncertain_var,
-            run_id=run_id,
-        )
-
     def _data_to_cvxpy_exogenous_vars(
             self,
             scenarios_idx: Optional[List[int] | int] = None,
@@ -492,7 +468,7 @@ class Core:
                                     table_name=variable.related_table,
                                     filters_dict=variable_data[filter_header][combination],
                                 )
-                                raw_data = self.uncertainty.inject_sampled_values_by_row(
+                                raw_data = self.uncertainty.sampled_data_to_df(
                                     table_df=base_data,
                                     run_id=run_id,
                                     table_name=variable.related_table,
@@ -1590,7 +1566,7 @@ class Core:
 
                         table_df = self.sqltools.table_to_dataframe(
                             table_name=table_name)
-                        deterministic_df = self.uncertainty.get_deterministic_values_df(
+                        deterministic_df = self.uncertainty.uncertainty_data.get_deterministic_values_df(
                             table_df=table_df)
                         null_rows = deterministic_df.loc[
                             deterministic_df[column_to_inspect].isna(), column_with_info].tolist()
@@ -1861,3 +1837,42 @@ class Core:
             return final_statuses
 
         return {None: "unknown"}
+
+    def initialize_uncertain_problem_structure(
+            self,
+            force_overwrite: bool = False,
+    ) -> None:
+        """Load symbolic problem, validate uncertain exogenous data, and initialize CVXPY structures."""
+
+        self.load_and_validate_symbolic_problem(
+            force_overwrite=force_overwrite,
+        )
+
+        self.check_exogenous_data_coherence()
+
+        self._initialize_problems_variables()
+
+    def load_deterministic_data(
+        self,
+    ) -> None:
+        """Load exogenous values that remain fixed across uncertainty runs."""
+        deterministic_variables = self.uncertainty.get_deterministic_vars()
+
+        self._data_to_cvxpy_exogenous_vars(
+            allow_none_values=False,
+            var_list_to_update=deterministic_variables
+        )
+
+    def load_uncertain_data(
+        self,
+        run_id: int,
+    ) -> None:
+        """Load uncertain sampled values, updated at each run  id"""
+        uncertain_variables = self.uncertainty.get_uncertain_vars()
+
+        self._data_to_cvxpy_exogenous_vars(
+            allow_none_values=False,
+            var_list_to_update=uncertain_variables,
+            uncertain_var=True,
+            run_id=run_id,
+        )

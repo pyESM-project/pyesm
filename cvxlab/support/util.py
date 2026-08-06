@@ -7,11 +7,12 @@ validation, dataframe manipulation, dictionary operations, and specific support
 functions that enhance the interoperability of data structures used throughout 
 the application.
 """
+from typing import Any
 import itertools as it
 import numpy as np
 import pandas as pd
 
-from collections.abc import Iterable
+from collections.abc import Iterable, Mapping
 from copy import deepcopy
 from typing import Dict, List, Any, Optional, Tuple
 
@@ -1512,3 +1513,136 @@ def filter_non_allowed_negatives(
     df[column_header] = numeric_series
 
     return df
+
+
+def normalize_dataframe_by_key(
+    data: pd.DataFrame | dict[Any, pd.DataFrame],
+) -> dict[Any, pd.DataFrame]:
+    """Normalize tabular data to a dictionary keyed by an arbitrary identifier.
+
+    Args:
+        data: A single dataframe or a dictionary mapping identifiers to
+            dataframes.
+
+    Returns:
+        A dictionary containing the input dataframe under the ``None`` key, or
+        the original dictionary when the input is already keyed.
+
+    Raises:
+        TypeError: If ``data`` is neither a dataframe nor a dictionary of
+            dataframes.
+    """
+    if isinstance(data, pd.DataFrame):
+        return {None: data}
+
+    if isinstance(data, dict):
+        invalid_keys = [
+            key
+            for key, dataframe in data.items()
+            if not isinstance(dataframe, pd.DataFrame)
+        ]
+
+        if invalid_keys:
+            raise TypeError(
+                "'data' must map every key to a pandas DataFrame. "
+                f"Invalid entries found for key(s): {invalid_keys}."
+            )
+
+        return data
+
+    raise TypeError(
+        "'data' must be a pandas DataFrame or a dictionary mapping "
+        "identifiers to pandas DataFrames."
+    )
+
+
+def get_scenario_name(
+    scenario_key: Any,
+    scenarios_info: pd.DataFrame | None,
+    coordinates_column: str,
+) -> Any:
+    """Return the display name associated with a scenario key.
+
+    Args:
+        scenario_key: Scenario identifier used as index in ``scenarios_info``.
+        scenarios_info: Scenario metadata indexed by scenario key.
+        coordinates_column: Column containing scenario-coordinate labels.
+
+    Returns:
+        ``None`` when the scenario key is missing; a string joining multiple
+        scenario coordinates; the stored scenario coordinate for scalar
+        entries; or the original scenario key when no matching metadata are
+        available.
+    """
+    if pd.isna(scenario_key):
+        return None
+
+    if scenarios_info is None or scenarios_info.empty:
+        return scenario_key
+
+    if scenario_key not in scenarios_info.index:
+        return scenario_key
+
+    if coordinates_column not in scenarios_info.columns:
+        return scenario_key
+
+    scenario_coordinates = scenarios_info.at[
+        scenario_key,
+        coordinates_column,
+    ]
+
+    if isinstance(
+        scenario_coordinates,
+        (list, tuple, set),
+    ):
+        return " | ".join(
+            str(item)
+            for item in scenario_coordinates
+        )
+
+    return scenario_coordinates
+
+
+def get_split_problem_coordinate_columns(
+    sets: Mapping[str, Any],
+    *,
+    name_label: str,
+) -> set[str]:
+    """Return coordinate columns associated with split-problem sets.
+
+    Args:
+        sets: Mapping containing the model set definitions.
+        name_label: Key used in each set's ``table_headers`` mapping to identify
+            its name column.
+
+    Returns:
+        Names of coordinate columns associated with sets marked as split
+        problems.
+    """
+    coordinate_columns: set[str] = set()
+
+    for set_table in sets.values():
+        if not getattr(set_table, "split_problem", False):
+            continue
+
+        table_headers = getattr(
+            set_table,
+            "table_headers",
+            None,
+        )
+
+        if not isinstance(table_headers, dict):
+            continue
+
+        name_headers = table_headers.get(name_label)
+
+        if not name_headers:
+            continue
+
+        if isinstance(name_headers, str):
+            coordinate_columns.add(name_headers)
+            continue
+
+        coordinate_columns.add(name_headers[0])
+
+    return coordinate_columns

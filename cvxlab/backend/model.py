@@ -330,7 +330,7 @@ class Model():
             self.core.index.fetch_foreign_keys_to_data_tables()
 
             if self.settings.uncertainty:
-                self.core.uncertainty.check_uncertainty_measure_variables_are_scalar()
+                self.core.uncertainty.uncertainty_data.check_uncertainty_measure_variables_are_scalar()
 
     def _initialize_blank_data_structure(self) -> None:
         """Initialize blank data structure for the model.
@@ -502,7 +502,8 @@ class Model():
             self.core.load_and_validate_symbolic_problem(force_overwrite)
             self.core.check_exogenous_data_coherence()
             self.core.generate_numerical_problem(
-                allow_none_values, force_overwrite)
+                force_overwrite=force_overwrite,
+                allow_none_values=allow_none_values)
 
     def initialize_model_environment(self) -> None:
         """Initialize the model environment for problem generation and solution.
@@ -621,8 +622,8 @@ class Model():
                 available, a dictionary keyed by problem key can be used to
                 define dedicated settings per sub-problem. Defaults to None.
             sequential_solution_chain (Optional[List[str | int]], optional): An
-                optional list of problem keys specifying the order in which to 
-                solve the problems. If None, problems are solved in the order as 
+                optional list of problem keys specifying the order in which to
+                solve the problems. If None, problems are solved in the order as
                 specified by model settings files. Defaults to None.
             convergence_monitoring (bool, optional): If True, enables convergence
                 monitoring during the solving of integrated problems. Defaults to True.
@@ -988,7 +989,7 @@ class Model():
         self._sampling_settings = SamplingSettings(
             is_uncertainty_analysis=self.is_uncertainty_analysis,
             logger=self.logger,
-            method=method,
+            method=method.lower(),
             groups=groups,
             method_kwargs=method_kwargs,
             save_samples=save_samples,
@@ -1039,7 +1040,7 @@ class Model():
 
         self.core.uncertainty.validate_gsa_configuration(
             sampling_method=self._sampling_settings.method,
-            analysis_method=method,
+            analysis_method=method.lower(),
             method_kwargs=method_kwargs,
         )
 
@@ -1053,20 +1054,6 @@ class Model():
             save_analysis=save_analysis,
             file_format=file_format,
         )
-
-    def _initialize_problem_structure(
-            self,
-            force_overwrite: bool = False,
-    ) -> None:
-        """Load symbolic problem, validate uncertain exogenous data, and initialize CVXPY structures."""
-
-        self.core.load_and_validate_symbolic_problem(
-            force_overwrite=force_overwrite,
-        )
-
-        self.core.check_exogenous_data_coherence()
-
-        self.core._initialize_problems_variables()
 
     def run_uncertainty(
         self,
@@ -1135,58 +1122,37 @@ class Model():
             Deterministic exogenous values are loaded once before the run loop.
             Values from uncertainty-enabled tables are updated for every run.
 """
-        uncertainty_cfg = self._sampling_settings
+        sampling_cfg = self._sampling_settings
 
-        run_id_col = Defaults.UncertaintySettings.RUN_ID
-
-        if uncertainty_cfg is None:
+        if sampling_cfg is None:
             raise ValueError(
                 "No uncertainty analysis configured. "
                 "Call model.sampling_settings(...) before model.run_uncertainty()."
             )
 
-        # 1. Generate uncertainty samples.
-        samples_df = self.core.uncertainty.create_sampling_problem_and_sample_data(
-            method=uncertainty_cfg.method,
-            groups=uncertainty_cfg.groups,
-            **uncertainty_cfg.method_kwargs,
+        self.core.uncertainty.initialize_sampling(
+            method=sampling_cfg.method,
+            groups=sampling_cfg.groups,
+            save_samples=sampling_cfg.save_samples,
+            file_format=sampling_cfg.file_format,
+            **sampling_cfg.method_kwargs,
         )
 
-        if uncertainty_cfg.save_samples:
-            self.core.uncertainty.save_uncertainty_result(
-                dataframe=samples_df,
-                result_type=Defaults.UncertaintySettings.SAMPLES,
-                file_format=uncertainty_cfg.file_format,
-            )
+        self.core.initialize_uncertain_problem_structure(force_overwrite=True)
 
-        # # 2. Initialize problem structure
-        self._initialize_problem_structure(force_overwrite=True)
+        self.core.load_deterministic_data()
 
-        deterministic_tables_vars, uncertainty_tables_vars = (
-            self.core.uncertainty.sort_tables_variables(
-            )
-        )
+        self.core.uncertainty.initialize_run_results()
 
-        # 3. Load deterministic exogenous values only once.
-        self.core.data_to_cvxpy(
-            allow_none_values=False,
-            var_list_to_update=deterministic_tables_vars,
-        )
-        # 5. Run one model instance for each sampled run_id.
-        uncertainty_measure_records = []
-        failed_runs_report: dict[int, dict] = {}
+        run_ids = self.uncertainty_samples[Defaults.UncertaintySettings.RUN_ID]
 
-        for run_id in samples_df[run_id_col]:
-            self.core.data_to_cvxpy(
-                allow_none_values=False,
-                var_list_to_update=uncertainty_tables_vars,
-                uncertain_var=True,
-                run_id=run_id,
-            )
+        for run_id in run_ids:
 
-            self.core.logger.info(
+            self.logger.info(
                 f"Running uncertainty-analysis run {run_id}."
             )
+
+            self.core.load_uncertain_data(run_id)
 
             self.core.problem.generate_numerical_problems(force_overwrite=True)
 
@@ -1209,55 +1175,22 @@ class Model():
 
             statuses_by_scenario = self.core.get_current_problem_status_by_scenario()
 
-            run_records, failed_scenarios = (
-                self.core.uncertainty.collect_measure_records_for_run(
-                    run_id=run_id,
-                    statuses_by_scenario=statuses_by_scenario,
-                )
+            self.core.uncertainty.update_run_results(
+                run_id=run_id,
+                statuses_by_scenario=statuses_by_scenario,
+                temp_save=sampling_cfg.temp_save,
+                file_format=sampling_cfg.file_format,
             )
 
-            if not run_records.empty:
-                uncertainty_measure_records.append(run_records)
-
-            if failed_scenarios:
-                failed_runs_report[run_id] = failed_scenarios
-
-            if uncertainty_cfg.temp_save and uncertainty_measure_records:
-                uncertainty_measures_temp_df = pd.concat(
-                    uncertainty_measure_records,
-                    ignore_index=True,
-                )
-
-                self.core.uncertainty.save_uncertainty_result(
-                    dataframe=uncertainty_measures_temp_df,
-                    result_type=Defaults.UncertaintySettings.TEMP_MEASURES,
-                    file_format=uncertainty_cfg.file_format,
-                )
-
-        uncertainty_measures_df = pd.concat(
-            uncertainty_measure_records,
-            ignore_index=True,
+        self.core.uncertainty.finalize_run_results(
+            save_measures=sampling_cfg.save_measures,
+            file_format=sampling_cfg.file_format,
+            scenarios=self.core.index.sets_split_problem_dict,
         )
-
-        self.core.uncertainty.store_uncertainty_measures(
-            uncertainty_measures_df)
-
-        if uncertainty_cfg.save_measures:
-            self.core.uncertainty.save_uncertainty_result(
-                dataframe=uncertainty_measures_df,
-                result_type=Defaults.UncertaintySettings.MEASURES,
-                file_format=uncertainty_cfg.file_format,
-            )
-
-        # 7. Final warning on failed scenario-runs.
-        if failed_runs_report:
-            self.core.uncertainty.warn_failed_model_runs(
-                scenarios=self.core.index.sets_split_problem_dict,
-                failed_runs_report=failed_runs_report)
 
     def analyze(
         self,
-        **analysis_kwargs: Any,
+        # **analysis_kwargs: Any,
     ):
         """Compute global sensitivity indices from the latest uncertainty run.
 
@@ -1282,6 +1215,7 @@ class Model():
         GSA configuration data are unavailable.
         """
 
+        sampling_cfg = self._sampling_settings
         gsa_cfg = self._gsa_settings
 
         if gsa_cfg is None:
@@ -1302,25 +1236,15 @@ class Model():
                 "Call model.run_uncertainty_analysis() before analyze_uncertainty()."
             )
 
-        kwargs = {
-            **gsa_cfg.method_kwargs,
-            **analysis_kwargs,
-        }
-
-        analysis_df = self.core.uncertainty.analyze_results(
+        self.core.uncertainty.get_results_analysis(
             method=gsa_cfg.method,
+            groups=sampling_cfg.groups,
             measures=gsa_cfg.measures,
             scenarios=gsa_cfg.scenarios,
-            groups=self._sampling_settings.groups,
-            ** kwargs,
+            save_analysis=gsa_cfg.save_analysis,
+            file_format=gsa_cfg.file_format,
+            **gsa_cfg.method_kwargs,
         )
-
-        if gsa_cfg.save_analysis:
-            self.core.uncertainty.save_uncertainty_result(
-                dataframe=analysis_df,
-                result_type=Defaults.UncertaintySettings.GSA_RESULTS,
-                file_format=gsa_cfg.file_format,
-            )
 
 
 # def single_run(
