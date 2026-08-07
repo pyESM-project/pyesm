@@ -9,7 +9,7 @@ import numpy as np
 import pandas as pd
 from SALib.sample import latin, morris, sobol
 
-from cvxlab.backend.uncertainty_data import UncertaintyData
+from cvxlab.backend.uncertainty.uncertainty_datahandler import UncertaintyData
 from cvxlab.defaults import Defaults
 from cvxlab.log_exc.logger import Logger
 
@@ -26,12 +26,12 @@ class UncertaintySampler:
     def __init__(
         self,
         *,
-        uncertainty_data: UncertaintyData,
+        uncertainty_datahandler: UncertaintyData,
         logger: Logger,
     ) -> None:
         """Initialize the uncertainty-sampling manager."""
 
-        self.uncertainty_data = uncertainty_data
+        self.uncertainty_datahandler = uncertainty_datahandler
         self.logger = logger
         self.uncertainty_defaults = Defaults.UncertaintySettings
 
@@ -95,7 +95,7 @@ class UncertaintySampler:
             defined.
         """
 
-        mapping_df = self.uncertainty_data.collect_uncertain_parameters()
+        mapping_df = self.uncertainty_datahandler.collect_uncertain_parameters()
 
         parameter_name_col = (
             self.uncertainty_defaults.PARAMETER_NAME
@@ -280,6 +280,71 @@ class UncertaintySampler:
                 problem=sampling_problem,
                 **kwargs
             )
+        )
+
+        return mappping_df, sampling_problem, samples_df
+
+    def load_samples(
+        self,
+        file_format: str,
+        method: str,
+        groups: bool,
+        **kwargs: Any,
+    ) -> tuple[dict[str, Any], pd.DataFrame]:
+        """Load previously generated uncertainty samples.
+
+        The method rebuilds the SALib sampling problem from the current model
+        configuration and loads an existing uncertainty sample dataframe from
+        the results directory.
+
+        The loaded samples are assumed to have been generated using the same
+        uncertainty configuration and sampling settings currently defined in
+        the model.
+
+        Args:
+            method: Name of the selected SALib sampling method.
+            groups: Whether uncertainty groups must be included in the sampling
+                problem.
+            file_format: File format used to store the uncertainty samples.
+            **kwargs: Method-specific keyword arguments used to validate the
+                current sampling configuration.
+
+        Returns:
+            tuple[dict[str, Any], pd.DataFrame]: A tuple containing:
+
+            - the SALib problem specification;
+            - the previously generated uncertainty sample dataframe.
+
+        Raises:
+            exc.SettingsError: If the uncertain-parameter configuration or group
+                definition is invalid.
+            FileNotFoundError: If the uncertainty samples file does not exist.
+            ValueError: If the selected sampling method is unsupported.
+            TypeError: If the sampling arguments are missing or invalid.
+        """
+
+        self._validate_sampling_config(
+            method=method,
+            groups=groups,
+            kwargs=kwargs
+        )
+
+        mappping_df, sampling_problem = (
+            self._create_sampling_problem(
+                groups=groups
+            )
+        )
+
+        samples_df = self.uncertainty_datahandler.load_samples_files(
+            file_format)
+
+        self.logger.warning(
+            "Loading previously generated uncertainty samples... \n  "
+            "The sampling problem has been rebuilt from the current model "
+            "configuration. \n Ensure that the uncertainty configuration and "
+            "sampling settings have not changed since the samples were generated; \n "
+            "otherwise, the loaded samples may not correspond to the current "
+            "sampling problem."
         )
 
         return mappping_df, sampling_problem, samples_df

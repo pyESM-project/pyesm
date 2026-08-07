@@ -21,7 +21,7 @@ import pandas as pd
 from cvxlab.defaults import Defaults
 from cvxlab.backend.core import Core
 from cvxlab.backend.model_settings import ModelSettings, ModelPaths
-from cvxlab.backend.uncertainty_settings import SamplingSettings, GSASettings
+from cvxlab.backend.uncertainty.uncertainty_settings import SamplingSettings, GSASettings
 from cvxlab.backend.run_settings import RunSettings
 from cvxlab.log_exc import exceptions as exc
 from cvxlab.log_exc.logger import Logger
@@ -330,7 +330,7 @@ class Model():
             self.core.index.fetch_foreign_keys_to_data_tables()
 
             if self.settings.uncertainty:
-                self.core.uncertainty.uncertainty_data.check_uncertainty_measure_variables_are_scalar()
+                self.core.uncertainty.uncertainty_datahandler.check_uncertainty_measure_variables_are_scalar()
 
     def _initialize_blank_data_structure(self) -> None:
         """Initialize blank data structure for the model.
@@ -1057,6 +1057,8 @@ class Model():
 
     def run_uncertainty(
         self,
+        resume: bool | bool = False,
+        temp_file_format: str = "xlsx",
         force_overwrite: bool = False,
         solution_mode: Defaults.LiteralTypes.SolutionMode = 'parallel',
         scenarios_idx: Optional[List[int] | int] = None,
@@ -1094,6 +1096,12 @@ class Model():
 
 
         Args:
+            resume: Whether to resume a previously interrupted uncertainty
+                run. If ``False``, a new run is initialized. If ``True``,
+                existing uncertainty samples and temporary uncertainty measures
+                are loaded and execution continues from the last saved run.
+            temp_file_format: File format used to load the temporary uncertainty 
+            measures when ``resume=True``. Defaults to "xlsx"``.
             force_overwrite: Whether existing generated problem structures may be
                 overwritten.
             integrated_problems: Whether linked sub-problems must be solved
@@ -1131,6 +1139,7 @@ class Model():
             )
 
         self.core.uncertainty.initialize_sampling(
+            resume=resume,
             method=sampling_cfg.method,
             groups=sampling_cfg.groups,
             save_samples=sampling_cfg.save_samples,
@@ -1142,9 +1151,10 @@ class Model():
 
         self.core.load_deterministic_data()
 
-        self.core.uncertainty.initialize_run_results()
-
-        run_ids = self.uncertainty_samples[Defaults.UncertaintySettings.RUN_ID]
+        run_ids = self.core.uncertainty.initialize_run_results(
+            resume=resume,
+            file_format=temp_file_format,
+        )
 
         for run_id in run_ids:
 

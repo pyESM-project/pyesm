@@ -1,29 +1,22 @@
 """Tools for collecting uncertain parameters from exogenous data tables."""
 
 
-from typing import Any, Callable
+from typing import Any
 
 import pandas as pd
 import numpy as np
-from SALib.sample import sobol, latin, morris
-from SALib.analyze import (
-    sobol as sobol_analyze,
-    morris as morris_analyze,
-    delta,
-    rbd_fast,
-)
-
 
 from cvxlab.defaults import Defaults
 from cvxlab.backend.index import Index
+from cvxlab.backend.model_settings import ModelPaths
+from cvxlab.support.file_manager import FileManager
 from cvxlab.support.sql_manager import SQLManager
 from cvxlab.support import util
 from cvxlab.log_exc import exceptions as exc
 from cvxlab.log_exc.logger import Logger
-from cvxlab.support.file_manager import FileManager
-from cvxlab.backend.uncertainty_data import UncertaintyData
-from cvxlab.backend.uncertainty_sampler import UncertaintySampler
-from cvxlab.backend.uncertainty_analyzer import UncertaintyAnalyzer
+from cvxlab.backend.uncertainty.uncertainty_datahandler import UncertaintyData
+from cvxlab.backend.uncertainty.uncertainty_datasampler import UncertaintySampler
+from cvxlab.backend.uncertainty.uncertainty_analyzer import UncertaintyAnalyzer
 
 
 class Uncertainty:
@@ -60,8 +53,8 @@ class Uncertainty:
         self,
         sqltools: SQLManager,
         index: Index,
-        paths: dict,
         files: FileManager,
+        paths: ModelPaths,
         logger: Logger
     ):
         """Initialize the uncertainty-analysis manager.
@@ -82,14 +75,16 @@ class Uncertainty:
         self.logger = logger.get_child(__name__)
         self.files = files
 
-        self.uncertainty_data = UncertaintyData(
+        self.uncertainty_datahandler = UncertaintyData(
+            files=self.files,
+            paths=self.paths,
             sqltools=self.sqltools,
             index=self.index,
             logger=self.logger,
         )
 
         self.uncertainty_sampler = UncertaintySampler(
-            uncertainty_data=self.uncertainty_data,
+            uncertainty_datahandler=self.uncertainty_datahandler,
             logger=self.logger,
         )
 
@@ -107,54 +102,6 @@ class Uncertainty:
         self.uncertainty_measures: pd.DataFrame | None = None
         self.uncertainty_measure_records: list | None = None
         self.failed_runs_report: dict | None = None
-
-    def _save_uncertainty_result(
-        self,
-        dataframe: pd.DataFrame,
-        result_type: str,
-        file_format: str,
-    ):
-        """Save an uncertainty-analysis dataframe in the results directory.
-
-        The output file name is selected from the standard uncertainty-result
-        names defined in ``self.uncertainty_defaults.RESULT_FILE_NAMES``.
-
-        Args:
-            dataframe: Uncertainty-analysis dataframe to export.
-            result_type: Type of uncertainty result to save, such as ``samples``,
-                ``measures``, ``temp_measures``, or ``gsa_results``.
-            file_format: Output file format.
-
-        Raises:
-            TypeError: If ``dataframe`` is not a pandas DataFrame.
-            ValueError: If ``result_type`` is unsupported.
-        """
-        if not isinstance(dataframe, pd.DataFrame):
-            raise TypeError(
-                "'dataframe' must be a pandas DataFrame. "
-                f"Received type: '{type(dataframe).__name__}'."
-            )
-
-        try:
-            file_name = self.uncertainty_defaults.RESULT_FILE_NAMES[result_type]
-        except KeyError as error:
-            raise ValueError(
-                f"Unsupported uncertainty result type '{result_type}'. "
-                "Available result types: "
-                f"{sorted(self.uncertainty_defaults.RESULT_FILE_NAMES)}."
-            ) from error
-
-        output_path = (
-            self.paths.model_dir
-            / self.uncertainty_defaults.RESULTS_DIR
-            / f"{file_name}.{file_format}"
-        )
-
-        return self.files.save_dataframe(
-            dataframe=dataframe,
-            output_path=output_path,
-            file_format=file_format,
-        )
 
     def _warn_failed_model_runs(
         self,
@@ -314,7 +261,7 @@ class Uncertainty:
             Defaults.Labels.PROBLEM_STATUS,
         )
 
-        uncertainty_measure_vars = self.uncertainty_data.get_uncertainty_measure_vars_list()
+        uncertainty_measure_vars = self.uncertainty_datahandler.get_uncertainty_measure_vars_list()
 
         records = {}
         has_split_scenarios = bool(self.index.sets_split_problem_dict)
@@ -408,7 +355,7 @@ class Uncertainty:
         scenario_col = self.uncertainty_defaults.SCENARIO
         status_col = self.uncertainty_defaults.STATUS
 
-        uncertainty_measure_vars = self.uncertainty_data.get_uncertainty_measure_vars_list()
+        uncertainty_measure_vars = self.uncertainty_datahandler.get_uncertainty_measure_vars_list()
 
         for scenario_key, status in failed_scenarios.items():
             scenario_name = util.get_scenario_name(
@@ -431,18 +378,81 @@ class Uncertainty:
 
         return pd.DataFrame(records)
 
+    def _rebuild_failed_runs_report(
+        self,
+        temporary_measures: pd.DataFrame,
+    ) -> dict[int, dict[int, str]]:
+        """Rebuild the failed-runs report from temporary uncertainty measures.
+
+        Args:
+            temporary_measures: Previously saved uncertainty-measure records.
+
+        Returns:
+            Mapping of run IDs to failed scenario keys and their solver status.
+        """
+        run_id_col = self.uncertainty_defaults.RUN_ID
+        scenario_col = self.uncertainty_defaults.SCENARIO
+        status_col = self.uncertainty_defaults.STATUS
+
+        failed_rows = (
+            temporary_measures[
+                temporary_measures[status_col] != "optimal"
+            ]
+            .drop_duplicates(
+                subset=[
+                    run_id_col,
+                    scenario_col,
+                    status_col,
+                ]
+            )
+        )
+
+        failed_runs_report: dict[int, dict[int, str]] = {}
+
+        for _, row in failed_rows.iterrows():
+
+            run_id = int(row[run_id_col])
+            scenario_name = row[scenario_col]
+            status = str(row[status_col])
+
+            scenario_key = next(
+                (
+                    int(key)
+                    for key in self.index.scenarios_info.index
+                    if util.get_scenario_name(
+                        scenario_key=key,
+                        scenarios_info=self.index.scenarios_info,
+                        coordinates_column=(
+                            Defaults.Labels.SCENARIO_COORDINATES
+                        ),
+                    ) == scenario_name
+                ),
+                None,
+            )
+
+            if scenario_key is None:
+                continue
+
+            failed_runs_report.setdefault(
+                run_id,
+                {}
+            )[scenario_key] = status
+
+        return failed_runs_report
+
     def validate_uncertainty_data(self) -> None:
         """Validate row-level uncertainty metadata."""
 
-        self.uncertainty_data.validate_uncertainty_data()
+        self.uncertainty_datahandler.validate_uncertainty_data()
 
     def collect_uncertain_parameters(self) -> pd.DataFrame:
         """Collect uncertain parameters from uncertainty-enabled data tables."""
 
-        return self.uncertainty_data.collect_uncertain_parameters()
+        return self.uncertainty_datahandler.collect_uncertain_parameters()
 
     def initialize_sampling(
         self,
+        resume: bool,
         method: str,
         groups: bool,
         save_samples: bool,
@@ -466,21 +476,36 @@ class Uncertainty:
             **method_kwargs: Method-specific arguments passed to the selected
                 SALib sampler.
         """
-        (
-            self.par_mapping,
-            self.sampling_problem,
-            self.uncertainty_samples,
-        ) = self.uncertainty_sampler.generate_samples(
-            method=method,
-            groups=groups,
-            **method_kwargs,
-        )
 
-        if save_samples:
-            self._save_uncertainty_result(
-                dataframe=self.uncertainty_samples,
-                result_type=self.uncertainty_defaults.SAMPLES,
-                file_format=file_format
+        if not resume:
+
+            (
+                self.par_mapping,
+                self.sampling_problem,
+                self.uncertainty_samples,
+            ) = self.uncertainty_sampler.generate_samples(
+                method=method,
+                groups=groups,
+                **method_kwargs,
+            )
+
+            if save_samples:
+                self.uncertainty_datahandler.save_uncertainty_result(
+                    dataframe=self.uncertainty_samples,
+                    result_type=self.uncertainty_defaults.SAMPLES,
+                    file_format=file_format
+                )
+        elif resume:
+
+            (
+                self.par_mapping,
+                self.sampling_problem,
+                self.uncertainty_samples,
+            ) = self.uncertainty_sampler.load_samples(
+                file_format=file_format,
+                method=method,
+                groups=groups,
+                ** method_kwargs
             )
 
     def get_deterministic_vars(self):
@@ -495,10 +520,10 @@ class Uncertainty:
             tables.
         """
         deterministic_tables = (
-            self.uncertainty_data.get_deterministic_tables()
+            self.uncertainty_datahandler.get_deterministic_tables()
         )
 
-        return self.uncertainty_data.get_vars_in_tables_list(
+        return self.uncertainty_datahandler.get_vars_in_tables_list(
             deterministic_tables
         )
 
@@ -514,17 +539,58 @@ class Uncertainty:
             tables.
         """
         uncertain_tables = (
-            self.uncertainty_data.get_uncertain_tables()
+            self.uncertainty_datahandler.get_uncertain_tables()
         )
 
-        return self.uncertainty_data.get_vars_in_tables_list(
+        return self.uncertainty_datahandler.get_vars_in_tables_list(
             uncertain_tables
         )
 
-    def initialize_run_results(self) -> None:
-        """Initialize the result containers for a new uncertainty campaign."""
-        self.uncertainty_measure_records = []
-        self.failed_runs_report = {}
+    def initialize_run_results(
+            self,
+            resume: bool,
+            file_format: str,
+    ) -> None:
+        """Initialize result containers for an uncertainty campaign.
+
+        When resuming a previous campaign, previously collected temporary
+        uncertainty measures are loaded and restored in the result container.
+
+        Args:
+            resume: Whether to resume a previously interrupted uncertainty campaign.
+            file_format: File format used for temporary uncertainty results.
+
+        Returns:
+            First run ID to execute.
+        """
+
+        run_ids = self.uncertainty_samples[Defaults.UncertaintySettings.RUN_ID]
+
+        if not resume:
+            self.uncertainty_measure_records = []
+            self.failed_runs_report = {}
+
+        elif resume:
+
+            temporary_measures = self.uncertainty_datahandler.load_temp_measures_files(
+                file_format=file_format,
+            )
+
+            self.uncertainty_measure_records = [temporary_measures]
+
+            run_id_col = self.uncertainty_defaults.RUN_ID
+
+            run_id_start = int(temporary_measures[run_id_col].max() + 1)
+
+            self.failed_runs_report = (
+                self._rebuild_failed_runs_report(
+                    temporary_measures
+                )
+            )
+
+            run_ids = range(run_id_start, int(run_ids.max()) + 1)
+
+        return run_ids
 
     def sampled_data_to_df(
         self,
@@ -543,7 +609,7 @@ class Uncertainty:
             A dataframe containing the sampled values associated with the selected
             uncertainty run.
         """
-        return self.uncertainty_data.inject_sampled_values_by_row(
+        return self.uncertainty_datahandler.inject_sampled_values_by_row(
             table_df=table_df,
             samples_df=self.uncertainty_samples,
             run_id=run_id,
@@ -591,7 +657,7 @@ class Uncertainty:
                 ignore_index=True,
             )
 
-            self._save_uncertainty_result(
+            self.uncertainty_datahandler.save_uncertainty_result(
                 dataframe=temporary_measures,
                 result_type=self.uncertainty_defaults.TEMP_MEASURES,
                 file_format=file_format,
@@ -632,7 +698,7 @@ class Uncertainty:
         self.uncertainty_measures = uncertainty_measures
 
         if save_measures:
-            self._save_uncertainty_result(
+            self.uncertainty_datahandler.save_uncertainty_result(
                 dataframe=uncertainty_measures,
                 result_type=Defaults.UncertaintySettings.MEASURES,
                 file_format=file_format,
@@ -711,7 +777,7 @@ class Uncertainty:
         )
 
         if save_analysis:
-            self._save_uncertainty_result(
+            self.uncertainty_datahandler.save_uncertainty_result(
                 dataframe=self.gsa_results,
                 result_type=self.uncertainty_defaults.GSA_RESULTS,
                 file_format=file_format,

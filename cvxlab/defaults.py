@@ -766,7 +766,7 @@ class Defaults:
         RUN_ID = "run_id"
         PARAMETER_NAME = "parameter_name"
         SAMPLED_VALUE = "sampled_value"
-        OUTPUT_NAME = "output_name"
+        OUTPUT_NAME = "measure"
         INDEX_NAME = "index"
         INDEX_VALUE = "value"
         METHOD = "method"

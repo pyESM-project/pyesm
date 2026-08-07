@@ -1566,7 +1566,7 @@ class Core:
 
                         table_df = self.sqltools.table_to_dataframe(
                             table_name=table_name)
-                        deterministic_df = self.uncertainty.uncertainty_data.get_deterministic_values_df(
+                        deterministic_df = self.uncertainty.uncertainty_datahandler.get_deterministic_values_df(
                             table_df=table_df)
                         null_rows = deterministic_df.loc[
                             deterministic_df[column_to_inspect].isna(), column_with_info].tolist()

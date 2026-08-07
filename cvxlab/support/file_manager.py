@@ -958,6 +958,7 @@ class FileManager:
         dataframe: pd.DataFrame,
         output_path: Path | str,
         file_format: str,
+        sheet_name: str = "Sheet1",
         index: bool = False,
     ) -> Path:
         """Save a dataframe to the specified file path.
@@ -995,6 +996,7 @@ class FileManager:
             dataframe.to_excel(
                 output_path,
                 index=index,
+                sheet_name=sheet_name,
                 engine=self.xls_engine,
             )
         elif file_format == "csv":

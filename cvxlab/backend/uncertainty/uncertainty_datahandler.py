@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from fileinput import filename
 from typing import Any
 
 import pandas as pd
@@ -11,6 +12,8 @@ from cvxlab.defaults import Defaults
 from cvxlab.log_exc import exceptions as exc
 from cvxlab.log_exc.logger import Logger
 from cvxlab.support.sql_manager import SQLManager, db_handler
+from cvxlab.support.file_manager import FileManager
+from cvxlab.backend.model_settings import ModelPaths
 
 
 class UncertaintyData:
@@ -19,12 +22,16 @@ class UncertaintyData:
     def __init__(
         self,
         *,
+        files: FileManager,
+        paths: ModelPaths,
         sqltools: SQLManager,
         index: Index,
         logger: Logger,
     ) -> None:
         """Initialize the uncertainty-data manager."""
 
+        self.files = files
+        self.paths = paths
         self.sqltools = sqltools
         self.index = index
         self.logger = logger
@@ -591,3 +598,109 @@ class UncertaintyData:
             resolved_df.at[idx, values_col] = sample_values[parameter_name]
 
         return resolved_df
+
+    def load_samples_files(
+        self,
+        file_format: str,
+    ) -> pd.DataFrame:
+        """Load previously generated uncertainty samples."""
+
+        file_name = (
+            f"{self.uncertainty_defaults.SAMPLES_FILE_NAME}."
+            f"{file_format}"
+        )
+
+        results_dir = (
+            self.paths.model_dir
+            / self.uncertainty_defaults.RESULTS_DIR
+        )
+
+        samples_df = self.files.file_to_dataframe(
+            file_name=file_name,
+            file_dir_path=results_dir,
+        )
+
+        return samples_df
+
+    def load_temp_measures_files(
+        self,
+        file_format: str,
+    ) -> pd.DataFrame:
+        """Load temporary uncertainty measures from a previous run."""
+
+        file_name = (
+            f"{self.uncertainty_defaults.MEASURES_TEMP_FILE_NAME}."
+            f"{file_format}"
+        )
+
+        results_dir = (
+            self.paths.model_dir
+            / self.uncertainty_defaults.RESULTS_DIR
+        )
+
+        try:
+            measures_df = self.files.file_to_dataframe(
+                file_name=file_name,
+                file_dir_path=results_dir,
+            )
+
+        except FileNotFoundError as error:
+            msg = (
+                "Cannot resume uncertainty analysis because the temporary "
+                f"measures file '{file_name}' was not found in "
+                f"'{results_dir}'. \n Temporary results from a previous uncertainty "
+                "run are required when 'resume=True'."
+            )
+            self.logger.error(msg)
+            raise FileNotFoundError(msg) from error
+
+        return measures_df
+
+    def save_uncertainty_result(
+        self,
+        dataframe: pd.DataFrame,
+        result_type: str,
+        file_format: str,
+    ):
+        """Save an uncertainty-analysis dataframe in the results directory.
+
+        The output file name is selected from the standard uncertainty-result
+        names defined in ``self.uncertainty_defaults.RESULT_FILE_NAMES``.
+
+        Args:
+            dataframe: Uncertainty-analysis dataframe to export.
+            result_type: Type of uncertainty result to save, such as ``samples``,
+                ``measures``, ``temp_measures``, or ``gsa_results``.
+            file_format: Output file format.
+
+        Raises:
+            TypeError: If ``dataframe`` is not a pandas DataFrame.
+            ValueError: If ``result_type`` is unsupported.
+        """
+        if not isinstance(dataframe, pd.DataFrame):
+            raise TypeError(
+                "'dataframe' must be a pandas DataFrame. "
+                f"Received type: '{type(dataframe).__name__}'."
+            )
+
+        try:
+            file_name = self.uncertainty_defaults.RESULT_FILE_NAMES[result_type]
+        except KeyError as error:
+            raise ValueError(
+                f"Unsupported uncertainty result type '{result_type}'. "
+                "Available result types: "
+                f"{sorted(self.uncertainty_defaults.RESULT_FILE_NAMES)}."
+            ) from error
+
+        output_path = (
+            self.paths.model_dir
+            / self.uncertainty_defaults.RESULTS_DIR
+            / f"{file_name}.{file_format}"
+        )
+
+        return self.files.save_dataframe(
+            dataframe=dataframe,
+            output_path=output_path,
+            file_format=file_format,
+            sheet_name=file_name
+        )
